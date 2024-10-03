@@ -1,0 +1,17 @@
+.turbo
+node_modules
+dist
+.next
+.env
+.dev.vars
+.vercel
+.DS_Store
+.idea
+
+# examples
+examples/*/package-lock.json
+examples/*/pnpm-lock.yaml
+examples/ngrok.log
+restart.sh
+
+bootstrap.sh
