@@ -1,16 +1,8 @@
-import { Receiver } from "@upstash/qstash";
-import { Client } from "@upstash/qstash";
-import { formatWorkflowError } from "./error";
-import { DEFAULT_RETRIES } from "./constants";
-import { DisabledWorkflowContext, WorkflowContext } from "./context";
-import { WorkflowLogger } from "./logger";
-import type {
-  FinishCondition,
-  RequiredExceptFields,
-  RouteFunction,
-  WorkflowServeOptions,
-} from "./types";
-import { getPayload, handleFailure, parseRequest, validateRequest } from "./workflow-parser";
+import { WorkflowContext } from "../context";
+import { formatWorkflowError } from "../error";
+import { WorkflowLogger } from "../logger";
+import { RouteFunction, WorkflowServeOptions } from "../types";
+import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
   recreateUserHeaders,
@@ -18,75 +10,9 @@ import {
   triggerRouteFunction,
   triggerWorkflowDelete,
   verifyRequest,
-} from "./workflow-requests";
-
-/**
- * Fills the options with default values if they are not provided.
- *
- * Default values for:
- * - qstashClient: QStash client created with QSTASH_URL and QSTASH_TOKEN env vars
- * - onStepFinish: returns a Response with workflowRunId & finish condition in the body (status: 200)
- * - initialPayloadParser: calls JSON.parse if initial request body exists.
- * - receiver: a Receiver if the required env vars are set
- * - baseUrl: env variable UPSTASH_WORKFLOW_URL
- *
- * @param options options including the client, onFinish and initialPayloadParser
- * @returns
- */
-export const processOptions = <TResponse extends Response = Response, TInitialPayload = unknown>(
-  options?: WorkflowServeOptions<TResponse, TInitialPayload>
-): RequiredExceptFields<
-  WorkflowServeOptions<TResponse, TInitialPayload>,
-  "verbose" | "receiver" | "url" | "failureFunction" | "failureUrl" | "baseUrl"
-> => {
-  const environment =
-    options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
-
-  const receiverEnvironmentVariablesSet = Boolean(
-    environment.QSTASH_CURRENT_SIGNING_KEY && environment.QSTASH_NEXT_SIGNING_KEY
-  );
-
-  return {
-    qstashClient: new Client({
-      baseUrl: environment.QSTASH_URL!,
-      token: environment.QSTASH_TOKEN!,
-    }),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    onStepFinish: (workflowRunId: string, _finishCondition: FinishCondition) =>
-      new Response(JSON.stringify({ workflowRunId }), {
-        status: 200,
-      }) as TResponse,
-    initialPayloadParser: (initialRequest: string) => {
-      // if there is no payload, simply return undefined
-      if (!initialRequest) {
-        return undefined as TInitialPayload;
-      }
-
-      // try to parse the payload
-      try {
-        return JSON.parse(initialRequest) as TInitialPayload;
-      } catch (error) {
-        // if you get an error when parsing, return it as it is
-        // needed in plain string case.
-        if (error instanceof SyntaxError) {
-          return initialRequest as TInitialPayload;
-        }
-        // if not JSON.parse error, throw error
-        throw error;
-      }
-    },
-    receiver: receiverEnvironmentVariablesSet
-      ? new Receiver({
-          currentSigningKey: environment.QSTASH_CURRENT_SIGNING_KEY!,
-          nextSigningKey: environment.QSTASH_NEXT_SIGNING_KEY!,
-        })
-      : undefined,
-    baseUrl: environment.UPSTASH_WORKFLOW_URL,
-    env: environment,
-    retries: DEFAULT_RETRIES,
-    ...options,
-  };
-};
+} from "../workflow-requests";
+import { DisabledWorkflowContext } from "./authorization";
+import { determineUrls, processOptions } from "./options";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -118,7 +44,6 @@ export const serve = <
     env,
     retries,
   } = processOptions<TResponse, TInitialPayload>(options);
-
   const debug = WorkflowLogger.getLogger(verbose);
 
   /**
@@ -131,32 +56,34 @@ export const serve = <
    * @returns A promise that resolves to a response.
    */
   const handler = async (request: TRequest) => {
-    // set the workflow endpoint url. If baseUrl is set and initialWorkflowUrl
-    // has localhost, replaces localhost with baseUrl
-    const initialWorkflowUrl = url ?? request.url;
-    const workflowUrl = baseUrl
-      ? initialWorkflowUrl.replace(/^(https?:\/\/[^/]+)(\/.*)?$/, (_, matchedBaseUrl, path) => {
-          return baseUrl + ((path as string) || "");
-        })
-      : initialWorkflowUrl;
-
-    // log workflow url change
-    if (workflowUrl !== initialWorkflowUrl) {
-      await debug?.log("WARN", "ENDPOINT_START", {
-        warning: `Upstash Workflow: replacing the base of the url with "${baseUrl}" and using it as workflow endpoint.`,
-        originalURL: initialWorkflowUrl,
-        updatedURL: workflowUrl,
-      });
-    }
-
-    // set url to call in case of failure
-    const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
+    const { workflowUrl, workflowFailureUrl } = await determineUrls(
+      request,
+      url,
+      baseUrl,
+      failureFunction,
+      failureUrl,
+      debug
+    );
 
     // get payload as raw string
     const requestPayload = (await getPayload(request)) ?? "";
     await verifyRequest(requestPayload, request.headers.get("upstash-signature"), receiver);
 
-    await debug?.log("INFO", "ENDPOINT_START");
+    // validation & parsing
+    const { isFirstInvocation, workflowRunId } = validateRequest(request);
+    debug?.setWorkflowRunId(workflowRunId);
+
+    // parse steps
+    const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+      requestPayload,
+      isFirstInvocation,
+      debug
+    );
+
+    // terminate current call if it's a duplicate branch
+    if (isLastDuplicate) {
+      return onStepFinish("no-workflow-id", "duplicate-step");
+    }
 
     // check if the request is a failure callback
     const failureCheck = await handleFailure<TInitialPayload>(
@@ -173,22 +100,6 @@ export const serve = <
       // is a failure ballback.
       await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
       return onStepFinish("no-workflow-id", "failure-callback");
-    }
-
-    // validation & parsing
-    const { isFirstInvocation, workflowRunId } = validateRequest(request);
-    debug?.setWorkflowRunId(workflowRunId);
-
-    // parse steps
-    const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
-      requestPayload,
-      isFirstInvocation,
-      debug
-    );
-
-    // terminate current call if it's a duplicate branch
-    if (isLastDuplicate) {
-      return onStepFinish("no-workflow-id", "duplicate-step");
     }
 
     // create context
