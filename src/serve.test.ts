@@ -9,7 +9,7 @@ import {
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
-import { nanoid } from "../utils";
+import { nanoid } from "./utils";
 import { Client } from "@upstash/qstash";
 import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "./types";
 import {

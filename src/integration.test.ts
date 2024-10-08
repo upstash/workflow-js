@@ -48,7 +48,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 
 import { serve } from "bun";
-import { serve as workflowServe } from "../../platforms/nextjs";
+import { serve as workflowServe } from "../platforms/nextjs";
 import { expect, test, describe } from "bun:test";
 import { Client } from "@upstash/qstash";
 import type { RouteFunction, WorkflowServeOptions } from "./types";

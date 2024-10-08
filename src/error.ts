@@ -1,5 +1,5 @@
 import { QstashError } from "@upstash/qstash";
-import type { FailureFunctionPayload, Step } from "./workflow/types";
+import type { FailureFunctionPayload, Step } from "./types";
 
 /**
  * Error raised during Workflow execution

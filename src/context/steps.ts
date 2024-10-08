@@ -1,5 +1,5 @@
 import type { HTTPMethods } from "@upstash/qstash";
-import type { Step, StepFunction, StepType } from "./types";
+import type { Step, StepFunction, StepType } from "../types";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)

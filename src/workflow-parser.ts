@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { QStashWorkflowError } from "../error";
+import { QStashWorkflowError } from "./error";
 import {
   NO_CONCURRENCY,
   WORKFLOW_FAILURE_HEADER,
@@ -18,7 +18,7 @@ import type {
 import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
-import { decodeBase64, nanoid } from "../utils";
+import { decodeBase64, nanoid } from "./utils";
 
 /**
  * Gets the request body. If that fails, returns undefined

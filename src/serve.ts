@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
-import { formatWorkflowError } from "../error";
+import { formatWorkflowError } from "./error";
 import { DEFAULT_RETRIES } from "./constants";
 import { DisabledWorkflowContext, WorkflowContext } from "./context";
 import { WorkflowLogger } from "./logger";
@@ -99,7 +98,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
  */
 export const serve = <
   TInitialPayload = unknown,
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   TRequest extends Request = Request,
   TResponse extends Response = Response,
 >(

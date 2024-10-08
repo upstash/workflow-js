@@ -8,7 +8,7 @@
  * and to pass
  */
 
-import { nanoid } from "../utils";
+import { nanoid } from "./utils";
 import { describe, test, expect } from "bun:test";
 import { SignJWT } from "jose";
 import { createHash } from "node:crypto";

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { describe, test, expect } from "bun:test";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "./test-utils";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { DisabledWorkflowContext, WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { nanoid } from "../utils";
 import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
-import type { RouteFunction } from "./types";
+import type { RouteFunction } from "../types";
 
 describe("context tests", () => {
   const token = nanoid();
