@@ -281,7 +281,7 @@ export class AutoExecutor {
     initialStepCount: number
   ): ParallelCallState {
     const remainingSteps = this.steps.filter(
-      (step) => (step.targetStep ?? step.stepId) >= initialStepCount
+      (step) => (step.targetStep || step.stepId) >= initialStepCount
     );
 
     if (remainingSteps.length === 0) {
@@ -321,15 +321,9 @@ export class AutoExecutor {
       length: steps.length,
       steps,
     });
-    
-    if (steps[0].waitEventId) {
-      if (steps.length !== 1) {
-        throw new QStashWorkflowError(
-          `Received an unexpected step array. If a step has waitEventId, it should be by itself. Received instead: ${steps}`
-        )
-      }
 
-      const waitStep = steps[0]
+    if (steps[0].waitEventId && steps.length === 1) {
+      const waitStep = steps[0];
 
       const { headers, timeoutHeaders } = getHeaders(
         "false",
@@ -353,9 +347,9 @@ export class AutoExecutor {
           stepType: "Wait",
           stepName: waitStep.stepName,
           concurrent: waitStep.concurrent,
-          targetStep: waitStep.targetStep
-        }
-      }
+          targetStep: waitStep.targetStep,
+        },
+      };
 
       await this.context.qstashClient.http.request({
         path: ["v2", "wait", waitStep.waitEventId],
@@ -531,6 +525,6 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
  * @returns sorted steps
  */
 const sortSteps = (steps: Step[]): Step[] => {
-  const getStepId = (step: Step) => step.targetStep ?? step.stepId;
+  const getStepId = (step: Step) => step.targetStep || step.stepId;
   return steps.toSorted((step, stepOther) => getStepId(step) - getStepId(stepOther));
 };

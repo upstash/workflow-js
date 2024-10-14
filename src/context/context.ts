@@ -2,7 +2,13 @@ import type { WaitStepResponse, WorkflowClient } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
-import { LazyCallStep, LazyFunctionStep, LazySleepStep, LazySleepUntilStep, LazyWaitStep } from "./steps";
+import {
+  LazyCallStep,
+  LazyFunctionStep,
+  LazySleepStep,
+  LazySleepUntilStep,
+  LazyWaitForEventStep,
+} from "./steps";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
@@ -292,15 +298,15 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public async waitForEvent(
     stepName: string,
     eventId: string,
-    timeout: string | number,
+    timeout: string | number
   ): Promise<WaitStepResponse> {
     const result = await this.addStep(
-      new LazyWaitStep(
+      new LazyWaitForEventStep(
         stepName,
         eventId,
         typeof timeout === "string" ? timeout : `${timeout}s`
       )
-    )
+    );
 
     return result;
   }

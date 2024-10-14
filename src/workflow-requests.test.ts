@@ -334,13 +334,14 @@ describe("Workflow Requests", () => {
   describe("getHeaders", () => {
     const workflowRunId = nanoid();
     test("should create headers without step passed", () => {
-      const { headers } = getHeaders("true", workflowRunId, WORKFLOW_ENDPOINT);
+      const { headers, timeoutHeaders } = getHeaders("true", workflowRunId, WORKFLOW_ENDPOINT);
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
+      expect(timeoutHeaders).toBeUndefined();
     });
 
     test("should create headers with a result step", () => {
@@ -348,18 +349,25 @@ describe("Workflow Requests", () => {
       const stepName = "some step";
       const stepType: StepType = "Run";
 
-      const { headers } = getHeaders("false", workflowRunId, WORKFLOW_ENDPOINT, undefined, {
-        stepId,
-        stepName,
-        stepType: stepType,
-        concurrent: 1,
-      });
+      const { headers, timeoutHeaders } = getHeaders(
+        "false",
+        workflowRunId,
+        WORKFLOW_ENDPOINT,
+        undefined,
+        {
+          stepId,
+          stepName,
+          stepType: stepType,
+          concurrent: 1,
+        }
+      );
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
+      expect(timeoutHeaders).toBeUndefined();
     });
 
     test("should create headers with a call step", () => {
@@ -373,16 +381,22 @@ describe("Workflow Requests", () => {
       };
       const callBody = undefined;
 
-      const { headers } = getHeaders("false", workflowRunId, WORKFLOW_ENDPOINT, undefined, {
-        stepId,
-        stepName,
-        stepType: stepType,
-        concurrent: 1,
-        callUrl,
-        callMethod,
-        callHeaders,
-        callBody,
-      });
+      const { headers, timeoutHeaders } = getHeaders(
+        "false",
+        workflowRunId,
+        WORKFLOW_ENDPOINT,
+        undefined,
+        {
+          stepId,
+          stepName,
+          stepType: stepType,
+          concurrent: 1,
+          callUrl,
+          callMethod,
+          callHeaders,
+          callBody,
+        }
+      );
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -403,11 +417,12 @@ describe("Workflow Requests", () => {
         "Upstash-Forward-my-custom-header": "my-custom-header-value",
         "Upstash-Workflow-CallType": "toCallback",
       });
+      expect(timeoutHeaders).toBeUndefined();
     });
 
     test("should include failure header", () => {
       const failureUrl = "https://my-failure-endpoint.com";
-      const { headers } = getHeaders(
+      const { headers, timeoutHeaders } = getHeaders(
         "true",
         workflowRunId,
         WORKFLOW_ENDPOINT,
@@ -422,6 +437,40 @@ describe("Workflow Requests", () => {
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
         "Upstash-Failure-Callback": failureUrl,
+      });
+      expect(timeoutHeaders).toBeUndefined();
+    });
+
+    test("should return timeout headers for wait step", () => {
+      const { headers, timeoutHeaders } = getHeaders(
+        "false",
+        workflowRunId,
+        WORKFLOW_ENDPOINT,
+        undefined,
+        {
+          stepId: 1,
+          stepName: "waiting-step-name",
+          stepType: "Wait",
+          concurrent: 1,
+          waitEventId: "wait event id",
+          timeout: "20s",
+        }
+      );
+      expect(headers).toEqual({
+        "Upstash-Workflow-Init": "false",
+        "Upstash-Workflow-RunId": workflowRunId,
+        "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+        "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
+        "Upstash-Workflow-CallType": "step",
+      });
+      expect(timeoutHeaders).toEqual({
+        "Upstash-Workflow-Init": ["false"],
+        "Upstash-Workflow-RunId": [workflowRunId],
+        "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+        "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+        "Upstash-Workflow-Runid": [workflowRunId],
+        "Upstash-Workflow-CallType": ["step"],
+        "Content-Type": ["application/json"],
       });
     });
   });

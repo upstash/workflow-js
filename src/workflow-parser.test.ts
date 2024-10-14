@@ -9,7 +9,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "./constants";
 import { nanoid } from "./utils";
-import type { RawStep, Step, WorkflowServeOptions } from "./types";
+import type { RawStep, Step, WaitStepResponse, WorkflowServeOptions } from "./types";
 import { getRequest, WORKFLOW_ENDPOINT } from "./test-utils";
 import { formatWorkflowError, QStashWorkflowError } from "./error";
 import { Client } from "@upstash/qstash";
@@ -225,6 +225,70 @@ describe("Workflow Parser", () => {
       expect(steps[0].stepId).toBe(0);
       expect(steps[1].stepId).toBe(remainingStepId);
       expect(isLastDuplicate).toBeFalse();
+    });
+
+    test("should overwrite the out field of wait step", async () => {
+      const timeoutStep: Step = {
+        stepId: 1,
+        stepName: "wait-step-name-1",
+        stepType: "Wait",
+        out: undefined,
+        waitTimeout: true,
+        waitEventId: "wait-event-1",
+        concurrent: 1,
+        timeout: "1s",
+      };
+      const notifyStep: Step = {
+        stepId: 2,
+        stepName: "wait-step-name-2",
+        stepType: "Wait",
+        out: "notify-data",
+        waitTimeout: false,
+        waitEventId: "wait-event-2",
+        concurrent: 1,
+        timeout: "2s",
+      };
+
+      const payload: RawStep[] = [
+        {
+          messageId: "msgId",
+          body: btoa("initial"),
+          callType: "step",
+        },
+        {
+          messageId: "msgId",
+          body: btoa(JSON.stringify(timeoutStep)),
+          callType: "step",
+        },
+        {
+          messageId: "msgId",
+          body: btoa(JSON.stringify(notifyStep)),
+          callType: "step",
+        },
+      ];
+
+      const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+        JSON.stringify(payload),
+        false
+      );
+
+      expect(rawInitialPayload).toBe("initial");
+
+      expect(steps[0].stepType).toBe("Initial");
+      expect(steps[1].stepType).toBe("Wait");
+      expect(steps[2].stepType).toBe("Wait");
+
+      const timeoutResponse: WaitStepResponse = {
+        notifyBody: undefined,
+        timeout: true,
+      };
+      expect(steps[1].out).toEqual(timeoutResponse);
+
+      const notifyResponse: WaitStepResponse = {
+        notifyBody: "notify-data",
+        timeout: false,
+      };
+      expect(steps[2].out).toEqual(notifyResponse);
     });
   });
 

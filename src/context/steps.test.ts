@@ -1,5 +1,11 @@
 import { describe, test, expect } from "bun:test";
-import { LazyCallStep, LazyFunctionStep, LazySleepStep, LazySleepUntilStep } from "./steps";
+import {
+  LazyCallStep,
+  LazyFunctionStep,
+  LazySleepStep,
+  LazySleepUntilStep,
+  LazyWaitForEventStep,
+} from "./steps";
 import { nanoid } from "../utils";
 import type { Step } from "../types";
 
@@ -138,6 +144,39 @@ describe("test steps", () => {
         stepId,
         stepName,
         stepType: "Call",
+      });
+    });
+  });
+
+  describe("wait step", () => {
+    const eventId = "my-event-id";
+    const timeout = "10s";
+    const step = new LazyWaitForEventStep(stepName, eventId, timeout);
+
+    test("should set correct fields", () => {
+      expect(step.stepName).toBe(stepName);
+      expect(step.stepType).toBe("Wait");
+    });
+    test("should create plan step", () => {
+      expect(step.getPlanStep(concurrent, targetStep)).toEqual({
+        stepId: 0,
+        stepName,
+        stepType: "Wait",
+        waitEventId: eventId,
+        timeout,
+        concurrent,
+        targetStep,
+      });
+    });
+
+    test("should create result step", async () => {
+      expect(await step.getResultStep(4, stepId)).toEqual({
+        waitEventId: eventId,
+        timeout,
+        concurrent: 4,
+        stepId,
+        stepName,
+        stepType: "Wait",
       });
     });
   });

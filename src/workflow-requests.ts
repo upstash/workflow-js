@@ -246,9 +246,9 @@ export const handleThirdPartyCallResult = async (
 };
 
 export type HeadersResponse = {
-  headers: Record<string, string>,
-  timeoutHeaders?: Record<string, string[]>
-}
+  headers: Record<string, string>;
+  timeoutHeaders?: Record<string, string[]>;
+};
 
 /**
  * Gets headers for calling QStash
@@ -299,11 +299,8 @@ export const getHeaders = (
     }
   }
 
-  const contentType = (
-    userHeaders
-    ? userHeaders.get("Content-Type")
-    : undefined
-  ) ?? DEFAULT_CONTENT_TYPE;
+  const contentType =
+    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
 
   if (step?.callHeaders) {
     const forwardedHeaders = Object.fromEntries(
@@ -330,12 +327,11 @@ export const getHeaders = (
         "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
         "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType,
         "Upstash-Workflow-CallType": "toCallback",
-      }
+      },
     };
   }
 
   if (step?.waitEventId) {
-
     return {
       headers: {
         ...baseHeaders,
@@ -344,22 +340,19 @@ export const getHeaders = (
       timeoutHeaders: {
         // to include user headers:
         ...Object.fromEntries(
-          Object.entries(baseHeaders).map(([header, value]) => [
-            header,
-            [value],
-          ])
+          Object.entries(baseHeaders).map(([header, value]) => [header, [value]])
         ),
         // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
         "Upstash-Workflow-Runid": [workflowRunId],
         [WORKFLOW_INIT_HEADER]: ["false"],
         [WORKFLOW_URL_HEADER]: [workflowUrl],
         "Upstash-Workflow-CallType": ["step"],
-        "Content-Type": [contentType]
-      }
-    }
+        "Content-Type": [contentType],
+      },
+    };
   }
 
-  return { headers: baseHeaders};
+  return { headers: baseHeaders };
 };
 
 export const verifyRequest = async (

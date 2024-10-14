@@ -50,9 +50,11 @@
 import { serve } from "bun";
 import { serve as workflowServe } from "../platforms/nextjs";
 import { expect, test, describe } from "bun:test";
-import { Client } from "@upstash/qstash";
-import type { RouteFunction, WorkflowServeOptions } from "./types";
+import { Client as QStashClient } from "@upstash/qstash";
+import type { RouteFunction, WaitStepResponse, WorkflowServeOptions } from "./types";
 import type { NextRequest } from "next/server";
+import { Client } from "./client";
+import { nanoid } from "./utils";
 
 const WORKFLOW_PORT = "3000";
 const THIRD_PARTY_PORT = "3001";
@@ -94,7 +96,7 @@ const attemptCharge = () => {
   return false;
 };
 
-const qstashClient = new Client({
+const qstashClient = new QStashClient({
   baseUrl: process.env.MOCK_QSTASH_URL,
   token: process.env.MOCK_QSTASH_TOKEN ?? "",
 });
@@ -559,4 +561,95 @@ describe.skip("live serve tests", () => {
       timeout: 7000,
     }
   );
+
+  describe("wait for event", () => {
+    const runResult = "run-result";
+    const testWaitEndpoint = async (expectedWaitResponse: WaitStepResponse, eventId: string) => {
+      const finishState = new FinishState();
+      const payload = "my-payload";
+      await testEndpoint({
+        finalCount: 7,
+        waitFor: 15_000,
+        initialPayload: payload,
+        finishState,
+        routeFunction: async (context) => {
+          const input = context.requestPayload;
+
+          expect(input).toBe(payload);
+
+          const { notifyBody, timeout } = await context.waitForEvent(
+            "single wait for event",
+            eventId,
+            1
+          );
+          expect(notifyBody).toBeUndefined();
+          expect(timeout).toBeTrue();
+
+          const [runResponse, waitResponse] = await Promise.all([
+            context.run("run-step", () => runResult),
+            context.waitForEvent("wait-event-step", eventId, 3),
+          ]);
+          expect(runResponse).toBe(runResult);
+          expect(waitResponse.notifyBody).toBe(expectedWaitResponse.notifyBody);
+          expect(waitResponse.timeout).toBe(expectedWaitResponse.timeout);
+          finishState.finish();
+        },
+      });
+    };
+
+    test(
+      "should timeout correctly",
+      async () => {
+        const eventId = `my-event-id-${nanoid()}`;
+        await testWaitEndpoint(
+          {
+            notifyBody: undefined,
+            timeout: true,
+          },
+          eventId
+        );
+      },
+      { timeout: 17_000 }
+    );
+
+    test(
+      "should notify correctly",
+      async () => {
+        const eventId = `my-event-id-${nanoid()}`;
+        const notifyBody = "notify-body";
+        const workflowClient = new Client({
+          baseUrl: process.env.MOCK_QSTASH_URL,
+          token: process.env.MOCK_QSTASH_TOKEN ?? "",
+        });
+
+        const notifyFinishState = new FinishState();
+        async function retryUntilFalse(): Promise<void> {
+          // wait to avoid notifying the first waitForEvent
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          while (true) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const result = await workflowClient.notify({ eventId, notifyBody });
+            if (result) {
+              expect(result[0].waiter.url).toBe(`http://localhost:${WORKFLOW_PORT}`);
+              notifyFinishState.finish();
+              break;
+            }
+          }
+        }
+        retryUntilFalse();
+
+        await testWaitEndpoint(
+          {
+            notifyBody,
+            timeout: false,
+          },
+          eventId
+        );
+
+        notifyFinishState.check();
+      },
+      { timeout: 17_000 }
+    );
+  });
 });

@@ -186,19 +186,19 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   }
 }
 
-export class LazyWaitStep extends BaseLazyStep<WaitStepResponse> {
+export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
   private readonly eventId: string;
   private readonly timeout: string;
-  stepType: StepType = "Wait"
+  stepType: StepType = "Wait";
 
   constructor(
     stepName: string,
     eventId: string,
     timeout: string // TODO: string format and accept number as smth
   ) {
-    super(stepName)
+    super(stepName);
     this.eventId = eventId;
-    this.timeout = timeout
+    this.timeout = timeout;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
@@ -209,8 +209,8 @@ export class LazyWaitStep extends BaseLazyStep<WaitStepResponse> {
       waitEventId: this.eventId,
       timeout: this.timeout,
       concurrent,
-      targetStep
-    }
+      targetStep,
+    };
   }
 
   public async getResultStep(concurrent: number, stepId: number): Promise<Step<WaitStepResponse>> {
