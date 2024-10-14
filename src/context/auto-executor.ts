@@ -1,10 +1,10 @@
 import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step } from "./types";
+import type { StepFunction, ParallelCallState, Step } from "../types";
 import { type BaseLazyStep } from "./steps";
-import { getHeaders } from "./workflow-requests";
-import type { WorkflowLogger } from "./logger";
-import { NO_CONCURRENCY } from "./constants";
+import { getHeaders } from "../workflow-requests";
+import type { WorkflowLogger } from "../logger";
+import { NO_CONCURRENCY } from "../constants";
 
 export class AutoExecutor {
   private context: WorkflowContext;

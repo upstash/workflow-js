@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-magic-numbers */
 import { describe, test, expect } from "bun:test";
 import { LazyCallStep, LazyFunctionStep, LazySleepStep, LazySleepUntilStep } from "./steps";
 import { nanoid } from "../utils";
-import type { Step } from "./types";
+import type { Step } from "../types";
 
 describe("test steps", () => {
   const stepName = nanoid();

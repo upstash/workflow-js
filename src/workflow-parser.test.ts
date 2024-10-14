@@ -8,12 +8,12 @@ import {
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "./constants";
-import { nanoid } from "../utils";
+import { nanoid } from "./utils";
 import type { RawStep, Step, WorkflowServeOptions } from "./types";
 import { getRequest, WORKFLOW_ENDPOINT } from "./test-utils";
-import { formatWorkflowError, QStashWorkflowError } from "../error";
+import { formatWorkflowError, QStashWorkflowError } from "./error";
 import { Client } from "@upstash/qstash";
-import { processOptions } from "./serve";
+import { processOptions } from "./serve/options";
 
 describe("Workflow Parser", () => {
   describe("validateRequest", () => {

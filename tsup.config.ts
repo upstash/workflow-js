@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: {
-    index: "./src/workflow/index.ts",
+    index: "./src/index.ts",
     nextjs: "./platforms/nextjs.ts",
     h3: "./platforms/h3.ts",
     svelte: "./platforms/svelte.ts",

@@ -1,22 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/require-await */
 import { describe, expect, test } from "bun:test";
-import { serve } from "./serve";
+import { serve } from ".";
 import {
   driveWorkflow,
   getRequest,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
-} from "./test-utils";
+} from "../test-utils";
 import { nanoid } from "../utils";
 import { Client } from "@upstash/qstash";
-import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "./types";
+import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
-} from "./constants";
+} from "../constants";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;

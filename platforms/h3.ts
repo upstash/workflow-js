@@ -1,7 +1,7 @@
 import { defineEventHandler, readRawBody } from "h3";
 
-import type { RouteFunction, WorkflowServeOptions } from "../src/workflow";
-import { serve as serveBase } from "../src/workflow";
+import type { RouteFunction, WorkflowServeOptions } from "../src";
+import { serve as serveBase } from "../src";
 import type { IncomingHttpHeaders } from "node:http";
 
 function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { describe, expect, spyOn, test } from "bun:test";
-import { nanoid } from "../utils";
+import { nanoid } from "./utils";
 
 import {
   getHeaders,
@@ -10,7 +10,7 @@ import {
   triggerRouteFunction,
   triggerWorkflowDelete,
 } from "./workflow-requests";
-import { QStashWorkflowAbort } from "../error";
+import { QStashWorkflowAbort } from "./error";
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import type { Step, StepType } from "./types";

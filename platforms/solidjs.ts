@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 
-import type { RouteFunction, WorkflowServeOptions } from "../src/workflow";
-import { serve as serveBase } from "../src/workflow";
+import type { RouteFunction, WorkflowServeOptions } from "../src";
+import { serve as serveBase } from "../src";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project

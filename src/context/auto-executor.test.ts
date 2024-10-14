@@ -2,10 +2,10 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "./test-utils";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { nanoid } from "../utils";
 import { AutoExecutor } from "./auto-executor";
-import type { Step } from "./types";
+import type { Step } from "../types";
 import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
 
 class SpyAutoExecutor extends AutoExecutor {

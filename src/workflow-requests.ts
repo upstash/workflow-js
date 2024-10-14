@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
+import { QStashWorkflowAbort, QStashWorkflowError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   DEFAULT_CONTENT_TYPE,

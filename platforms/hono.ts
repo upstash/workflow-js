@@ -1,6 +1,6 @@
 import type { Context } from "hono";
-import type { RouteFunction, WorkflowServeOptions } from "../src/workflow";
-import { serve as serveBase } from "../src/workflow";
+import type { RouteFunction, WorkflowServeOptions } from "../src";
+import { serve as serveBase } from "../src";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
