@@ -1,6 +1,6 @@
 import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step } from "../types";
+import type { StepFunction, ParallelCallState, Step, WaitRequest } from "../types";
 import { type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
@@ -321,10 +321,55 @@ export class AutoExecutor {
       length: steps.length,
       steps,
     });
+    
+    if (steps[0].waitEventId) {
+      if (steps.length !== 1) {
+        throw new QStashWorkflowError(
+          `Received an unexpected step array. If a step has waitEventId, it should be by itself. Received instead: ${steps}`
+        )
+      }
+
+      const waitStep = steps[0]
+
+      const { headers, timeoutHeaders } = getHeaders(
+        "false",
+        this.context.workflowRunId,
+        this.context.url,
+        this.context.headers,
+        waitStep,
+        this.context.failureUrl,
+        this.context.retries
+      );
+
+      // call wait
+      const waitBody: WaitRequest = {
+        url: this.context.url,
+        timeout: waitStep.timeout,
+        timeoutBody: undefined,
+        timeoutUrl: this.context.url,
+        timeoutHeaders,
+        step: {
+          stepId: waitStep.stepId,
+          stepType: "Wait",
+          stepName: waitStep.stepName,
+          concurrent: waitStep.concurrent,
+          targetStep: waitStep.targetStep
+        }
+      }
+
+      await this.context.qstashClient.http.request({
+        path: ["v2", "wait", waitStep.waitEventId],
+        body: JSON.stringify(waitBody),
+        headers,
+        method: "POST",
+      });
+
+      throw new QStashWorkflowAbort(steps[0].stepName, steps[0]);
+    }
 
     const result = await this.context.qstashClient.batchJSON(
       steps.map((singleStep) => {
-        const headers = getHeaders(
+        const { headers } = getHeaders(
           "false",
           this.context.workflowRunId,
           this.context.url,

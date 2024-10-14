@@ -334,7 +334,7 @@ describe("Workflow Requests", () => {
   describe("getHeaders", () => {
     const workflowRunId = nanoid();
     test("should create headers without step passed", () => {
-      const headers = getHeaders("true", workflowRunId, WORKFLOW_ENDPOINT);
+      const { headers } = getHeaders("true", workflowRunId, WORKFLOW_ENDPOINT);
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -348,7 +348,7 @@ describe("Workflow Requests", () => {
       const stepName = "some step";
       const stepType: StepType = "Run";
 
-      const headers = getHeaders("false", workflowRunId, WORKFLOW_ENDPOINT, undefined, {
+      const { headers } = getHeaders("false", workflowRunId, WORKFLOW_ENDPOINT, undefined, {
         stepId,
         stepName,
         stepType: stepType,
@@ -373,7 +373,7 @@ describe("Workflow Requests", () => {
       };
       const callBody = undefined;
 
-      const headers = getHeaders("false", workflowRunId, WORKFLOW_ENDPOINT, undefined, {
+      const { headers } = getHeaders("false", workflowRunId, WORKFLOW_ENDPOINT, undefined, {
         stepId,
         stepName,
         stepType: stepType,
@@ -407,7 +407,7 @@ describe("Workflow Requests", () => {
 
     test("should include failure header", () => {
       const failureUrl = "https://my-failure-endpoint.com";
-      const headers = getHeaders(
+      const { headers } = getHeaders(
         "true",
         workflowRunId,
         WORKFLOW_ENDPOINT,
