@@ -1,0 +1,29 @@
+name: Tests
+on:
+  pull_request:
+
+env:
+  QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
+
+jobs:
+  local-tests:
+    runs-on: ubuntu-latest
+
+    name: Upstash Workflow Tests
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Run tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
