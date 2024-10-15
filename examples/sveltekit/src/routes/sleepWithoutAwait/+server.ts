@@ -1,10 +1,5 @@
 import { serve } from "@upstash/workflow/svelte";
 import { env } from '$env/dynamic/private'
-import { Client, Receiver } from "@upstash/qstash";
-
-const someWork = (input: string) => {
-  return `processed '${input}'`
-}
 
 type Invoice = {
   date: number,

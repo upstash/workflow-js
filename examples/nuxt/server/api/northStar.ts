@@ -1,10 +1,6 @@
 
 import { serve } from "@upstash/workflow/h3";
 
-const someWork = (input: string) => {
-  return `processed '${input}'`
-}
-
 type Invoice = {
   date: number,
   email: string,

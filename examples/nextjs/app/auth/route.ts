@@ -5,13 +5,12 @@ export const POST = serve<string>(async (context) => {
     console.error('Authentication failed.')
     return
   }
-  const input = context.requestPayload
 
-  const result1 = await context.run('step1', async () => {
+  await context.run('step1', async () => {
     return 'output 1'
   })
 
-  const result2 = await context.run('step2', async () => {
+  await context.run('step2', async () => {
     return 'output 2'
   })
 })

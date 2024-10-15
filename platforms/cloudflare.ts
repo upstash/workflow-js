@@ -59,7 +59,7 @@ const getArgs = (
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
-): { fetch: ((...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>) } => {
+): { fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response> } => {
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);
     const { handler: serveHandler } = serveBase(routeFunction, {

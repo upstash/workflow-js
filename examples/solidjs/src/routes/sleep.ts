@@ -23,7 +23,7 @@ export const { POST } = serve<string>(
 
     await context.sleep("sleep2", 2)
 
-    const result3 = await context.run("step3", async () => {
+    await context.run("step3", async () => {
       const output = someWork(result2)
       console.log("step 3 input", result2, "output", output)
     });

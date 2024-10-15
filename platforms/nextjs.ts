@@ -27,7 +27,7 @@ export const serve = <TInitialPayload = unknown>(
   return {
     POST: async (request: Request) => {
       return await serveHandler(request);
-    }
+    },
   };
 };
 
@@ -59,5 +59,5 @@ export const servePagesRouter = <TInitialPayload = unknown>(
     res.status(response.status).json(await response.json());
   };
 
-  return { handler }
+  return { handler };
 };

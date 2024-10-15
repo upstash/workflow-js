@@ -1,9 +1,5 @@
 import { serve } from "@upstash/workflow/solidjs"
 
-const someWork = (input: string) => {
-  return `processed '${input}'`
-}
-
 type Invoice = {
   date: number,
   email: string,
