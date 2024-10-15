@@ -56,6 +56,8 @@ export const serve = <
    * @returns A promise that resolves to a response.
    */
   const handler = async (request: TRequest) => {
+    await debug?.log("INFO", "ENDPOINT_START");
+
     const { workflowUrl, workflowFailureUrl } = await determineUrls(
       request,
       url,
@@ -114,6 +116,7 @@ export const serve = <
       failureUrl: workflowFailureUrl,
       debug,
       env,
+      retries
     });
 
     // attempt running routeFunction until the first step

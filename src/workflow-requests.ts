@@ -5,6 +5,7 @@ import type { WorkflowContext } from "./context";
 import {
   DEFAULT_CONTENT_TYPE,
   WORKFLOW_FAILURE_HEADER,
+  WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
@@ -12,6 +13,7 @@ import {
   WORKFLOW_URL_HEADER,
 } from "./constants";
 import type {
+  CallResponse,
   Step,
   StepType,
   WorkflowClient,
@@ -149,10 +151,17 @@ export const handleThirdPartyCallResult = async (
       const callbackMessage = JSON.parse(requestPayload) as {
         status: number;
         body: string;
+        retried?: number, // only set after the first try
+        maxRetries: number,
+        header: Record<string, string[]>
       };
 
       // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-      if (!(callbackMessage.status >= 200 && callbackMessage.status < 300)) {
+      if (
+        !(callbackMessage.status >= 200 && callbackMessage.status < 300)
+        && callbackMessage.maxRetries
+        && callbackMessage.retried !== callbackMessage.maxRetries
+      ) {
         await debug?.log("WARN", "SUBMIT_THIRD_PARTY_RESULT", {
           status: callbackMessage.status,
           body: atob(callbackMessage.body),
@@ -160,7 +169,7 @@ export const handleThirdPartyCallResult = async (
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-            ` and will retry (if there are retries remaining).` +
+            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
             ` Error Message:\n${atob(callbackMessage.body)}`
         );
         return ok("call-will-retry");
@@ -206,11 +215,15 @@ export const handleThirdPartyCallResult = async (
         retries
       );
 
-      const callResultStep: Step = {
+      const callResultStep: Step<CallResponse> = {
         stepId: Number(stepIdString),
         stepName,
         stepType,
-        out: atob(callbackMessage.body),
+        out: {
+          status: callbackMessage.status,
+          body: atob(callbackMessage.body),
+          header: callbackMessage.header
+        },
         concurrent: Number(concurrentString),
       };
 
@@ -273,19 +286,30 @@ export const getHeaders = (
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
+    [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
     [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
-    ...(failureUrl
-      ? {
-          [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
-          "Upstash-Failure-Callback": failureUrl,
-        }
-      : {}),
-    ...(retries === undefined
-      ? {}
-      : {
-          "Upstash-Retries": retries.toString(),
-        }),
   };
+
+  if (failureUrl) {
+    if (!step?.callUrl) {
+      baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true"
+    }
+    baseHeaders["Upstash-Failure-Callback"] = failureUrl
+  }
+
+  // if retries is set or if call url is passed, set a retry
+  // for call url, retry is 0
+  if (step?.callUrl) {
+    baseHeaders["Upstash-Retries"] = "0"
+
+    // if some retries is set, use it in callback and failure callback
+    if (retries) {
+      baseHeaders["Upstash-Callback-Retries"] = retries.toString()
+      baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString()
+    }
+  } else if (retries !== undefined) {
+    baseHeaders["Upstash-Retries"] = retries.toString()
+  }
 
   if (userHeaders) {
     for (const header of userHeaders.keys()) {

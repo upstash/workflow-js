@@ -392,28 +392,22 @@ describe.skip("live serve tests", () => {
             return;
           }
 
-          const postResult = await context.call<string>(
-            "post call",
-            {
-              url: LOCAL_THIRD_PARTY_URL,
-              method: "POST",
-              body: "post-payload",
-              headers: postHeader
-            }
-          );
+          const { body: postResult } = await context.call("post call", {
+            url: LOCAL_THIRD_PARTY_URL,
+            method: "POST",
+            body: "post-payload",
+            headers: postHeader,
+          });
           expect(postResult).toBe(
             "called POST 'third-party-result' 'post-header-value-x' '\"post-payload\"'"
           );
 
           await context.sleep("sleep 1", 2);
 
-          const getResult = await context.call<string>(
-            "get call",
-            {
-              url: LOCAL_THIRD_PARTY_URL,
-              headers: getHeader
-            }
-          );
+          const { body: getResult } = await context.call("get call", {
+            url: LOCAL_THIRD_PARTY_URL,
+            headers: getHeader,
+          });
 
           expect(getResult).toBe("called GET 'third-party-result' 'get-header-value-x'");
           finishState.finish();
@@ -494,6 +488,46 @@ describe.skip("live serve tests", () => {
     },
     {
       timeout: 10_000,
+    }
+  );
+
+  test(
+    "call failure",
+    async () => {
+      const failingResponse = "failing-response"
+      const payload = "my-payload"
+      const thirdPartyServer = serve({
+        async fetch(request) {
+          const requestPayload = await request.json()
+          return new Response(`${failingResponse} - ${requestPayload}`, { status: 400 });
+        },
+        port: THIRD_PARTY_PORT,
+      });
+
+      const finishState = new FinishState();
+      await testEndpoint({
+        finalCount: 4,
+        waitFor: 7000,
+        initialPayload: payload,
+        finishState,
+        routeFunction: async (context) => {
+          const input = context.requestPayload;
+          const { status, body, header } = await context.call("failing call", {
+            url: LOCAL_THIRD_PARTY_URL,
+            body: input,
+            method: "POST"
+          });
+          expect(status).toBe(400)
+          expect(body).toBe(`${failingResponse} - ${payload}`)
+          expect(header["Content-Length"]).toEqual([ "29" ])
+          finishState.finish()
+        }
+      });
+
+      thirdPartyServer.stop();
+    },
+    {
+      timeout: 8000,
     }
   );
 

@@ -16,6 +16,7 @@ import { Client } from "@upstash/qstash";
 import type { Step, StepType } from "./types";
 import {
   WORKFLOW_FAILURE_HEADER,
+  WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
@@ -192,7 +193,7 @@ describe("Workflow Requests", () => {
             WORKFLOW_ENDPOINT,
             2
           );
-          expect(result.isOk());
+          expect(result.isOk()).toBeTrue();
           // @ts-expect-error value will be set since stepFinish isOk
           expect(result.value).toBe("is-call-return");
         },
@@ -208,7 +209,10 @@ describe("Workflow Requests", () => {
             stepId: 3,
             stepName: stepName,
             stepType: stepType,
-            out: thirdPartyCallResult,
+            out: {
+              body: thirdPartyCallResult,
+              status: 200
+            },
             concurrent: 1,
           },
           headers: {
@@ -227,14 +231,19 @@ describe("Workflow Requests", () => {
 
       // status set to 404 which should make QStash retry. workflow sdk should do nothing
       // in this case
-      const requestPayload = { status: 404, body: btoa(thirdPartyCallResult) };
+      const requestPayload = {
+        status: 404,
+        body: btoa(thirdPartyCallResult),
+        maxRetries: 3,
+        retried: 1,
+      };
       const stepName = "test step";
       const stepType: StepType = "Run";
       const workflowRunId = nanoid();
 
       // create client
       const token = "myToken";
-      const client = new Client({ baseUrl: MOCK_SERVER_URL, token });
+      const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
       // create the request which will be received by the serve method:
       const request = new Request(WORKFLOW_ENDPOINT, {
@@ -310,7 +319,7 @@ describe("Workflow Requests", () => {
         WORKFLOW_ENDPOINT,
         5
       );
-      expect(initialResult.isOk());
+      expect(initialResult.isOk()).toBeTrue();
       // @ts-expect-error value will be set since stepFinish isOk
       expect(initialResult.value).toBe("continue-workflow");
       expect(spy).toHaveBeenCalledTimes(0);
@@ -336,6 +345,7 @@ describe("Workflow Requests", () => {
     test("should create headers without step passed", () => {
       const { headers, timeoutHeaders } = getHeaders("true", workflowRunId, WORKFLOW_ENDPOINT);
       expect(headers).toEqual({
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
@@ -362,6 +372,7 @@ describe("Workflow Requests", () => {
         }
       );
       expect(headers).toEqual({
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
@@ -398,11 +409,12 @@ describe("Workflow Requests", () => {
         }
       );
       expect(headers).toEqual({
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
-
+        "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": "1",
@@ -431,6 +443,7 @@ describe("Workflow Requests", () => {
         failureUrl
       );
       expect(headers).toEqual({
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
@@ -457,6 +470,7 @@ describe("Workflow Requests", () => {
         }
       );
       expect(headers).toEqual({
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         "Upstash-Workflow-Init": "false",
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
@@ -464,6 +478,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-CallType": "step",
       });
       expect(timeoutHeaders).toEqual({
+        [WORKFLOW_FEATURE_HEADER]: ["WF_NoDelete"],
         "Upstash-Workflow-Init": ["false"],
         "Upstash-Workflow-RunId": [workflowRunId],
         "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
