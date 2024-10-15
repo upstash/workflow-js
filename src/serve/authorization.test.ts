@@ -74,7 +74,7 @@ describe("disabled workflow context", () => {
       let called = false;
       await mockQStashServer({
         execute: () => {
-          const throws = disabledContext.call("call-step", "some-url", "GET");
+          const throws = disabledContext.call("call-step", { url: "some-url"});
           expect(throws).rejects.toThrow(QStashWorkflowAbort);
           called = true;
         },

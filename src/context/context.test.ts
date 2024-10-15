@@ -95,7 +95,7 @@ describe("context tests", () => {
 
     const throws = async () => {
       await context.run("outer step", async () => {
-        await context.call("inner call", "https://some-url.com", "GET");
+        await context.call("inner call", { url: "https://some-url.com"});
       });
     };
     expect(throws).toThrow(

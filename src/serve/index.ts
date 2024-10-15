@@ -29,7 +29,7 @@ export const serve = <
 >(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
-): { handler: ((request: TRequest) => Promise<TResponse>) } => {
+): { handler: (request: TRequest) => Promise<TResponse> } => {
   // Prepares options with defaults if they are not provided.
   const {
     qstashClient,
@@ -184,5 +184,5 @@ export const serve = <
     }
   };
 
-  return { handler: safeHandler }
+  return { handler: safeHandler };
 };

@@ -279,13 +279,23 @@ export class WorkflowContext<TInitialPayload = unknown> {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
-    url: string,
-    method: HTTPMethods,
-    body?: TBody,
-    headers?: Record<string, string>
+    callSettings: {
+      url: string,
+      method?: HTTPMethods,
+      body?: TBody,
+      headers?: Record<string, string>
+    }
   ) {
+
+    const {
+      url,
+      method = "GET",
+      body,
+      headers = {}
+    } = callSettings;
+
     const result = await this.addStep(
-      new LazyCallStep<string>(stepName, url, method, body, headers ?? {})
+      new LazyCallStep<string>(stepName, url, method, body, headers )
     );
 
     try {
