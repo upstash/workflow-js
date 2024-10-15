@@ -30,7 +30,7 @@ const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
 describe("serve", () => {
   test("should send create workflow request in initial request", async () => {
-    const endpoint = serve<string>(
+    const { handler: endpoint } = serve<string>(
       async (context) => {
         const _input = context.requestPayload;
         await context.sleep("sleep 1", 1);
@@ -67,7 +67,7 @@ describe("serve", () => {
   });
 
   test("path endpoint", async () => {
-    const endpoint = serve<string>(
+    const { handler: endpoint } = serve<string>(
       async (context) => {
         const input = context.requestPayload;
 
@@ -179,7 +179,7 @@ describe("serve", () => {
   });
 
   test("should return 500 on error during step execution", async () => {
-    const endpoint = serve(
+    const { handler: endpoint } = serve(
       async (context) => {
         await context.run("wrong step", async () => {
           throw new Error("some-error");
@@ -213,7 +213,7 @@ describe("serve", () => {
   });
 
   test("should call onFinish with auth-fail if authentication fails", async () => {
-    const endpoint = serve(
+    const { handler: endpoint } = serve(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async (_context) => {
         // we call `return` when auth fails:
@@ -248,7 +248,7 @@ describe("serve", () => {
   });
 
   describe("duplicate checks", () => {
-    const endpoint = serve(
+    const { handler: endpoint } = serve(
       async (context) => {
         const result1 = await context.run("step 1", () => {
           return "result 1";
@@ -348,7 +348,7 @@ describe("serve", () => {
 
     test("should not have failureUrl if failureUrl or failureFunction is not passed", async () => {
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
-      const endpoint = serve(routeFunction, {
+      const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
       });
@@ -387,7 +387,7 @@ describe("serve", () => {
     test("should set failureUrl if failureUrl is passed", async () => {
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
       const myFailureEndpoint = "https://www.my-failure-endpoint.com/api";
-      const endpoint = serve(routeFunction, {
+      const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
         failureUrl: myFailureEndpoint,
@@ -436,7 +436,7 @@ describe("serve", () => {
       ) => {
         return;
       };
-      const endpoint = serve(routeFunction, {
+      const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
         failureFunction: myFailureFunction,
@@ -489,7 +489,7 @@ describe("serve", () => {
         },
       });
       let called = false;
-      const endpoint = serve(
+      const { handler: endpoint } = serve(
         async (context) => {
           expect(context.url).toBe(contextUrl);
           called = true;
@@ -542,7 +542,7 @@ describe("serve", () => {
       },
     });
     let called = false;
-    const endpoint = serve(
+    const { handler: endpoint } = serve(
       async (context) => {
         expect(context.env["env-var-1"]).toBe("value-1");
         expect(context.env["env-var-2"]).toBe("value-2");

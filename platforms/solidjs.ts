@@ -28,9 +28,9 @@ export const serve = <TInitialPayload = unknown>(
     }
 
     // create serve handler
-    const serveHandler = serveBase<TInitialPayload>(routeFunction, options);
+    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, options);
 
     return await serveHandler(event.request);
   };
-  return handler;
+  return { POST: handler };
 };

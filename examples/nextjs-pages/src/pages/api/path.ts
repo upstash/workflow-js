@@ -1,11 +1,11 @@
+import { servePagesRouter } from "@upstash/workflow/nextjs";
 
 const someWork = (input: string) => {
   return `processed '${JSON.stringify(input)}'`
 }
 
-import { servePagesRouter } from "@upstash/qstash/nextjs";
 
-export default servePagesRouter<string>(
+const { handler } = servePagesRouter<string>(
   async (context) => {
     const input = context.requestPayload
     const result1 = await context.run("step1", async () => {
@@ -23,3 +23,5 @@ export default servePagesRouter<string>(
     receiver: undefined
   }
 )
+
+export default handler

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@upstash/qstash": "^2.7.12",
-    "@upstash/workflow": "file:../../dist",
+    "@upstash/workflow": "link:../../dist",
     "clsx": "^2.1.1",
     "next": "14.2.4",
     "react": "^18.3.1",

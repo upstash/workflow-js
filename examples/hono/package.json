@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@upstash/qstash": "latest",
+    "@upstash/workflow": "^0.1.0",
     "hono": "^4.5.8"
   },
   "devDependencies": {

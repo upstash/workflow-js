@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@upstash/qstash": "latest",
+    "@upstash/workflow": "link:../../dist",
     "hono": "^4.5.8"
   },
   "devDependencies": {

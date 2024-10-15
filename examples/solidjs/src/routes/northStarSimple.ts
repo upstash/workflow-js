@@ -27,7 +27,7 @@ const attemptCharge = (invoice: Invoice) => {
   return false;
 }
 
-export const POST = serve<Invoice>(
+export const { POST } = serve<Invoice>(
   async context => {
     const invoice = context.requestPayload
     

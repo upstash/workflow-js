@@ -62,7 +62,7 @@ export const POST = async (request: NextRequest) => {
  *
  * See docs to learn more https://upstash.com/docs/qstash/workflow/basics/serve
  */
-const serveMethod = serve<CallPayload>(async (context) => {
+const { POST: serveMethod } = serve<CallPayload>(async (context) => {
   // get prompt from payload
   const payload = context.requestPayload
   const prompt = PROMPTS[payload.promptIndex]

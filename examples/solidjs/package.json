@@ -18,6 +18,7 @@
     "@solidjs/router": "^0.13.6",
     "@solidjs/start": "^1.0.2",
     "@upstash/qstash": "latest",
+    "@upstash/workflow": "link:../../dist",
     "clsx": "^2.1.1",
     "solid-js": "^1.8.17",
     "tailwind-merge": "^2.5.2"

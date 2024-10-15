@@ -37,8 +37,9 @@ export const serve = <TInitialPayload = unknown>(
       method: "POST",
     });
 
-    const serveHandler = serveBase<TInitialPayload>(routeFunction, options);
+    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, options);
     return await serveHandler(request);
   });
-  return handler;
+
+  return { handler };
 };

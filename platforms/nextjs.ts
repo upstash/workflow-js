@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
-import { NextResponse } from "next/server";
 
 import type { WorkflowServeOptions, RouteFunction } from "../src";
 import { serve as serveBase } from "../src";
@@ -17,26 +16,28 @@ import { serve as serveBase } from "../src";
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<NextResponse, TInitialPayload>, "onStepFinish">
-): ((request: Request) => Promise<NextResponse>) => {
-  const handler = serveBase<TInitialPayload, Request, NextResponse>(routeFunction, {
+  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+): { POST: (request: Request) => Promise<Response> } => {
+  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(routeFunction, {
     onStepFinish: (workflowRunId: string) =>
-      new NextResponse(JSON.stringify({ workflowRunId }), { status: 200 }),
+      new Response(JSON.stringify({ workflowRunId }), { status: 200 }),
     ...options,
   });
 
-  return async (request: Request) => {
-    return await handler(request);
+  return {
+    POST: async (request: Request) => {
+      return await serveHandler(request);
+    }
   };
 };
 
 export const servePagesRouter = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
-): NextApiHandler => {
-  const handler = serveBase(routeFunction, options);
+): { handler: NextApiHandler } => {
+  const { handler: serveHandler } = serveBase(routeFunction, options);
 
-  return async (request_: NextApiRequest, res: NextApiResponse) => {
+  const handler = async (request_: NextApiRequest, res: NextApiResponse) => {
     if (request_.method?.toUpperCase() !== "POST") {
       res.status(405).json("Only POST requests are allowed in worklfows");
       return;
@@ -54,7 +55,9 @@ export const servePagesRouter = <TInitialPayload = unknown>(
       headers: new Headers(request_.headersDistinct as Record<string, string[]>),
       method: "POST",
     });
-    const response = await handler(request);
+    const response = await serveHandler(request);
     res.status(response.status).json(await response.json());
   };
+
+  return { handler }
 };

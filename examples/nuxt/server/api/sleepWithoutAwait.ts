@@ -27,7 +27,7 @@ const attemptCharge = (invoice: Invoice) => {
   return false;
 };
 
-export default serve<Invoice>(async (context) => {
+const { handler } = serve<Invoice>(async (context) => {
   const x = Math.random();
   const invoice = context.requestPayload;
 
@@ -64,3 +64,5 @@ export default serve<Invoice>(async (context) => {
     return true;
   });
 });
+
+export default handler
