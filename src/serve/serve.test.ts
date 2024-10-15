@@ -325,6 +325,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "WF_NoDelete",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",

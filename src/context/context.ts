@@ -1,4 +1,4 @@
-import type { WaitStepResponse, WorkflowClient } from "../types";
+import type { CallResponse, WaitStepResponse, WorkflowClient } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
@@ -277,32 +277,21 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @returns call result (parsed as JSON if possible)
    */
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-  public async call<TResult = unknown, TBody = unknown>(
+  public async call(
     stepName: string,
     callSettings: {
-      url: string,
-      method?: HTTPMethods,
-      body?: TBody,
-      headers?: Record<string, string>
+      url: string;
+      method?: HTTPMethods;
+      body?: unknown;
+      headers?: Record<string, string>;
     }
   ) {
-
-    const {
-      url,
-      method = "GET",
-      body,
-      headers = {}
-    } = callSettings;
+    const { url, method = "GET", body, headers = {} } = callSettings;
 
     const result = await this.addStep(
-      new LazyCallStep<string>(stepName, url, method, body, headers )
+      new LazyCallStep<CallResponse>(stepName, url, method, body, headers)
     );
-
-    try {
-      return JSON.parse(result) as TResult;
-    } catch {
-      return result as TResult;
-    }
+    return result;
   }
 
   public async waitForEvent(

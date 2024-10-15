@@ -269,3 +269,9 @@ export type WaitStepResponse = {
   timeout: boolean;
   notifyBody: unknown;
 };
+
+export type CallResponse = {
+  status: number;
+  body: unknown;
+  header: Record<string, string[]>;
+};
