@@ -1,5 +1,5 @@
 import { Client } from "@upstash/qstash";
-import { NotifyResponse } from "../types";
+import { NotifyResponse, Waiter } from "../types";
 
 export const makeNotifyRequest = async (
   requester: Client["http"],
@@ -13,4 +13,15 @@ export const makeNotifyRequest = async (
   })) as NotifyResponse[];
 
   return result;
-}
+};
+
+export const makeGetWaitersRequest = async (
+  requester: Client["http"],
+  eventId: string
+): Promise<Waiter[]> => {
+  const result = (await requester.request({
+    path: ["v2", "waiters", eventId],
+    method: "GET",
+  })) as Waiter[];
+  return result;
+};

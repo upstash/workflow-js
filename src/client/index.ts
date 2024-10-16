@@ -1,6 +1,6 @@
-import { NotifyResponse } from "../types";
+import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { makeNotifyRequest } from "./utils";
+import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -42,6 +42,15 @@ export class Client {
     eventId: string;
     eventData?: unknown;
   }): Promise<NotifyResponse[]> {
-    return await makeNotifyRequest(this.client.http, eventId, eventData)
+    return await makeNotifyRequest(this.client.http, eventId, eventData);
+  }
+
+  /**
+   * Check waiters of an event
+   *
+   * @param eventId event id to check
+   */
+  public async getWaiters({ eventId }: { eventId: string }): Promise<Waiter[]> {
+    return await makeGetWaitersRequest(this.client.http, eventId);
   }
 }

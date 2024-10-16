@@ -227,26 +227,17 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
 }
 
 export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
-  stepType: StepType = "Notify"
+  stepType: StepType = "Notify";
 
-  constructor(
-    stepName: string,
-    eventId: string,
-    eventData: unknown,
-    requester: Client["http"]
-  ) {
+  constructor(stepName: string, eventId: string, eventData: unknown, requester: Client["http"]) {
     super(stepName, async () => {
-      const notifyResponse = await makeNotifyRequest(
-        requester,
-        eventId,
-        eventData
-      )
+      const notifyResponse = await makeNotifyRequest(requester, eventId, eventData);
 
       return {
         eventId,
         eventData,
-        notifyResponse
-      }
-    })
+        notifyResponse,
+      };
+    });
   }
 }

@@ -55,10 +55,10 @@ import type { RouteFunction, WaitStepResponse, WorkflowServeOptions } from "./ty
 import type { NextRequest } from "next/server";
 import { Client } from "./client";
 import { nanoid } from "./utils";
+import { makeGetWaitersRequest } from "./client/utils";
 
 const WORKFLOW_PORT = "3000";
 const THIRD_PARTY_PORT = "3001";
-const LOCAL_WORKFLOW_URL = `http://localhost:${WORKFLOW_PORT}`;
 const LOCAL_THIRD_PARTY_URL = `http://localhost:${THIRD_PARTY_PORT}`;
 
 const someWork = (input: string) => {
@@ -109,21 +109,23 @@ const testEndpoint = async <TInitialPayload = unknown>({
   finishState,
   failureFunction,
   retries,
+  port = WORKFLOW_PORT,
 }: {
-  finalCount: number;
+  finalCount?: number;
   waitFor: number;
   initialPayload: TInitialPayload;
   routeFunction: RouteFunction<TInitialPayload>;
   finishState: FinishState;
   failureFunction?: WorkflowServeOptions["failureFunction"];
   retries?: number;
+  port?: string;
 }) => {
   let counter = 0;
 
   const endpoint = workflowServe<TInitialPayload>(routeFunction, {
     qstashClient,
-    url: LOCAL_WORKFLOW_URL,
-    verbose: true,
+    url: `http://localhost:${port}`,
+    // verbose: true,
     failureFunction,
     retries,
   });
@@ -133,7 +135,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
       counter += 1;
       return await endpoint(request as NextRequest);
     },
-    port: WORKFLOW_PORT,
+    port: port,
   });
 
   await qstashClient.publishJSON({
@@ -142,7 +144,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
     headers: {
       Authentication: "Bearer secretPassword",
     },
-    url: `http://localhost:${WORKFLOW_PORT}`,
+    url: `http://localhost:${port}`,
   });
 
   await new Promise((resolve) => setTimeout(resolve, waitFor));
@@ -150,7 +152,9 @@ const testEndpoint = async <TInitialPayload = unknown>({
   server.stop();
 
   finishState.check();
-  expect(counter).toBe(finalCount);
+  if (finalCount) {
+    expect(counter).toBe(finalCount);
+  }
 };
 
 describe.skip("live serve tests", () => {
@@ -590,8 +594,9 @@ describe.skip("live serve tests", () => {
             context.waitForEvent("wait-event-step", eventId, 3),
           ]);
           expect(runResponse).toBe(runResult);
-          expect(waitResponse.eventData).toBe(expectedWaitResponse.eventData);
           expect(waitResponse.timeout).toBe(expectedWaitResponse.timeout);
+          expect(waitResponse.eventData).toEqual(expectedWaitResponse.eventData);
+          expect(typeof waitResponse.eventData).toBe(typeof expectedWaitResponse.eventData);
           finishState.finish();
         },
       });
@@ -651,5 +656,64 @@ describe.skip("live serve tests", () => {
       },
       { timeout: 17_000 }
     );
+
+    describe("should notify from inside a function", () => {
+      const testNotifyWithContext = async (payload: unknown) => {
+        const eventId = `my-event-id-${nanoid()}`;
+
+        const waitingEndpoint = testWaitEndpoint(
+          {
+            eventData: payload,
+            timeout: false,
+          },
+          eventId
+        );
+
+        const finishState = new FinishState();
+        const notifyingEndpoint = testEndpoint({
+          finishState,
+          initialPayload: undefined,
+          waitFor: 15000,
+          port: "3002",
+          routeFunction: async (context) => {
+            // wait to avoid notifying the first waitForEvent
+            await context.sleep("sleep for first timeout", 3);
+
+            while (true) {
+              const waiterExists = await context.run("check waiters", async () => {
+                const waiters = await makeGetWaitersRequest(context.qstashClient.http, eventId);
+
+                return Boolean(waiters);
+              });
+
+              if (waiterExists) {
+                break;
+              }
+            }
+            const { notifyResponse } = await context.notify("notify-step", eventId, payload);
+            expect(notifyResponse.length).toBeTruthy();
+            finishState.finish();
+          },
+        });
+
+        await Promise.all([waitingEndpoint, notifyingEndpoint]);
+      };
+
+      test(
+        "should handle string event data",
+        async () => {
+          await testNotifyWithContext("event-data");
+        },
+        { timeout: 170000 }
+      );
+
+      test(
+        "should handle object event data",
+        async () => {
+          await testNotifyWithContext({ event: "data" });
+        },
+        { timeout: 170000 }
+      );
+    });
   });
 });

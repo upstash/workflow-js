@@ -275,13 +275,13 @@ export type NotifyStepResponse = {
   /**
    * notified event id
    */
-  eventId: string,
+  eventId: string;
   /**
    * event data sent with notify
    */
-  eventData: unknown,
+  eventData: unknown;
   /**
    * response from notify
    */
-  notifyResponse: NotifyResponse[]
-}
+  notifyResponse: NotifyResponse[];
+};

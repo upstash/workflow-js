@@ -341,24 +341,33 @@ export class WorkflowContext<TInitialPayload = unknown> {
       )
     );
 
-    return result;
+    try {
+      return {
+        ...result,
+        eventData: JSON.parse(result.eventData as string),
+      };
+    } catch {
+      return result;
+    }
   }
 
   public async notify(
     stepName: string,
     eventId: string,
-    eventData: string
+    eventData: unknown
   ): Promise<NotifyStepResponse> {
     const result = await this.addStep(
-      new LazyNotifyStep(
-        stepName,
-        eventId,
-        eventData,
-        this.qstashClient.http
-      )
+      new LazyNotifyStep(stepName, eventId, eventData, this.qstashClient.http)
     );
 
-    return result;
+    try {
+      return {
+        ...result,
+        eventData: JSON.parse(result.eventData as string),
+      };
+    } catch {
+      return result;
+    }
   }
 
   /**
