@@ -279,13 +279,13 @@ describe("Workflow Parser", () => {
       expect(steps[2].stepType).toBe("Wait");
 
       const timeoutResponse: WaitStepResponse = {
-        notifyBody: undefined,
+        eventData: undefined,
         timeout: true,
       };
       expect(steps[1].out).toEqual(timeoutResponse);
 
       const notifyResponse: WaitStepResponse = {
-        notifyBody: "notify-data",
+        eventData: "notify-data",
         timeout: false,
       };
       expect(steps[2].out).toEqual(notifyResponse);

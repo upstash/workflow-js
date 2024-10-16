@@ -1,10 +1,11 @@
-import type { WaitStepResponse, WorkflowClient } from "../types";
+import type { NotifyStepResponse, WaitStepResponse, WorkflowClient } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
 import {
   LazyCallStep,
   LazyFunctionStep,
+  LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
   LazyWaitForEventStep,
@@ -300,7 +301,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * timeout ends
    *
    * ```ts
-   * const { notifyBody, timeout } = await context.waitForEvent(
+   * const { eventData, timeout } = await context.waitForEvent(
    *   "wait for event step",
    *   "my-event-id",
    *   100 // timeout after 100 seconds
@@ -316,15 +317,15 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * await client.notify({
    *   eventId: "my-event-id",
-   *   notifyBody: "notifyBody"
+   *   eventData: "eventData"
    * })
    * ```
    *
    * @param stepName
    * @param eventId event id to wake up the waiting workflow run
    * @param timeout timeout duration in seconds
-   * @returns wait response as `{ timeout: boolean, notifyBody: unknown }`.
-   *   timeout is true if the wait times out, if notified it is false. notifyBody
+   * @returns wait response as `{ timeout: boolean, eventData: unknown }`.
+   *   timeout is true if the wait times out, if notified it is false. eventData
    *   is the value passed to `client.notify`.
    */
   public async waitForEvent(
@@ -337,6 +338,23 @@ export class WorkflowContext<TInitialPayload = unknown> {
         stepName,
         eventId,
         typeof timeout === "string" ? timeout : `${timeout}s`
+      )
+    );
+
+    return result;
+  }
+
+  public async notify(
+    stepName: string,
+    eventId: string,
+    eventData: string
+  ): Promise<NotifyStepResponse> {
+    const result = await this.addStep(
+      new LazyNotifyStep(
+        stepName,
+        eventId,
+        eventData,
+        this.qstashClient.http
       )
     );
 

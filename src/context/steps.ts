@@ -1,5 +1,6 @@
-import type { HTTPMethods } from "@upstash/qstash";
-import type { Step, StepFunction, StepType, WaitStepResponse } from "../types";
+import type { Client, HTTPMethods } from "@upstash/qstash";
+import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
+import { makeNotifyRequest } from "../client/utils";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -225,35 +226,27 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
   }
 }
 
-// export class LazyNotifyStep<TResult = unknown> extends BaseLazyStep<TResult> {
-//   private readonly eventId: string;
-//   private readonly timeout: string;
-//   stepType: StepType = "Wait"
+export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
+  stepType: StepType = "Notify"
 
-//   constructor(
-//     stepName: string,
-//     eventId: string,
-//   ) {
-//     super(stepName)
-//     this.eventId = eventId;
-//   }
+  constructor(
+    stepName: string,
+    eventId: string,
+    eventData: unknown,
+    requester: Client["http"]
+  ) {
+    super(stepName, async () => {
+      const notifyResponse = await makeNotifyRequest(
+        requester,
+        eventId,
+        eventData
+      )
 
-//   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
-//     return {
-//       stepId: 0,
-//       stepName: this.stepName,
-//       stepType: this.stepType,
-//       concurrent,
-//       targetStep
-//     }
-//   }
-
-//   public async getResultStep(concurrent: number, stepId: number): Promise<Step<TResult>> {
-//     return await Promise.resolve({
-//       stepId,
-//       stepName: this.stepName,
-//       stepType: this.stepType,
-//       concurrent,
-//     });
-//   }
-// }
+      return {
+        eventId,
+        eventData,
+        notifyResponse
+      }
+    })
+  }
+}

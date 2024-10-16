@@ -61,7 +61,7 @@ type WaitFields = {
 
 type NotifyFields = {
   notifyEventId?: string;
-  notifyBody?: string;
+  eventData?: string;
 };
 
 export type Step<TResult = unknown, TBody = unknown> = {
@@ -268,5 +268,20 @@ export type WaitStepResponse = {
   /**
    * body passed in notify request
    */
-  notifyBody: unknown;
+  eventData: unknown;
 };
+
+export type NotifyStepResponse = {
+  /**
+   * notified event id
+   */
+  eventId: string,
+  /**
+   * event data sent with notify
+   */
+  eventData: unknown,
+  /**
+   * response from notify
+   */
+  notifyResponse: NotifyResponse[]
+}

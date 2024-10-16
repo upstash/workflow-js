@@ -577,12 +577,12 @@ describe.skip("live serve tests", () => {
 
           expect(input).toBe(payload);
 
-          const { notifyBody, timeout } = await context.waitForEvent(
+          const { eventData, timeout } = await context.waitForEvent(
             "single wait for event",
             eventId,
             1
           );
-          expect(notifyBody).toBeUndefined();
+          expect(eventData).toBeUndefined();
           expect(timeout).toBeTrue();
 
           const [runResponse, waitResponse] = await Promise.all([
@@ -590,7 +590,7 @@ describe.skip("live serve tests", () => {
             context.waitForEvent("wait-event-step", eventId, 3),
           ]);
           expect(runResponse).toBe(runResult);
-          expect(waitResponse.notifyBody).toBe(expectedWaitResponse.notifyBody);
+          expect(waitResponse.eventData).toBe(expectedWaitResponse.eventData);
           expect(waitResponse.timeout).toBe(expectedWaitResponse.timeout);
           finishState.finish();
         },
@@ -603,7 +603,7 @@ describe.skip("live serve tests", () => {
         const eventId = `my-event-id-${nanoid()}`;
         await testWaitEndpoint(
           {
-            notifyBody: undefined,
+            eventData: undefined,
             timeout: true,
           },
           eventId
@@ -616,7 +616,7 @@ describe.skip("live serve tests", () => {
       "should notify correctly",
       async () => {
         const eventId = `my-event-id-${nanoid()}`;
-        const notifyBody = "notify-body";
+        const eventData = "notify-body";
         const workflowClient = new Client({
           baseUrl: process.env.MOCK_QSTASH_URL,
           token: process.env.MOCK_QSTASH_TOKEN ?? "",
@@ -629,7 +629,7 @@ describe.skip("live serve tests", () => {
 
           while (true) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
-            const result = await workflowClient.notify({ eventId, notifyBody });
+            const result = await workflowClient.notify({ eventId, eventData });
             if (result) {
               expect(result[0].waiter.url).toBe(`http://localhost:${WORKFLOW_PORT}`);
               notifyFinishState.finish();
@@ -641,7 +641,7 @@ describe.skip("live serve tests", () => {
 
         await testWaitEndpoint(
           {
-            notifyBody,
+            eventData,
             timeout: false,
           },
           eventId

@@ -1,5 +1,6 @@
 import { NotifyResponse } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
+import { makeNotifyRequest } from "./utils";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -32,21 +33,15 @@ export class Client {
    * Notify a workflow run waiting for an event
    *
    * @param eventId event id to notify
-   * @param notifyBody data to provide to the workflow
+   * @param eventData data to provide to the workflow
    */
   public async notify({
     eventId,
-    notifyBody,
+    eventData,
   }: {
     eventId: string;
-    notifyBody?: string;
+    eventData?: unknown;
   }): Promise<NotifyResponse[]> {
-    const result = (await this.client.http.request({
-      path: ["v2", "notify", eventId],
-      method: "POST",
-      body: notifyBody,
-    })) as NotifyResponse[];
-
-    return result;
+    return await makeNotifyRequest(this.client.http, eventId, eventData)
   }
 }

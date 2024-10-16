@@ -71,7 +71,7 @@ const parsePayload = (rawPayload: string) => {
     // if event is a wait event, overwrite the out with WaitStepResponse:
     if (step.waitEventId) {
       const newOut: WaitStepResponse = {
-        notifyBody: step.out,
+        eventData: step.out,
         timeout: step.waitTimeout ?? false,
       };
       step.out = newOut;
