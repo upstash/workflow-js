@@ -7,7 +7,7 @@ export class Client {
   private client: QStashClient;
 
   constructor(clientConfig: ClientConfig) {
-    if (!clientConfig.baseUrl || !clientConfig.token) {
+    if (!clientConfig.token) {
       console.warn("[Upstash Workflow] url or the token is not set. client will not work.");
     }
     this.client = new QStashClient(clientConfig);
@@ -32,7 +32,7 @@ export class Client {
    * Notify a workflow run waiting for an event
    *
    * @param eventId event id to notify
-   * @param notifyData data to provide to the workflow
+   * @param notifyBody data to provide to the workflow
    */
   public async notify({
     eventId,

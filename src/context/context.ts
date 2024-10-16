@@ -295,6 +295,38 @@ export class WorkflowContext<TInitialPayload = unknown> {
     }
   }
 
+  /**
+   * Makes the workflow run wait until a notify request is sent or until the
+   * timeout ends
+   *
+   * ```ts
+   * const { notifyBody, timeout } = await context.waitForEvent(
+   *   "wait for event step",
+   *   "my-event-id",
+   *   100 // timeout after 100 seconds
+   * );
+   * ```
+   *
+   * To notify a waiting workflow run, you can use the notify method:
+   *
+   * ```ts
+   * import { Client } from "@upstash/workflow";
+   *
+   * const client = new Client({ token: });
+   *
+   * await client.notify({
+   *   eventId: "my-event-id",
+   *   notifyBody: "notifyBody"
+   * })
+   * ```
+   *
+   * @param stepName
+   * @param eventId event id to wake up the waiting workflow run
+   * @param timeout timeout duration in seconds
+   * @returns wait response as `{ timeout: boolean, notifyBody: unknown }`.
+   *   timeout is true if the wait times out, if notified it is false. notifyBody
+   *   is the value passed to `client.notify`.
+   */
   public async waitForEvent(
     stepName: string,
     eventId: string,

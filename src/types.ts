@@ -235,11 +235,6 @@ export type FailureFunctionPayload = {
  */
 export type RequiredExceptFields<T, K extends keyof T> = Omit<Required<T>, K> & Partial<Pick<T, K>>;
 
-export type WaitResult<TResult = unknown> = {
-  result: TResult;
-  timeout: boolean;
-};
-
 export type Waiter = {
   url: string;
   deadline: number;
@@ -252,7 +247,6 @@ export type Waiter = {
 export type NotifyResponse = {
   waiter: Waiter;
   messageId: string;
-  deduplicated: boolean;
   error: string;
 };
 
@@ -266,6 +260,13 @@ export type WaitRequest = {
 };
 
 export type WaitStepResponse = {
+  /**
+   * whether the wait for event step timed out. false if
+   * the step is notified
+   */
   timeout: boolean;
+  /**
+   * body passed in notify request
+   */
   notifyBody: unknown;
 };
