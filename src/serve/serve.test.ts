@@ -129,6 +129,7 @@ describe("serve", () => {
                 headers: {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-retries": "3",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
@@ -155,6 +156,7 @@ describe("serve", () => {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-method": "POST",
+                  "upstash-retries": "3",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,

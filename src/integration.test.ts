@@ -680,13 +680,16 @@ describe.skip("live serve tests", () => {
             await context.sleep("sleep for first timeout", 3);
 
             while (true) {
-              const waiterExists = await context.run("check waiters", async () => {
+              const waiters = await context.run("check waiters", async () => {
                 const waiters = await makeGetWaitersRequest(context.qstashClient.http, eventId);
-
-                return Boolean(waiters);
+                return waiters;
               });
 
-              if (waiterExists) {
+              expect(waiters[0].timeoutUrl).toBe("http://localhost:3000");
+              expect(waiters[0].timeoutBody).toBe(undefined);
+              expect(waiters[0].timeoutHeaders["Upstash-Workflow-Runid"]).toBeTruthy();
+
+              if (waiters) {
                 break;
               }
             }
