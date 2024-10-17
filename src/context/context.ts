@@ -331,7 +331,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public async waitForEvent(
     stepName: string,
     eventId: string,
-    timeout: string | number
+    timeout: number
   ): Promise<WaitStepResponse> {
     const result = await this.addStep(
       new LazyWaitForEventStep(
