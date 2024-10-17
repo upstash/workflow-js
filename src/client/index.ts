@@ -85,7 +85,7 @@ export class Client {
    *
    * @param eventId event id to check
    */
-  public async getWaiters({ eventId }: { eventId: string }): Promise<Waiter[]> {
+  public async getWaiters({ eventId }: { eventId: string }): Promise<Required<Waiter>[]> {
     return await makeGetWaitersRequest(this.client.http, eventId);
   }
 }

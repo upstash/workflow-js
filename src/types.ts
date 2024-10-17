@@ -239,9 +239,9 @@ export type Waiter = {
   url: string;
   deadline: number;
   headers: Record<string, string[]>;
-  timeoutUrl: string;
-  timeoutBody: unknown;
-  timeoutHeaders: Record<string, string[]>;
+  timeoutUrl?: string;
+  timeoutBody?: unknown;
+  timeoutHeaders?: Record<string, string[]>;
 };
 
 export type NotifyResponse = {
@@ -252,11 +252,11 @@ export type NotifyResponse = {
 
 export type WaitRequest = {
   url: string;
-  timeout: string;
-  timeoutBody?: string;
-  timeoutUrl?: string;
-  timeoutHeaders?: Record<string, string[]>;
   step: Step;
+  timeout: string;
+  timeoutUrl?: string;
+  timeoutBody?: string;
+  timeoutHeaders?: Record<string, string[]>;
 };
 
 export type WaitStepResponse = {

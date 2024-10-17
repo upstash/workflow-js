@@ -18,10 +18,10 @@ export const makeNotifyRequest = async (
 export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string
-): Promise<Waiter[]> => {
+): Promise<Required<Waiter>[]> => {
   const result = (await requester.request({
     path: ["v2", "waiters", eventId],
     method: "GET",
-  })) as Waiter[];
+  })) as Required<Waiter>[];
   return result;
 };
