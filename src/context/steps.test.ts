@@ -2,12 +2,15 @@ import { describe, test, expect } from "bun:test";
 import {
   LazyCallStep,
   LazyFunctionStep,
+  LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
   LazyWaitForEventStep,
 } from "./steps";
 import { nanoid } from "../utils";
-import type { Step } from "../types";
+import type { NotifyResponse, NotifyStepResponse, Step } from "../types";
+import { Client } from "@upstash/qstash";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
 
 describe("test steps", () => {
   const stepName = nanoid();
@@ -178,6 +181,84 @@ describe("test steps", () => {
         stepName,
         stepType: "Wait",
       });
+    });
+  });
+
+  describe("notify step", () => {
+    const eventId = "my-event-id";
+    const eventData = { data: "my-event-data" };
+
+    // get client
+    const token = nanoid();
+    const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+
+    const step = new LazyNotifyStep(stepName, eventId, eventData, client.http);
+
+    test("should set correct fields", () => {
+      expect(step.stepName).toBe(stepName);
+      expect(step.stepType).toBe("Notify");
+    });
+    test("should create plan step", () => {
+      expect(step.getPlanStep(concurrent, targetStep)).toEqual({
+        stepId: 0,
+        stepName,
+        stepType: "Notify",
+        concurrent,
+        targetStep,
+      });
+    });
+
+    test("should create result step", async () => {
+      let called = false;
+      const notifyResponse: NotifyResponse[] = [
+        {
+          error: "no-error",
+          messageId: "msg-id",
+          waiter: {
+            deadline: 123,
+            headers: {
+              "my-header": ["value"],
+            },
+            timeoutBody: undefined,
+            timeoutHeaders: {
+              "my-header": ["value"],
+            },
+            timeoutUrl: "url",
+            url: "url",
+          },
+        },
+      ];
+      const stepResponse: NotifyStepResponse = {
+        eventId,
+        eventData,
+        notifyResponse,
+      };
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await step.getResultStep(4, stepId);
+          expect(result).toEqual({
+            concurrent: 4,
+            stepId,
+            out: stepResponse,
+            stepName,
+            stepType: "Notify",
+          });
+          called = true;
+        },
+        responseFields: {
+          status: 200,
+          body: notifyResponse,
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/notify/${eventId}`,
+          token,
+          body: eventData,
+        },
+      });
+
+      expect(called).toBeTrue();
     });
   });
 });

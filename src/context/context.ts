@@ -1,10 +1,11 @@
-import type { CallResponse, WaitStepResponse, WorkflowClient } from "../types";
+import type { CallResponse, NotifyStepResponse, WaitStepResponse, WorkflowClient } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
 import {
   LazyCallStep,
   LazyFunctionStep,
+  LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
   LazyWaitForEventStep,
@@ -289,15 +290,55 @@ export class WorkflowContext<TInitialPayload = unknown> {
     const { url, method = "GET", body, headers = {} } = callSettings;
 
     const result = await this.addStep(
-      new LazyCallStep<CallResponse>(stepName, url, method, body, headers)
+      new LazyCallStep<CallResponse>(stepName, url, method, body, headers ?? {})
     );
-    return result;
+
+    try {
+      return {
+        ...result,
+        body: JSON.parse(result.body as string),
+      };
+    } catch {
+      return result;
+    }
   }
 
+  /**
+   * Makes the workflow run wait until a notify request is sent or until the
+   * timeout ends
+   *
+   * ```ts
+   * const { eventData, timeout } = await context.waitForEvent(
+   *   "wait for event step",
+   *   "my-event-id",
+   *   100 // timeout after 100 seconds
+   * );
+   * ```
+   *
+   * To notify a waiting workflow run, you can use the notify method:
+   *
+   * ```ts
+   * import { Client } from "@upstash/workflow";
+   *
+   * const client = new Client({ token: });
+   *
+   * await client.notify({
+   *   eventId: "my-event-id",
+   *   eventData: "eventData"
+   * })
+   * ```
+   *
+   * @param stepName
+   * @param eventId event id to wake up the waiting workflow run
+   * @param timeout timeout duration in seconds
+   * @returns wait response as `{ timeout: boolean, eventData: unknown }`.
+   *   timeout is true if the wait times out, if notified it is false. eventData
+   *   is the value passed to `client.notify`.
+   */
   public async waitForEvent(
     stepName: string,
     eventId: string,
-    timeout: string | number
+    timeout: number
   ): Promise<WaitStepResponse> {
     const result = await this.addStep(
       new LazyWaitForEventStep(
@@ -307,7 +348,33 @@ export class WorkflowContext<TInitialPayload = unknown> {
       )
     );
 
-    return result;
+    try {
+      return {
+        ...result,
+        eventData: JSON.parse(result.eventData as string),
+      };
+    } catch {
+      return result;
+    }
+  }
+
+  public async notify(
+    stepName: string,
+    eventId: string,
+    eventData: unknown
+  ): Promise<NotifyStepResponse> {
+    const result = await this.addStep(
+      new LazyNotifyStep(stepName, eventId, eventData, this.qstashClient.http)
+    );
+
+    try {
+      return {
+        ...result,
+        eventData: JSON.parse(result.eventData as string),
+      };
+    } catch {
+      return result;
+    }
   }
 
   /**

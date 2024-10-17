@@ -61,7 +61,7 @@ type WaitFields = {
 
 type NotifyFields = {
   notifyEventId?: string;
-  notifyBody?: string;
+  eventData?: string;
 };
 
 export type Step<TResult = unknown, TBody = unknown> = {
@@ -235,39 +235,55 @@ export type FailureFunctionPayload = {
  */
 export type RequiredExceptFields<T, K extends keyof T> = Omit<Required<T>, K> & Partial<Pick<T, K>>;
 
-export type WaitResult<TResult = unknown> = {
-  result: TResult;
-  timeout: boolean;
-};
-
 export type Waiter = {
   url: string;
   deadline: number;
   headers: Record<string, string[]>;
-  timeoutUrl: string;
-  timeoutBody: unknown;
-  timeoutHeaders: Record<string, string[]>;
+  timeoutUrl?: string;
+  timeoutBody?: unknown;
+  timeoutHeaders?: Record<string, string[]>;
 };
 
 export type NotifyResponse = {
   waiter: Waiter;
   messageId: string;
-  deduplicated: boolean;
   error: string;
 };
 
 export type WaitRequest = {
   url: string;
-  timeout: string;
-  timeoutBody?: string;
-  timeoutUrl?: string;
-  timeoutHeaders?: Record<string, string[]>;
   step: Step;
+  timeout: string;
+  timeoutUrl?: string;
+  timeoutBody?: string;
+  timeoutHeaders?: Record<string, string[]>;
 };
 
 export type WaitStepResponse = {
+  /**
+   * whether the wait for event step timed out. false if
+   * the step is notified
+   */
   timeout: boolean;
-  notifyBody: unknown;
+  /**
+   * body passed in notify request
+   */
+  eventData: unknown;
+};
+
+export type NotifyStepResponse = {
+  /**
+   * notified event id
+   */
+  eventId: string;
+  /**
+   * event data sent with notify
+   */
+  eventData: unknown;
+  /**
+   * response from notify
+   */
+  notifyResponse: NotifyResponse[];
 };
 
 export type CallResponse = {

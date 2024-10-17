@@ -27,10 +27,10 @@ describe("workflow client", () => {
 
   test("should send notify", async () => {
     const eventId = `event-id-${nanoid()}`;
-    const notifyData = { data: `notify-data-${nanoid()}` };
+    const eventData = { data: `notify-data-${nanoid()}` };
     await mockQStashServer({
       execute: async () => {
-        await client.notify({ eventId, notifyBody: JSON.stringify(notifyData) });
+        await client.notify({ eventId, eventData });
       },
       responseFields: {
         status: 200,
@@ -40,7 +40,7 @@ describe("workflow client", () => {
         method: "POST",
         url: `${MOCK_QSTASH_SERVER_URL}/v2/notify/${eventId}`,
         token,
-        body: notifyData,
+        body: eventData,
       },
     });
   });
