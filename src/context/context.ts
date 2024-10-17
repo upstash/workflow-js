@@ -286,12 +286,34 @@ export class WorkflowContext<TInitialPayload = unknown> {
       body?: unknown;
       headers?: Record<string, string>;
     }
-  ) {
+  ): Promise<CallResponse> {
     const { url, method = "GET", body, headers = {} } = callSettings;
 
     const result = await this.addStep(
-      new LazyCallStep<CallResponse>(stepName, url, method, body, headers ?? {})
+      new LazyCallStep<CallResponse | string>(stepName, url, method, body, headers ?? {})
     );
+
+    // <for backwards compatibity>
+    // if you transition to upstash/workflow from upstash/qstash,
+    // the out field in the steps will be the body of the response.
+    // we need to handle them explicitly here
+    if (typeof result === "string") {
+      try {
+        const body = JSON.parse(result);
+        return {
+          status: -1,
+          header: {},
+          body,
+        };
+      } catch {
+        return {
+          status: -1,
+          header: {},
+          body: result,
+        };
+      }
+    }
+    // </for backwards compatibity>
 
     try {
       return {
