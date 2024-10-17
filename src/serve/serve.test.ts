@@ -17,6 +17,7 @@ import {
   WORKFLOW_INIT_HEADER,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
+import { processOptions } from "./options";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -128,6 +129,7 @@ describe("serve", () => {
                 headers: {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-retries": "3",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
@@ -154,6 +156,7 @@ describe("serve", () => {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-method": "POST",
+                  "upstash-retries": "3",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -558,5 +561,27 @@ describe("serve", () => {
     );
     await endpoint(request);
     expect(called).toBeTrue();
+  });
+
+  test("should not initialize verifier if keys are not set", () => {
+    const { receiver } = processOptions({
+      env: {
+        QSTASH_URL: MOCK_QSTASH_SERVER_URL,
+        QSTASH_TOKEN: "mock-token",
+      },
+    });
+    expect(receiver).toBeUndefined();
+  });
+
+  test("should initialize verifier if keys are set", () => {
+    const { receiver } = processOptions({
+      env: {
+        QSTASH_URL: MOCK_QSTASH_SERVER_URL,
+        QSTASH_TOKEN: "mock-token",
+        QSTASH_CURRENT_SIGNING_KEY: "key-1",
+        QSTASH_NEXT_SIGNING_KEY: "key-2",
+      },
+    });
+    expect(receiver).toBeDefined();
   });
 });

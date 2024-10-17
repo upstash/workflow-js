@@ -50,13 +50,15 @@
 import { serve } from "bun";
 import { serve as workflowServe } from "../platforms/nextjs";
 import { expect, test, describe } from "bun:test";
-import { Client } from "@upstash/qstash";
-import type { RouteFunction, WorkflowServeOptions } from "./types";
+import { Client as QStashClient } from "@upstash/qstash";
+import type { RouteFunction, WaitStepResponse, WorkflowServeOptions } from "./types";
 import type { NextRequest } from "next/server";
+import { Client } from "./client";
+import { nanoid } from "./utils";
+import { makeGetWaitersRequest } from "./client/utils";
 
 const WORKFLOW_PORT = "3000";
 const THIRD_PARTY_PORT = "3001";
-const LOCAL_WORKFLOW_URL = `http://localhost:${WORKFLOW_PORT}`;
 const LOCAL_THIRD_PARTY_URL = `http://localhost:${THIRD_PARTY_PORT}`;
 
 const someWork = (input: string) => {
@@ -94,7 +96,7 @@ const attemptCharge = () => {
   return false;
 };
 
-const qstashClient = new Client({
+const qstashClient = new QStashClient({
   baseUrl: process.env.MOCK_QSTASH_URL,
   token: process.env.MOCK_QSTASH_TOKEN ?? "",
 });
@@ -107,21 +109,23 @@ const testEndpoint = async <TInitialPayload = unknown>({
   finishState,
   failureFunction,
   retries,
+  port = WORKFLOW_PORT,
 }: {
-  finalCount: number;
+  finalCount?: number;
   waitFor: number;
   initialPayload: TInitialPayload;
   routeFunction: RouteFunction<TInitialPayload>;
   finishState: FinishState;
   failureFunction?: WorkflowServeOptions["failureFunction"];
   retries?: number;
+  port?: string;
 }) => {
   let counter = 0;
 
   const endpoint = workflowServe<TInitialPayload>(routeFunction, {
     qstashClient,
-    url: LOCAL_WORKFLOW_URL,
-    verbose: true,
+    url: `http://localhost:${port}`,
+    // verbose: true,
     failureFunction,
     retries,
   });
@@ -131,7 +135,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
       counter += 1;
       return await endpoint(request as NextRequest);
     },
-    port: WORKFLOW_PORT,
+    port: port,
   });
 
   await qstashClient.publishJSON({
@@ -140,7 +144,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
     headers: {
       Authentication: "Bearer secretPassword",
     },
-    url: `http://localhost:${WORKFLOW_PORT}`,
+    url: `http://localhost:${port}`,
   });
 
   await new Promise((resolve) => setTimeout(resolve, waitFor));
@@ -148,7 +152,9 @@ const testEndpoint = async <TInitialPayload = unknown>({
   server.stop();
 
   finishState.check();
-  expect(counter).toBe(finalCount);
+  if (finalCount) {
+    expect(counter).toBe(finalCount);
+  }
 };
 
 describe.skip("live serve tests", () => {
@@ -559,4 +565,158 @@ describe.skip("live serve tests", () => {
       timeout: 7000,
     }
   );
+
+  describe("wait for event", () => {
+    const runResult = "run-result";
+    const testWaitEndpoint = async (expectedWaitResponse: WaitStepResponse, eventId: string) => {
+      const finishState = new FinishState();
+      const payload = "my-payload";
+      await testEndpoint({
+        finalCount: 7,
+        waitFor: 15_000,
+        initialPayload: payload,
+        finishState,
+        routeFunction: async (context) => {
+          const input = context.requestPayload;
+
+          expect(input).toBe(payload);
+
+          const { eventData, timeout } = await context.waitForEvent(
+            "single wait for event",
+            eventId,
+            1
+          );
+          expect(eventData).toBeUndefined();
+          expect(timeout).toBeTrue();
+
+          const [runResponse, waitResponse] = await Promise.all([
+            context.run("run-step", () => runResult),
+            context.waitForEvent("wait-event-step", eventId, 3),
+          ]);
+          expect(runResponse).toBe(runResult);
+          expect(waitResponse.timeout).toBe(expectedWaitResponse.timeout);
+          expect(waitResponse.eventData).toEqual(expectedWaitResponse.eventData);
+          expect(typeof waitResponse.eventData).toBe(typeof expectedWaitResponse.eventData);
+          finishState.finish();
+        },
+      });
+    };
+
+    test(
+      "should timeout correctly",
+      async () => {
+        const eventId = `my-event-id-${nanoid()}`;
+        await testWaitEndpoint(
+          {
+            eventData: undefined,
+            timeout: true,
+          },
+          eventId
+        );
+      },
+      { timeout: 17_000 }
+    );
+
+    test(
+      "should notify correctly",
+      async () => {
+        const eventId = `my-event-id-${nanoid()}`;
+        const eventData = "notify-body";
+        const workflowClient = new Client({
+          baseUrl: process.env.MOCK_QSTASH_URL,
+          token: process.env.MOCK_QSTASH_TOKEN ?? "",
+        });
+
+        const notifyFinishState = new FinishState();
+        async function retryUntilFalse(): Promise<void> {
+          // wait to avoid notifying the first waitForEvent
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          while (true) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const result = await workflowClient.notify({ eventId, eventData });
+            if (result) {
+              expect(result[0].waiter.url).toBe(`http://localhost:${WORKFLOW_PORT}`);
+              notifyFinishState.finish();
+              break;
+            }
+          }
+        }
+        retryUntilFalse();
+
+        await testWaitEndpoint(
+          {
+            eventData,
+            timeout: false,
+          },
+          eventId
+        );
+
+        notifyFinishState.check();
+      },
+      { timeout: 17_000 }
+    );
+
+    describe("should notify from inside a function", () => {
+      const testNotifyWithContext = async (payload: unknown) => {
+        const eventId = `my-event-id-${nanoid()}`;
+
+        const waitingEndpoint = testWaitEndpoint(
+          {
+            eventData: payload,
+            timeout: false,
+          },
+          eventId
+        );
+
+        const finishState = new FinishState();
+        const notifyingEndpoint = testEndpoint({
+          finishState,
+          initialPayload: undefined,
+          waitFor: 15000,
+          port: "3002",
+          routeFunction: async (context) => {
+            // wait to avoid notifying the first waitForEvent
+            await context.sleep("sleep for first timeout", 3);
+
+            while (true) {
+              const waiters = await context.run("check waiters", async () => {
+                const waiters = await makeGetWaitersRequest(context.qstashClient.http, eventId);
+                return waiters;
+              });
+
+              expect(waiters[0].timeoutUrl).toBe("http://localhost:3000");
+              expect(waiters[0].timeoutBody).toBe(undefined);
+              expect(waiters[0].timeoutHeaders["Upstash-Workflow-Runid"]).toBeTruthy();
+
+              if (waiters) {
+                break;
+              }
+            }
+            const { notifyResponse } = await context.notify("notify-step", eventId, payload);
+            expect(notifyResponse.length).toBeTruthy();
+            finishState.finish();
+          },
+        });
+
+        await Promise.all([waitingEndpoint, notifyingEndpoint]);
+      };
+
+      test(
+        "should handle string event data",
+        async () => {
+          await testNotifyWithContext("event-data");
+        },
+        { timeout: 170000 }
+      );
+
+      test(
+        "should handle object event data",
+        async () => {
+          await testNotifyWithContext({ event: "data" });
+        },
+        { timeout: 170000 }
+      );
+    });
+  });
 });

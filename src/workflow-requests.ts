@@ -26,7 +26,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
   retries: number,
   debug?: WorkflowLogger
 ): Promise<Ok<"success", never> | Err<never, Error>> => {
-  const headers = getHeaders(
+  const { headers } = getHeaders(
     "true",
     workflowContext.workflowRunId,
     workflowContext.url,
@@ -196,7 +196,7 @@ export const handleThirdPartyCallResult = async (
       }
 
       const userHeaders = recreateUserHeaders(request.headers as Headers);
-      const requestHeaders = getHeaders(
+      const { headers: requestHeaders } = getHeaders(
         "false",
         workflowRunId,
         workflowUrl,
@@ -245,6 +245,11 @@ export const handleThirdPartyCallResult = async (
   }
 };
 
+export type HeadersResponse = {
+  headers: Record<string, string>;
+  timeoutHeaders?: Record<string, string[]>;
+};
+
 /**
  * Gets headers for calling QStash
  *
@@ -263,7 +268,7 @@ export const getHeaders = (
   step?: Step,
   failureUrl?: WorkflowServeOptions["failureUrl"],
   retries?: number
-): Record<string, string> => {
+): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -294,6 +299,9 @@ export const getHeaders = (
     }
   }
 
+  const contentType =
+    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
+
   if (step?.callHeaders) {
     const forwardedHeaders = Object.fromEntries(
       Object.entries(step.callHeaders).map(([header, value]) => [
@@ -302,28 +310,49 @@ export const getHeaders = (
       ])
     );
 
-    const contentType = step.callHeaders["Content-Type"] as string | undefined;
-
     return {
-      ...baseHeaders,
-      ...forwardedHeaders,
-      "Upstash-Callback": workflowUrl,
-      "Upstash-Callback-Workflow-RunId": workflowRunId,
-      "Upstash-Callback-Workflow-CallType": "fromCallback",
-      "Upstash-Callback-Workflow-Init": "false",
-      "Upstash-Callback-Workflow-Url": workflowUrl,
+      headers: {
+        ...baseHeaders,
+        ...forwardedHeaders,
+        "Upstash-Callback": workflowUrl,
+        "Upstash-Callback-Workflow-RunId": workflowRunId,
+        "Upstash-Callback-Workflow-CallType": "fromCallback",
+        "Upstash-Callback-Workflow-Init": "false",
+        "Upstash-Callback-Workflow-Url": workflowUrl,
 
-      "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
-      "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
-      "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.stepName,
-      "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.stepType,
-      "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
-      "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType ?? DEFAULT_CONTENT_TYPE,
-      "Upstash-Workflow-CallType": "toCallback",
+        "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
+        "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
+        "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.stepName,
+        "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.stepType,
+        "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
+        "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType,
+        "Upstash-Workflow-CallType": "toCallback",
+      },
     };
   }
 
-  return baseHeaders;
+  if (step?.waitEventId) {
+    return {
+      headers: {
+        ...baseHeaders,
+        "Upstash-Workflow-CallType": "step",
+      },
+      timeoutHeaders: {
+        // to include user headers:
+        ...Object.fromEntries(
+          Object.entries(baseHeaders).map(([header, value]) => [header, [value]])
+        ),
+        // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
+        "Upstash-Workflow-Runid": [workflowRunId],
+        [WORKFLOW_INIT_HEADER]: ["false"],
+        [WORKFLOW_URL_HEADER]: [workflowUrl],
+        "Upstash-Workflow-CallType": ["step"],
+        "Content-Type": [contentType],
+      },
+    };
+  }
+
+  return { headers: baseHeaders };
 };
 
 export const verifyRequest = async (

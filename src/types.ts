@@ -23,7 +23,15 @@ export type WorkflowReceiver = {
   verify: InstanceType<typeof Receiver>["verify"];
 };
 
-export const StepTypes = ["Initial", "Run", "SleepFor", "SleepUntil", "Call"] as const;
+export const StepTypes = [
+  "Initial",
+  "Run",
+  "SleepFor",
+  "SleepUntil",
+  "Call",
+  "Wait",
+  "Notify",
+] as const;
 export type StepType = (typeof StepTypes)[number];
 
 type ThirdPartyCallFields<TBody = unknown> = {
@@ -43,6 +51,17 @@ type ThirdPartyCallFields<TBody = unknown> = {
    * Third party call headers. Set when context.call is used.
    */
   callHeaders: Record<string, string>;
+};
+
+type WaitFields = {
+  waitEventId: string;
+  timeout: string;
+  waitTimeout?: boolean;
+};
+
+type NotifyFields = {
+  notifyEventId?: string;
+  eventData?: string;
 };
 
 export type Step<TResult = unknown, TBody = unknown> = {
@@ -83,7 +102,9 @@ export type Step<TResult = unknown, TBody = unknown> = {
    * set to the target step.
    */
   targetStep?: number;
-} & (ThirdPartyCallFields<TBody> | { [P in keyof ThirdPartyCallFields]?: never });
+} & (ThirdPartyCallFields<TBody> | { [P in keyof ThirdPartyCallFields]?: never }) &
+  (WaitFields | { [P in keyof WaitFields]?: never }) &
+  (NotifyFields | { [P in keyof NotifyFields]?: never });
 
 export type RawStep = {
   messageId: string;
@@ -213,3 +234,54 @@ export type FailureFunctionPayload = {
  * Makes all fields except the ones selected required
  */
 export type RequiredExceptFields<T, K extends keyof T> = Omit<Required<T>, K> & Partial<Pick<T, K>>;
+
+export type Waiter = {
+  url: string;
+  deadline: number;
+  headers: Record<string, string[]>;
+  timeoutUrl?: string;
+  timeoutBody?: unknown;
+  timeoutHeaders?: Record<string, string[]>;
+};
+
+export type NotifyResponse = {
+  waiter: Waiter;
+  messageId: string;
+  error: string;
+};
+
+export type WaitRequest = {
+  url: string;
+  step: Step;
+  timeout: string;
+  timeoutUrl?: string;
+  timeoutBody?: string;
+  timeoutHeaders?: Record<string, string[]>;
+};
+
+export type WaitStepResponse = {
+  /**
+   * whether the wait for event step timed out. false if
+   * the step is notified
+   */
+  timeout: boolean;
+  /**
+   * body passed in notify request
+   */
+  eventData: unknown;
+};
+
+export type NotifyStepResponse = {
+  /**
+   * notified event id
+   */
+  eventId: string;
+  /**
+   * event data sent with notify
+   */
+  eventData: unknown;
+  /**
+   * response from notify
+   */
+  notifyResponse: NotifyResponse[];
+};

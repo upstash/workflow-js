@@ -1,6 +1,6 @@
 import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step } from "../types";
+import type { StepFunction, ParallelCallState, Step, WaitRequest } from "../types";
 import { type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
@@ -281,7 +281,7 @@ export class AutoExecutor {
     initialStepCount: number
   ): ParallelCallState {
     const remainingSteps = this.steps.filter(
-      (step) => (step.targetStep ?? step.stepId) >= initialStepCount
+      (step) => (step.targetStep || step.stepId) >= initialStepCount
     );
 
     if (remainingSteps.length === 0) {
@@ -322,9 +322,48 @@ export class AutoExecutor {
       steps,
     });
 
+    if (steps[0].waitEventId && steps.length === 1) {
+      const waitStep = steps[0];
+
+      const { headers, timeoutHeaders } = getHeaders(
+        "false",
+        this.context.workflowRunId,
+        this.context.url,
+        this.context.headers,
+        waitStep,
+        this.context.failureUrl,
+        this.context.retries
+      );
+
+      // call wait
+      const waitBody: WaitRequest = {
+        url: this.context.url,
+        timeout: waitStep.timeout,
+        timeoutBody: undefined,
+        timeoutUrl: this.context.url,
+        timeoutHeaders,
+        step: {
+          stepId: waitStep.stepId,
+          stepType: "Wait",
+          stepName: waitStep.stepName,
+          concurrent: waitStep.concurrent,
+          targetStep: waitStep.targetStep,
+        },
+      };
+
+      await this.context.qstashClient.http.request({
+        path: ["v2", "wait", waitStep.waitEventId],
+        body: JSON.stringify(waitBody),
+        headers,
+        method: "POST",
+      });
+
+      throw new QStashWorkflowAbort(steps[0].stepName, steps[0]);
+    }
+
     const result = await this.context.qstashClient.batchJSON(
       steps.map((singleStep) => {
-        const headers = getHeaders(
+        const { headers } = getHeaders(
           "false",
           this.context.workflowRunId,
           this.context.url,
@@ -486,6 +525,6 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
  * @returns sorted steps
  */
 const sortSteps = (steps: Step[]): Step[] => {
-  const getStepId = (step: Step) => step.targetStep ?? step.stepId;
+  const getStepId = (step: Step) => step.targetStep || step.stepId;
   return steps.toSorted((step, stepOther) => getStepId(step) - getStepId(stepOther));
 };
