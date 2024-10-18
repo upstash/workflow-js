@@ -275,19 +275,22 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param method call method
    * @param body call body
    * @param headers call headers
-   * @returns call result (parsed as JSON if possible)
+   * @returns call result as {
+   *     status: number;
+   *     body: unknown;
+   *     header: Record<string, string[]>
+   *   }
    */
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   public async call(
     stepName: string,
-    callSettings: {
+    settings: {
       url: string;
       method?: HTTPMethods;
       body?: unknown;
       headers?: Record<string, string>;
     }
   ): Promise<CallResponse> {
-    const { url, method = "GET", body, headers = {} } = callSettings;
+    const { url, method = "GET", body, headers = {} } = settings;
 
     const result = await this.addStep(
       new LazyCallStep<CallResponse | string>(stepName, url, method, body, headers ?? {})
@@ -301,13 +304,13 @@ export class WorkflowContext<TInitialPayload = unknown> {
       try {
         const body = JSON.parse(result);
         return {
-          status: -1,
+          status: 200,
           header: {},
           body,
         };
       } catch {
         return {
-          status: -1,
+          status: 200,
           header: {},
           body: result,
         };

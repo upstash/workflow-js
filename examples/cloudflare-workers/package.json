@@ -18,6 +18,6 @@
 	},
 	"dependencies": {
 		"@upstash/qstash": "latest",
-		"@upstash/workflow": "link:../../dist"
+		"@upstash/workflow": "0.1.1-canary-2"
 	}
 }
