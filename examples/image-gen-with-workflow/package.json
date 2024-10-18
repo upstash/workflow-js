@@ -14,6 +14,7 @@
     "@upstash/qstash": "^2.7.8",
     "@upstash/ratelimit": "^2.0.3",
     "@upstash/redis": "^1.34.0",
+    "@upstash/workflow": "link:../../dist",
     "@vercel/functions": "^1.4.1",
     "clsx": "^2.1.1",
     "next": "14.2.13",

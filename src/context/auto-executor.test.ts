@@ -120,6 +120,7 @@ describe("auto-executor", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -207,6 +208,7 @@ describe("auto-executor", () => {
               body: '{"stepId":0,"stepName":"sleep for some time","stepType":"SleepFor","sleepFor":123,"concurrent":2,"targetStep":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-delay": "123s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -221,6 +223,7 @@ describe("auto-executor", () => {
               body: '{"stepId":0,"stepName":"sleep until next day","stepType":"SleepUntil","sleepUntil":123123,"concurrent":2,"targetStep":2}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -273,6 +276,7 @@ describe("auto-executor", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -325,6 +329,7 @@ describe("auto-executor", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",

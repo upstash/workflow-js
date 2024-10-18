@@ -5,7 +5,7 @@ const someWork = (input: string) => {
   return `processed '${JSON.stringify(input)}'`
 }
 
-export default serve<string>(
+const { handler } = serve<string>(
   async context => {
     const input = context.requestPayload
     const result1 = await context.run("step1", async () => {
@@ -24,11 +24,11 @@ export default serve<string>(
 
     await context.sleep("sleep2", 2)
 
-    const result3 = await context.run("step3", async () => {
+    await context.run("step3", async () => {
       const output = someWork(result2)
       console.log("step 3 input", result2, "output", output)
     });
   }
 )
 
-
+export default handler

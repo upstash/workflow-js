@@ -1,11 +1,6 @@
 
 import { serve } from "@upstash/workflow/svelte";
 import { env } from '$env/dynamic/private'
-import { Client, Receiver } from "@upstash/qstash";
-
-const someWork = (input: string) => {
-  return `processed '${input}'`
-}
 
 type Invoice = {
   date: number,
@@ -30,7 +25,7 @@ const attemptCharge = (invoice: Invoice) => {
   return false;
 }
 
-export const POST = serve<Invoice>(
+export const { POST } = serve<Invoice>(
   async context => {
     const x = Math.random()
     const invoice = context.requestPayload

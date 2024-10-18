@@ -31,7 +31,7 @@ export const serve = <
     const environment = context.env;
     const request = context.req.raw;
 
-    const serveHandler = serveBase(routeFunction, {
+    const { handler: serveHandler } = serveBase(routeFunction, {
       // when hono is used without cf workers, it sends a DebugHTTPServer
       // object in `context.env`. don't pass env if this is the case:
       env: "QSTASH_TOKEN" in environment ? environment : undefined,

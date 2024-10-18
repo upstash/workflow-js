@@ -83,7 +83,7 @@ const receiver = new Receiver({ currentSigningKey, nextSigningKey });
 /**
  * endpoint to call in the receiver tests
  */
-const endpoint = serve(
+const { handler: endpoint } = serve(
   async (context) => {
     await context.run("step 1", () => {
       return "result";

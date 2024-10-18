@@ -4,7 +4,7 @@ import { ImageResponse } from 'utils/types'
 
 const redis = Redis.fromEnv()
 
-export const POST = serve<{ prompt: string }>(async (context) => {
+export const { POST } = serve<{ prompt: string }>(async (context) => {
   // get prompt from request
   const { prompt } = context.requestPayload
 

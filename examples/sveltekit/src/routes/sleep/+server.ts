@@ -1,12 +1,11 @@
 import { serve } from "@upstash/workflow/svelte";
 import { env } from '$env/dynamic/private'
-import { Client, Receiver } from "@upstash/qstash";
 
 const someWork = (input: string) => {
   return `processed '${JSON.stringify(input)}'`
 }
 
-export const POST = serve<string>(
+export const { POST } = serve<string>(
   async context => {
     const input = context.requestPayload
     const result1 = await context.run("step1", async () => {
@@ -25,7 +24,7 @@ export const POST = serve<string>(
 
     await context.sleep("sleep2", 2)
 
-    const result3 = await context.run("step3", async () => {
+    await context.run("step3", async () => {
       const output = someWork(result2)
       console.log("step 3 input", result2, "output", output)
     });

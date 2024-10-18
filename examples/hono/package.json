@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@upstash/qstash": "latest",
+    "@upstash/workflow": "0.1.1-canary-2",
     "hono": "^4.5.8"
   },
   "devDependencies": {

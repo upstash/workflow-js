@@ -92,5 +92,8 @@
   },
   "dependencies": {
     "@upstash/qstash": "^2.7.12"
+  },
+  "directories": {
+    "example": "examples"
   }
 }

@@ -74,7 +74,7 @@ describe("disabled workflow context", () => {
       let called = false;
       await mockQStashServer({
         execute: () => {
-          const throws = disabledContext.call("call-step", "some-url", "GET");
+          const throws = disabledContext.call("call-step", { url: "some-url" });
           expect(throws).rejects.toThrow(QStashWorkflowAbort);
           called = true;
         },
@@ -200,6 +200,7 @@ describe("disabled workflow context", () => {
               body: '{"stepId":1,"stepName":"step","stepType":"Run","out":"result","concurrent":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -247,6 +248,7 @@ describe("disabled workflow context", () => {
               body: '{"stepId":1,"stepName":"step","stepType":"Run","out":"result","concurrent":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -295,6 +297,7 @@ describe("disabled workflow context", () => {
               body: '{"stepId":1,"stepName":"step","stepType":"Run","out":"result","concurrent":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",

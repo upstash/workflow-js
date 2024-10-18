@@ -29,7 +29,7 @@ export const serve = <
 >(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
-): ((request: TRequest) => Promise<TResponse>) => {
+): { handler: (request: TRequest) => Promise<TResponse> } => {
   // Prepares options with defaults if they are not provided.
   const {
     qstashClient,
@@ -56,6 +56,8 @@ export const serve = <
    * @returns A promise that resolves to a response.
    */
   const handler = async (request: TRequest) => {
+    await debug?.log("INFO", "ENDPOINT_START");
+
     const { workflowUrl, workflowFailureUrl } = await determineUrls(
       request,
       url,
@@ -114,6 +116,7 @@ export const serve = <
       failureUrl: workflowFailureUrl,
       debug,
       env,
+      retries,
     });
 
     // attempt running routeFunction until the first step
@@ -173,7 +176,7 @@ export const serve = <
     return onStepFinish("no-workflow-id", "fromCallback");
   };
 
-  return async (request: TRequest) => {
+  const safeHandler = async (request: TRequest) => {
     try {
       return await handler(request);
     } catch (error) {
@@ -183,4 +186,6 @@ export const serve = <
       }) as TResponse;
     }
   };
+
+  return { handler: safeHandler };
 };

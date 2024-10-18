@@ -1,10 +1,6 @@
 
 import { serve } from "@upstash/workflow/h3";
 
-const someWork = (input: string) => {
-  return `processed '${input}'`
-}
-
 type Invoice = {
   date: number,
   email: string,
@@ -28,7 +24,7 @@ const attemptCharge = (invoice: Invoice) => {
   return false;
 }
 
-export default serve<Invoice>(
+const { handler } = serve<Invoice>(
   async context => {
     const x = Math.random()
     const invoice = context.requestPayload
@@ -66,4 +62,4 @@ export default serve<Invoice>(
   }
 )
 
-
+export default handler

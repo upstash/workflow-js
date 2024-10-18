@@ -17,6 +17,7 @@
 		"wrangler": "^3.60.3"
 	},
 	"dependencies": {
-		"@upstash/qstash": "latest"
+		"@upstash/qstash": "latest",
+		"@upstash/workflow": "0.1.1-canary-2"
 	}
 }

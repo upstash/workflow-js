@@ -1,9 +1,5 @@
 import { serve } from '@upstash/workflow/nextjs'
 
-const someWork = (input: string) => {
-  return `processed '${input}'`
-}
-
 type Invoice = {
   date: number
   email: string
@@ -27,7 +23,7 @@ const attemptCharge = (invoice: Invoice) => {
   return false
 }
 
-export const POST = serve<Invoice>(async (context) => {
+export const { POST } = serve<Invoice>(async (context) => {
   const invoice = context.requestPayload
 
   for (let index = 0; index < 3; index++) {

@@ -17,11 +17,11 @@ export const serve = <TInitialPayload = unknown>(
   options: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish"> & {
     env: WorkflowServeOptions["env"];
   }
-): RequestHandler => {
+): { POST: RequestHandler } => {
   const handler: RequestHandler = async ({ request }) => {
-    const serveMethod = serveBase<TInitialPayload>(routeFunction, options);
-    return await serveMethod(request);
+    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, options);
+    return await serveHandler(request);
   };
 
-  return handler;
+  return { POST: handler };
 };

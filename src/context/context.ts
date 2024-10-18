@@ -1,4 +1,4 @@
-import type { NotifyStepResponse, WaitStepResponse, WorkflowClient } from "../types";
+import type { CallResponse, NotifyStepResponse, WaitStepResponse, WorkflowClient } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
@@ -275,24 +275,56 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param method call method
    * @param body call body
    * @param headers call headers
-   * @returns call result (parsed as JSON if possible)
+   * @returns call result as {
+   *     status: number;
+   *     body: unknown;
+   *     header: Record<string, string[]>
+   *   }
    */
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-  public async call<TResult = unknown, TBody = unknown>(
+  public async call(
     stepName: string,
-    url: string,
-    method: HTTPMethods,
-    body?: TBody,
-    headers?: Record<string, string>
-  ) {
+    settings: {
+      url: string;
+      method?: HTTPMethods;
+      body?: unknown;
+      headers?: Record<string, string>;
+    }
+  ): Promise<CallResponse> {
+    const { url, method = "GET", body, headers = {} } = settings;
+
     const result = await this.addStep(
-      new LazyCallStep<string>(stepName, url, method, body, headers ?? {})
+      new LazyCallStep<CallResponse | string>(stepName, url, method, body, headers ?? {})
     );
 
+    // <for backwards compatibity>
+    // if you transition to upstash/workflow from upstash/qstash,
+    // the out field in the steps will be the body of the response.
+    // we need to handle them explicitly here
+    if (typeof result === "string") {
+      try {
+        const body = JSON.parse(result);
+        return {
+          status: 200,
+          header: {},
+          body,
+        };
+      } catch {
+        return {
+          status: 200,
+          header: {},
+          body: result,
+        };
+      }
+    }
+    // </for backwards compatibity>
+
     try {
-      return JSON.parse(result) as TResult;
+      return {
+        ...result,
+        body: JSON.parse(result.body as string),
+      };
     } catch {
-      return result as TResult;
+      return result;
     }
   }
 
