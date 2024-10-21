@@ -9,13 +9,13 @@
 
 **Upstash Workflow** lets you write durable, reliable and performant serverless functions. Get delivery guarantees, automatic retries on failure, scheduling and more without managing any infrastructure.
 
-See [the documentation](https://upstash.com/docs/qstash/workflow/getstarted) for more details
+See [the documentation](https://upstash.com/docs/workflow/getstarted) for more details
 
 ## Quick Start
 
 Here, we will briefly showcase how you can get started with Upstash Workflow.
 
-Alternatively, you can check [our quickstarts for different frameworks](https://upstash.com/docs/qstash/workflow/quickstarts/platforms), including [Next.js](https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs) and [Cloudflare](https://upstash.com/docs/qstash/workflow/quickstarts/cloudflare-workers).
+Alternatively, you can check [our quickstarts for different frameworks](https://upstash.com/docs/workflow/quickstarts/platforms), including [Next.js](https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs) and [Cloudflare](https://upstash.com/docs/workflow/quickstarts/cloudflare-workers).
 
 ### Install
 
@@ -72,11 +72,11 @@ The kinds of steps which are available are:
 - `context.waitForEvent`: wait for an event
 - `context.notify`: notify an event to make workflows waiting for the event continue
 
-You can [learn more about these methods from our documentation](https://upstash.com/docs/qstash/workflow/basics/context).
+You can [learn more about these methods from our documentation](https://upstash.com/docs/workflow/basics/context).
 
 ### Workflow Client
 
-You can use [the Upstash Workflow client](https://upstash.com/docs/qstash/workflow/basics/client) to cancel workflows, notify workflows
+You can use [the Upstash Workflow client](https://upstash.com/docs/workflow/basics/client) to cancel workflows, notify workflows
 waiting for an event or get the workflows waiting for an event:
 
 ```ts
