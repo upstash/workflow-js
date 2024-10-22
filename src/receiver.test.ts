@@ -74,7 +74,8 @@ async function createSignedRequest({
 const currentSigningKey = nanoid();
 const nextSigningKey = nanoid();
 
-const randomBody = btoa(nanoid());
+const randomBodyRaw = nanoid();
+const randomBody = btoa(randomBodyRaw);
 
 const token = nanoid();
 const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
@@ -145,6 +146,7 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await endpoint(requestWithoutSignature);
+          expect(response.status).toBe(500);
           const body = (await response.json()) as FailureFunctionPayload;
           expect(body.message).toBe(
             "Failed to verify that the Workflow request comes from QStash: Error: `Upstash-Signature` header is not passed.\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
@@ -167,6 +169,7 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await endpoint(requestWithoutSignature);
+          expect(response.status).toBe(500);
           const body = (await response.json()) as FailureFunctionPayload;
           expect(body.message).toBe(
             "Failed to verify that the Workflow request comes from QStash: SignatureError: Invalid Compact JWS\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
@@ -190,7 +193,8 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           called = true;
-          await endpoint(requestWithHeader);
+          const response = await endpoint(requestWithHeader);
+          expect(response.status).toBe(200);
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -223,6 +227,7 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await endpoint(thirdPartyRequestWithoutHeader);
+          expect(response.status).toBe(500);
           const body = (await response.json()) as FailureFunctionPayload;
           expect(body.message).toBe(
             "Failed to verify that the Workflow request comes from QStash: Error: `Upstash-Signature` header is not passed.\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
@@ -252,6 +257,7 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await endpoint(thirdPartyRequestWithoutHeader);
+          expect(response.status).toBe(500);
           const body = (await response.json()) as FailureFunctionPayload;
           expect(body.message).toBe(
             "Failed to verify that the Workflow request comes from QStash: SignatureError: Invalid Compact JWS\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
@@ -263,7 +269,13 @@ describe("receiver", () => {
     });
 
     test("should allow request with signature", async () => {
-      const body = JSON.stringify({ status: 200, body: randomBody });
+      const header = { myHeader: ["my-value"] };
+      const body = JSON.stringify({
+        status: 200,
+        body: randomBody,
+        header,
+        otherField: 1,
+      });
       const thirdPartyRequestWithHeader = await createSignedRequest({
         url: WORKFLOW_ENDPOINT,
         method: "POST",
@@ -284,7 +296,8 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           called = true;
-          await endpoint(thirdPartyRequestWithHeader);
+          const response = await endpoint(thirdPartyRequestWithHeader);
+          expect(response.status).toBe(200);
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -295,7 +308,11 @@ describe("receiver", () => {
             stepId: 4,
             stepName: "my-step",
             stepType: "Run",
-            out: atob(randomBody),
+            out: JSON.stringify({
+              status: 200,
+              body: randomBodyRaw,
+              header,
+            }),
             concurrent: 1,
           },
         },
@@ -328,6 +345,7 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await endpoint(requestWithoutHeader);
+          expect(response.status).toBe(500);
           const body = (await response.json()) as FailureFunctionPayload;
           expect(body.message).toBe(
             "Failed to verify that the Workflow request comes from QStash: Error: `Upstash-Signature` header is not passed.\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
@@ -351,6 +369,7 @@ describe("receiver", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await endpoint(requestWithoutHeader);
+          expect(response.status).toBe(500);
           const body = (await response.json()) as FailureFunctionPayload;
           expect(body.message).toBe(
             "Failed to verify that the Workflow request comes from QStash: SignatureError: Invalid Compact JWS\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"

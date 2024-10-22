@@ -121,7 +121,7 @@ export const driveWorkflow = async ({
   for (const { stepsToAdd, responseFields, receivesRequest } of iterations) {
     steps.push(...stepsToAdd);
     await mockQStashServer({
-      execute: () => execute(initialPayload, steps),
+      execute: async () => execute(initialPayload, steps),
       responseFields,
       receivesRequest,
     });

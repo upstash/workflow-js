@@ -197,7 +197,13 @@ describe("disabled workflow context", () => {
           token,
           body: [
             {
-              body: '{"stepId":1,"stepName":"step","stepType":"Run","out":"result","concurrent":1}',
+              body: JSON.stringify({
+                stepId: 1,
+                stepName: "step",
+                stepType: "Run",
+                out: '"result"',
+                concurrent: 1,
+              }),
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "upstash-feature-set": "WF_NoDelete",
@@ -245,7 +251,13 @@ describe("disabled workflow context", () => {
           token,
           body: [
             {
-              body: '{"stepId":1,"stepName":"step","stepType":"Run","out":"result","concurrent":1}',
+              body: JSON.stringify({
+                stepId: 1,
+                stepName: "step",
+                stepType: "Run",
+                out: '"result"',
+                concurrent: 1,
+              }),
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "upstash-feature-set": "WF_NoDelete",
@@ -294,7 +306,13 @@ describe("disabled workflow context", () => {
           token,
           body: [
             {
-              body: '{"stepId":1,"stepName":"step","stepType":"Run","out":"result","concurrent":1}',
+              body: JSON.stringify({
+                stepId: 1,
+                stepName: "step",
+                stepType: "Run",
+                out: '"result"',
+                concurrent: 1,
+              }),
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "upstash-feature-set": "WF_NoDelete",

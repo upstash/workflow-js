@@ -129,7 +129,10 @@ describe("auto-executor", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
               },
-              body: JSON.stringify(singleStep),
+              body: JSON.stringify({
+                ...singleStep,
+                out: JSON.stringify(singleStep.out),
+              }),
             },
           ],
         },

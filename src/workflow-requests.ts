@@ -215,15 +215,16 @@ export const handleThirdPartyCallResult = async (
         retries
       );
 
-      const callResultStep: Step<CallResponse> = {
+      const callResponse: CallResponse = {
+        status: callbackMessage.status,
+        body: atob(callbackMessage.body),
+        header: callbackMessage.header,
+      };
+      const callResultStep: Step<string> = {
         stepId: Number(stepIdString),
         stepName,
         stepType,
-        out: {
-          status: callbackMessage.status,
-          body: atob(callbackMessage.body),
-          header: callbackMessage.header,
-        },
+        out: JSON.stringify(callResponse),
         concurrent: Number(concurrentString),
       };
 
