@@ -137,7 +137,6 @@ describe("context tests", () => {
             body: '{"stepId":1,"stepName":"my-step","stepType":"Run","out":"\\"my-result\\"","concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
-              "upstash-feature-set": "WF_NoDelete",
               "content-type": "application/json",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
@@ -186,7 +185,6 @@ describe("context tests", () => {
             },
             timeout: "20s",
             timeoutHeaders: {
-              "Upstash-Feature-Set": ["WF_NoDelete"],
               "Content-Type": ["application/json"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
               "Upstash-Retries": ["3"],
@@ -236,7 +234,6 @@ describe("context tests", () => {
               body: '{"stepId":0,"stepName":"my-wait-step","stepType":"Wait","waitEventId":"my-event-id","timeout":"20s","concurrent":2,"targetStep":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
-                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -251,7 +248,6 @@ describe("context tests", () => {
               body: '{"stepId":0,"stepName":"my-run-step","stepType":"Run","concurrent":2,"targetStep":2}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
-                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",

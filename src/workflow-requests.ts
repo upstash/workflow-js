@@ -287,9 +287,11 @@ export const getHeaders = (
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
-    [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
-    [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
   };
+
+  if (!step?.callUrl) {
+    baseHeaders[`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`] = WORKFLOW_PROTOCOL_VERSION;
+  }
 
   if (failureUrl) {
     if (!step?.callUrl) {
@@ -302,6 +304,7 @@ export const getHeaders = (
   // for call url, retry is 0
   if (step?.callUrl) {
     baseHeaders["Upstash-Retries"] = "0";
+    baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete";
 
     // if some retries is set, use it in callback and failure callback
     if (retries) {
