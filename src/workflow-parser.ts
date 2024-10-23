@@ -80,7 +80,7 @@ const parsePayload = async (rawPayload: string, debug?: WorkflowLogger) => {
       // if event is a wait event, overwrite the out with WaitStepResponse:
       if (step.waitEventId) {
         const newOut: WaitStepResponse = {
-          eventData: step.out,
+          eventData: step.out ? decodeBase64(step.out as string) : undefined,
           timeout: step.waitTimeout ?? false,
         };
         step.out = newOut;
