@@ -125,7 +125,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
   const { POST: endpoint } = workflowServe<TInitialPayload>(routeFunction, {
     qstashClient,
     url: `http://localhost:${port}`,
-    // verbose: true,
+    verbose: true,
     failureFunction,
     retries,
   });

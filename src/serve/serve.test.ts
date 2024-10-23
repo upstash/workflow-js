@@ -49,7 +49,8 @@ describe("serve", () => {
     });
     await mockQStashServer({
       execute: async () => {
-        await endpoint(request);
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
       },
       responseFields: { body: "msgId", status: 200 },
       receivesRequest: {
@@ -93,14 +94,14 @@ describe("serve", () => {
         stepId: 1,
         stepName: "step1",
         stepType: "Run",
-        out: `processed '${initialPayload}'`,
+        out: JSON.stringify(`processed '${initialPayload}'`),
         concurrent: 1,
       },
       {
         stepId: 2,
         stepName: "step2",
         stepType: "Run",
-        out: `processed 'processed '${initialPayload}''`,
+        out: JSON.stringify(`processed 'processed '${initialPayload}''`),
         concurrent: 1,
       },
     ];
@@ -108,7 +109,8 @@ describe("serve", () => {
     await driveWorkflow({
       execute: async (initialPayload, steps) => {
         const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
-        await endpoint(request);
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
       },
       initialPayload,
       iterations: [
@@ -129,6 +131,7 @@ describe("serve", () => {
                 headers: {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-feature-set": "WF_NoDelete",
                   "upstash-retries": "3",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
@@ -155,6 +158,7 @@ describe("serve", () => {
                 headers: {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-feature-set": "WF_NoDelete",
                   "upstash-method": "POST",
                   "upstash-retries": "3",
                   "upstash-workflow-runid": workflowRunId,
@@ -335,7 +339,7 @@ describe("serve", () => {
                 "upstash-workflow-runid": "wfr-foo",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
               },
-              body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"combined results: result 1,result 2","concurrent":1}',
+              body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
           ],
         },
@@ -358,7 +362,8 @@ describe("serve", () => {
       let called = false;
       await mockQStashServer({
         execute: async () => {
-          await endpoint(request);
+          const result = await endpoint(request);
+          expect(result.status).toBe(200);
           called = true;
         },
         responseFields: { body: { messageId: "some-message-id" }, status: 200 },
@@ -372,6 +377,7 @@ describe("serve", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-delay": "1s",
+                "upstash-feature-set": "WF_NoDelete",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -398,7 +404,8 @@ describe("serve", () => {
       let called = false;
       await mockQStashServer({
         execute: async () => {
-          await endpoint(request);
+          const response = await endpoint(request);
+          expect(response.status).toBe(200);
           called = true;
         },
         responseFields: { body: { messageId: "some-message-id" }, status: 200 },
@@ -415,6 +422,7 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-feature-set": "WF_NoDelete",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -446,7 +454,8 @@ describe("serve", () => {
       });
       await mockQStashServer({
         execute: async () => {
-          await endpoint(request);
+          const response = await endpoint(request);
+          expect(response.status).toBe(200);
           called = true;
         },
         responseFields: { body: { messageId: "some-message-id" }, status: 200 },
@@ -463,6 +472,7 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-feature-set": "WF_NoDelete",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,

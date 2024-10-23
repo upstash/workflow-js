@@ -209,10 +209,7 @@ describe("Workflow Requests", () => {
             stepId: 3,
             stepName: stepName,
             stepType: stepType,
-            out: {
-              body: thirdPartyCallResult,
-              status: 200,
-            },
+            out: '{"status":200,"body":"third-party-call-result"}',
             concurrent: 1,
           },
           headers: {

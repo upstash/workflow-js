@@ -377,6 +377,8 @@ export class AutoExecutor {
         // if the step is a single step execution or a plan step, we can add sleep headers
         const willWait = singleStep.concurrent === NO_CONCURRENCY || singleStep.stepId === 0;
 
+        singleStep.out = JSON.stringify(singleStep.out);
+
         return singleStep.callUrl
           ? // if the step is a third party call, we call the third party
             // url (singleStep.callUrl) and pass information about the workflow
