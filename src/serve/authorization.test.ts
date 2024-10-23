@@ -206,7 +206,6 @@ describe("disabled workflow context", () => {
               }),
               destination: WORKFLOW_ENDPOINT,
               headers: {
-                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -260,7 +259,6 @@ describe("disabled workflow context", () => {
               }),
               destination: WORKFLOW_ENDPOINT,
               headers: {
-                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -315,7 +313,6 @@ describe("disabled workflow context", () => {
               }),
               destination: WORKFLOW_ENDPOINT,
               headers: {
-                "upstash-feature-set": "WF_NoDelete",
                 "content-type": "application/json",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
