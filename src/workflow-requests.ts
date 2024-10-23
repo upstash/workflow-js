@@ -64,14 +64,22 @@ export const triggerRouteFunction = async ({
   onCleanup: () => Promise<void>;
 }): Promise<Ok<"workflow-finished" | "step-finished", never> | Err<never, Error>> => {
   try {
-    // When onStep completes successfully, it throws an exception named `QStashWorkflowAbort`, indicating that the step has been successfully executed.
+    // When onStep completes successfully, it throws an exception named `QStashWorkflowAbort`,
+    // indicating that the step has been successfully executed.
     // This ensures that onCleanup is only called when no exception is thrown.
     await onStep();
     await onCleanup();
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
-    return error_ instanceof QStashWorkflowAbort ? ok("step-finished") : err(error_);
+    if (!(error_ instanceof QStashWorkflowAbort)) {
+      return err(error_);
+    } else if (error_.cancelWorkflow) {
+      await onCleanup();
+      return ok("workflow-finished");
+    } else {
+      return ok("step-finished");
+    }
   }
 };
 

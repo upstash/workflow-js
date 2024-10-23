@@ -76,7 +76,7 @@ type Charge = {
   success: boolean;
 };
 
-class FinishState {
+export class FinishState {
   public finished = false;
   public finish() {
     this.finished = true;
@@ -755,4 +755,31 @@ describe.skip("live serve tests", () => {
       );
     });
   });
+
+  test(
+    "cancel workflow",
+    async () => {
+      const finishState = new FinishState();
+      await testEndpoint({
+        finalCount: 3,
+        waitFor: 7000,
+        initialPayload: "my-payload",
+        finishState,
+        routeFunction: async (context) => {
+          const input = context.requestPayload;
+          expect(input).toBe("my-payload");
+
+          await context.sleep("sleep", 1);
+
+          finishState.finish();
+          await context.cancel();
+
+          throw new Error("shouldn't reach here");
+        },
+      });
+    },
+    {
+      timeout: 10_000,
+    }
+  );
 });

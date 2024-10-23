@@ -4,7 +4,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { nanoid } from "../utils";
-import { QStashWorkflowError } from "../error";
+import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
@@ -261,5 +261,27 @@ describe("context tests", () => {
         },
       });
     });
+  });
+
+  test("cancel should throw abort with cleanup: true", async () => {
+    const context = new WorkflowContext({
+      qstashClient,
+      initialPayload: "my-payload",
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      headers: new Headers() as Headers,
+      workflowRunId: "wfr-id",
+    });
+    try {
+      await context.cancel();
+    } catch (error) {
+      expect(error instanceof QStashWorkflowAbort).toBeTrue();
+      const _error = error as QStashWorkflowAbort;
+      expect(_error.stepName).toBe("cancel");
+      expect(_error.name).toBe("QStashWorkflowAbort");
+      expect(_error.cancelWorkflow).toBeTrue();
+      return;
+    }
+    throw new Error("Test error: context.cancel should have thrown abort error.");
   });
 });

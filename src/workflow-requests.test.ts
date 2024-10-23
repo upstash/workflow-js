@@ -29,6 +29,7 @@ import {
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
+import { FinishState } from "./integration.test";
 
 describe("Workflow Requests", () => {
   test("triggerFirstInvocation", async () => {
@@ -118,6 +119,37 @@ describe("Workflow Requests", () => {
       });
       expect(result.isErr()).toBeTrue();
     });
+  });
+
+  test("should call cleanup if context.cancel is called", async () => {
+    const workflowRunId = nanoid();
+    const token = "myToken";
+
+    const context = new WorkflowContext({
+      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
+      workflowRunId: workflowRunId,
+      initialPayload: undefined,
+      headers: new Headers({}) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+    });
+
+    const finished = new FinishState();
+    const result = await triggerRouteFunction({
+      onStep: async () => {
+        await context.cancel();
+        await context.run("shouldn't call", () => {
+          throw new Error("shouldn't call context.run");
+        });
+      },
+      onCleanup: async () => {
+        finished.finish();
+      },
+    });
+    finished.check();
+    expect(result.isOk()).toBeTrue();
+    // @ts-expect-error value will be set since result isOk
+    expect(result.value).toBe("workflow-finished");
   });
 
   test("should call publishJSON in triggerWorkflowDelete", async () => {

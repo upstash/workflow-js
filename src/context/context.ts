@@ -13,6 +13,7 @@ import {
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
+import { QStashWorkflowAbort } from "../error";
 
 /**
  * Upstash Workflow context
@@ -201,7 +202,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * const [result1, result2] = await Promise.all([
    *   context.run("step 1", () => {
    *     return "result1"
-   *   })
+   *   }),
    *   context.run("step 2", async () => {
    *     return await fetchResults()
    *   })
@@ -224,6 +225,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
   /**
    * Stops the execution for the duration provided.
    *
+   * ```typescript
+   * await context.sleep('sleep1', 3) // wait for three seconds
+   * ```
+   *
    * @param stepName
    * @param duration sleep duration in seconds
    * @returns undefined
@@ -234,6 +239,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
   /**
    * Stops the execution until the date time provided.
+   *
+   * ```typescript
+   * await context.sleepUntil('sleep1', Date.now() / 1000 + 3) // wait for three seconds
+   * ```
    *
    * @param stepName
    * @param datetime time to sleep until. Can be provided as a number (in unix seconds),
@@ -258,11 +267,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * network call without consuming any runtime.
    *
    * ```ts
-   * const postResult = await context.call<string>(
-   *   "post call step",
-   *   `https://www.some-endpoint.com/api`,
-   *   "POST",
-   *   "my-payload"
+   * const postResult = await context.call("post call step", {
+   *     url: "https://www.some-endpoint.com/api",
+   *     method: "POST",
+   *     body: "my-payload"
+   *   }
    * );
    * ```
    *
@@ -272,7 +281,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * @param stepName
    * @param url url to call
-   * @param method call method
+   * @param method call method. "GET" by default
    * @param body call body
    * @param headers call headers
    * @returns call result as {
@@ -353,6 +362,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * })
    * ```
    *
+   * Alternatively, you can use the `context.notify` method.
+   *
    * @param stepName
    * @param eventId event id to wake up the waiting workflow run
    * @param timeout timeout duration in seconds
@@ -383,6 +394,20 @@ export class WorkflowContext<TInitialPayload = unknown> {
     }
   }
 
+  /**
+   * Notify waiting workflow runs
+   *
+   * ```ts
+   * const { eventId, eventData, notifyResponse } = await context.notify(
+   *   "notify step", "event-id", "event-data"
+   * );
+   * ```
+   *
+   * @param stepName
+   * @param eventId event id to notify
+   * @param eventData event data to notify with
+   * @returns notify response which has event id, event data and list of waiters which were notified
+   */
   public async notify(
     stepName: string,
     eventId: string,
@@ -400,6 +425,17 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result;
     }
+  }
+
+  /**
+   * Cancel the current workflow run
+   *
+   * Will throw QStashWorkflowAbort to stop workflow execution.
+   * Shouldn't be inside try/catch.
+   */
+  public async cancel() {
+    // throw an abort which will make the workflow cancel
+    throw new QStashWorkflowAbort("cancel", undefined, true);
   }
 
   /**

@@ -50,6 +50,13 @@ export class DisabledWorkflowContext<
   }
 
   /**
+   * overwrite cancel method to do nothing
+   */
+  public async cancel() {
+    return;
+  }
+
+  /**
    * copies the passed context to create a DisabledWorkflowContext. Then, runs the
    * route function with the new context.
    *

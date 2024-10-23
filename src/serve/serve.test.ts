@@ -564,7 +564,8 @@ describe("serve", () => {
         },
       }
     );
-    await endpoint(request);
+    const response = await endpoint(request);
+    expect(response.status).toBe(200);
     expect(called).toBeTrue();
   });
 
@@ -588,5 +589,40 @@ describe("serve", () => {
       },
     });
     expect(receiver).toBeDefined();
+  });
+
+  test("should call qstash to cancel workflow on context.cancel", async () => {
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", []);
+    let called = false;
+    let runs = false;
+    const { handler: endpoint } = serve(
+      async (context) => {
+        called = true;
+        await context.cancel();
+        await context.run("wont run", () => {
+          runs = true;
+        });
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        verbose: true,
+      }
+    );
+
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
+      },
+      responseFields: { body: undefined, status: 200 },
+      receivesRequest: {
+        method: "DELETE",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/wfr-foo?cancel=false`,
+        token,
+      },
+    });
+    expect(called).toBeTrue();
+    expect(runs).toBeFalse();
   });
 });
