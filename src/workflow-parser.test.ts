@@ -228,6 +228,7 @@ describe("Workflow Parser", () => {
     });
 
     test("should overwrite the out field of wait step", async () => {
+      const eventData = "notify-data";
       const timeoutStep: Step = {
         stepId: 1,
         stepName: "wait-step-name-1",
@@ -242,7 +243,7 @@ describe("Workflow Parser", () => {
         stepId: 2,
         stepName: "wait-step-name-2",
         stepType: "Wait",
-        out: "notify-data",
+        out: btoa(eventData),
         waitTimeout: false,
         waitEventId: "wait-event-2",
         concurrent: 1,
@@ -285,7 +286,7 @@ describe("Workflow Parser", () => {
       expect(steps[1].out).toEqual(timeoutResponse);
 
       const notifyResponse: WaitStepResponse = {
-        eventData: "notify-data",
+        eventData,
         timeout: false,
       };
       expect(steps[2].out).toEqual(notifyResponse);

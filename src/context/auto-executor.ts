@@ -356,7 +356,7 @@ export class AutoExecutor {
         body: JSON.stringify(waitBody),
         headers,
         method: "POST",
-        parseResponseAsJson: false
+        parseResponseAsJson: false,
       });
 
       throw new QStashWorkflowAbort(steps[0].stepName, steps[0]);
