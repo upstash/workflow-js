@@ -59,9 +59,11 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 export const triggerRouteFunction = async ({
   onCleanup,
   onStep,
+  onCancel,
 }: {
   onStep: () => Promise<void>;
   onCleanup: () => Promise<void>;
+  onCancel: () => Promise<void>;
 }): Promise<Ok<"workflow-finished" | "step-finished", never> | Err<never, Error>> => {
   try {
     // When onStep completes successfully, it throws an exception named `QStashWorkflowAbort`,
@@ -75,7 +77,7 @@ export const triggerRouteFunction = async ({
     if (!(error_ instanceof QStashWorkflowAbort)) {
       return err(error_);
     } else if (error_.cancelWorkflow) {
-      await onCleanup();
+      await onCancel();
       return ok("workflow-finished");
     } else {
       return ok("step-finished");

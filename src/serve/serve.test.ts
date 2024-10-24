@@ -618,7 +618,7 @@ describe("serve", () => {
       responseFields: { body: undefined, status: 200 },
       receivesRequest: {
         method: "DELETE",
-        url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/wfr-foo?cancel=false`,
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/wfr-foo?cancel=true`,
         token,
       },
     });

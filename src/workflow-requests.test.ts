@@ -76,6 +76,9 @@ describe("Workflow Requests", () => {
         onCleanup: async () => {
           await Promise.resolve();
         },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
+        },
       });
       expect(result.isOk()).toBeTrue();
       // @ts-expect-error value will be set since stepFinish isOk
@@ -89,6 +92,9 @@ describe("Workflow Requests", () => {
         },
         onCleanup: async () => {
           await Promise.resolve();
+        },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
         },
       });
       expect(result.isOk()).toBeTrue();
@@ -104,6 +110,9 @@ describe("Workflow Requests", () => {
         onCleanup: async () => {
           await Promise.resolve();
         },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
+        },
       });
       expect(result.isErr()).toBeTrue();
     });
@@ -116,12 +125,15 @@ describe("Workflow Requests", () => {
         onCleanup: () => {
           throw new Error("Something went wrong!");
         },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
+        },
       });
       expect(result.isErr()).toBeTrue();
     });
   });
 
-  test("should call cleanup if context.cancel is called", async () => {
+  test("should call onCancel if context.cancel is called", async () => {
     const workflowRunId = nanoid();
     const token = "myToken";
 
@@ -143,6 +155,9 @@ describe("Workflow Requests", () => {
         });
       },
       onCleanup: async () => {
+        throw new Error("shouldn't call");
+      },
+      onCancel: async () => {
         finished.finish();
       },
     });

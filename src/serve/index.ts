@@ -1,3 +1,4 @@
+import { makeCancelRequest } from "../client/utils";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
@@ -159,6 +160,9 @@ export const serve = <
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async () => {
               await triggerWorkflowDelete(workflowContext, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
             },
           });
 

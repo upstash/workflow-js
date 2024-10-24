@@ -1,6 +1,6 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
+import { makeCancelRequest, makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -37,12 +37,7 @@ export class Client {
    * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
    */
   public async cancel({ workflowRunId }: { workflowRunId: string }) {
-    const result = (await this.client.http.request({
-      path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
-      method: "DELETE",
-      parseResponseAsJson: false,
-    })) as { error: string } | undefined;
-    return result ?? true;
+    return await makeCancelRequest(this.client.http, workflowRunId);
   }
 
   /**

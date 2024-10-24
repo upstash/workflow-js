@@ -27,6 +27,15 @@ export const makeGetWaitersRequest = async (
   return result;
 };
 
+export const makeCancelRequest = async (requester: Client["http"], workflowRunId: string) => {
+  const result = (await requester.request({
+    path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
+    method: "DELETE",
+    parseResponseAsJson: false,
+  })) as { error: string } | undefined;
+  return result ?? true;
+};
+
 export const getSteps = async (
   requester: Client["http"],
   workflowRunId: string,
