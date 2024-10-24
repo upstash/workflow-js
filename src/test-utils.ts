@@ -76,7 +76,7 @@ export const mockQStashServer = async ({
         }
       } catch (error) {
         if (error instanceof Error) {
-          console.error("Assertion error:", error.message);
+          console.error(error);
           return new Response(`assertion in mock QStash failed.`, {
             status: 400,
           });

@@ -79,6 +79,8 @@ export const serve = <
     const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
       requestPayload,
       isFirstInvocation,
+      workflowRunId,
+      qstashClient.http,
       debug
     );
 
@@ -109,7 +111,6 @@ export const serve = <
       qstashClient,
       workflowRunId,
       initialPayload: initialPayloadParser(rawInitialPayload),
-      rawInitialPayload,
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
       url: workflowUrl,

@@ -82,7 +82,6 @@ export class DisabledWorkflowContext<
       url: context.url,
       failureUrl: context.failureUrl,
       initialPayload: context.requestPayload,
-      rawInitialPayload: context.rawInitialPayload,
       env: context.env,
       retries: context.retries,
     });

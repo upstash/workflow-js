@@ -20,6 +20,8 @@ import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, nanoid } from "./utils";
+import { getSteps } from "./client/utils";
+import { Client } from "@upstash/qstash";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -48,8 +50,9 @@ export const getPayload = async (request: Request) => {
  * @param rawPayload body of the request as a string as explained above
  * @returns intiial payload and list of steps
  */
-const parsePayload = async (rawPayload: string, debug?: WorkflowLogger) => {
-  const [encodedInitialPayload, ...encodedSteps] = JSON.parse(rawPayload) as RawStep[];
+const parsePayload = async (payload: string | RawStep[], debug?: WorkflowLogger) => {
+  const [encodedInitialPayload, ...encodedSteps] =
+    typeof payload === "string" ? (JSON.parse(payload) as RawStep[]) : payload;
 
   // decode initial payload:
   const rawInitialPayload = decodeBase64(encodedInitialPayload.body);
@@ -220,6 +223,8 @@ export const validateRequest = (
 export const parseRequest = async (
   requestPayload: string | undefined,
   isFirstInvocation: boolean,
+  workflowRunId: string,
+  requester: Client["http"],
   debug?: WorkflowLogger
 ): Promise<{
   rawInitialPayload: string;
@@ -234,11 +239,17 @@ export const parseRequest = async (
       isLastDuplicate: false,
     };
   } else {
-    // if not the first invocation, make sure that body is not empty and parse payload
     if (!requestPayload) {
-      throw new QStashWorkflowError("Only first call can have an empty body");
+      await debug?.log(
+        "INFO",
+        "ENDPOINT_START",
+        "request payload is empty, steps will be fetched from QStash."
+      );
     }
-    const { rawInitialPayload, steps } = await parsePayload(requestPayload, debug);
+    const { rawInitialPayload, steps } = await parsePayload(
+      requestPayload ? requestPayload : await getSteps(requester, workflowRunId),
+      debug
+    );
     const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
     const deduplicatedSteps = deduplicateSteps(steps);
 
@@ -306,14 +317,19 @@ export const handleFailure = async <TInitialPayload>(
       steps,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       isLastDuplicate: _isLastDuplicate,
-    } = await parseRequest(decodeBase64(sourceBody), false, debug);
+    } = await parseRequest(
+      decodeBase64(sourceBody),
+      false,
+      workflowRunId,
+      qstashClient.http,
+      debug
+    );
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
       workflowRunId,
       initialPayload: initialPayloadParser(rawInitialPayload),
-      rawInitialPayload,
       headers: recreateUserHeaders(new Headers(sourceHeader) as Headers),
       steps,
       url: url,

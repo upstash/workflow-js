@@ -118,10 +118,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly headers: Headers;
   /**
-   * initial payload as a raw string
-   */
-  public readonly rawInitialPayload: string;
-  /**
    * Map of environment variables and their values.
    *
    * Can be set using the `env` option of serve:
@@ -156,7 +152,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     failureUrl,
     debug,
     initialPayload,
-    rawInitialPayload,
     env,
     retries,
   }: {
@@ -168,7 +163,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     failureUrl?: string;
     debug?: WorkflowLogger;
     initialPayload: TInitialPayload;
-    rawInitialPayload?: string; // optional for tests
     env?: Record<string, string | undefined>;
     retries?: number;
   }) {
@@ -179,7 +173,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.failureUrl = failureUrl;
     this.headers = headers;
     this.requestPayload = initialPayload;
-    this.rawInitialPayload = rawInitialPayload ?? JSON.stringify(this.requestPayload);
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
 

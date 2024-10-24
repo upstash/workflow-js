@@ -1,5 +1,6 @@
 import { Client } from "@upstash/qstash";
-import { NotifyResponse, Waiter } from "../types";
+import { NotifyResponse, RawStep, Waiter } from "../types";
+import { WorkflowLogger } from "../logger";
 
 export const makeNotifyRequest = async (
   requester: Client["http"],
@@ -24,4 +25,16 @@ export const makeGetWaitersRequest = async (
     method: "GET",
   })) as Required<Waiter>[];
   return result;
+};
+
+export const getSteps = async (
+  requester: Client["http"],
+  workflowRunId: string,
+  debug?: WorkflowLogger
+): Promise<RawStep[]> => {
+  await debug?.log("INFO", "ENDPOINT_START", "Pulling steps from QStash.");
+  return (await requester.request({
+    path: ["v2", "workflows", "runs", workflowRunId],
+    parseResponseAsJson: true,
+  })) as RawStep[];
 };
