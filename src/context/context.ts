@@ -13,7 +13,7 @@ import {
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
-import { QStashWorkflowAbort } from "../error";
+import { WorkflowAbort } from "../error";
 
 /**
  * Upstash Workflow context
@@ -423,12 +423,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
   /**
    * Cancel the current workflow run
    *
-   * Will throw QStashWorkflowAbort to stop workflow execution.
+   * Will throw WorkflowAbort to stop workflow execution.
    * Shouldn't be inside try/catch.
    */
   public async cancel() {
     // throw an abort which will make the workflow cancel
-    throw new QStashWorkflowAbort("cancel", undefined, true);
+    throw new WorkflowAbort("cancel", undefined, true);
   }
 
   /**

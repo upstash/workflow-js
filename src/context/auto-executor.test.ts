@@ -6,7 +6,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { nanoid } from "../utils";
 import { AutoExecutor } from "./auto-executor";
 import type { Step } from "../types";
-import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
+import { WorkflowAbort, WorkflowError } from "../error";
 
 class SpyAutoExecutor extends AutoExecutor {
   public declare getParallelCallState;
@@ -106,7 +106,7 @@ describe("auto-executor", () => {
           const throws = context.run("attemptCharge", () => {
             return { input: context.requestPayload, success: false };
           });
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -195,7 +195,7 @@ describe("auto-executor", () => {
             context.sleep("sleep for some time", 123),
             context.sleepUntil("sleep until next day", 123_123),
           ]);
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -262,7 +262,7 @@ describe("auto-executor", () => {
             context.sleep("sleep for some time", 123),
             context.sleepUntil("sleep until next day", 123_123),
           ]);
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -314,7 +314,7 @@ describe("auto-executor", () => {
             context.sleep("sleep for some time", 123),
             context.sleepUntil("sleep until next day", 123_123),
           ]);
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -366,7 +366,7 @@ describe("auto-executor", () => {
             context.sleep("sleep for some time", 123),
             context.sleepUntil("sleep until next day", 123_123),
           ]);
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -434,7 +434,7 @@ describe("auto-executor", () => {
           return true;
         });
         expect(throws).rejects.toThrow(
-          new QStashWorkflowError(
+          new WorkflowError(
             "Incompatible step name. Expected 'wrongName', got 'attemptCharge' from the request"
           )
         );
@@ -443,7 +443,7 @@ describe("auto-executor", () => {
         const context = getContext([initialStep, singleStep]);
         const throws = context.sleep("attemptCharge", 10);
         expect(throws).rejects.toThrow(
-          new QStashWorkflowError(
+          new WorkflowError(
             "Incompatible step type. Expected 'SleepFor', got 'Run' from the request"
           )
         );
@@ -460,7 +460,7 @@ describe("auto-executor", () => {
           context.sleepUntil("sleep until next day", 123_123),
         ]);
         expect(throws).rejects.toThrow(
-          new QStashWorkflowError(
+          new WorkflowError(
             "Incompatible step name. Expected 'wrongName', got 'sleep for some time' from the request"
           )
         );
@@ -474,7 +474,7 @@ describe("auto-executor", () => {
           context.sleepUntil("sleep until next day", 123_123),
         ]);
         expect(throws).rejects.toThrow(
-          new QStashWorkflowError(
+          new WorkflowError(
             "Incompatible step type. Expected 'SleepUntil', got 'SleepFor' from the request"
           )
         );
@@ -490,7 +490,7 @@ describe("auto-executor", () => {
           context.sleep("wrongName", 10), // wrong step name
           context.sleepUntil("sleep until next day", 123_123),
         ]);
-        expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+        expect(throws).rejects.toThrowError(WorkflowAbort);
       });
       test("step type", () => {
         const context = getContext([initialStep, ...parallelSteps.slice(0, 3)]);
@@ -500,7 +500,7 @@ describe("auto-executor", () => {
           context.sleepUntil("sleep for some time", 10), // wrong step type
           context.sleepUntil("sleep until next day", 123_123),
         ]);
-        expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+        expect(throws).rejects.toThrowError(WorkflowAbort);
       });
     });
 
@@ -514,7 +514,7 @@ describe("auto-executor", () => {
           context.sleepUntil("sleep until next day", 123_123),
         ]);
         expect(throws).rejects.toThrowError(
-          new QStashWorkflowError(
+          new WorkflowError(
             "Incompatible steps detected in parallel execution: Incompatible step name. Expected 'wrongName', got 'sleep for some time' from the request\n" +
               '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
               '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
@@ -532,7 +532,7 @@ describe("auto-executor", () => {
           context.sleepUntil("sleep until next day", 123_123),
         ]);
         expect(throws).rejects.toThrowError(
-          new QStashWorkflowError(
+          new WorkflowError(
             "Incompatible steps detected in parallel execution: Incompatible step type. Expected 'SleepUntil', got 'SleepFor' from the request\n" +
               '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
               '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +

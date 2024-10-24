@@ -16,7 +16,7 @@ import {
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
-import { formatWorkflowError, QStashWorkflowError } from "./error";
+import { formatWorkflowError, WorkflowError } from "./error";
 import { Client } from "@upstash/qstash";
 import { processOptions } from "./serve/options";
 import { FinishState } from "./integration.test";
@@ -58,7 +58,7 @@ describe("Workflow Parser", () => {
       });
 
       const throws = () => validateRequest(request);
-      expect(throws).toThrow(new QStashWorkflowError("Couldn't get workflow id from header"));
+      expect(throws).toThrow(new WorkflowError("Couldn't get workflow id from header"));
     });
 
     test("should throw when protocol version is incompatible", () => {
@@ -71,7 +71,7 @@ describe("Workflow Parser", () => {
 
       const throws = () => validateRequest(request);
       expect(throws).toThrow(
-        new QStashWorkflowError(
+        new WorkflowError(
           `Incompatible workflow sdk protocol version.` +
             ` Expected ${WORKFLOW_PROTOCOL_VERSION}, got ${requestProtocol} from the request.`
         )
@@ -707,7 +707,7 @@ describe("Workflow Parser", () => {
     const body = {
       status: 201,
       header: { myHeader: "value" },
-      body: btoa(JSON.stringify(formatWorkflowError(new QStashWorkflowError(failMessage)))),
+      body: btoa(JSON.stringify(formatWorkflowError(new WorkflowError(failMessage)))),
       url: WORKFLOW_ENDPOINT,
       sourceHeader: {
         Authorization: authorization,
@@ -749,7 +749,7 @@ describe("Workflow Parser", () => {
       expect(result2.isOk() && result2.value === "not-failure-callback").toBeTrue();
     });
 
-    test("should throw QStashWorkflowError if header is set but function is not passed", async () => {
+    test("should throw WorkflowError if header is set but function is not passed", async () => {
       const request = new Request(WORKFLOW_ENDPOINT, {
         headers: {
           [WORKFLOW_FAILURE_HEADER]: "true",
@@ -758,7 +758,7 @@ describe("Workflow Parser", () => {
 
       const result = await handleFailure(request, "", client, initialPayloadParser);
       expect(result.isErr()).toBeTrue();
-      expect(result.isErr() && result.error.name).toBe(QStashWorkflowError.name);
+      expect(result.isErr() && result.error.name).toBe(WorkflowError.name);
       expect(result.isErr() && result.error.message).toBe(
         "Workflow endpoint is called to handle a failure," +
           " but a failureFunction is not provided in serve options." +

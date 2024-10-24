@@ -10,7 +10,7 @@ import {
   triggerRouteFunction,
   triggerWorkflowDelete,
 } from "./workflow-requests";
-import { QStashWorkflowAbort } from "./error";
+import { WorkflowAbort } from "./error";
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import type { Step, StepType } from "./types";
@@ -68,10 +68,10 @@ describe("Workflow Requests", () => {
   });
 
   describe("triggerRouteFunction", () => {
-    test("should get step-finished when QStashWorkflowAbort is thrown", async () => {
+    test("should get step-finished when WorkflowAbort is thrown", async () => {
       const result = await triggerRouteFunction({
         onStep: () => {
-          throw new QStashWorkflowAbort("name");
+          throw new WorkflowAbort("name");
         },
         onCleanup: async () => {
           await Promise.resolve();

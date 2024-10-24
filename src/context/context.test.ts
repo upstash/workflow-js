@@ -4,7 +4,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { nanoid } from "../utils";
-import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
+import { WorkflowAbort, WorkflowError } from "../error";
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
@@ -33,7 +33,7 @@ describe("context tests", () => {
       });
     };
     expect(throws).toThrow(
-      new QStashWorkflowError(
+      new WorkflowError(
         "A step can not be run inside another step. Tried to run 'inner step' inside 'outer step'"
       )
     );
@@ -55,7 +55,7 @@ describe("context tests", () => {
       });
     };
     expect(throws).toThrow(
-      new QStashWorkflowError(
+      new WorkflowError(
         "A step can not be run inside another step. Tried to run 'inner sleep' inside 'outer step'"
       )
     );
@@ -77,7 +77,7 @@ describe("context tests", () => {
       });
     };
     expect(throws).toThrow(
-      new QStashWorkflowError(
+      new WorkflowError(
         "A step can not be run inside another step. Tried to run 'inner sleepUntil' inside 'outer step'"
       )
     );
@@ -99,7 +99,7 @@ describe("context tests", () => {
       });
     };
     expect(throws).toThrow(
-      new QStashWorkflowError(
+      new WorkflowError(
         "A step can not be run inside another step. Tried to run 'inner call' inside 'outer step'"
       )
     );
@@ -275,10 +275,10 @@ describe("context tests", () => {
     try {
       await context.cancel();
     } catch (error) {
-      expect(error instanceof QStashWorkflowAbort).toBeTrue();
-      const _error = error as QStashWorkflowAbort;
+      expect(error instanceof WorkflowAbort).toBeTrue();
+      const _error = error as WorkflowAbort;
       expect(_error.stepName).toBe("cancel");
-      expect(_error.name).toBe("QStashWorkflowAbort");
+      expect(_error.name).toBe("WorkflowAbort");
       expect(_error.cancelWorkflow).toBeTrue();
       return;
     }

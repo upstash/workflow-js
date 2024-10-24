@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { QStashWorkflowError } from "./error";
+import { WorkflowError } from "./error";
 import {
   NO_CONCURRENCY,
   WORKFLOW_FAILURE_HEADER,
@@ -175,7 +175,7 @@ const checkIfLastOneIsDuplicate = async (
  * Validates the incoming request checking the workflow protocol
  * version and whether it is the first invocation.
  *
- * Raises `QStashWorkflowError` if:
+ * Raises `WorkflowError` if:
  * - it's not the first invocation and expected protocol version doesn't match
  *   the request.
  * - it's not the first invocation but there is no workflow id in the headers.
@@ -191,7 +191,7 @@ export const validateRequest = (
 
   // if it's not the first invocation, verify that the workflow protocal version is correct
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
-    throw new QStashWorkflowError(
+    throw new WorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
         ` got ${versionHeader} from the request.`
     );
@@ -202,7 +202,7 @@ export const validateRequest = (
     ? `wfr_${nanoid()}`
     : (request.headers.get(WORKFLOW_ID_HEADER) ?? "");
   if (workflowRunId.length === 0) {
-    throw new QStashWorkflowError("Couldn't get workflow id from header");
+    throw new WorkflowError("Couldn't get workflow id from header");
   }
 
   return {
@@ -266,7 +266,7 @@ export const parseRequest = async (
  * attempts to call the failureFunction function.
  *
  * If the header is set but failureFunction is not passed, returns
- * QStashWorkflowError.
+ * WorkflowError.
  *
  * @param request incoming request
  * @param failureFunction function to handle the failure
@@ -287,7 +287,7 @@ export const handleFailure = async <TInitialPayload>(
 
   if (!failureFunction) {
     return err(
-      new QStashWorkflowError(
+      new WorkflowError(
         "Workflow endpoint is called to handle a failure," +
           " but a failureFunction is not provided in serve options." +
           " Either provide a failureUrl or a failureFunction."

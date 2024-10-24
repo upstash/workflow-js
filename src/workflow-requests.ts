@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { QStashWorkflowAbort, QStashWorkflowError } from "./error";
+import { WorkflowAbort, WorkflowError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   DEFAULT_CONTENT_TYPE,
@@ -66,7 +66,7 @@ export const triggerRouteFunction = async ({
   onCancel: () => Promise<void>;
 }): Promise<Ok<"workflow-finished" | "step-finished", never> | Err<never, Error>> => {
   try {
-    // When onStep completes successfully, it throws an exception named `QStashWorkflowAbort`,
+    // When onStep completes successfully, it throws an exception named `WorkflowAbort`,
     // indicating that the step has been successfully executed.
     // This ensures that onCleanup is only called when no exception is thrown.
     await onStep();
@@ -74,7 +74,7 @@ export const triggerRouteFunction = async ({
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
-    if (!(error_ instanceof QStashWorkflowAbort)) {
+    if (!(error_ instanceof WorkflowAbort)) {
       return err(error_);
     } else if (error_.cancelWorkflow) {
       await onCancel();
@@ -262,9 +262,7 @@ export const handleThirdPartyCallResult = async (
   } catch (error) {
     const isCallReturn = request.headers.get("Upstash-Workflow-Callback");
     return err(
-      new QStashWorkflowError(
-        `Error when handling call return (isCallReturn=${isCallReturn}): ${error}`
-      )
+      new WorkflowError(`Error when handling call return (isCallReturn=${isCallReturn}): ${error}`)
     );
   }
 };
@@ -414,7 +412,7 @@ export const verifyRequest = async (
       throw new Error("Signature in `Upstash-Signature` header is not valid");
     }
   } catch (error) {
-    throw new QStashWorkflowError(
+    throw new WorkflowError(
       `Failed to verify that the Workflow request comes from QStash: ${error}\n\n` +
         "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
         "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
