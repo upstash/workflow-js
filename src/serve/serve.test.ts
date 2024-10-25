@@ -131,7 +131,6 @@ describe("serve", () => {
                 headers: {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
-                  "upstash-feature-set": "WF_NoDelete",
                   "upstash-retries": "3",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
@@ -158,7 +157,6 @@ describe("serve", () => {
                 headers: {
                   "content-type": "application/json",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
-                  "upstash-feature-set": "WF_NoDelete",
                   "upstash-method": "POST",
                   "upstash-retries": "3",
                   "upstash-workflow-runid": workflowRunId,
@@ -331,7 +329,6 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "WF_NoDelete",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -377,7 +374,6 @@ describe("serve", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-delay": "1s",
-                "upstash-feature-set": "WF_NoDelete",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -422,7 +418,6 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
-                "upstash-feature-set": "WF_NoDelete",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -472,7 +467,6 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
-                "upstash-feature-set": "WF_NoDelete",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
