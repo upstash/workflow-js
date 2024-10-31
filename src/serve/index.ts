@@ -82,6 +82,7 @@ export const serve = <
       isFirstInvocation,
       workflowRunId,
       qstashClient.http,
+      request.headers.get("upstash-message-id")!,
       debug
     );
 

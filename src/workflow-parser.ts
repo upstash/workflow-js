@@ -225,6 +225,7 @@ export const parseRequest = async (
   isFirstInvocation: boolean,
   workflowRunId: string,
   requester: Client["http"],
+  messageId?: string,
   debug?: WorkflowLogger
 ): Promise<{
   rawInitialPayload: string;
@@ -247,7 +248,7 @@ export const parseRequest = async (
       );
     }
     const { rawInitialPayload, steps } = await parsePayload(
-      requestPayload ? requestPayload : await getSteps(requester, workflowRunId),
+      requestPayload ? requestPayload : await getSteps(requester, workflowRunId, messageId, debug),
       debug
     );
     const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
@@ -296,17 +297,17 @@ export const handleFailure = async <TInitialPayload>(
   }
 
   try {
-    const { status, header, body, url, sourceHeader, sourceBody, workflowRunId } = JSON.parse(
-      requestPayload
-    ) as {
-      status: number;
-      header: Record<string, string[]>;
-      body: string;
-      url: string;
-      sourceHeader: Record<string, string[]>;
-      sourceBody: string;
-      workflowRunId: string;
-    };
+    const { status, header, body, url, sourceHeader, sourceBody, workflowRunId, sourceMessageId } =
+      JSON.parse(requestPayload) as {
+        status: number;
+        header: Record<string, string[]>;
+        body: string;
+        url: string;
+        sourceHeader: Record<string, string[]>;
+        sourceBody: string;
+        workflowRunId: string;
+        sourceMessageId: string;
+      };
 
     const decodedBody = body ? decodeBase64(body) : "{}";
     const errorPayload = JSON.parse(decodedBody) as FailureFunctionPayload;
@@ -322,6 +323,7 @@ export const handleFailure = async <TInitialPayload>(
       false,
       workflowRunId,
       qstashClient.http,
+      sourceMessageId,
       debug
     );
 

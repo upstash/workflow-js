@@ -170,7 +170,7 @@ export const handleThirdPartyCallResult = async (
           throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
         if (!messageId) throw new WorkflowError("message id missing in context.call lazy fetch.");
 
-        const steps = await getSteps(client.http, workflowRunId, debug);
+        const steps = await getSteps(client.http, workflowRunId, messageId, debug);
         const failingStep = steps.find((step) => step.messageId === messageId);
 
         if (!failingStep)

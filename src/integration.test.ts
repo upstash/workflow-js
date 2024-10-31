@@ -783,7 +783,7 @@ describe.skip("live serve tests", () => {
     }
   );
 
-  describe("lazy fetch", () => {
+  describe.skip("lazy fetch", () => {
     // create 5 mb payload.
     // lazy fetch will become enabled for payloads larger than 3mb
     const largeObject = "x".repeat(4 * 1024 * 1024);
@@ -815,12 +815,12 @@ describe.skip("live serve tests", () => {
         timeout: 10_000,
       }
     );
-    test.skip(
+    test(
       "large parallel step response",
       async () => {
         const finishState = new FinishState();
         await testEndpoint({
-          finalCount: 4,
+          finalCount: 11,
           waitFor: 7000,
           initialPayload: "my-payload",
           finishState,
@@ -885,6 +885,7 @@ describe.skip("live serve tests", () => {
         timeout: 10_000,
       }
     );
+
     test(
       "large call response",
       async () => {
