@@ -1,4 +1,4 @@
-# Astro Starter Kit: Basics
+# Upstash Workflow Astro Example
 
 ```sh
 npm create astro@latest -- --template basics
