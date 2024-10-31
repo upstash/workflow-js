@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
+import { getSteps } from "./client/utils";
 
 export const triggerFirstInvocation = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
@@ -158,7 +159,32 @@ export const handleThirdPartyCallResult = async (
 > => {
   try {
     if (request.headers.get("Upstash-Workflow-Callback")) {
-      const callbackMessage = JSON.parse(requestPayload) as {
+      let callbackPayload: string;
+      if (requestPayload) {
+        callbackPayload = requestPayload;
+      } else {
+        const workflowRunId = request.headers.get("upstash-workflow-runid");
+        const messageId = request.headers.get("upstash-message-id");
+
+        if (!workflowRunId)
+          throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
+        if (!messageId) throw new WorkflowError("message id missing in context.call lazy fetch.");
+
+        const steps = await getSteps(client.http, workflowRunId, debug);
+        const failingStep = steps.find((step) => step.messageId === messageId);
+
+        if (!failingStep)
+          throw new WorkflowError(
+            "Failed to submit the context.call." +
+              (steps.length === 0
+                ? "No steps found."
+                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
+          );
+
+        callbackPayload = atob(failingStep.body);
+      }
+
+      const callbackMessage = JSON.parse(callbackPayload) as {
         status: number;
         body: string;
         retried?: number; // only set after the first try
@@ -295,6 +321,7 @@ export const getHeaders = (
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
+    [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
   };
 
   if (!step?.callUrl) {
@@ -306,6 +333,7 @@ export const getHeaders = (
       baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
     }
     baseHeaders["Upstash-Failure-Callback"] = failureUrl;
+    baseHeaders[`Upstash-Failure-Callback-${WORKFLOW_ID_HEADER}`] = workflowRunId;
   }
 
   // if retries is set or if call url is passed, set a retry
@@ -355,6 +383,7 @@ export const getHeaders = (
         "Upstash-Callback-Workflow-CallType": "fromCallback",
         "Upstash-Callback-Workflow-Init": "false",
         "Upstash-Callback-Workflow-Url": workflowUrl,
+        "Upstash-Callback-Feature-Set": "LazyFetch",
 
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),

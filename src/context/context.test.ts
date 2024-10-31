@@ -138,6 +138,7 @@ describe("context tests", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
+              "upstash-feature-set": "LazyFetch",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-retries": "2",
@@ -186,6 +187,7 @@ describe("context tests", () => {
             timeout: "20s",
             timeoutHeaders: {
               "Content-Type": ["application/json"],
+              "Upstash-Feature-Set": ["LazyFetch"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
               "Upstash-Retries": ["3"],
               "Upstash-Workflow-CallType": ["step"],
@@ -235,6 +237,7 @@ describe("context tests", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -249,6 +252,7 @@ describe("context tests", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",

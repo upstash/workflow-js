@@ -392,6 +392,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
       expect(timeoutHeaders).toBeUndefined();
@@ -418,6 +419,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
       expect(timeoutHeaders).toBeUndefined();
@@ -451,10 +453,11 @@ describe("Workflow Requests", () => {
         }
       );
       expect(headers).toEqual({
-        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
+        "Upstash-Callback-Feature-Set": "LazyFetch",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
@@ -487,6 +490,8 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [`Upstash-Failure-Callback-${WORKFLOW_ID_HEADER}`]: workflowRunId,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
         "Upstash-Failure-Callback": failureUrl,
@@ -513,6 +518,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Init": "false",
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
       });
@@ -520,6 +526,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Init": ["false"],
         "Upstash-Workflow-RunId": [workflowRunId],
         "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+        [WORKFLOW_FEATURE_HEADER]: ["LazyFetch"],
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
         "Upstash-Workflow-Runid": [workflowRunId],
         "Upstash-Workflow-CallType": ["step"],
