@@ -5,8 +5,8 @@ import { serve as serveBase } from "../src";
 
 export function serve<TInitialPayload = unknown>(
   routeFunction: (
-    apiContext: APIContext,
-    workflowContext: WorkflowContext<TInitialPayload>
+    workflowContext: WorkflowContext<TInitialPayload>,
+    apiContext: APIContext
   ) => Promise<void>,
   options?: WorkflowServeOptions<Response, TInitialPayload>
 ) {
