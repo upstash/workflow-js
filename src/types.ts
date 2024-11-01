@@ -292,6 +292,5 @@ export type CallResponse = {
   header: Record<string, string[]>;
 };
 
-type Unit = "ms" | "s" | "m" | "h" | "d";
 
-export type Duration = `${number}${Unit}`;
+export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`
