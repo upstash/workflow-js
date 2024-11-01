@@ -3,6 +3,7 @@ import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
+import { Duration } from "./context/types";
 
 /**
  * Interface for Client with required methods
@@ -84,7 +85,7 @@ export type Step<TResult = unknown, TBody = unknown> = {
   /**
    * sleep duration in seconds. Set when context.sleep is used.
    */
-  sleepFor?: number;
+  sleepFor?: number | Duration;
   /**
    * unix timestamp (in seconds) to wait until. Set when context.sleepUntil is used.
    */
