@@ -52,7 +52,7 @@ describe("test steps", () => {
     });
   });
 
-  describe.only("sleep step", () => {
+  describe("sleep step", () => {
     const sleepAmount = 123_123;
     const step = new LazySleepStep(stepName, sleepAmount);
 
