@@ -26,6 +26,8 @@ export class Client {
   /**
    * Cancel an ongoing workflow
    *
+   * Returns true if workflow is canceled succesfully. Otherwise, throws error.
+   *
    * ```ts
    * import { Client } from "@upstash/workflow";
    *

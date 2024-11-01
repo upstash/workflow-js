@@ -28,13 +28,20 @@ export const makeGetWaitersRequest = async (
   return result;
 };
 
+/**
+ * Returns true if workflow is canceled succesfully. Otherwise, throws error.
+ *
+ * @param requester client.http
+ * @param workflowRunId workflow to cancel
+ * @returns true if workflow is canceled
+ */
 export const makeCancelRequest = async (requester: Client["http"], workflowRunId: string) => {
-  const result = (await requester.request({
+  (await requester.request({
     path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
     method: "DELETE",
     parseResponseAsJson: false,
-  })) as { error: string } | undefined;
-  return result ?? true;
+  })) as undefined;
+  return true;
 };
 
 export const getSteps = async (

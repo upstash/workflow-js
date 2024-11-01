@@ -388,13 +388,20 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }
 
   /**
-   * Notify waiting workflow runs
+   * Notify workflow runs waiting for an event
    *
    * ```ts
    * const { eventId, eventData, notifyResponse } = await context.notify(
    *   "notify step", "event-id", "event-data"
    * );
    * ```
+   *
+   * Upon `context.notify`, the workflow runs waiting for the given eventId (context.waitForEvent)
+   * will receive the given event data and resume execution.
+   *
+   * The response includes the same eventId and eventData. Additionally, there is
+   * a notifyResponse field which contains a list of `Waiter` objects, each corresponding
+   * to a notified workflow run.
    *
    * @param stepName
    * @param eventId event id to notify
