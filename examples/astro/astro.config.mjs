@@ -4,7 +4,7 @@ import vercel from '@astrojs/vercel/serverless';
 
 // https://astro.build/config
 export default defineConfig({
-	output: "server",
+  output: "server",
   adapter: vercel(),
-	server: { port: 3001 }
+  server: { port: 3001 }
 });
