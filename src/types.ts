@@ -84,7 +84,7 @@ export type Step<TResult = unknown, TBody = unknown> = {
   /**
    * sleep duration in seconds. Set when context.sleep is used.
    */
-  sleepFor?: number;
+  sleepFor?: number | Duration;
   /**
    * unix timestamp (in seconds) to wait until. Set when context.sleepUntil is used.
    */
@@ -291,3 +291,6 @@ export type CallResponse = {
   body: unknown;
   header: Record<string, string[]>;
 };
+
+
+export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`

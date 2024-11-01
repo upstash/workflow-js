@@ -56,6 +56,9 @@ describe("test steps", () => {
     const sleepAmount = 123_123;
     const step = new LazySleepStep(stepName, sleepAmount);
 
+    const sleepWithDuration = "90s";
+    const stepWithDuration = new LazySleepStep(stepName, sleepWithDuration);
+
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
       expect(step.stepType).toBe("SleepFor");
@@ -77,6 +80,27 @@ describe("test steps", () => {
         stepName,
         stepType: "SleepFor",
         sleepFor: sleepAmount, // adding sleepFor
+        concurrent: 6,
+      });
+    });
+
+    test("should create plan step with duration", () => {
+      expect(stepWithDuration.getPlanStep(concurrent, targetStep)).toEqual({
+        stepId: 0,
+        stepName,
+        stepType: "SleepFor",
+        sleepFor: sleepWithDuration,
+        concurrent,
+        targetStep,
+      });
+    })
+
+    test("should create result step", async () => {
+      expect(await stepWithDuration.getResultStep(6, stepId)).toEqual({
+        stepId,
+        stepName,
+        stepType: "SleepFor",
+        sleepFor: sleepWithDuration,
         concurrent: 6,
       });
     });

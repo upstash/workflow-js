@@ -1,6 +1,7 @@
 import type { Client, HTTPMethods } from "@upstash/qstash";
 import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
 import { makeNotifyRequest } from "../client/utils";
+import type { Duration } from "../types";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -78,10 +79,10 @@ export class LazyFunctionStep<TResult = unknown> extends BaseLazyStep<TResult> {
  * Lazy step definition for `context.sleep` case
  */
 export class LazySleepStep extends BaseLazyStep {
-  private readonly sleep: number;
+  private readonly sleep: number | Duration;
   stepType: StepType = "SleepFor";
 
-  constructor(stepName: string, sleep: number) {
+  constructor(stepName: string, sleep: number | Duration) {
     super(stepName);
     this.sleep = sleep;
   }
