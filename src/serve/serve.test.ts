@@ -633,4 +633,68 @@ describe("serve", () => {
     expect(called).toBeTrue();
     expect(runs).toBeFalse();
   });
+
+  test("should send waitForEvent", async () => {
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
+    const { handler: endpoint } = serve(async (context) => {
+      await context.waitForEvent("waiting step", "wait-event-id", "10d")
+    }, {
+      qstashClient,
+      receiver: undefined,
+    });
+    let called = false;
+    await mockQStashServer({
+      execute: async () => {
+        const result = await endpoint(request);
+        expect(result.status).toBe(200);
+        called = true;
+      },
+      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/wait/wait-event-id`,
+        token,
+        body: {
+          step: {
+            concurrent: 1,
+            stepId: 1,
+            stepName: "waiting step",
+            stepType: "Wait",
+          },
+          timeout: "10d",
+          timeoutHeaders: {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Upstash-Forward-Upstash-Workflow-Sdk-Version": [
+              "1"
+            ],
+            "Upstash-Retries": [
+              "3"
+            ],
+            "Upstash-Workflow-CallType": [
+              "step"
+            ],
+            "Upstash-Workflow-Init": [
+              "false"
+            ],
+            "Upstash-Workflow-RunId": [
+              "wfr-bar"
+            ],
+            "Upstash-Workflow-Runid": [
+              "wfr-bar"
+            ],
+            "Upstash-Workflow-Url": [
+              WORKFLOW_ENDPOINT
+            ],
+          },
+          timeoutUrl: WORKFLOW_ENDPOINT,
+          url: WORKFLOW_ENDPOINT,
+        }
+      },
+    });
+    expect(called).toBeTrue();
+
+  })
+
 });

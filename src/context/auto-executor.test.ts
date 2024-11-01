@@ -193,8 +193,10 @@ describe("auto-executor", () => {
         execute: () => {
           expect(context.executor.getParallelCallState(2, 1)).toBe("first");
           const throws = Promise.all([
-            context.sleep("sleep for some time", 123),
+            context.sleep("sleep for 123s", 123),
+            context.sleep("sleep for 10m", "10m"),
             context.sleepUntil("sleep until next day", 123_123),
+            context.waitForEvent("waitEvent", "my-event", "5m"),
           ]);
           expect(throws).rejects.toThrowError(WorkflowAbort);
         },
@@ -208,7 +210,7 @@ describe("auto-executor", () => {
           token,
           body: [
             {
-              body: '{"stepId":0,"stepName":"sleep for some time","stepType":"SleepFor","sleepFor":123,"concurrent":2,"targetStep":1}',
+              body: '{"stepId":0,"stepName":"sleep for 123s","stepType":"SleepFor","sleepFor":123,"concurrent":4,"targetStep":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
@@ -223,7 +225,21 @@ describe("auto-executor", () => {
               },
             },
             {
-              body: '{"stepId":0,"stepName":"sleep until next day","stepType":"SleepUntil","sleepUntil":123123,"concurrent":2,"targetStep":2}',
+              body: '{"stepId":0,"stepName":"sleep for 10m","stepType":"SleepFor","sleepFor":"10m","concurrent":4,"targetStep":2}',
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "content-type": "application/json",
+                "upstash-delay": "10m",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-retries": "3",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+            {
+              body: '{"stepId":0,"stepName":"sleep until next day","stepType":"SleepUntil","sleepUntil":123123,"concurrent":4,"targetStep":3}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
@@ -237,6 +253,20 @@ describe("auto-executor", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
               },
             },
+            {
+              body: '{"stepId":0,"stepName":"waitEvent","stepType":"Wait","waitEventId":"my-event","timeout":"5m","concurrent":4,"targetStep":4}',
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "content-type": "application/json",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-retries": "3",
+                "upstash-workflow-calltype": "step",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
           ],
         },
       });
@@ -245,11 +275,16 @@ describe("auto-executor", () => {
 
       expect(spyRunParallel).toHaveBeenCalledTimes(1);
       const lazySteps = spyRunParallel.mock.calls[0][0];
-      expect(lazySteps.length).toBe(2);
+      expect(lazySteps.length).toBe(4);
       expect(lazySteps[0].stepType).toBe("SleepFor");
-      expect(lazySteps[1].stepType).toBe("SleepUntil");
-      expect(lazySteps[0].stepName).toBe("sleep for some time");
-      expect(lazySteps[1].stepName).toBe("sleep until next day");
+      expect(lazySteps[1].stepType).toBe("SleepFor");
+      expect(lazySteps[2].stepType).toBe("SleepUntil");
+      expect(lazySteps[3].stepType).toBe("Wait");
+
+      expect(lazySteps[0].stepName).toBe("sleep for 123s");
+      expect(lazySteps[1].stepName).toBe("sleep for 10m");
+      expect(lazySteps[2].stepName).toBe("sleep until next day");
+      expect(lazySteps[3].stepName).toBe("waitEvent");
     });
 
     test("should send plan steps in second encounter: should run the first parallel step", async () => {

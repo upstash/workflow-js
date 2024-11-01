@@ -14,6 +14,7 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
+import type { Duration } from "../types";
 
 /**
  * Upstash Workflow context
@@ -226,7 +227,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param duration sleep duration in seconds
    * @returns undefined
    */
-  public async sleep(stepName: string, duration: number): Promise<void> {
+  public async sleep(stepName: string, duration: number | Duration): Promise<void> {
     await this.addStep(new LazySleepStep(stepName, duration));
   }
 
@@ -367,7 +368,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public async waitForEvent(
     stepName: string,
     eventId: string,
-    timeout: number
+    timeout: number | Duration
   ): Promise<WaitStepResponse> {
     const result = await this.addStep(
       new LazyWaitForEventStep(
