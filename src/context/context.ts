@@ -13,7 +13,7 @@ import {
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
-import { Duration } from "./types";
+import type { Duration } from "../types";
 
 /**
  * Upstash Workflow context

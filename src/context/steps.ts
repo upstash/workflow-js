@@ -1,7 +1,7 @@
 import type { Client, HTTPMethods } from "@upstash/qstash";
 import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
 import { makeNotifyRequest } from "../client/utils";
-import { Duration } from "./types";
+import type { Duration } from "../types";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)

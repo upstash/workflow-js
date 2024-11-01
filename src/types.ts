@@ -3,7 +3,6 @@ import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
-import { Duration } from "./context/types";
 
 /**
  * Interface for Client with required methods
@@ -292,3 +291,7 @@ export type CallResponse = {
   body: unknown;
   header: Record<string, string[]>;
 };
+
+type Unit = "ms" | "s" | "m" | "h" | "d";
+
+export type Duration = `${number}${Unit}`;
