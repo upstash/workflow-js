@@ -8,7 +8,7 @@ export function serve<TInitialPayload = unknown>(
     workflowContext: WorkflowContext<TInitialPayload>,
     apiContext: APIContext
   ) => Promise<void>,
-  options?: WorkflowServeOptions<Response, TInitialPayload>
+  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
 ) {
   const POST: APIRoute = (apiContext) => {
     const { handler } = serveBase<TInitialPayload>(

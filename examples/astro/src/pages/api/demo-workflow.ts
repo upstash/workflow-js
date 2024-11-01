@@ -1,18 +1,22 @@
 import { serve } from "@upstash/workflow/astro";
 
-export const { POST } = serve(async (ctx, workflow) => {
-  const results = await workflow.run("step-1", async () => {
-    console.log(ctx.request.url);
-    return [];
-  });
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
+}
 
-  if (!results.length) {
-    return;
-  }
+export const { POST } = serve<{ url: string }>(async (context) => {
+  const input = context.requestPayload.url
+  const result1 = await context.run('step1', async () => {
+    const output = someWork(input)
+    console.log('step 1 input', input, 'output', output)
+    return output
+  })
 
-  await workflow.run("step-2", async () => {
-    // Do step 2
-  });
+  await context.run('step2', async () => {
+    const output = someWork(result1)
+    console.log('step 2 input', result1, 'output', output)
+  })
 }, {
+  // env must be passed in astro:
   env: import.meta.env
-});
+})

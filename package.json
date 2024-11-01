@@ -44,6 +44,10 @@
     "./cloudflare": {
       "import": "./cloudflare.mjs",
       "require": "./cloudflare.js"
+    },
+    "./astro": {
+      "import": "./astro.mjs",
+      "require": "./astro.js"
     }
   },
   "scripts": {

@@ -1,54 +1,49 @@
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fqstash-js%2Ftree%2Fmain%2Fexamples%2Fworkflow%2Fastro&env=QSTASH_TOKEN&envDescription=You%20can%20access%20this%20variable%20from%20Upstash%20Console%2C%20under%20QStash%20page.%20&project-name=qstash-workflow-astro&repository-name=qstash-workflow-astro&demo-title=Upstash%20QStash%20Workflow%20Example&demo-description=A%20Astro%20application%20utilizing%20QStash%20Workflows)
+
 # Upstash Workflow Astro Example
 
-```sh
-npm create astro@latest -- --template basics
+This is an example of how to use Upstash Workflow with Astro. You can learn more in [Upstash Workflow quickstart documentation](https://upstash.com/docs/workflow/quickstarts/platforms).
+
+
+## Development
+
+> [!TIP]
+> You can use [the `bootstrap.sh` script](https://github.com/upstash/qstash-js/tree/main/examples/workflow) to run this example with a local tunnel.
+>
+> Simply set the environment variables as explained below and run the following command in the `qstash-js/examples/workflow` directory:
+>
+> ```
+> bash bootstrap.sh astro
+> ```
+
+1. Install the dependencies
+
+```bash
+npm install
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+1. Get the credentials from the [Upstash Console](https://console.upstash.com/qstash) and add them to the `.env` file.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── components/
-│   │   └── Card.astro
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+QSTASH_TOKEN=
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+3. Open a local tunnel to port of the development server
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```bash
+ngrok http 3001
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+Also, set the `UPSTASH_WORKLFOW_URL` environment variable to the public url provided by ngrok.
 
-## 🧞 Commands
+4. Run the development server
 
-All commands are run from the root of the project, from a terminal:
+```bash
+npm run dev
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+5. Send a `POST` request to the endpoint.
 
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+```bash
+curl -X POST "http://localhost:3001/api/demo-workflow" -d '{"url": "test.com"}'
+```
