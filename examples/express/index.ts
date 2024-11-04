@@ -11,7 +11,7 @@ app.use(
     express.json()
 );
 
-app.use('/api/test', serve<{ message: string }>(async (context) => {
+app.use('/workflow', serve<{ message: string }>(async (context) => {
     const res1 = await context.run("step1", async () => {
         const message = context.requestPayload.message;
         return message;
