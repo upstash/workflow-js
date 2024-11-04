@@ -18,5 +18,6 @@ export const { POST } = serve<{ url: string }>(async (context) => {
   })
 }, {
   // env must be passed in astro:
-  env: import.meta.env
+
+  env: process.env ?? import.meta.env
 })
