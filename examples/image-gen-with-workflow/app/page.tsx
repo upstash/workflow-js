@@ -35,7 +35,7 @@ export default function Page() {
             variant="secondary"
             onClick={() => {
               window.open(
-                'https://github.com/upstash/qstash-js/tree/master/examples/workflow/image-gen-with-workflow',
+                'https://github.com/upstash/workflow-js/tree/main/examples/image-gen-with-workflow',
                 '_blank',
               )
             }}

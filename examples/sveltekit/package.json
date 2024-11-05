@@ -25,6 +25,6 @@
 	"type": "module",
 	"dependencies": {
 		"@upstash/qstash": "latest",
-		"@upstash/workflow": "0.1.1-canary-2"
+		"@upstash/workflow": "latest"
 	}
 }
