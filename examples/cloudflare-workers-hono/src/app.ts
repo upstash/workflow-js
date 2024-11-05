@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { serve, WorkflowBindings } from "@upstash/qstash/hono";
+import { serve, WorkflowBindings } from "@upstash/workflow/hono";
 import { landingPage } from "./page";
 
 const app = new Hono<{ Bindings: WorkflowBindings }>();
