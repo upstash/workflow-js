@@ -17,7 +17,11 @@ export const { POST } = serve<{ url: string }>(async (context) => {
     console.log('step 2 input', result1, 'output', output)
   })
 }, {
-  // env must be passed in astro:
-
-  env: process.env ?? import.meta.env
+  // env must be passed in astro.
+  // for local dev, we need import.meta.env.
+  // For deployment, we need process.env:
+  env: {
+    ...process.env,
+    ...import.meta.env
+  }
 })
