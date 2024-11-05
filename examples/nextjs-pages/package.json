@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@upstash/qstash": "latest",
-    "@upstash/workflow": "0.1.1-canary-2",
+    "@upstash/workflow": "latest",
     "clsx": "^2.1.1",
     "next": "14.2.8",
     "react": "^18",

@@ -74,13 +74,11 @@ const { POST: serveMethod } = serve<CallPayload>(async (context) => {
   if (parameters) {
     // if the parameters are present, make context.call request
     // to call Ideogram through QStash
-    result = await context.call<ImageResponse>(
+    const { body } = await context.call(
       'call Ideogram',
-      parameters.url,
-      parameters.method,
-      parameters.body,
-      parameters.headers,
-    )
+      parameters
+    );
+    result = body as ImageResponse
   } else {
     // Exists for development purposes.
     // if the parameters are not present, return a mock image
