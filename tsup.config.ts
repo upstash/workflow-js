@@ -9,6 +9,7 @@ export default defineConfig({
     solidjs: "./platforms/solidjs.ts",
     hono: "./platforms/hono.ts",
     cloudflare: "./platforms/cloudflare.ts",
+    astro: "./platforms/astro.ts",
   },
   format: ["cjs", "esm"],
   clean: true,

@@ -44,6 +44,10 @@
     "./cloudflare": {
       "import": "./cloudflare.mjs",
       "require": "./cloudflare.js"
+    },
+    "./astro": {
+      "import": "./astro.mjs",
+      "require": "./astro.js"
     }
   },
   "scripts": {
@@ -77,6 +81,7 @@
     "@solidjs/start": "^1.0.8",
     "@sveltejs/kit": "^2.6.1",
     "@types/bun": "^1.1.10",
+    "astro": "^4.16.7",
     "eslint": "^9.11.1",
     "eslint-plugin-unicorn": "^55.0.0",
     "globals": "^15.10.0",
