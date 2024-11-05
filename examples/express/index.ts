@@ -7,21 +7,29 @@ config();
 
 const app = express();
 
-app.use(
-    express.json()
-);
+app.use(express.json());
 
-app.use('/workflow', serve<{ message: string }>(async (context) => {
-    const res1 = await context.run("step1", async () => {
-        const message = context.requestPayload.message;
-        return message;
-    })
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
+}
 
-    await context.run("step2", async () => {
-        console.log(res1);
-    })
+
+app.use('/workflow', serve<string>(async (context) => {
+  const input = context.requestPayload
+  console.log("input", input);
+  
+  const result1 = await context.run('step1', async () => {
+    const output = someWork(input)
+    console.log('step 1 input', input, 'output', output)
+    return output
+  })
+
+  await context.run('step2', async () => {
+    const output = someWork(result1)
+    console.log('step 2 input', result1, 'output', output)
+  })
 }));
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+app.listen(3001, () => {
+  console.log('Server running on port 3001');
 });

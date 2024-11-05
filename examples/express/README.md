@@ -22,7 +22,6 @@ npm install
 2. Get the credentials from the [Upstash Console](https://console.upstash.com/qstash) and add them to the `.env` file.
 
 ```bash
-QSTASH_URL=
 QSTASH_TOKEN=
 
 UPSTASH_WORKFLOW_URL=
@@ -31,7 +30,7 @@ UPSTASH_WORKFLOW_URL=
 3. Open a local tunnel to port of the development server
 
 ```bash
-ngrok http 3000
+ngrok http 3001
 ```
 
 Also, set the `UPSTASH_WORKLFOW_URL` environment variable to the public url provided by ngrok.
@@ -45,5 +44,5 @@ npm run dev
 5. Send a `POST` request to the `/workflow` endpoint.
 
 ```bash
-curl -X POST "http://localhost:3000/workflow" -d '{"message": "hello world!"}'
+curl -X POST "http://localhost:3001/workflow" -d '{"message": "hello world!"}'
 ```

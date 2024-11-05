@@ -48,6 +48,10 @@
     "./astro": {
       "import": "./astro.mjs",
       "require": "./astro.js"
+    },
+    "./express": {
+      "import": "./express.mjs",
+      "require": "./express.js"
     }
   },
   "scripts": {
