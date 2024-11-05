@@ -292,5 +292,21 @@ export type CallResponse = {
   header: Record<string, string[]>;
 };
 
+/**
+ * Valid duration string formats
+ * @example "30s" // 30 seconds
+ * @example "5m"  // 5 minutes
+ * @example "2h"  // 2 hours
+ * @example "1d"  // 1 day
+ */
+export type Duration = `${bigint}${"s" | "m" | "h" | "d"}`;
 
-export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`
+export interface WaitEventOptions {
+  /**
+   * Duration in seconds to wait for an event before timing out the workflow.
+   * @example 300 // 5 minutes in seconds
+   * @example "5m" // 5 minutes as duration string
+   * @default "24h"
+   */
+  timeout?: number | Duration;
+}

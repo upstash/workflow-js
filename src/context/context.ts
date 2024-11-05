@@ -1,4 +1,10 @@
-import type { CallResponse, NotifyStepResponse, WaitStepResponse, WorkflowClient } from "../types";
+import type {
+  CallResponse,
+  NotifyStepResponse,
+  WaitEventOptions,
+  WaitStepResponse,
+  WorkflowClient,
+} from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
@@ -330,33 +336,34 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }
 
   /**
-   * Makes the workflow run wait until a notify request is sent or until the
-   * timeout ends
+   * Pauses workflow execution until a specific event occurs or a timeout is reached.
    *
-   * ```ts
-   * const { eventData, timeout } = await context.waitForEvent(
-   *   "wait for event step",
-   *   "my-event-id",
-   *   100 // timeout after 100 seconds
-   * );
-   * ```
+   *```ts
+   * const result = await workflow.waitForEvent("payment.confirmed", {
+   *   timeout: "5m"
+   * });
+   *```
    *
-   * To notify a waiting workflow run, you can use the notify method:
+   * To notify a waiting workflow:
    *
    * ```ts
    * import { Client } from "@upstash/workflow";
    *
-   * const client = new Client({ token: });
+   * const client = new Client({ token: "<QSTASH_TOKEN>" });
    *
    * await client.notify({
-   *   eventId: "my-event-id",
-   *   eventData: "eventData"
+   *   eventId: "payment.confirmed",
+   *   data: {
+   *     amount: 99.99,
+   *     currency: "USD"
+   *   }
    * })
    * ```
    *
    * @param stepName
-   * @param eventId event id to wake up the waiting workflow run
-   * @param timeout timeout duration in seconds
+   * @param eventId - Unique identifier for the event to wait for
+   * @param options - Configuration options
+   * @returns Promise resolving to the wait result
    * @returns wait response as `{ timeout: boolean, eventData: unknown }`.
    *   timeout is true if the wait times out, if notified it is false. eventData
    *   is the value passed to `client.notify`.
@@ -364,15 +371,13 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public async waitForEvent(
     stepName: string,
     eventId: string,
-    timeout: number | Duration
+    options: WaitEventOptions = {}
   ): Promise<WaitStepResponse> {
-    const result = await this.addStep(
-      new LazyWaitForEventStep(
-        stepName,
-        eventId,
-        typeof timeout === "string" ? timeout : `${timeout}s`
-      )
-    );
+    const { timeout = 60 * 60 * 24 } = options;
+
+    const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
+
+    const result = await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
 
     try {
       return {

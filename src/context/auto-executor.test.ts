@@ -195,7 +195,7 @@ describe("auto-executor", () => {
             context.sleep("sleep for 123s", 123),
             context.sleep("sleep for 10m", "10m"),
             context.sleepUntil("sleep until next day", 123_123),
-            context.waitForEvent("waitEvent", "my-event", "5m"),
+            context.waitForEvent("waitEvent", "my-event", { timeout: "5m" }),
           ]);
           expect(throws).rejects.toThrowError(QStashWorkflowAbort);
         },
