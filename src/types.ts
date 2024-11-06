@@ -292,5 +292,4 @@ export type CallResponse = {
   header: Record<string, string[]>;
 };
 
-
-export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`
+export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`;

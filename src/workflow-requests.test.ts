@@ -29,9 +29,10 @@ import {
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
+import { WorkflowLogger } from "./logger";
 
 describe("Workflow Requests", () => {
-  test("triggerFirstInvocation", async () => {
+  test("should send first invocation request", async () => {
     const workflowRunId = nanoid();
     const initialPayload = nanoid();
     const token = "myToken";
@@ -61,9 +62,33 @@ describe("Workflow Requests", () => {
         body: initialPayload,
         headers: {
           "upstash-retries": "0",
+          "Upstash-Workflow-Init": "true",
+          "Upstash-Workflow-RunId": workflowRunId,
+          "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
         },
       },
     });
+  });
+
+  test("should omit the error if the workflow is created with the same id", async () => {
+    const workflowRunId = `wfr-${nanoid()}`;
+    const context = new WorkflowContext({
+      qstashClient: new Client({ token: process.env.QSTASH_TOKEN! }),
+      workflowRunId: workflowRunId,
+      initialPayload: undefined,
+      headers: new Headers({}) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+    });
+
+    const resultOne = await triggerFirstInvocation(context, 3);
+    expect(resultOne.isOk()).toBeTrue();
+    // @ts-expect-error value will exist because of isOk
+    expect(resultOne.value).toBe("success");
+    const resultTwo = await triggerFirstInvocation(context, 3);
+    expect(resultTwo.isOk()).toBeTrue();
+    // @ts-expect-error value will exist because of isOk
+    expect(resultTwo.value).toBe("workflow-run-already-exists");
   });
 
   describe("triggerRouteFunction", () => {
@@ -141,6 +166,41 @@ describe("Workflow Requests", () => {
       method: "DELETE",
       parseResponseAsJson: false,
     });
+  });
+
+  test("should omit the error if the triggerWorkflowDelete fails with workflow run doesn't exist", async () => {
+    const workflowRunId = `wfr-${nanoid()}`;
+    const context = new WorkflowContext({
+      qstashClient: new Client({ token: process.env.QSTASH_TOKEN! }),
+      workflowRunId: workflowRunId,
+      initialPayload: undefined,
+      headers: new Headers({}) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+    });
+
+    await triggerFirstInvocation(context, 3);
+
+    const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
+    const spy = spyOn(debug, "log");
+
+    const firstDelete = await triggerWorkflowDelete(context, debug);
+    expect(firstDelete).toEqual({ deleted: true });
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(
+      "SUBMIT",
+      "SUBMIT_CLEANUP",
+      `workflow run ${workflowRunId} deleted.`
+    );
+
+    const secondDelete = await triggerWorkflowDelete(context, debug);
+    expect(secondDelete).toEqual({ deleted: false });
+    expect(spy).toHaveBeenCalledTimes(4);
+    expect(spy).toHaveBeenLastCalledWith(
+      "WARN",
+      "SUBMIT_CLEANUP",
+      `Failed to remove workflow run ${workflowRunId} as it doesn't exist.`
+    );
   });
 
   test("should remove workflow headers in recreateUserHeaders", () => {

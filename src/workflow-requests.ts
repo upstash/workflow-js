@@ -22,12 +22,13 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
+import { QstashError } from "@upstash/qstash";
 
 export const triggerFirstInvocation = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   retries: number,
   debug?: WorkflowLogger
-): Promise<Ok<"success", never> | Err<never, Error>> => {
+): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders(
     "true",
     workflowContext.workflowRunId,
@@ -52,6 +53,17 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     return ok("success");
   } catch (error) {
     const error_ = error as Error;
+    if (
+      error instanceof QstashError &&
+      error.message.includes("a workflow already exists, can not initialize a new one with same id")
+    ) {
+      await debug?.log(
+        "WARN",
+        "SUBMIT_FIRST_INVOCATION",
+        `Workflow run ${workflowContext.workflowRunId} already exists.`
+      );
+      return ok("workflow-run-already-exists");
+    }
     return err(error_);
   }
 };
@@ -79,16 +91,37 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   debug?: WorkflowLogger,
   cancel = false
-) => {
+): Promise<{ deleted: boolean }> => {
   await debug?.log("SUBMIT", "SUBMIT_CLEANUP", {
     deletedWorkflowRunId: workflowContext.workflowRunId,
   });
-  const result = await workflowContext.qstashClient.http.request({
-    path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
-    method: "DELETE",
-    parseResponseAsJson: false,
-  });
-  await debug?.log("SUBMIT", "SUBMIT_CLEANUP", result);
+
+  try {
+    await workflowContext.qstashClient.http.request({
+      path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
+      method: "DELETE",
+      parseResponseAsJson: false,
+    });
+    await debug?.log(
+      "SUBMIT",
+      "SUBMIT_CLEANUP",
+      `workflow run ${workflowContext.workflowRunId} deleted.`
+    );
+    return { deleted: true };
+  } catch (error) {
+    if (
+      error instanceof QstashError &&
+      error.message.includes(`workflowRun ${workflowContext.workflowRunId} not found`)
+    ) {
+      await debug?.log(
+        "WARN",
+        "SUBMIT_CLEANUP",
+        `Failed to remove workflow run ${workflowContext.workflowRunId} as it doesn't exist.`
+      );
+      return { deleted: false };
+    }
+    throw error;
+  }
 };
 
 /**
