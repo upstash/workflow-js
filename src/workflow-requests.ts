@@ -38,17 +38,19 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     workflowContext.failureUrl,
     retries
   );
-  await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-    headers,
-    requestPayload: workflowContext.requestPayload,
-    url: workflowContext.url,
-  });
   try {
-    await workflowContext.qstashClient.publishJSON({
+    const result = await workflowContext.qstashClient.publishJSON({
       headers,
       method: "POST",
       body: workflowContext.requestPayload,
       url: workflowContext.url,
+    });
+
+    await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
+      headers,
+      requestPayload: workflowContext.requestPayload,
+      url: workflowContext.url,
+      messageId: result.messageId,
     });
     return ok("success");
   } catch (error) {
@@ -57,11 +59,11 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       error instanceof QstashError &&
       error.message.includes("a workflow already exists, can not initialize a new one with same id")
     ) {
-      await debug?.log(
-        "WARN",
-        "SUBMIT_FIRST_INVOCATION",
-        `Workflow run ${workflowContext.workflowRunId} already exists.`
-      );
+      await debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
+        message: `Workflow run ${workflowContext.workflowRunId} already exists.`,
+        name: error.name,
+        originalMessage: error.message,
+      });
       return ok("workflow-run-already-exists");
     }
     return err(error_);
@@ -71,10 +73,14 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 export const triggerRouteFunction = async ({
   onCleanup,
   onStep,
+  debug,
 }: {
   onStep: () => Promise<void>;
   onCleanup: () => Promise<void>;
-}): Promise<Ok<"workflow-finished" | "step-finished", never> | Err<never, Error>> => {
+  debug?: WorkflowLogger;
+}): Promise<
+  Ok<"workflow-finished" | "step-finished" | "workflow-was-finished", never> | Err<never, Error>
+> => {
   try {
     // When onStep completes successfully, it throws an exception named `QStashWorkflowAbort`, indicating that the step has been successfully executed.
     // This ensures that onCleanup is only called when no exception is thrown.
@@ -83,6 +89,17 @@ export const triggerRouteFunction = async ({
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
+    if (
+      error instanceof QstashError &&
+      error.message.includes("can not append to a a cancelled workflow")
+    ) {
+      await debug?.log("WARN", "RESPONSE_WORKFLOW", {
+        message: `tried to append to a cancelled workflow. exiting without publishing.`,
+        name: error.name,
+        originalMessage: error.message,
+      });
+      return ok("workflow-was-finished");
+    }
     return error_ instanceof QStashWorkflowAbort ? ok("step-finished") : err(error_);
   }
 };
@@ -113,11 +130,11 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
       error instanceof QstashError &&
       error.message.includes(`workflowRun ${workflowContext.workflowRunId} not found`)
     ) {
-      await debug?.log(
-        "WARN",
-        "SUBMIT_CLEANUP",
-        `Failed to remove workflow run ${workflowContext.workflowRunId} as it doesn't exist.`
-      );
+      await debug?.log("WARN", "SUBMIT_CLEANUP", {
+        message: `Failed to remove workflow run ${workflowContext.workflowRunId} as it doesn't exist.`,
+        name: error.name,
+        originalMessage: error.message,
+      });
       return { deleted: false };
     }
     throw error;

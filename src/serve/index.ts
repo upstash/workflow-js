@@ -159,6 +159,7 @@ export const serve = <
             onCleanup: async () => {
               await triggerWorkflowDelete(workflowContext, debug);
             },
+            debug,
           });
 
       if (result.isErr()) {

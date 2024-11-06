@@ -48,7 +48,7 @@ export const getPayload = async (request: Request) => {
  * @param rawPayload body of the request as a string as explained above
  * @returns intiial payload and list of steps
  */
-const parsePayload = async (rawPayload: string, debug?: WorkflowLogger) => {
+const parsePayload = (rawPayload: string) => {
   const [encodedInitialPayload, ...encodedSteps] = JSON.parse(rawPayload) as RawStep[];
 
   // decode initial payload:
@@ -65,30 +65,25 @@ const parsePayload = async (rawPayload: string, debug?: WorkflowLogger) => {
   const stepsToDecode = encodedSteps.filter((step) => step.callType === "step");
 
   // decode & parse other steps:
-  const otherSteps = await Promise.all(
-    stepsToDecode.map(async (rawStep) => {
-      const step = JSON.parse(decodeBase64(rawStep.body)) as Step;
-      try {
-        step.out = JSON.parse(step.out as string);
-      } catch {
-        await debug?.log("WARN", "ENDPOINT_START", {
-          message: "failed while parsing out field of step",
-          step,
-        });
-      }
+  const otherSteps = stepsToDecode.map((rawStep) => {
+    const step = JSON.parse(decodeBase64(rawStep.body)) as Step;
+    try {
+      step.out = JSON.parse(step.out as string);
+    } catch {
+      /* empty */
+    }
 
-      // if event is a wait event, overwrite the out with WaitStepResponse:
-      if (step.waitEventId) {
-        const newOut: WaitStepResponse = {
-          eventData: step.out ? decodeBase64(step.out as string) : undefined,
-          timeout: step.waitTimeout ?? false,
-        };
-        step.out = newOut;
-      }
+    // if event is a wait event, overwrite the out with WaitStepResponse:
+    if (step.waitEventId) {
+      const newOut: WaitStepResponse = {
+        eventData: step.out ? decodeBase64(step.out as string) : undefined,
+        timeout: step.waitTimeout ?? false,
+      };
+      step.out = newOut;
+    }
 
-      return step;
-    })
-  );
+    return step;
+  });
 
   // join and deduplicate steps:
   const steps: Step[] = [initialStep, ...otherSteps];
@@ -238,7 +233,7 @@ export const parseRequest = async (
     if (!requestPayload) {
       throw new QStashWorkflowError("Only first call can have an empty body");
     }
-    const { rawInitialPayload, steps } = await parsePayload(requestPayload, debug);
+    const { rawInitialPayload, steps } = parsePayload(requestPayload);
     const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
     const deduplicatedSteps = deduplicateSteps(steps);
 
