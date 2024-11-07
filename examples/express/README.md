@@ -43,6 +43,10 @@ npm run dev
 
 5. Send a `POST` request to the `/workflow` endpoint.
 
+**NOTE**: Workflow on Express.js only works with `Content-Type: application/json` header.
+
 ```bash
-curl -X POST "http://localhost:3001/workflow" -d '{"message": "hello world!"}'
+curl -X POST http://localhost:3001/workflow \
+    -H "Content-Type: application/json" \
+    -d '{"message": "Hello from the workflow!"}'
 ```
