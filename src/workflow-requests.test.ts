@@ -640,6 +640,9 @@ describe("Workflow Requests", () => {
         originalMessage:
           '{"error":"a workflow already exists, can not initialize a new one with same id"}',
       });
+
+      const deleteResult = await triggerWorkflowDelete(context, debug);
+      expect(deleteResult).toEqual({ deleted: true });
     });
   });
 });
