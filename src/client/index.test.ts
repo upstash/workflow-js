@@ -73,7 +73,7 @@ describe("workflow client", () => {
           "upstash-method": "POST",
           "upstash-retries": "15",
           "upstash-workflow-init": "true",
-          "upstash-workflow-runid": myWorkflowRunId,
+          "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
           "upstash-workflow-url": "https://www.my-website.com/api",
         },
       },
