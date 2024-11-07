@@ -96,11 +96,27 @@ export class Client {
   /**
    * Trigger new workflow run and returns the workflow run id
    *
+   * ```ts
+   * const { workflowRunId } await client.trigger({
+   *   url: "https://workflow-endpoint.com",
+   *   body: "hello there!", // optional body
+   *   headers: { ... }, // optional headers
+   *   workflowRunId: "my-workflow", // optional workflow run id
+   *   retries: 3 // optional retries in the initial request
+   * })
+   *
+   * console.log(workflowRunId)
+   * // wfr_my-workflow
+   * ```
+   *
    * @param url URL of the workflow
    * @param body body to start the workflow with
    * @param headers headers to use in the request
    * @param workflowRunId optional workflow run id to use. mind that
-   *   you should pass different workflow run ids everytime.
+   *   you should pass different workflow run ids for different runs.
+   *   The final workflowRunId will be `wfr_${workflowRunId}`, in
+   *   other words: the workflow run id you pass will be prefixed
+   *   with `wfr_`.
    * @param retries retry to use in the initial request. in the rest of
    *   the workflow, `retries` option of the `serve` will be used.
    * @returns workflow run id
