@@ -12,7 +12,8 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "@upstash/workflow": "latest"
   },
   "devDependencies": {
     "@types/node": "^20.5.2",

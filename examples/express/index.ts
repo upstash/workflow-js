@@ -1,4 +1,4 @@
-import { serve } from "../../platforms/express";
+import { serve } from "@upstash/workflow/express";
 import express from 'express';
 import { config } from 'dotenv';
 
