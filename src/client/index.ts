@@ -118,7 +118,7 @@ export class Client {
     workflowRunId?: string,
     retries?: number
   }): Promise<{workflowRunId: string}> {
-    const finalWorkflowRunId = workflowRunId ?? getWorkflowRunId()
+    const finalWorkflowRunId = getWorkflowRunId(workflowRunId)
     const context = new WorkflowContext({
       qstashClient: this.client,
       // @ts-expect-error headers type mismatch

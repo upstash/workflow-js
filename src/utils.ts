@@ -7,8 +7,8 @@ export function nanoid() {
     .join("");
 }
 
-export function getWorkflowRunId(): string {
-  return `wfr_${nanoid()}`
+export function getWorkflowRunId(id?: string): string {
+  return `wfr_${id ?? nanoid()}`;
 }
 
 /**
