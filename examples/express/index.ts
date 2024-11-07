@@ -23,13 +23,13 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
   })
 
   const { body } = await context.call("get-data", {
-    url: `${process.env.UPSTASH_WORKFLOW_URL}/get-data`,
+    url: `${process.env.UPSTASH_WORKFLOW_URL ?? "http://localhost:3001"}/get-data`,
     method: "POST",
     body: { message: result1 }
   })
 
   await context.run('step2', async () => {
-    const { message } = (body as { message: string })
+    const message = (body as string)
     const output = someWork(message)
     console.log('step 2 input', result1, 'output', output)
     return output
@@ -37,14 +37,8 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
 }));
 
 app.post("/get-data", (req, res) => {
-  // Log the incoming request body for debugging
-  console.log('get-data received:', req.body);
-
-  // Send back the message
-  res.json(req.body);
+  res.send("hey there");
 });
-
-
 
 app.listen(3001, () => {
   console.log('Server running on port 3001');
