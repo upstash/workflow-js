@@ -12,13 +12,19 @@ export function serve<TInitialPayload = unknown>(
 
   const handler: RequestHandler = async (request_: ExpressRequest, res: ExpressResponse) => {
 
-		// only allow POST requests
-		if (request_.method.toUpperCase() !== "POST") {
-			res.status(405).json("Only POST requests are allowed in worklfows");
+    // only allow POST requests
+    if (request_.method.toUpperCase() !== "POST") {
+      res.status(405).json("Only POST requests are allowed in workflows");
       return;
     }
 
-		// create Request
+    // only allow application/json content type
+    if (request_.headers['content-type'] !== 'application/json') {
+      res.status(400).json("Only application/json content type is allowed in express workflows");
+      return;
+    }
+
+    // create Request
     const protocol = request_.protocol;
     const host = request_.get('host') || 'localhost';
     const url = `${protocol}://${host}${request_.originalUrl}`;
@@ -29,7 +35,7 @@ export function serve<TInitialPayload = unknown>(
       body: JSON.stringify(request_.body)
     });
 
-		// create handler
+    // create handler
     const { handler: serveHandler } = serveBase<TInitialPayload>(
       (workflowContext) => routeFunction(workflowContext),
       options

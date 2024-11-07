@@ -10,16 +10,15 @@ const app = express();
 app.use(express.json());
 
 const someWork = (input: string) => {
-  return `processed '${JSON.stringify(input)}'`
+  return `message: '${JSON.stringify(input)}'`
 }
 
-
-app.use('/workflow', serve<string>(async (context) => {
+app.use('/workflow', serve<{ message: string }>(async (context) => {
   const input = context.requestPayload
   console.log("input", input);
-  
+
   const result1 = await context.run('step1', async () => {
-    const output = someWork(input)
+    const output = someWork(input.message)
     console.log('step 1 input', input, 'output', output)
     return output
   })
