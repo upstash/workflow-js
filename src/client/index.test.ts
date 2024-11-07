@@ -46,17 +46,17 @@ describe("workflow client", () => {
   });
 
   test("should trigger workflow run", async () => {
-    const myWorkflowRunId = `mock-${getWorkflowRunId()}`
-    const body = "request-body"
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
     await mockQStashServer({
       execute: async () => {
-        await client.trigger({ 
+        await client.trigger({
           url: WORKFLOW_ENDPOINT,
           body,
           headers: { "user-header": "user-header-value" },
           workflowRunId: myWorkflowRunId,
-          retries: 15
-         });
+          retries: 15,
+        });
       },
       responseFields: {
         status: 200,
@@ -75,8 +75,8 @@ describe("workflow client", () => {
           "upstash-workflow-init": "true",
           "upstash-workflow-runid": myWorkflowRunId,
           "upstash-workflow-url": "https://www.my-website.com/api",
-        }
+        },
       },
     });
-  })
+  });
 });

@@ -93,7 +93,7 @@ describe("test steps", () => {
         concurrent,
         targetStep,
       });
-    })
+    });
 
     test("should create result step", async () => {
       expect(await stepWithDuration.getResultStep(6, stepId)).toEqual({

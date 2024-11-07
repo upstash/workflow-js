@@ -95,7 +95,7 @@ export class Client {
 
   /**
    * Trigger new workflow run and returns the workflow run id
-   * 
+   *
    * @param url URL of the workflow
    * @param body body to start the workflow with
    * @param headers headers to use in the request
@@ -110,15 +110,15 @@ export class Client {
     body,
     headers,
     workflowRunId,
-    retries
+    retries,
   }: {
-    url: string,
-    body?: unknown,
-    headers?: Record<string, string>,
-    workflowRunId?: string,
-    retries?: number
-  }): Promise<{workflowRunId: string}> {
-    const finalWorkflowRunId = getWorkflowRunId(workflowRunId)
+    url: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+    workflowRunId?: string;
+    retries?: number;
+  }): Promise<{ workflowRunId: string }> {
+    const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
     const context = new WorkflowContext({
       qstashClient: this.client,
       // @ts-expect-error headers type mismatch
@@ -127,12 +127,12 @@ export class Client {
       steps: [],
       url,
       workflowRunId: finalWorkflowRunId,
-    })
-    const result = await triggerFirstInvocation(context, retries ?? DEFAULT_RETRIES)
+    });
+    const result = await triggerFirstInvocation(context, retries ?? DEFAULT_RETRIES);
     if (result.isOk()) {
-      return { workflowRunId: finalWorkflowRunId }
+      return { workflowRunId: finalWorkflowRunId };
     } else {
-      throw result.error
+      throw result.error;
     }
   }
 }
