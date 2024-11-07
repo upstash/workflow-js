@@ -286,11 +286,10 @@ export type NotifyStepResponse = {
   notifyResponse: NotifyResponse[];
 };
 
-export type CallResponse = {
+export type CallResponse<TResult = unknown> = {
   status: number;
-  body: unknown;
+  body: TResult;
   header: Record<string, string[]>;
 };
 
-
-export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`
+export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`;

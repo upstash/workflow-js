@@ -93,7 +93,7 @@ describe("test steps", () => {
         concurrent,
         targetStep,
       });
-    })
+    });
 
     test("should create result step", async () => {
       expect(await stepWithDuration.getResultStep(6, stepId)).toEqual({
@@ -145,7 +145,7 @@ describe("test steps", () => {
     const callHeaders = {
       "my-header": headerValue,
     };
-    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders);
+    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders, 14);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);

@@ -190,7 +190,7 @@ export const validateRequest = (
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
     throw new QStashWorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
-      ` got ${versionHeader} from the request.`
+        ` got ${versionHeader} from the request.`
     );
   }
 
@@ -278,8 +278,8 @@ export const handleFailure = async <TInitialPayload>(
     return err(
       new QStashWorkflowError(
         "Workflow endpoint is called to handle a failure," +
-        " but a failureFunction is not provided in serve options." +
-        " Either provide a failureUrl or a failureFunction."
+          " but a failureFunction is not provided in serve options." +
+          " Either provide a failureUrl or a failureFunction."
       )
     );
   }
