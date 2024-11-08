@@ -65,6 +65,10 @@ jobs:
         run: npm run dev &
         working-directory: examples/cloudflare-workers
 
+      - name: Run local tests
+        run: bun test ci.test.ts
+        working-directory: examples/cloudflare-workers
+
   cloudflare-workers-hono-local-build:
     needs:
       - local-tests
@@ -258,11 +262,15 @@ jobs:
         run: npm run dev &
         working-directory: examples/nextjs
 
+      - name: Run local tests
+        run: bun test .
+        working-directory: examples/nextjs
+
   nextjs-18-local-build:
     needs:
       - local-tests
     runs-on: ubuntu-latest
-    name: Nextjs 18 Local Build
+    name: Nextjs (Node 18) Local Build
     steps:
       - name: Setup repo
         uses: actions/checkout@v4
@@ -297,6 +305,10 @@ jobs:
 
       - name: Run example
         run: npm run dev &
+        working-directory: examples/nextjs
+
+      - name: Run local tests
+        run: bun test .
         working-directory: examples/nextjs
 
   nextjs-pages-local-build:
