@@ -525,7 +525,7 @@ jobs:
         run: |
           pnpm add @upstash/workflow@latest
           DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
-          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+          echo "UPSTASH_WORKFLOW_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
         env:
           VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
           VERCEL_PROJECT_ID: "prj_pnmruGZQRZQFmfaT4UwJFB4fNrOQ"
