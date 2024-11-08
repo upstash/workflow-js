@@ -14,14 +14,14 @@ export const TEST_ROUTE_PREFIX = `${BASE_URL}/test-routes`
 export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     route: "path",
-    waitForSeconds: 5
+    waitForSeconds: 4
   },
   {
     route: "sleep",
-    waitForSeconds: 10
+    waitForSeconds: 8
   },
   {
     route: "sleepWithoutAwait",
-    waitForSeconds: 20
+    waitForSeconds: 18
   },
 ]

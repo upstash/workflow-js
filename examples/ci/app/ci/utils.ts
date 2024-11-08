@@ -69,8 +69,8 @@ export const initiateTest = async (route: string, waitForSeconds: number) => {
 
   const { messageId } = await qstash.startWorkflow({ route, headers, payload }, randomTestId)
 
-  // sleep for 2 secs and check that message is delivered
-  await new Promise(r => setTimeout(r, 2000));
+  // sleep for 4 secs and check that message is delivered
+  await new Promise(r => setTimeout(r, 4000));
 
   await qstash.checkWorkflowStart(messageId)
 

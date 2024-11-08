@@ -1,4 +1,4 @@
-import { Client } from "@upstash/qstash"
+import { Client, QstashError } from "@upstash/qstash"
 import { TEST_ROUTE_PREFIX, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants"
 import { TestConfig } from "../types"
 
@@ -34,10 +34,18 @@ export const startWorkflow = async (
  * @returns 
  */
 export const checkWorkflowStart = async (messageId: string) => {
-  const { events } = await client.events({ filter: { messageId }})
-  const startMessageDelivered = Boolean(events.find(event => event.state === "DELIVERED"))
-  if (!startMessageDelivered) {
-    await client.messages.delete(messageId)
-    throw new Error(`Couldn't verify that workflow has begun. Number of events: ${events.length}`)
+
+  try {
+    const { events } = await client.events({ filter: { messageId }})
+    const startMessageDelivered = Boolean(events.find(event => event.state === "DELIVERED"))
+    if (!startMessageDelivered) {
+      await client.messages.delete(messageId)
+      throw new Error(`Couldn't verify that workflow has begun. Number of events: ${events.length}`)
+    }
+  } catch (error) {
+    if (error instanceof QstashError && error.message.includes(`message ${messageId} not found`)) {
+      return
+    }
+    throw error
   }
 }
