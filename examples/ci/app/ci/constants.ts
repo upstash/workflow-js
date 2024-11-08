@@ -15,5 +15,13 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     route: "path",
     waitForSeconds: 5
-  }
+  },
+  {
+    route: "sleep",
+    waitForSeconds: 10
+  },
+  {
+    route: "sleepWithoutAwait",
+    waitForSeconds: 20
+  },
 ]

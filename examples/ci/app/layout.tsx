@@ -1,7 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
-import cx from 'utils/cx'
 
 export const metadata: Metadata = {
   title: 'Upstash Workflow',
@@ -11,20 +9,13 @@ export const metadata: Metadata = {
   },
 }
 
-const defaultFont = Inter({
-  variable: '--font-inter',
-  display: 'swap',
-  style: 'normal',
-  subsets: ['latin-ext'],
-})
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={cx('scroll-smooth', defaultFont.variable)}>
+    <html lang="en" className='scroll-smooth'>
       <body className="antialiased text-sm sm:text-base">{children}</body>
     </html>
   )

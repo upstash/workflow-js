@@ -1,9 +1,12 @@
 import { type TestConfig } from "./types"
-import { nanoid } from "nanoid"
 import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "./constants"
 import { serve } from "@upstash/workflow/nextjs"
 import * as redis from "./upstash/redis"
 import * as qstash from "./upstash/qstash"
+
+export const nanoid = () => {
+  return Math.floor(Math.random() * 10000).toString()
+}
 
 /**
  * wraps the handler of the serve method to call redis.increment
@@ -76,7 +79,7 @@ export const initiateTest = async (route: string, waitForSeconds: number) => {
   await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
 }
 
-type ExpectType = number | string | object
+type ExpectType = number | string | object | undefined | void
 export const expect = <TObject extends ExpectType = ExpectType>(
   received: TObject,
   expected: TObject
