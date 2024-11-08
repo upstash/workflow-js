@@ -1,6 +1,6 @@
 import { serve } from '@upstash/workflow/nextjs'
 
-export const POST = serve<string>(async (context) => {
+export const { POST } = serve<string>(async (context) => {
   if (context.headers.get('authentication') !== 'Bearer secretPassword') {
     console.error('Authentication failed.')
     return
