@@ -1,7 +1,7 @@
 const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 const NANOID_LENGTH = 21;
 
-import crypto from "crypto"
+import crypto from "node:crypto";
 
 export function nanoid() {
   return [...crypto.getRandomValues(new Uint8Array(NANOID_LENGTH))]
