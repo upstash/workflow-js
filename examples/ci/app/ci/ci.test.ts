@@ -1,12 +1,17 @@
-import { test } from "bun:test"
-import { describe } from "node:test"
-import { TEST_CONFIG } from "./config";
-import { testEndpoint } from "./utils";
+import { test, describe } from "bun:test"
+import { TEST_ROUTES } from "./constants";
+import { initiateTest } from "./utils";
 
 describe("workflow integration tests", () => {
-  TEST_CONFIG.forEach(config => {
-    test(config.route, async () => {
-      await testEndpoint(config)
-    })
+  TEST_ROUTES.forEach(testConfig => {
+    test(
+      testConfig.route,
+      async () => {
+        await initiateTest(testConfig.route, testConfig.waitForSeconds)
+      },
+      {
+        timeout: (testConfig.waitForSeconds + 3) * 1000
+      }
+    )
   });
 })
