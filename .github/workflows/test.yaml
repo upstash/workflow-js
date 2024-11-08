@@ -61,10 +61,6 @@ jobs:
         run: npm install @upstash/workflow@file:../../dist
         working-directory: examples/cloudflare-workers
 
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/cloudflare-workers
-
       - name: Run example
         run: npm run dev &
         working-directory: examples/cloudflare-workers
@@ -100,10 +96,6 @@ jobs:
 
       - name: Install local package
         run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/cloudflare-workers-hono
-
-      - name: Build Project
-        run: npm run build
         working-directory: examples/cloudflare-workers-hono
 
       - name: Run example
@@ -184,10 +176,6 @@ jobs:
         run: npm install @upstash/workflow@file:../../dist
         working-directory: examples/hono
 
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/hono
-
       - name: Run example
         run: npm run dev &
         working-directory: examples/hono
@@ -223,10 +211,6 @@ jobs:
 
       - name: Install local package
         run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/image-gen-with-workflow
-
-      - name: Build Project
-        run: npm run build
         working-directory: examples/image-gen-with-workflow
 
       - name: Run example
@@ -430,9 +414,9 @@ jobs:
         run: npm install @upstash/workflow@file:../../dist
         working-directory: examples/solidjs
 
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/solidjs
+      # - name: Build Project
+      #   run: npm run build
+      #   working-directory: examples/solidjs
 
       - name: Run example
         run: npm run dev &
