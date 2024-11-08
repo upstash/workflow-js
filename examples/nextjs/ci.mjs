@@ -26,7 +26,7 @@ const body = await response.text()
 if (status !== 500) {
   throw new Error(`ci failed. incorrect status. status: ${status}, body: ${body}`)
 }
-if (body !== `{"error":"SyntaxError","message":"Unexpected token 'r', \\"request caught\\" is not valid JSON"}`) {
+if (body !== `{"error":"SyntaxError","message":"Unexpected token r in JSON at position 0"}`) {
   throw new Error(`ci failed. incorrect body. status: ${status}, body: ${body}`)
 }
 console.log(">>> CI SUCCESFUL")
