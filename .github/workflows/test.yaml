@@ -308,7 +308,7 @@ jobs:
         working-directory: examples/nextjs
 
       - name: Run local tests
-        run: bun test .
+        run: node ci.mjs
         working-directory: examples/nextjs
 
   nextjs-pages-local-build:
