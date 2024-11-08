@@ -14,7 +14,7 @@ export const TEST_ROUTE_PREFIX = `${BASE_URL}/test-routes`
 export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     route: "path",
-    waitForSeconds: 4
+    waitForSeconds: 1
   },
   {
     route: "sleep",
