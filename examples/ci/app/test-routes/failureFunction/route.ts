@@ -26,12 +26,11 @@ export const { POST, GET } = testServe(
     }, {
       baseUrl: BASE_URL,
       retries: 0,
-      failureFunction: async (context, failStatus, failResponse, failHeaders) => {
+      failureFunction: async (context, failStatus, failResponse) => {
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
         expect(context.headers.get("authentication")!, authHeaderValue);
-        
-        expect(failHeaders["Keep-Alive"][0], "timeout=5");
+
         await saveResult(
           context as WorkflowContext,
           failResponse

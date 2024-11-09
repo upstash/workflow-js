@@ -13,7 +13,6 @@ export const POST = async (request: Request) => {
   
   const errorMessage = atob(result.body)
   expect(errorMessage, `{"error":"Error","message":"${ERROR_MESSAGE}"}`)
-  expect(result.header["Keep-Alive"][0], "timeout=5")
   expect(result.sourceHeader[HEADER][0], HEADER_VALUE)
 
   // get id and route

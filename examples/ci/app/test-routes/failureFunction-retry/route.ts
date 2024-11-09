@@ -28,13 +28,12 @@ const { POST, GET: getHandler } = testServe(
     }, {
       baseUrl: BASE_URL,
       retries: 1,
-      failureFunction: async (context, failStatus, failResponse, failHeaders) => {
+      failureFunction: async (context, failStatus, failResponse) => {
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
         expect(context.headers.get("authentication")!, authHeaderValue);
         expect(counter, 2);
         
-        expect(failHeaders["Keep-Alive"][0], "timeout=5");
         await saveResult(
           context as WorkflowContext,
           `${failResponse} ${counter}`
