@@ -31,13 +31,14 @@ export const increment = async (route: string, randomTestId: string) => {
 }
 
 export const saveResultsWithoutContext = async (
-  randomTestId: string,
   route: string,
-  result: string
+  randomTestId: string,
+  result: string,
+  overrideCallCount?: number
 ) => {
   // get call count
   const incrementKey = getRedisKey("increment", route, randomTestId)
-  const callCount = await redis.get<number>(incrementKey) ?? 0
+  const callCount = overrideCallCount ?? await redis.get<number>(incrementKey) ?? 0
 
   if (callCount === 0) {
     throw new Error(`callCount shouldn't be 0. It was 0 in test of the route '${route}'`);
@@ -73,8 +74,8 @@ export const saveResult = async (
   }
 
   await saveResultsWithoutContext(
-    randomTestId,
     route,
+    randomTestId,
     result
   )
 }

@@ -21,7 +21,7 @@ export const POST = async (request: Request) => {
   const route = result.sourceHeader[CI_ROUTE_HEADER][0]
 
   await saveResultsWithoutContext(
-    randomTestId, route, errorMessage
+    route, randomTestId, errorMessage
   )
 
   return new Response("", { status: 200 })

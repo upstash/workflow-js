@@ -79,7 +79,7 @@ export const initiateTest = async (route: string, waitForSeconds: number) => {
   await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
 }
 
-type ExpectType = number | string | object | undefined | void
+type ExpectType = number | string | object | undefined | void | boolean
 export const expect = <TObject extends ExpectType = ExpectType>(
   received: TObject,
   expected: TObject
