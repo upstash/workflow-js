@@ -1,6 +1,8 @@
 import { Redis } from "@upstash/redis";
 import { RedisResult } from "../types";
 import { expect } from "../utils";
+import { type WorkflowContext } from "@upstash/workflow";
+import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants";
 
 const redis = Redis.fromEnv();
 
@@ -30,18 +32,23 @@ export const increment = async (route: string, randomTestId: string) => {
 /**
  * saves the result of the workflow to mark the completion of the test
  * 
- * @param route route of the test run
- * @param randomTestId id unique to test run. will throw if null
+ * @param context workflow context used
  * @param result result to save which will be checked in the test
  */
 export const saveResult = async (
-  route: string,
-  randomTestId: string | null,
+  context: WorkflowContext<unknown>,
   result: string
 ) => {
+  const randomTestId = context.headers.get(CI_RANDOM_ID_HEADER)
+  const route = context.headers.get(CI_ROUTE_HEADER)
+
   if (randomTestId === null) {
     throw new Error("randomTestId can't be null.")
   }
+  if (route === null) {
+    throw new Error("route can't be null.")
+  }
+
   // get call count
   const incrementKey = getRedisKey("increment", route, randomTestId)
   const callCount = await redis.get<number>(incrementKey) ?? 0

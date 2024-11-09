@@ -5,6 +5,7 @@ import { saveResult } from "app/ci/upstash/redis"
 
 const header = `test-header-${nanoid()}`
 const headerValue = `header-${nanoid()}`
+const authentication = `Bearer test-auth-${nanoid()}`
 const payload = "my-payload"
 
 const someWork = (input: string) => {
@@ -14,10 +15,16 @@ const someWork = (input: string) => {
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+
       const input = context.requestPayload;
 
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
+
+      if (context.headers.get("authentication") !== authentication) {
+        console.error("Authentication failed.");
+        return;
+      }
 
       const result1 = await context.run("step1", async () => {
         return await Promise.resolve(someWork(input));
@@ -44,7 +51,8 @@ export const { POST, GET } = testServe(
     expectedResult: "processed 'processed 'my-payload''",
     payload,
     headers: {
-      [ header ]: headerValue
+      [ header ]: headerValue,
+      "authentication": authentication
     }
   }
 ) 

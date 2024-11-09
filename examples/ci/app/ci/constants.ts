@@ -24,4 +24,16 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
     route: "sleepWithoutAwait",
     waitForSeconds: 18
   },
+  {
+    route: "auth",
+    waitForSeconds: 1
+  },
+  {
+    route: "auth-fail",
+    waitForSeconds: 0
+  },
+  {
+    route: "call/workflow",
+    waitForSeconds: 5
+  }
 ]

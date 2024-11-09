@@ -1,5 +1,5 @@
 import { serve } from "@upstash/workflow/nextjs";
-import { BASE_URL, CI_RANDOM_ID_HEADER } from "app/ci/constants";
+import { BASE_URL } from "app/ci/constants";
 import { testServe, expect, nanoid } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 
@@ -44,8 +44,7 @@ export const { POST, GET } = testServe(
       }
 
       await saveResult(
-        "sleep",
-        context.headers.get(CI_RANDOM_ID_HEADER),
+        context,
         "foobar"
       )
     }, {
