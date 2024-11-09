@@ -313,6 +313,7 @@ export const getHeaders = (
     }
   } else if (retries !== undefined) {
     baseHeaders["Upstash-Retries"] = retries.toString();
+    baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
   }
 
   if (userHeaders) {
@@ -324,6 +325,7 @@ export const getHeaders = (
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         baseHeaders[`Upstash-Forward-${header}`] = userHeaders.get(header)!;
       }
+      baseHeaders[`Upstash-Failure-Callback-Forward-${header}`] = userHeaders.get(header)!;
     }
   }
 
