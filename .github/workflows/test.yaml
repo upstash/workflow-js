@@ -293,23 +293,23 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-        working-directory: examples/nextjs
+        working-directory: examples/nextjs-12
 
       - name: Install local package
         run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/nextjs
+        working-directory: examples/nextjs-12
 
       - name: Build Project
         run: npm run build
-        working-directory: examples/nextjs
+        working-directory: examples/nextjs-12
 
       - name: Run example
         run: npm run dev &
-        working-directory: examples/nextjs
+        working-directory: examples/nextjs-12
 
       - name: Run local tests
         run: node ci.mjs
-        working-directory: examples/nextjs
+        working-directory: examples/nextjs-12
 
   nextjs-pages-local-build:
     needs:
