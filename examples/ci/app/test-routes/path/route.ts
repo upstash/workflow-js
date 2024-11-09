@@ -5,7 +5,7 @@ import { saveResult } from "app/ci/upstash/redis"
 
 const header = `test-header-${nanoid()}`
 const headerValue = `header-${nanoid()}`
-const payload = "my-payload"
+const payload = "“unicode-quotes”"
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -23,25 +23,25 @@ export const { POST, GET } = testServe(
         return await Promise.resolve(someWork(input));
       });
 
-      expect(result1, "processed 'my-payload'");
+      expect(result1, "processed '“unicode-quotes”'");
 
       const result2 = await context.run("step2", async () => {
         const result = someWork(result1);
         return await Promise.resolve(result);
       });
 
-      expect(result2, "processed 'processed 'my-payload''");
+      expect(result2, "processed 'processed '“unicode-quotes”''");
       await saveResult(
         context,
-        "processed 'processed 'my-payload''"
+        result2
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 1
+      retries: 0
     }
   ), {
     expectedCallCount: 4,
-    expectedResult: "processed 'processed 'my-payload''",
+    expectedResult: "processed 'processed '“unicode-quotes”''",
     payload,
     headers: {
       [ header ]: headerValue

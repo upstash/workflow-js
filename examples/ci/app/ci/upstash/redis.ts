@@ -5,6 +5,7 @@ import { type WorkflowContext } from "@upstash/workflow";
 import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants";
 
 const redis = Redis.fromEnv();
+const EXPIRE_IN_SECS = 60
 
 const getRedisKey = (
   kind: "increment" | "result",
@@ -25,7 +26,29 @@ export const increment = async (route: string, randomTestId: string) => {
 
   const pipe = redis.pipeline()
   pipe.incr(key)
-  pipe.expire(key, 100)
+  pipe.expire(key, EXPIRE_IN_SECS)
+  await pipe.exec()
+}
+
+export const saveResultsWithoutContext = async (
+  randomTestId: string,
+  route: string,
+  result: string
+) => {
+  // get call count
+  const incrementKey = getRedisKey("increment", route, randomTestId)
+  const callCount = await redis.get<number>(incrementKey) ?? 0
+
+  if (callCount === 0) {
+    throw new Error(`callCount shouldn't be 0. It was 0 in test of the route '${route}'`);
+  }
+
+  // save result
+  const key = getRedisKey("result", route, randomTestId)
+
+  const pipe = redis.pipeline()
+  pipe.set<RedisResult>(key, { callCount, result, randomTestId })
+  pipe.expire(key, EXPIRE_IN_SECS)
   await pipe.exec()
 }
 
@@ -49,21 +72,11 @@ export const saveResult = async (
     throw new Error("route can't be null.")
   }
 
-  // get call count
-  const incrementKey = getRedisKey("increment", route, randomTestId)
-  const callCount = await redis.get<number>(incrementKey) ?? 0
-
-  if (callCount === 0) {
-    throw new Error(`callCount shouldn't be 0. It was 0 in test of the route '${route}'`);
-  }
-
-  // save result
-  const key = getRedisKey("result", route, randomTestId)
-
-  const pipe = redis.pipeline()
-  pipe.set<RedisResult>(key, { callCount, result, randomTestId })
-  pipe.expire(key, 100)
-  await pipe.exec()
+  await saveResultsWithoutContext(
+    randomTestId,
+    route,
+    result
+  )
 }
 
 export const checkRedisForResults = async (

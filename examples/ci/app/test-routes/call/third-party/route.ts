@@ -1,3 +1,4 @@
+import { FAILING_HEADER_VALUE, FAILING_HEADER } from "../constants";
 
 const thirdPartyResult = "third-party-result";
 
@@ -17,5 +18,12 @@ export const POST = async (request: Request) => {
 }
 
 export const PATCH = async () => {
-  return new Response("failing request", { status: 401 })
+  return new Response(
+    "failing request",
+    {
+      status: 401,
+      headers: {
+        [ FAILING_HEADER ]: FAILING_HEADER_VALUE
+      }
+    })
 }

@@ -1,10 +1,11 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect, nanoid } from "app/ci/utils";
+import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
+import { FAILING_HEADER, FAILING_HEADER_VALUE } from "../constants";
 
-const header = `test-header-${nanoid()}`
-const headerValue = `header-${nanoid()}`
+const testHeader = `test-header-foo`
+const headerValue = `header-foo`
 const payload = "my-payload"
 
 const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
@@ -25,7 +26,7 @@ export const { POST, GET } = testServe(
       // payload doesn't exist in handle third party call:
       // expect(input, payload);
 
-      expect(context.headers.get(header)!, headerValue)
+      expect(context.headers.get(testHeader)!, headerValue)
 
       const { body: postResult } = await context.call("post call", {
         url: thirdPartyEndpoint,
@@ -50,7 +51,7 @@ export const { POST, GET } = testServe(
 
       expect(getResult as string, "called GET 'third-party-result' 'get-header-value-x'");
 
-      const { body: patchResult, status } = await context.call("get call", {
+      const { body: patchResult, status, header } = await context.call("get call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
         method: "PATCH"
@@ -59,6 +60,7 @@ export const { POST, GET } = testServe(
 
       expect(status, 401)
       expect(patchResult as string, "failing request");
+      expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
 
       await saveResult(
         context,
@@ -66,6 +68,7 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
+      // TODO: set to 0 after adding retry to context call
       retries: 1
     }
   ), {
@@ -73,7 +76,7 @@ export const { POST, GET } = testServe(
     expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
     payload,
     headers: {
-      [ header ]: headerValue,
+      [ testHeader ]: headerValue,
     }
   }
 ) 

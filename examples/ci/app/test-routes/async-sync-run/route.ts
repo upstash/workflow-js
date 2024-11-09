@@ -5,7 +5,6 @@ import { saveResult } from "app/ci/upstash/redis"
 
 const header = `test-header-${nanoid()}`
 const headerValue = `header-${nanoid()}`
-const authentication = `Bearer test-auth-${nanoid()}`
 const payload = "my-payload"
 
 export const { POST, GET } = testServe(
@@ -17,29 +16,38 @@ export const { POST, GET } = testServe(
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
 
-      if (context.headers.get("authentication") !== nanoid()) {
-        console.error("Authentication failed.");
+      const result1 = await context.run("async step", async () => {
+        return await Promise.resolve("result1");
+      });
 
-        await saveResult(
-          context,
-          "auth fails"
-        )
+      expect(result1, "result1");
 
-        return;
-      }
+      const result2 = await context.run("sync step", () => {
+        return "result2";
+      });
 
-      throw new Error("shouldn't come here.")
+      expect(result2, "result2");
+
+      const result3 = await context.run("sync step returning promise", () => {
+        return Promise.resolve("result3");
+      });
+
+      expect(result3, "result3");
+
+      await saveResult(
+        context,
+        `${result1} ${result2} ${result3}`
+      )
     }, {
       baseUrl: BASE_URL,
       retries: 0
     }
   ), {
-    expectedCallCount: 1,
-    expectedResult: "auth fails",
+    expectedCallCount: 5,
+    expectedResult: `result1 result2 result3`,
     payload,
     headers: {
       [ header ]: headerValue,
-      "authentication": authentication
     }
   }
 ) 

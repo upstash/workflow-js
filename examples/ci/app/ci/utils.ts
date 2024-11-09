@@ -24,19 +24,19 @@ export const testServe = (
 ) => {
 
   const handler = async (request: Request) => {
-    // get route & secret
+    // get route & randomId
     const route = request.headers.get(CI_ROUTE_HEADER)
-    const secret = request.headers.get(CI_RANDOM_ID_HEADER)
+    const randomId = request.headers.get(CI_RANDOM_ID_HEADER)
 
-    // validate route & secret
+    // validate route & randomId
     if (!route) {
-      throw new Error(`failed to get route in test. secret was ${secret}`)
+      throw new Error(`failed to get route in test. randomId was ${randomId}`)
     }
-    if (!secret) {
-      throw new Error(`failed to get secret in test. route was ${secret}`)
+    if (!randomId) {
+      throw new Error(`failed to get randomId in test. route was ${randomId}`)
     }
 
-    await redis.increment(route, secret)
+    await redis.increment(route, randomId)
     return await serveResult.POST(request)
   }
 

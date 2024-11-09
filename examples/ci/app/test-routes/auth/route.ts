@@ -44,7 +44,7 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 1
+      retries: 0
     }
   ), {
     expectedCallCount: 4,
