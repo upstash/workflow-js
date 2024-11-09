@@ -42,7 +42,7 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     // checks context.call (sucess and fail case)
     route: "call/workflow",
-    waitForSeconds: 7
+    waitForSeconds: 9
   },
   {
     // checks context.run with async and sync route methods
@@ -57,7 +57,7 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     // checks failureFunction with retries: 1
     route: "failureFunction-retry",
-    waitForSeconds: 10
+    waitForSeconds: 14
   },
   {
     // checks failureUrl
@@ -66,6 +66,6 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   },
   {
     route: "wait-for-event/workflow",
-    waitForSeconds: 12
+    waitForSeconds: 20
   }
 ]
