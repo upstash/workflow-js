@@ -1,11 +1,11 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
-import { testServe, expect, nanoid } from "app/ci/utils";
+import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 
-const header = `test-header-${nanoid()}`
-const headerValue = `header-${nanoid()}`
-const authentication = `Bearer test-auth-${nanoid()}`
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authentication = `Bearer test-auth-super-secret`
 const payload = "my-payload"
 
 export const { POST, GET } = testServe(
@@ -17,7 +17,7 @@ export const { POST, GET } = testServe(
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
 
-      if (context.headers.get("authentication") !== nanoid()) {
+      if (context.headers.get("authentication") !== "not-correct") {
         console.error("Authentication failed.");
 
         await saveResult(

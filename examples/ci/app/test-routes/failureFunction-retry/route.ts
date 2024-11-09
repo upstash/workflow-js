@@ -1,14 +1,14 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
-import { testServe, expect, nanoid } from "app/ci/utils";
+import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 import { WorkflowContext } from "@upstash/workflow";
 
-const header = `test-header-${nanoid()}`
-const headerValue = `header-${nanoid()}`
-const authHeaderValue = `Bearer ${nanoid()}`
+const header = `test-header-foo`
+const headerValue = `header-bar`
+const authHeaderValue = `Bearer super-secret-token`
 
-const errorMessage = `my-error-${nanoid()}`
+const errorMessage = `my-error`
 const payload = "my-payload"
 
 let counter = 0

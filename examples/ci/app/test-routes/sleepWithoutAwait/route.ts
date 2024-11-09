@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
-import { testServe, expect, nanoid } from "app/ci/utils";
+import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 
 type Invoice = {
@@ -14,8 +14,8 @@ type Charge = {
   success: boolean;
 };
 
-const header = `test-header-${nanoid()}`
-const headerValue = `header-${nanoid()}`
+const header = `test-header-foo`
+const headerValue = `header-bar`
 const payload: Invoice = { date: 123, email: "my@mail.com", amount: 10 }
 
 let counter = 0;
