@@ -13,7 +13,7 @@ const payload = "my-payload"
 
 let counter = 0
 
-export const { POST, GET: getHandler } = testServe(
+const { POST, GET: getHandler } = testServe(
   serve<string>(
     async (context) => {
       const input = context.requestPayload;
@@ -52,7 +52,7 @@ export const { POST, GET: getHandler } = testServe(
   }
 )
 
-export const GET = async () => {
+const GET = async () => {
   
   const response = await getHandler()
 
@@ -62,3 +62,5 @@ export const GET = async () => {
 
   return response
 }
+
+export { POST, GET }
