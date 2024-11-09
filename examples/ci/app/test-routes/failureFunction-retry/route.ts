@@ -1,7 +1,7 @@
 import { serve } from "@upstash/workflow/nextjs";
-import { BASE_URL } from "app/ci/constants";
+import { BASE_URL, CI_RANDOM_ID_HEADER } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
-import { saveResult } from "app/ci/upstash/redis"
+import * as redis from "app/ci/upstash/redis"
 import { WorkflowContext } from "@upstash/workflow";
 
 const header = `test-header-foo`
@@ -11,9 +11,9 @@ const authHeaderValue = `Bearer super-secret-token`
 const errorMessage = `my-error`
 const payload = "my-payload"
 
-let counter = 0
+const counter_route = "failureFuction-retry-call-counter"
 
-const { POST, GET: getHandler } = testServe(
+export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
       const input = context.requestPayload;
@@ -22,7 +22,10 @@ const { POST, GET: getHandler } = testServe(
       expect(context.headers.get(header)!, headerValue)
 
       await context.run("step1", () => {
-        counter += 1
+        redis.increment(
+          counter_route,
+          context.headers.get(CI_RANDOM_ID_HEADER)!
+        )
         throw new Error(errorMessage);
       });
     }, {
@@ -32,17 +35,29 @@ const { POST, GET: getHandler } = testServe(
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
         expect(context.headers.get("authentication")!, authHeaderValue);
-        expect(counter, 2);
+
+        // save the counter and check it
+        await redis.saveResultsWithoutContext(
+          counter_route,
+          context.headers.get(CI_RANDOM_ID_HEADER)!,
+          ""
+        )
+        await redis.checkRedisForResults(
+          counter_route,
+          context.headers.get(CI_RANDOM_ID_HEADER)!,
+          2,
+          ""
+        )
         
-        await saveResult(
+        await redis.saveResult(
           context as WorkflowContext,
-          `${failResponse} ${counter}`
+          `${failResponse}`
         )
       },
     }
   ), {
     expectedCallCount: 4,
-    expectedResult: `${errorMessage} 2`,
+    expectedResult: `${errorMessage}`,
     payload,
     headers: {
       [ header ]: headerValue,
@@ -50,16 +65,3 @@ const { POST, GET: getHandler } = testServe(
     }
   }
 )
-
-const GET = async () => {
-  
-  const response = await getHandler()
-
-  // set counter to 0 everytime a test starts
-  // (we call GET once everytime we are going to test an endpoint)
-  counter = 0
-
-  return response
-}
-
-export { POST, GET }
