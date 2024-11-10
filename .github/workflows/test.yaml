@@ -650,7 +650,7 @@ jobs:
           echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
         env:
           VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
-          VERCEL_PROJECT_ID: "prj_dUPhtwNlX6otLH5CSV4N0CsZzoaq"
+          VERCEL_PROJECT_ID: "prj_RY1PO3yEm129rSjcblVBNnyOpQY6"
         working-directory: examples/nextjs-12
 
       - name: Test

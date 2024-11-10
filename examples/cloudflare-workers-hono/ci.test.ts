@@ -58,6 +58,8 @@ describe("cloudflare workers tests", () => {
       if (result !== secret) {
         throw new Error("Cloudflare workflow didn't run")
       }
+    }, {
+      timeout: 8000
     })
   } else {
     console.log("skipping workflow run tests because DEPLOYMENT_URL is not set");
