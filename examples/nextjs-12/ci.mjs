@@ -59,11 +59,11 @@ if (deploymentUrl) {
     }
   })
 
-  await new Promise(r => setTimeout(r, 4000));
+  await new Promise(r => setTimeout(r, 6000));
 
   const result = await redis.get(`ci-cf-ran-${secret}`)
   
-  if (result.toString() !== secret) {
+  if (result !== secret) {
     throw new Error("Cloudflare workflow didn't run")
   }
 
