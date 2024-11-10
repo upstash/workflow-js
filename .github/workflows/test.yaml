@@ -488,7 +488,7 @@ jobs:
       - hono-local-build
       - image-gen-with-workflow-local-build
       - nextjs-local-build
-      - nextjs-18-local-build
+      - nextjs12-node18-local-build
       - nextjs-pages-local-build
       - nuxt-local-build
       - solidjs-local-build
