@@ -1,4 +1,10 @@
+/**
+ * this endpoint is for the CI of @upstash/workflow.
+ * 
+ * refer to workflow.js for a simpler example.
+ */
 import { servePagesRouter } from "@upstash/workflow/nextjs";
+import { Redis } from "@upstash/redis"
 
 const someWork = (input) => {
   return `processed '${JSON.stringify(input)}'`
@@ -10,7 +16,9 @@ const baseUrl = process.env.VERCEL_URL
     ? process.env.UPSTASH_WORKFLOW_URL
     : "http://localhost:3001"
 
-const endpointUrl = `${baseUrl}/api/workflow`
+const endpointUrl = `${baseUrl}/api/ci`
+
+const redis = Redis.fromEnv()
 
 const { handler } = servePagesRouter(
   async (context) => {
@@ -21,12 +29,19 @@ const { handler } = servePagesRouter(
       return output
     });
 
-    await context.run("step2", async () => {
-      const output = someWork(result1)
-      console.log("step 2 input", result1, "output", output)
-    });
+    await context.sleep("sleep", 1);
+
+    const secret = context.headers.get("secret-header")
+    if (!secret) {
+      console.error("secret not found");
+      throw new Error("secret not found. can't end the CI workflow")
+    } else {
+      console.log("saving secret to redis");
+      await redis.set(`ci-cf-ran-${secret}`, secret)
+    }
   },
   {
+    retries: 0,
     url: endpointUrl
   }
 )

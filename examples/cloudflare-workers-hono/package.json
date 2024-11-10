@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@upstash/qstash": "latest",
+    "@upstash/redis": "^1.34.3",
     "@upstash/workflow": "latest",
     "hono": "^4.5.8"
   },

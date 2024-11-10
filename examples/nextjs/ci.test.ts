@@ -8,6 +8,11 @@ const qstashClient = new Client({
   token: "mock"
 })
 
+// @ts-expect-error mocking publishJSON
+qstashClient.publishJSON = async () => {
+  return { messageId: "msgId" }
+}
+
 const { POST: serveHandler } = serve(
   async (context) => {
     await context.sleep("sleeping", 10)
@@ -18,16 +23,14 @@ const { POST: serveHandler } = serve(
 )
 
 describe("nextjs tests", () => {
-  test("first invocation", async () => {
+  test("should send first invocation", async () => {
     const request = new Request("https://workflow-tests.requestcatcher.com/")
     const response = await serveHandler(request)
 
     // it should send a request, but get failed to parse error because
     // request catcher returns string
-    expect(response.status).toBe(500)
-    expect(await response.json()).toEqual({
-      error: "SyntaxError",
-      message: "Failed to parse JSON",
-    })
+    expect(response.status).toBe(200)
+    const result = await response.json()
+    expect(result.workflowRunId).toBeTruthy()
   })
 })
