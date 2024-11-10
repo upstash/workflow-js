@@ -40,7 +40,7 @@ describe("cloudflare workers tests", () => {
       const redis = Redis.fromEnv()
       const client = new Client({ token: process.env.QSTASH_TOKEN! })
 
-      const secret = "secret" + Math.floor(Math.random() * 10000).toString()
+      const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
       await client.publishJSON({
         url: `${process.env.DEPLOYMENT_URL}/ci`,
         body: { text: "hello world!" },
@@ -51,7 +51,7 @@ describe("cloudflare workers tests", () => {
         }
       })
 
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 4000));
 
       const result = await redis.get<string>(`ci-cf-ran-${secret}`)
       

@@ -48,7 +48,7 @@ if (deploymentUrl) {
   })
   const redis = Redis.fromEnv()
 
-  const secret = Math.floor(Math.random() * 10000).toString()
+  const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
   await client.publishJSON({
     url: `${deploymentUrl}/api/ci`,
     method: "POST",
@@ -59,7 +59,7 @@ if (deploymentUrl) {
     }
   })
 
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise(r => setTimeout(r, 4000));
 
   const result = await redis.get(`ci-cf-ran-${secret}`)
   
