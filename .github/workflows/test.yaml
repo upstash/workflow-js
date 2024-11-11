@@ -684,9 +684,8 @@ jobs:
           version: latest
 
       - name: Deploy
-        # TODO: use ci
         run: |
-          pnpm add @upstash/workflow@latest
+          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
           DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
           echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
         env:
