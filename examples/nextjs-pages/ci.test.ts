@@ -1,9 +1,10 @@
 
+import { RedisEntry } from "@/utils/types"
 import { Client } from "@upstash/qstash"
 import { Redis } from "@upstash/redis"
 import { serve } from "@upstash/workflow/nextjs"
 import { describe, test, expect } from "bun:test"
-import { RedisEntry } from "./src/app"
+
 
 type TestConfig = {
   testDescription: string,
@@ -16,37 +17,47 @@ type TestConfig = {
 const tests: TestConfig[] = [
   {
     testDescription: "should return undefined from empty string",
-    route: "ci",
+    route: "api/ci",
     payload: "",
-    headers: {},
+    headers: {
+      "Content-Type": "text/plain"
+    },
     expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
   },
   {
     testDescription: "should return foo correctly",
-    route: "ci",
+    route: "api/ci",
     payload: "foo",
-    headers: {},
+    headers: {
+      "Content-Type": "text/plain"
+    },
     expectedResult: `step 1 input: 'foo', type: 'string', stringified input: '"foo"'`
   },
   {
     testDescription: "should allow json without space",
-    route: "ci",
+    route: "api/ci",
     payload: `{"foo":"bar"}`,
-    headers: {},
+    headers: {
+      "Content-Type": "text/plain"
+    },
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   },
   {
     testDescription: "should allow json with one space",
-    route: "ci",
+    route: "api/ci",
     payload: `{"foo": "bar"}`,
-    headers: {},
+    headers: {
+      "Content-Type": "text/plain"
+    },
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   },
   {
     testDescription: "should allow json with 3 spaces",
-    route: "ci",
+    route: "api/ci",
     payload: `{   "foo"   :   "bar"   }`,
-    headers: {},
+    headers: {
+      "Content-Type": "text/plain"
+    },
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   }
 ]
@@ -83,7 +94,7 @@ const testEndpoint = ({
 
     await new Promise(r => setTimeout(r, 4000));
 
-    const result = await redis.get<RedisEntry>(`ci-cf-ran-${secret}`)
+    const result = await redis.get<RedisEntry>(`ci-nextjs-pages-ran-${secret}`)
     
     expect(result).toBeDefined()
     expect(result?.secret).toBe(secret)
@@ -93,9 +104,8 @@ const testEndpoint = ({
   })
 }
 
-describe("cloudflare workers", () => {
+describe("nextjs-pages", () => {
   test("should send first invocation", async () => {
-
     const qstashClient = new Client({
       baseUrl: "https://workflow-tests.requestcatcher.com/",
       token: "mock"

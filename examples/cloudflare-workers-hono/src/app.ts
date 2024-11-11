@@ -40,32 +40,42 @@ app.post(
  */
 app.post(
   "/ci",
-  serve<{ text: string }>(
+  serve(
     async (context) => {
-      const input = context.requestPayload.text;
+      const input = context.requestPayload
       const result1 = await context.run("step1", async () => {
-        const output = someWork(input);
-        console.log("step 1 input", input, "output", output);
-        return output;
+        const output = `step 1 input: '${input}', type: '${typeof input}', stringified input: '${JSON.stringify(input)}'`
+        return output
       });
 
       await context.sleep("sleep", 1);
-
+      
       const secret = context.headers.get("secret-header")
       if (!secret) {
         console.error("secret not found");
         throw new Error("secret not found. can't end the CI workflow")
       } else {
-        console.log("saving secret to redis");
         // @ts-expect-error env isn't typed
         const redis = Redis.fromEnv(context.env)
-        await redis.set(`ci-cf-ran-${secret}`, secret, { ex: 30 })
+        await redis.set<RedisEntry>(
+          `ci-cf-ran-${secret}`,
+          {
+            secret,
+            result: result1
+          },
+          { ex: 30 }
+        )
       }
     },
     {
-      receiver: undefined,
-    },
-  ),
+      retries: 0,
+    }
+  )
 );
+
+export type RedisEntry = {
+  secret: string,
+  result: unknown
+}
 
 export default app;

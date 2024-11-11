@@ -14,10 +14,12 @@ project_arg="$1"
 
 
 # create dist
-# cd ..
-# bun install
-# bun run build
-# cd examples
+cd ..
+bun install
+bun run build
+cd examples/$project_arg
+pnpm i @upstash/workflow@file:../../dist
+cd ..
 
 # install dependencies
 cd "$project_arg"

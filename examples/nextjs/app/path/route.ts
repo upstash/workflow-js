@@ -4,7 +4,7 @@ const someWork = (input: string) => {
   return `processed '${JSON.stringify(input)}'`
 }
 
-export const { POST } = serve<string>(async (context) => {
+const { POST: handler } = serve<string>(async (context) => {
   const input = context.requestPayload
   const result1 = await context.run('step1', async () => {
     const output = someWork(input)
@@ -17,3 +17,21 @@ export const { POST } = serve<string>(async (context) => {
     console.log('step 2 input', result1, 'output', output)
   })
 })
+
+
+export const POST = async (request: Request) => {
+  const body = await request.text()
+
+  // console.log("ENV", process.env);
+  // console.log("HEADERS", request.headers);
+  console.log("BODY", body);
+
+  return await handler(new Request(
+    request.url,
+    {
+      body: body,
+      headers: request.headers,
+      method: "POST"
+    }
+  ))
+}
