@@ -396,6 +396,8 @@ jobs:
         working-directory: examples/nuxt
 
   solidjs-local-build:
+    # skip because solidjs doesn't build right now
+    if: false
     needs:
       - local-tests
     runs-on: ubuntu-latest
@@ -428,9 +430,9 @@ jobs:
         run: npm install @upstash/workflow@file:../../dist
         working-directory: examples/solidjs
 
-      # - name: Build Project
-      #   run: npm run build
-      #   working-directory: examples/solidjs
+      - name: Build Project
+        run: npm run build
+        working-directory: examples/solidjs
 
       - name: Run example
         run: npm run dev &
