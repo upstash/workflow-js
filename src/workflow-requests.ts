@@ -169,8 +169,8 @@ export const handleThirdPartyCallResult = async (
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-            ` Error Message:\n${atob(callbackMessage.body)}`
+          ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
+          ` Error Message:\n${atob(callbackMessage.body)}`
         );
         return ok("call-will-retry");
       }
@@ -298,10 +298,13 @@ export const getHeaders = (
       baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
     }
     baseHeaders["Upstash-Failure-Callback"] = failureUrl;
+    baseHeaders["Upstash-Failure-Callback-Forward-Step-Name"] = step?.stepName ?? "undefined-step"
+
   }
 
   // if retries is set or if call url is passed, set a retry
   // for call url, retry is 0
+
   if (step?.callUrl) {
     baseHeaders["Upstash-Retries"] = "0";
     baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete";
@@ -326,6 +329,7 @@ export const getHeaders = (
       }
     }
   }
+
 
   const contentType =
     (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
@@ -406,8 +410,8 @@ export const verifyRequest = async (
   } catch (error) {
     throw new QStashWorkflowError(
       `Failed to verify that the Workflow request comes from QStash: ${error}\n\n` +
-        "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
-        "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
+      "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
+      "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
     );
   }
 };
