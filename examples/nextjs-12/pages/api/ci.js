@@ -37,7 +37,7 @@ const { handler } = servePagesRouter(
       throw new Error("secret not found. can't end the CI workflow")
     } else {
       console.log("saving secret to redis");
-      await redis.set(`ci-cf-ran-${secret}`, secret)
+      await redis.set(`ci-cf-ran-${secret}`, secret, { ex: 30 })
     }
   },
   {

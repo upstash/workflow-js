@@ -59,7 +59,7 @@ app.post(
         console.log("saving secret to redis");
         // @ts-expect-error env isn't typed
         const redis = Redis.fromEnv(context.env)
-        await redis.set(`ci-cf-ran-${secret}`, secret)
+        await redis.set(`ci-cf-ran-${secret}`, secret, { ex: 30 })
       }
     },
     {
