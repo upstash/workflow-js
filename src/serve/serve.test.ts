@@ -39,7 +39,7 @@ describe("serve", () => {
         qstashClient,
         verbose: true,
         receiver: undefined,
-        retries: 1
+        retries: 1,
       }
     );
 

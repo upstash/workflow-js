@@ -54,8 +54,8 @@ export const { POST, GET } = testServe(
       const { body: patchResult, status, header } = await context.call("get call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
-        method: "PATCH"
-        // TODO: add retry
+        method: "PATCH",
+        retries: 1
       });
 
       expect(status, 401)
@@ -68,8 +68,7 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      // TODO: set to 0 after adding retry to context call
-      retries: 1
+      retries: 0
     }
   ), {
     expectedCallCount: 9,

@@ -63,8 +63,7 @@ export const { POST, GET } = testServe(
       
       // STEP 2: trigger /notifier-workflow and wait for text event
       const textResults = await Promise.all([
-        // TODO: add type to call return type and remove the expect-error-below
-        context.call(
+        context.call<{ workflowRunId: string }>(
           "start notifying workflow",
           {
             url: `${TEST_ROUTE_PREFIX}/wait-for-event/notifier-workflow`,
@@ -76,7 +75,6 @@ export const { POST, GET } = testServe(
       ])
 
       expect(textResults[0].status, 200)
-      // @ts-expect-error can't pass type for body in context.call
       expect(Boolean(textResults[0].body.workflowRunId), true)
       expect(textResults[1].timeout, false)
       expect(typeof textResults[1].eventData, "string")
