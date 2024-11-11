@@ -286,9 +286,9 @@ export type NotifyStepResponse = {
   notifyResponse: NotifyResponse[];
 };
 
-export type CallResponse = {
+export type CallResponse<TResult = unknown> = {
   status: number;
-  body: unknown;
+  body: TResult;
   header: Record<string, string[]>;
 };
 

@@ -281,7 +281,8 @@ export const getHeaders = (
   userHeaders?: Headers,
   step?: Step,
   failureUrl?: WorkflowServeOptions["failureUrl"],
-  retries?: number
+  retries?: number,
+  callRetries?: number
 ): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
@@ -303,7 +304,7 @@ export const getHeaders = (
   // if retries is set or if call url is passed, set a retry
   // for call url, retry is 0
   if (step?.callUrl) {
-    baseHeaders["Upstash-Retries"] = "0";
+    baseHeaders["Upstash-Retries"] = callRetries?.toString() ?? "0";
     baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete";
 
     // if some retries is set, use it in callback and failure callback
