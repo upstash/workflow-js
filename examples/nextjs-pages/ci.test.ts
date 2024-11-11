@@ -92,7 +92,7 @@ const testEndpoint = ({
       }
     })
 
-    await new Promise(r => setTimeout(r, 4000));
+    await new Promise(r => setTimeout(r, 6000));
 
     const result = await redis.get<RedisEntry>(`ci-nextjs-pages-ran-${secret}`)
     
