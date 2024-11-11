@@ -19,7 +19,7 @@ import type {
 import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
-import { decodeBase64, nanoid } from "./utils";
+import { decodeBase64, getWorkflowRunId } from "./utils";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -190,13 +190,13 @@ export const validateRequest = (
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
     throw new QStashWorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
-      ` got ${versionHeader} from the request.`
+        ` got ${versionHeader} from the request.`
     );
   }
 
   // get workflow id
   const workflowRunId = isFirstInvocation
-    ? `wfr_${nanoid()}`
+    ? getWorkflowRunId()
     : (request.headers.get(WORKFLOW_ID_HEADER) ?? "");
   if (workflowRunId.length === 0) {
     throw new QStashWorkflowError("Couldn't get workflow id from header");
@@ -278,8 +278,8 @@ export const handleFailure = async <TInitialPayload>(
     return err(
       new QStashWorkflowError(
         "Workflow endpoint is called to handle a failure," +
-        " but a failureFunction is not provided in serve options." +
-        " Either provide a failureUrl or a failureFunction."
+          " but a failureFunction is not provided in serve options." +
+          " Either provide a failureUrl or a failureFunction."
       )
     );
   }

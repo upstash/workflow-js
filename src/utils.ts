@@ -9,6 +9,10 @@ export function nanoid() {
     .join("");
 }
 
+export function getWorkflowRunId(id?: string): string {
+  return `wfr_${id ?? nanoid()}`;
+}
+
 /**
  * When the base64 string has unicode characters, atob doesn't decode
  * them correctly since it only outputs ASCII characters. Therefore,
