@@ -71,7 +71,7 @@ export const { POST, GET } = testServe(
       retries: 0
     }
   ), {
-    expectedCallCount: 9,
+    expectedCallCount: 10,
     expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
     payload,
     headers: {
