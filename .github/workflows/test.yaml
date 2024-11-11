@@ -495,7 +495,7 @@ jobs:
       - nextjs12-node18-local-build
       - nextjs-pages-local-build
       - nuxt-local-build
-      - solidjs-local-build
+      # - solidjs-local-build
       - sveltekit-local-build
 
     name: Release
