@@ -43,10 +43,14 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     url: workflowContext.url,
   });
   try {
-    await workflowContext.qstashClient.publishJSON({
+    const body =
+      typeof workflowContext.requestPayload === "string"
+        ? workflowContext.requestPayload
+        : JSON.stringify(workflowContext.requestPayload);
+    await workflowContext.qstashClient.publish({
       headers,
       method: "POST",
-      body: workflowContext.requestPayload,
+      body,
       url: workflowContext.url,
     });
     return ok("success");
@@ -314,6 +318,7 @@ export const getHeaders = (
     }
   } else if (retries !== undefined) {
     baseHeaders["Upstash-Retries"] = retries.toString();
+    baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
   }
 
   if (userHeaders) {
@@ -325,6 +330,7 @@ export const getHeaders = (
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         baseHeaders[`Upstash-Forward-${header}`] = userHeaders.get(header)!;
       }
+      baseHeaders[`Upstash-Failure-Callback-Forward-${header}`] = userHeaders.get(header)!;
     }
   }
 

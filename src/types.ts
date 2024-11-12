@@ -12,6 +12,7 @@ import type { WorkflowLogger } from "./logger";
 export type WorkflowClient = {
   batchJSON: InstanceType<typeof Client>["batchJSON"];
   publishJSON: InstanceType<typeof Client>["publishJSON"];
+  publish: InstanceType<typeof Client>["publish"];
   http: InstanceType<typeof Client>["http"];
 };
 /**
