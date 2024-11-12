@@ -9,7 +9,7 @@ const qstashClient = new Client({
   token: "mock",
 })
 
-qstashClient.publishJSON = async () => {
+qstashClient.publish = async () => {
   return { messageId: "msgId" }
 }
 

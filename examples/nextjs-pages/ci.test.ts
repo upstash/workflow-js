@@ -1,6 +1,7 @@
 
 import { RedisEntry } from "@/utils/types"
 import { Client } from "@upstash/qstash"
+import { Client as WorkflowClient } from "@upstash/workflow"
 import { Redis } from "@upstash/redis"
 import { serve } from "@upstash/workflow/nextjs"
 import { describe, test, expect } from "bun:test"
@@ -43,6 +44,13 @@ const tests: TestConfig[] = [
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   },
   {
+    testDescription: "should allow json object",
+    route: "api/ci",
+    payload: {"foo":"bar"},
+    headers: {},
+    expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
+  },
+  {
     testDescription: "should allow json with one space",
     route: "api/ci",
     payload: `{"foo": "bar"}`,
@@ -75,17 +83,16 @@ const testEndpoint = ({
     }
 
     const redis = Redis.fromEnv()
-    const client = new Client({ 
+    const client = new WorkflowClient({ 
       baseUrl: process.env.QSTASH_URL,
       token: process.env.QSTASH_TOKEN!
      })
 
     const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
     
-    await client.publish({
+    await client.trigger({
       url: `${process.env.DEPLOYMENT_URL}/${route}`,
-      body: typeof payload === "object" ? JSON.stringify(payload) : payload,
-      method: "POST",
+      body: payload,
       headers: {
         "secret-header": secret,
         ...headers
@@ -111,8 +118,8 @@ describe("nextjs-pages", () => {
       token: "mock"
     })
     
-    // @ts-expect-error mocking publishJSON
-    qstashClient.publishJSON = async () => {
+    // @ts-expect-error mocking publish
+    qstashClient.publish = async () => {
       return { messageId: "msgId" }
     }
     

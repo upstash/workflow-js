@@ -8,8 +8,8 @@ const qstashClient = new Client({
   token: "mock"
 })
 
-// @ts-expect-error mocking publishJSON
-qstashClient.publishJSON = async () => {
+// @ts-expect-error mocking publish
+qstashClient.publish = async () => {
   return { messageId: "msgId" }
 }
 
