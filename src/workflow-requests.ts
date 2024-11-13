@@ -299,10 +299,10 @@ export const getHeaders = (
   }
 
   if (failureUrl) {
+    baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
     if (!step?.callUrl) {
-      baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
+      baseHeaders["Upstash-Failure-Callback"] = failureUrl;
     }
-    baseHeaders["Upstash-Failure-Callback"] = failureUrl;
   }
 
   // if retries is set or if call url is passed, set a retry

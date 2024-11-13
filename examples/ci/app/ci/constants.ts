@@ -67,5 +67,13 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     route: "wait-for-event/workflow",
     waitForSeconds: 20
-  }
+  },
+  {
+    route: "call/workflow-with-failureFunction",
+    waitForSeconds: 5
+  },
+  {
+    route: "call/workflow-with-failureUrl",
+    waitForSeconds: 5
+  },
 ]
