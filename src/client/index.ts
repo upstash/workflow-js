@@ -18,7 +18,7 @@ export class Client {
 
   constructor(clientConfig: ClientConfig) {
     if (!clientConfig.token) {
-      throw new Error(
+      console.error(
         "QStash token is required for Upstash Workflow!\n\n" +
           "To fix this:\n" +
           "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
