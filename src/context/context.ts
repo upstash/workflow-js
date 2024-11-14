@@ -363,8 +363,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param stepName
    * @param eventId - Unique identifier for the event to wait for
    * @param options - Configuration options
-   * @returns Promise resolving to the wait result
-   * @returns wait response as `{ timeout: boolean, eventData: unknown }`.
+   * @returns Response as `{ timeout: boolean, eventData: unknown }`.
    *   timeout is true if the wait times out, if notified it is false. eventData
    *   is the value passed to `client.notify`.
    */
