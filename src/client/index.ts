@@ -7,10 +7,6 @@ import { WorkflowContext } from "../context";
 import { DEFAULT_RETRIES } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
-type CancelOptions = {
-  workflowRunId?: string | string[];
-  workflowUrl?: string;
-};
 
 /**
  * Workflow client for canceling & notifying workflows and getting waiters of an
@@ -70,17 +66,25 @@ export class Client {
    * do it like this:
    *
    * ```ts
-   * await client.cancel()
+   * await client.cancel({ all: true })
    * ```
    *
    * @param workflowRunId run id of the workflow to delete
    * @param workflowUrl cancel workflows starting with this url. Will be ignored
    *   if `workflowRunId` parameter is set.
+   * @param all set to true in order to cancel all workflows. Will be ignored
+   *   if `workflowRunId` or `workflowUrl` parameters are set.
    * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
    */
-  public async cancel(options?: CancelOptions) {
-    const { workflowRunId, workflowUrl } = options ?? {};
-
+  public async cancel({
+    workflowRunId,
+    workflowUrl,
+    all,
+  }: {
+    workflowRunId?: string | string[];
+    workflowUrl?: string;
+    all?: true;
+  }) {
     let body: string;
     if (workflowRunId) {
       const runIdArray = typeof workflowRunId === "string" ? [workflowRunId] : workflowRunId;
@@ -88,8 +92,10 @@ export class Client {
       body = JSON.stringify({ workflowRunIds: runIdArray });
     } else if (workflowUrl) {
       body = JSON.stringify({ workflowUrl });
-    } else {
+    } else if (all) {
       body = "{}";
+    } else {
+      throw new TypeError("The `cancel` method cannot be called without any options.");
     }
 
     const result = await this.client.http.request<{ cancelled: number }>({

@@ -68,7 +68,7 @@ describe("workflow client", () => {
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {
-          await client.cancel();
+          await client.cancel({ all: true });
         },
         responseFields: {
           status: 200,
@@ -81,6 +81,11 @@ describe("workflow client", () => {
           body: {},
         },
       });
+    });
+
+    test("should throw if no option", async () => {
+      const throws = () => client.cancel({});
+      expect(throws).toThrow("The `cancel` method cannot be called without any options.");
     });
   });
 
