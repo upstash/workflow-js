@@ -39,10 +39,10 @@ export class Client {
    *
    * ```ts
    * // cancel a single workflow
-   * await client.cancel({ workflowRunId: "<WORKFLOW_RUN_ID>" })
+   * await client.cancel({ ids: "<WORKFLOW_RUN_ID>" })
    *
    * // cancel a set of workflow runs
-   * await client.cancel({ workflowRunId: [
+   * await client.cancel({ ids: [
    *   "<WORKFLOW_RUN_ID_1>",
    *   "<WORKFLOW_RUN_ID_2>",
    * ]})
@@ -51,13 +51,13 @@ export class Client {
    * ### Cancel workflows starting with a url
    *
    * If you have an endpoint called `https://your-endpoint.com` and you
-   * want to cancel all workflow runs on it, you can use `workflowUrl`.
+   * want to cancel all workflow runs on it, you can use `urlStartingWith`.
    *
    * Note that this will cancel workflows in all endpoints under
    * `https://your-endpoint.com`.
    *
    * ```ts
-   * await client.cancel({ workflowUrl: "https://your-endpoint.com" })
+   * await client.cancel({ urlStartingWith: "https://your-endpoint.com" })
    * ```
    *
    * ### Cancel *all* workflows
@@ -69,29 +69,29 @@ export class Client {
    * await client.cancel({ all: true })
    * ```
    *
-   * @param workflowRunId run id of the workflow to delete
-   * @param workflowUrl cancel workflows starting with this url. Will be ignored
-   *   if `workflowRunId` parameter is set.
+   * @param ids run id of the workflow to delete
+   * @param urlStartingWith cancel workflows starting with this url. Will be ignored
+   *   if `ids` parameter is set.
    * @param all set to true in order to cancel all workflows. Will be ignored
-   *   if `workflowRunId` or `workflowUrl` parameters are set.
+   *   if `ids` or `urlStartingWith` parameters are set.
    * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
    */
   public async cancel({
-    workflowRunId,
-    workflowUrl,
+    ids,
+    urlStartingWith,
     all,
   }: {
-    workflowRunId?: string | string[];
-    workflowUrl?: string;
+    ids?: string | string[];
+    urlStartingWith?: string;
     all?: true;
   }) {
     let body: string;
-    if (workflowRunId) {
-      const runIdArray = typeof workflowRunId === "string" ? [workflowRunId] : workflowRunId;
+    if (ids) {
+      const runIdArray = typeof ids === "string" ? [ids] : ids;
 
       body = JSON.stringify({ workflowRunIds: runIdArray });
-    } else if (workflowUrl) {
-      body = JSON.stringify({ workflowUrl });
+    } else if (urlStartingWith) {
+      body = JSON.stringify({ workflowUrl: urlStartingWith });
     } else if (all) {
       body = "{}";
     } else {

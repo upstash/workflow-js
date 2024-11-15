@@ -9,10 +9,10 @@ describe("workflow client", () => {
 
   describe("cancel - mocked", () => {
     test("should cancel single workflow run id", async () => {
-      const workflowRunId = `wfr-${nanoid()}`;
+      const ids = `wfr-${nanoid()}`;
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ workflowRunId });
+          await client.cancel({ ids });
         },
         responseFields: {
           status: 200,
@@ -22,16 +22,16 @@ describe("workflow client", () => {
           method: "DELETE",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
           token,
-          body: { workflowRunIds: [workflowRunId] },
+          body: { workflowRunIds: [ids] },
         },
       });
     });
 
     test("should cancel multiple workflow run ids", async () => {
-      const workflowRunId = [`wfr-${nanoid()}`, `wfr-${nanoid()}`];
+      const ids = [`wfr-${nanoid()}`, `wfr-${nanoid()}`];
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ workflowRunId });
+          await client.cancel({ ids });
         },
         responseFields: {
           status: 200,
@@ -41,16 +41,16 @@ describe("workflow client", () => {
           method: "DELETE",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
           token,
-          body: { workflowRunIds: workflowRunId },
+          body: { workflowRunIds: ids },
         },
       });
     });
 
     test("should cancel workflowUrl", async () => {
-      const workflowUrl = "http://workflow-endpoint.com";
+      const urlStartingWith = "http://workflow-endpoint.com";
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ workflowUrl });
+          await client.cancel({ urlStartingWith });
         },
         responseFields: {
           status: 200,
@@ -60,7 +60,7 @@ describe("workflow client", () => {
           method: "DELETE",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
           token,
-          body: { workflowUrl },
+          body: { workflowUrl: urlStartingWith },
         },
       });
     });
@@ -101,11 +101,11 @@ describe("workflow client", () => {
       });
 
       const cancel = await liveClient.cancel({
-        workflowRunId,
+        ids: workflowRunId,
       });
       expect(cancel).toEqual({ cancelled: 1 });
 
-      const throws = () => liveClient.cancel({ workflowRunId });
+      const throws = () => liveClient.cancel({ ids: workflowRunId });
       expect(throws).toThrow(`{"error":"workflowRun ${workflowRunId} not found"}`);
     });
 
@@ -119,18 +119,18 @@ describe("workflow client", () => {
 
       const throws = async () =>
         await liveClient.cancel({
-          workflowRunId: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
+          ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
         });
 
       // if there is any workflow which doesn't exist, we throw
       expect(throws).toThrow(`{"error":"workflowRun non-existent not found"}`);
 
       // trying to cancel the workflows one by one gives error, as they were canceled above
-      const throwsFirst = async () => await liveClient.cancel({ workflowRunId: workflowRunIdOne });
+      const throwsFirst = async () => await liveClient.cancel({ ids: workflowRunIdOne });
       expect(throwsFirst).toThrow(`{"error":"workflowRun ${workflowRunIdOne} not found"}`);
 
       // trying to cancel the workflows one by one gives error, as they were canceled above
-      const throwsSecond = async () => await liveClient.cancel({ workflowRunId: workflowRunIdTwo });
+      const throwsSecond = async () => await liveClient.cancel({ ids: workflowRunIdTwo });
       expect(throwsSecond).toThrow(`{"error":"workflowRun ${workflowRunIdTwo} not found"}`);
     });
 
@@ -143,7 +143,7 @@ describe("workflow client", () => {
       });
 
       const cancel = await liveClient.cancel({
-        workflowUrl: "http://requestcatcher.com",
+        urlStartingWith: "http://requestcatcher.com",
       });
 
       expect(cancel).toEqual({ cancelled: 2 });
