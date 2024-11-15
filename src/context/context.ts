@@ -339,7 +339,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Pauses workflow execution until a specific event occurs or a timeout is reached.
    *
    *```ts
-   * const result = await workflow.waitForEvent("payment.confirmed", {
+   * const result = await workflow.waitForEvent("payment-confirmed", {
    *   timeout: "5m"
    * });
    *```
@@ -363,9 +363,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param stepName
    * @param eventId - Unique identifier for the event to wait for
    * @param options - Configuration options
-   * @returns Response as `{ timeout: boolean, eventData: unknown }`.
-   *   timeout is true if the wait times out, if notified it is false. eventData
-   *   is the value passed to `client.notify`.
+   * @returns `{ timeout: boolean, eventData: unknown }`.
+   *   The `timeout` property specifies if the workflow has timed out. The `eventData`
+   *   is the data passed when notifying this workflow of an event.
    */
   public async waitForEvent(
     stepName: string,
