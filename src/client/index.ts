@@ -33,7 +33,7 @@ export class Client {
    * There are multiple ways you can cancel workflows:
    * - pass one or more workflow run ids to cancel them
    * - pass a workflow url to cancel all runs starting with this url
-   * - don't pass any options. in this case, all workflow will be canceled
+   * - cancel all pending or active workflow runs
    *
    * ### Cancel a set of workflow runs
    *
@@ -62,7 +62,7 @@ export class Client {
    *
    * ### Cancel *all* workflows
    *
-   * If you want to cancel all workflows under your user, you can
+   * To cancel all pending and currently running workflows, you can
    * do it like this:
    *
    * ```ts
