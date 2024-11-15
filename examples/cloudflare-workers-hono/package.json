@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "dependencies": {
     "@upstash/qstash": "latest",
-    "@upstash/workflow": "0.1.1-canary-2",
+    "@upstash/redis": "^1.34.3",
+    "@upstash/workflow": "latest",
     "hono": "^4.5.8"
   },
   "devDependencies": {

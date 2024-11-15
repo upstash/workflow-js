@@ -12,6 +12,7 @@ import type { WorkflowLogger } from "./logger";
 export type WorkflowClient = {
   batchJSON: InstanceType<typeof Client>["batchJSON"];
   publishJSON: InstanceType<typeof Client>["publishJSON"];
+  publish: InstanceType<typeof Client>["publish"];
   http: InstanceType<typeof Client>["http"];
 };
 /**
@@ -286,9 +287,9 @@ export type NotifyStepResponse = {
   notifyResponse: NotifyResponse[];
 };
 
-export type CallResponse = {
+export type CallResponse<TResult = unknown> = {
   status: number;
-  body: unknown;
+  body: TResult;
   header: Record<string, string[]>;
 };
 

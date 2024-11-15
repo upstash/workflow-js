@@ -141,6 +141,7 @@ describe("context tests", () => {
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-retries": "2",
+              "upstash-failure-callback-retries": "2",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-id",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -188,6 +189,7 @@ describe("context tests", () => {
               "Content-Type": ["application/json"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
               "Upstash-Retries": ["3"],
+              "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Workflow-CallType": ["step"],
               [WORKFLOW_INIT_HEADER]: ["false"],
               [WORKFLOW_ID_HEADER]: ["wfr-id"],
@@ -238,6 +240,7 @@ describe("context tests", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-failure-callback-retries": "3",
                 "upstash-workflow-calltype": "step",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
@@ -252,6 +255,137 @@ describe("context tests", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-failure-callback-retries": "3",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("steps", () => {
+    const url = "https://some-website.com";
+    const body = "request-body";
+    test("should send correct headers for context.call", async () => {
+      const retries = 10;
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+      });
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.call("my-step", {
+              url,
+              body,
+              headers: { "my-header": "my-value" },
+              method: "PATCH",
+              retries: retries,
+            });
+          expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '"request-body"',
+              destination: url,
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "my-step",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "3",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-failure-callback-retries": "3",
+                "upstash-feature-set": "WF_NoDelete",
+                "upstash-forward-my-header": "my-value",
+                "upstash-method": "PATCH",
+                "upstash-retries": retries.toString(),
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should send correct headers for context.call with default retry", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+      });
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.call("my-step", {
+              url,
+              body,
+              headers: { "my-header": "my-value" },
+              method: "PATCH",
+            });
+          expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '"request-body"',
+              destination: url,
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "my-step",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "3",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-failure-callback-retries": "3",
+                "upstash-feature-set": "WF_NoDelete",
+                "upstash-forward-my-header": "my-value",
+                "upstash-method": "PATCH",
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,

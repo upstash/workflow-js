@@ -265,11 +265,13 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * network call without consuming any runtime.
    *
    * ```ts
-   * const postResult = await context.call<string>(
+   * const { status, body } = await context.call<string>(
    *   "post call step",
-   *   `https://www.some-endpoint.com/api`,
-   *   "POST",
-   *   "my-payload"
+   *   {
+   *     url: `https://www.some-endpoint.com/api`,
+   *     method: "POST",
+   *     body: "my-payload"
+   *   }
    * );
    * ```
    *
@@ -279,28 +281,30 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * @param stepName
    * @param url url to call
-   * @param method call method
+   * @param method call method. "GET" by default.
    * @param body call body
    * @param headers call headers
+   * @param retries number of call retries. 0 by default
    * @returns call result as {
    *     status: number;
    *     body: unknown;
    *     header: Record<string, string[]>
    *   }
    */
-  public async call(
+  public async call<TResult = unknown>(
     stepName: string,
     settings: {
       url: string;
       method?: HTTPMethods;
       body?: unknown;
       headers?: Record<string, string>;
+      retries?: number;
     }
-  ): Promise<CallResponse> {
-    const { url, method = "GET", body, headers = {} } = settings;
+  ): Promise<CallResponse<TResult>> {
+    const { url, method = "GET", body, headers = {}, retries = 0 } = settings;
 
     const result = await this.addStep(
-      new LazyCallStep<CallResponse | string>(stepName, url, method, body, headers ?? {})
+      new LazyCallStep<CallResponse<string> | string>(stepName, url, method, body, headers, retries)
     );
 
     // <for backwards compatibity>
@@ -319,7 +323,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         return {
           status: 200,
           header: {},
-          body: result,
+          body: result as TResult,
         };
       }
     }
@@ -331,7 +335,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         body: JSON.parse(result.body as string),
       };
     } catch {
-      return result;
+      return result as CallResponse<TResult>;
     }
   }
 

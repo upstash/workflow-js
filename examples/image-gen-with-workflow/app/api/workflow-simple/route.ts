@@ -9,23 +9,25 @@ export const { POST } = serve<{ prompt: string }>(async (context) => {
   const { prompt } = context.requestPayload
 
   // make the call to Idogram through QStash
-  const result = await context.call<ImageResponse>(
+  const { body: result } = await context.call(
     'call Ideogram',
-    'https://api.ideogram.ai/generate',
-    'POST',
     {
-      image_request: {
-        model: 'V_2',
-        prompt,
-        aspect_ratio: 'ASPECT_1_1',
-        magic_prompt_option: 'AUTO',
+      url: 'https://api.ideogram.ai/generate',
+      method: 'POST',
+      body: {
+        image_request: {
+          model: 'V_2',
+          prompt,
+          aspect_ratio: 'ASPECT_1_1',
+          magic_prompt_option: 'AUTO',
+        },
       },
-    },
-    {
-      'Content-Type': 'application/json',
-      'Api-Key': process.env.IDEOGRAM_API_KEY!,
-    },
-  )
+      headers: {
+        'Content-Type': 'application/json',
+        'Api-Key': process.env.IDEOGRAM_API_KEY!,
+      },
+    }
+  ) as { body: ImageResponse };
 
   // save the image url in redis
   // so that UI can access it

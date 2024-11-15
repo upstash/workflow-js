@@ -50,8 +50,12 @@ export const servePagesRouter = <TInitialPayload = unknown>(
     const baseUrl = options?.baseUrl ?? `${protocol}://${request_.headers.host}`;
 
     const request = new Request(options?.url ?? `${baseUrl}${request_.url}`, {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      body: JSON.stringify(request_.body) ?? "",
+      body:
+        (typeof request_.body === "string"
+          ? request_.body
+          : typeof request_.body === "undefined"
+            ? undefined
+            : JSON.stringify(request_.body)) ?? "",
       headers: new Headers(request_.headersDistinct as Record<string, string[]>),
       method: "POST",
     });

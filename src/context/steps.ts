@@ -149,19 +149,22 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   private readonly body: TBody;
   private readonly headers: Record<string, string>;
   stepType: StepType = "Call";
+  public readonly retries: number;
 
   constructor(
     stepName: string,
     url: string,
     method: HTTPMethods,
     body: TBody,
-    headers: Record<string, string>
+    headers: Record<string, string>,
+    retries: number
   ) {
     super(stepName);
     this.url = url;
     this.method = method;
     this.body = body;
     this.headers = headers;
+    this.retries = retries;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
