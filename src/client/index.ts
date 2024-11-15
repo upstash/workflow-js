@@ -7,6 +7,10 @@ import { WorkflowContext } from "../context";
 import { DEFAULT_RETRIES } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
+type CancelOptions = {
+  workflowRunId?: string | string[];
+  workflowUrl?: string;
+};
 
 /**
  * Workflow client for canceling & notifying workflows and getting waiters of an
@@ -30,23 +34,74 @@ export class Client {
   /**
    * Cancel an ongoing workflow
    *
-   * ```ts
-   * import { Client } from "@upstash/workflow";
+   * There are multiple ways you can cancel workflows:
+   * - pass one or more workflow run ids to cancel them
+   * - pass a workflow url to cancel all runs starting with this url
+   * - don't pass any options. in this case, all workflow will be canceled
    *
-   * const client = new Client({ token: "<QSTASH_TOKEN>" })
+   * ### Cancel a set of workflow runs
+   *
+   * ```ts
+   * // cancel a single workflow
    * await client.cancel({ workflowRunId: "<WORKFLOW_RUN_ID>" })
+   *
+   * // cancel a set of workflow runs
+   * await client.cancel({ workflowRunId: [
+   *   "<WORKFLOW_RUN_ID_1>",
+   *   "<WORKFLOW_RUN_ID_2>",
+   * ]})
+   * ```
+   *
+   * ### Cancel workflows starting with a url
+   *
+   * If you have an endpoint called `https://your-endpoint.com` and you
+   * want to cancel all workflow runs on it, you can use `workflowUrl`.
+   *
+   * Note that this will cancel workflows in all endpoints under
+   * `https://your-endpoint.com`.
+   *
+   * ```ts
+   * await client.cancel({ workflowUrl: "https://your-endpoint.com" })
+   * ```
+   *
+   * ### Cancel *all* workflows
+   *
+   * If you want to cancel all workflows under your user, you can
+   * do it like this:
+   *
+   * ```ts
+   * await client.cancel()
    * ```
    *
    * @param workflowRunId run id of the workflow to delete
+   * @param workflowUrl cancel workflows starting with this url. Will be ignored
+   *   if `workflowRunId` parameter is set.
    * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
    */
-  public async cancel({ workflowRunId }: { workflowRunId: string }) {
-    const result = (await this.client.http.request({
-      path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
+  public async cancel(options?: CancelOptions) {
+    const { workflowRunId, workflowUrl } = options ?? {};
+
+    let body: string;
+    if (workflowRunId) {
+      const runIdArray = typeof workflowRunId === "string" ? [workflowRunId] : workflowRunId;
+
+      body = JSON.stringify({ workflowRunIds: runIdArray });
+    } else if (workflowUrl) {
+      body = JSON.stringify({ workflowUrl });
+    } else {
+      body = "{}";
+    }
+
+    const result = await this.client.http.request<{ cancelled: number }>({
+      path: ["v2", "workflows", "runs"],
       method: "DELETE",
-      parseResponseAsJson: false,
-    })) as { error: string } | undefined;
-    return result ?? true;
+      body,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return result;
   }
 
   /**
