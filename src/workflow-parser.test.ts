@@ -67,7 +67,7 @@ describe("Workflow Parser", () => {
       expect(throws).toThrow(
         new QStashWorkflowError(
           `Incompatible workflow sdk protocol version.` +
-          ` Expected ${WORKFLOW_PROTOCOL_VERSION}, got ${requestProtocol} from the request.`
+            ` Expected ${WORKFLOW_PROTOCOL_VERSION}, got ${requestProtocol} from the request.`
         )
       );
     });
@@ -639,11 +639,11 @@ describe("Workflow Parser", () => {
     };
     test("should return not-failure-callback when the header is not set", async () => {
       const request = new Request(WORKFLOW_ENDPOINT);
-      const failureFunction: WorkflowServeOptions["failureFunction"] = async (
-        { context,
-          failStatus,
-          failResponse }
-      ) => {
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({
+        context,
+        failStatus,
+        failResponse,
+      }) => {
         return;
       };
 
@@ -676,8 +676,8 @@ describe("Workflow Parser", () => {
       expect(result.isErr() && result.error.name).toBe(QStashWorkflowError.name);
       expect(result.isErr() && result.error.message).toBe(
         "Workflow endpoint is called to handle a failure," +
-        " but a failureFunction is not provided in serve options." +
-        " Either provide a failureUrl or a failureFunction."
+          " but a failureFunction is not provided in serve options." +
+          " Either provide a failureUrl or a failureFunction."
       );
     });
 
@@ -688,9 +688,11 @@ describe("Workflow Parser", () => {
           [WORKFLOW_FAILURE_HEADER]: "true",
         },
       });
-      const failureFunction: WorkflowServeOptions["failureFunction"] = async (
-        { failHeader, failResponse, failStatus }
-      ) => {
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({
+        failHeaders,
+        failResponse,
+        failStatus,
+      }) => {
         throw new Error("my-error");
       };
 
@@ -712,11 +714,11 @@ describe("Workflow Parser", () => {
           [WORKFLOW_FAILURE_HEADER]: "true",
         },
       });
-      const failureFunction: WorkflowServeOptions["failureFunction"] = async (
-        { context,
-          failStatus,
-          failResponse }
-      ) => {
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({
+        context,
+        failStatus,
+        failResponse,
+      }) => {
         expect(failStatus).toBe(201);
         expect(failResponse).toBe(failMessage);
         expect(context.headers.get("authorization")).toBe(authorization);

@@ -480,7 +480,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 0,
-        failureFunction: (context, failStatus, failResponse, failHeaders) => {
+        failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");
           expect(context.headers.get("authentication")).toBe("Bearer secretPassword");
@@ -557,7 +557,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 1,
-        failureFunction: (context, failStatus, failResponse, failHeaders) => {
+        failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");
           expect(context.headers.get("authentication")).toBe("Bearer secretPassword");

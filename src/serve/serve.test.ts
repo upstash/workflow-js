@@ -443,11 +443,7 @@ describe("serve", () => {
     test("should set failureUrl as context url if failureFunction is passed", async () => {
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
       let called = false;
-      const myFailureFunction: WorkflowServeOptions["failureFunction"] = async (
-        _status,
-        _header,
-        _body
-      ) => {
+      const myFailureFunction: WorkflowServeOptions["failureFunction"] = async () => {
         return;
       };
       const { handler: endpoint } = serve(routeFunction, {
