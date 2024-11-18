@@ -321,7 +321,12 @@ export const handleFailure = async <TInitialPayload>(
       debug,
     });
 
-    await failureFunction(workflowContext, status, errorPayload.message, header);
+    await failureFunction({
+      context: workflowContext,
+      failStatus: status,
+      failResponse: errorPayload.message,
+      failHeaders: header,
+    });
   } catch (error) {
     return err(error as Error);
   }

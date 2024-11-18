@@ -183,12 +183,15 @@ export type WorkflowServeOptions<
    * @param failResponse error message
    * @returns void
    */
-  failureFunction?: (
-    context: Omit<WorkflowContext, "run" | "sleepUntil" | "sleep" | "call">,
-    failStatus: number,
-    failResponse: string,
-    failHeader: Record<string, string[]>
-  ) => Promise<void> | void;
+  failureFunction?: (failureData: {
+    context: Omit<
+      WorkflowContext,
+      "run" | "sleepUntil" | "sleep" | "call" | "waitForEvent" | "notify"
+    >;
+    failStatus: number;
+    failResponse: string;
+    failHeaders: Record<string, string[]>;
+  }) => Promise<void> | void;
   /**
    * Base Url of the workflow endpoint
    *

@@ -26,7 +26,7 @@ export const { POST, GET } = testServe(
     }, {
       baseUrl: BASE_URL,
       retries: 0,
-      failureFunction: async (context, failStatus, failResponse) => {
+      failureFunction: async ({ context, failStatus, failResponse }) => {
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
         expect(context.headers.get("authentication")!, authHeaderValue);
