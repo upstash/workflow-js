@@ -1,7 +1,7 @@
 import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, WaitRequest } from "../types";
-import { type BaseLazyStep } from "./steps";
+import { LazyCallStep, type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
 import { NO_CONCURRENCY } from "../constants";
@@ -131,7 +131,7 @@ export class AutoExecutor {
       step: resultStep,
       stepCount: this.stepCount,
     });
-    await this.submitStepsToQStash([resultStep]);
+    await this.submitStepsToQStash([resultStep], [lazyStep]);
 
     return resultStep.out as TResult;
   }
@@ -182,7 +182,7 @@ export class AutoExecutor {
         const planSteps = parallelSteps.map((parallelStep, index) =>
           parallelStep.getPlanStep(parallelSteps.length, initialStepCount + index)
         );
-        await this.submitStepsToQStash(planSteps);
+        await this.submitStepsToQStash(planSteps, parallelSteps);
         break;
       }
       case "partial": {
@@ -211,11 +211,12 @@ export class AutoExecutor {
         // sleep/sleepUntil. It's only possible here:
         validateStep(parallelSteps[stepIndex], planStep);
         try {
-          const resultStep = await parallelSteps[stepIndex].getResultStep(
+          const parallelStep = parallelSteps[stepIndex];
+          const resultStep = await parallelStep.getResultStep(
             parallelSteps.length,
             planStep.targetStep
           );
-          await this.submitStepsToQStash([resultStep]);
+          await this.submitStepsToQStash([resultStep], [parallelStep]);
         } catch (error) {
           if (error instanceof WorkflowAbort) {
             throw error;
@@ -309,7 +310,7 @@ export class AutoExecutor {
    *
    * @param steps steps to send
    */
-  private async submitStepsToQStash(steps: Step[]) {
+  private async submitStepsToQStash(steps: Step[], lazySteps: BaseLazyStep[]) {
     // if there are no steps, something went wrong. Raise exception
     if (steps.length === 0) {
       throw new WorkflowError(
@@ -363,7 +364,8 @@ export class AutoExecutor {
     }
 
     const result = await this.context.qstashClient.batchJSON(
-      steps.map((singleStep) => {
+      steps.map((singleStep, index) => {
+        const lazyStep = lazySteps[index];
         const { headers } = getHeaders(
           "false",
           this.context.workflowRunId,
@@ -371,7 +373,8 @@ export class AutoExecutor {
           this.context.headers,
           singleStep,
           this.context.failureUrl,
-          this.context.retries
+          this.context.retries,
+          lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined
         );
 
         // if the step is a single step execution or a plan step, we can add sleep headers
@@ -529,5 +532,5 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
  */
 const sortSteps = (steps: Step[]): Step[] => {
   const getStepId = (step: Step) => step.targetStep || step.stepId;
-  return steps.toSorted((step, stepOther) => getStepId(step) - getStepId(stepOther));
+  return [...steps].sort((step, stepOther) => getStepId(step) - getStepId(stepOther));
 };

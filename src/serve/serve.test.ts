@@ -39,6 +39,7 @@ describe("serve", () => {
         qstashClient,
         verbose: true,
         receiver: undefined,
+        retries: 1,
       }
     );
 
@@ -62,6 +63,8 @@ describe("serve", () => {
           [WORKFLOW_INIT_HEADER]: "true",
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: null,
           [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: "1",
+          "upstash-failure-callback-retries": "1",
+          "upstash-retries": "1",
         },
       },
     });
@@ -133,6 +136,7 @@ describe("serve", () => {
                   "upstash-feature-set": "LazyFetch",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-retries": "3",
+                  "upstash-failure-callback-retries": "3",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
@@ -161,6 +165,7 @@ describe("serve", () => {
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-method": "POST",
                   "upstash-retries": "3",
+                  "upstash-failure-callback-retries": "3",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -335,6 +340,7 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-failure-callback-retries": "3",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-foo",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -381,6 +387,7 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-failure-callback-retries": "3",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -419,11 +426,11 @@ describe("serve", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch",
-                "upstash-failure-callback-upstash-workflow-runid": "wfr-bar",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-failure-callback-retries": "3",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -441,11 +448,7 @@ describe("serve", () => {
     test("should set failureUrl as context url if failureFunction is passed", async () => {
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
       let called = false;
-      const myFailureFunction: WorkflowServeOptions["failureFunction"] = async (
-        _status,
-        _header,
-        _body
-      ) => {
+      const myFailureFunction: WorkflowServeOptions["failureFunction"] = async () => {
         return;
       };
       const { handler: endpoint } = serve(routeFunction, {
@@ -474,9 +477,9 @@ describe("serve", () => {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
+                "upstash-failure-callback-retries": "3",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
-                "upstash-failure-callback-upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
@@ -670,6 +673,7 @@ describe("serve", () => {
             "Upstash-Feature-Set": ["LazyFetch"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
             "Upstash-Retries": ["3"],
+            "Upstash-Failure-Callback-Retries": ["3"],
             "Upstash-Workflow-CallType": ["step"],
             "Upstash-Workflow-Init": ["false"],
             "Upstash-Workflow-RunId": ["wfr-bar"],

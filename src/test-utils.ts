@@ -63,7 +63,14 @@ export const mockQStashServer = async ({
         expect(request.headers.get("authorization")).toBe(`Bearer ${token}`);
         // check body
         if (body) {
-          expect(await request.json()).toEqual(body);
+          const requestBody = await request.text();
+          let parsedBody;
+          try {
+            parsedBody = JSON.parse(requestBody);
+          } catch {
+            parsedBody = requestBody;
+          }
+          expect(parsedBody).toEqual(body);
         } else {
           expect(await request.text()).toBeFalsy();
         }

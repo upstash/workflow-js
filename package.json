@@ -44,6 +44,14 @@
     "./cloudflare": {
       "import": "./cloudflare.mjs",
       "require": "./cloudflare.js"
+    },
+    "./astro": {
+      "import": "./astro.mjs",
+      "require": "./astro.js"
+    },
+    "./express": {
+      "import": "./express.mjs",
+      "require": "./express.js"
     }
   },
   "scripts": {
@@ -77,8 +85,11 @@
     "@solidjs/start": "^1.0.8",
     "@sveltejs/kit": "^2.6.1",
     "@types/bun": "^1.1.10",
+    "@types/express": "^5.0.0",
+    "astro": "^4.16.7",
     "eslint": "^9.11.1",
     "eslint-plugin-unicorn": "^55.0.0",
+    "express": "^4.21.1",
     "globals": "^15.10.0",
     "h3": "^1.12.0",
     "hono": "^4.6.3",

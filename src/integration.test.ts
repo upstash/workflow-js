@@ -396,7 +396,7 @@ describe.skip("live serve tests", () => {
             return;
           }
 
-          const { body: postResult } = await context.call("post call", {
+          const { body: postResult } = await context.call<string>("post call", {
             url: LOCAL_THIRD_PARTY_URL,
             method: "POST",
             body: "post-payload",
@@ -408,7 +408,7 @@ describe.skip("live serve tests", () => {
 
           await context.sleep("sleep 1", 2);
 
-          const { body: getResult } = await context.call("get call", {
+          const { body: getResult } = await context.call<string>("get call", {
             url: LOCAL_THIRD_PARTY_URL,
             headers: getHeader,
           });
@@ -480,7 +480,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 0,
-        failureFunction: (context, failStatus, failResponse, failHeaders) => {
+        failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");
           expect(context.headers.get("authentication")).toBe("Bearer secretPassword");
@@ -516,7 +516,7 @@ describe.skip("live serve tests", () => {
         finishState,
         routeFunction: async (context) => {
           const input = context.requestPayload;
-          const { status, body, header } = await context.call("failing call", {
+          const { status, body, header } = await context.call<string>("failing call", {
             url: LOCAL_THIRD_PARTY_URL,
             body: input,
             method: "POST",
@@ -557,7 +557,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 1,
-        failureFunction: (context, failStatus, failResponse, failHeaders) => {
+        failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");
           expect(context.headers.get("authentication")).toBe("Bearer secretPassword");
@@ -875,7 +875,7 @@ describe.skip("live serve tests", () => {
               throw new Error(largeObject);
             });
           },
-          failureFunction(context, failStatus, failResponse) {
+          failureFunction({ failResponse }) {
             expect(failResponse).toBe(largeObject);
             finishState.finish();
           },

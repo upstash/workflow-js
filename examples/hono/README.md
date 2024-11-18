@@ -5,9 +5,9 @@ This is an example of how to use Upstash Workflow in a Hono project. You can lea
 ## Development
 
 > [!TIP]
-> You can use [the `bootstrap.sh` script](https://github.com/upstash/qstash-js/tree/main/examples/workflow) to run this example with a local tunnel.
+> You can use [the `bootstrap.sh` script](https://github.com/upstash/workflow-js/tree/main/examples) to run this example with a local tunnel.
 >
-> Simply set the environment variables as explained below and run the following command in the `qstash-js/examples/workflow` directory:
+> Simply set the environment variables as explained below and run the following command in the `workflow-js/examples` directory:
 >
 > ```
 > bash bootstrap.sh hono

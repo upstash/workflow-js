@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@upstash/qstash": "latest",
-    "@upstash/workflow": "0.1.1-canary-2",
+    "@upstash/workflow": "latest",
     "nuxt": "^3.12.4",
     "vue": "latest"
   },

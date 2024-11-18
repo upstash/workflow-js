@@ -44,10 +44,14 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     url: workflowContext.url,
   });
   try {
-    await workflowContext.qstashClient.publishJSON({
+    const body =
+      typeof workflowContext.requestPayload === "string"
+        ? workflowContext.requestPayload
+        : JSON.stringify(workflowContext.requestPayload);
+    await workflowContext.qstashClient.publish({
       headers,
       method: "POST",
-      body: workflowContext.requestPayload,
+      body,
       url: workflowContext.url,
     });
     return ok("success");
@@ -315,7 +319,8 @@ export const getHeaders = (
   userHeaders?: Headers,
   step?: Step,
   failureUrl?: WorkflowServeOptions["failureUrl"],
-  retries?: number
+  retries?: number,
+  callRetries?: number
 ): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
@@ -329,17 +334,16 @@ export const getHeaders = (
   }
 
   if (failureUrl) {
+    baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
     if (!step?.callUrl) {
-      baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
+      baseHeaders["Upstash-Failure-Callback"] = failureUrl;
     }
-    baseHeaders["Upstash-Failure-Callback"] = failureUrl;
-    baseHeaders[`Upstash-Failure-Callback-${WORKFLOW_ID_HEADER}`] = workflowRunId;
   }
 
   // if retries is set or if call url is passed, set a retry
   // for call url, retry is 0
   if (step?.callUrl) {
-    baseHeaders["Upstash-Retries"] = "0";
+    baseHeaders["Upstash-Retries"] = callRetries?.toString() ?? "0";
     baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete";
 
     // if some retries is set, use it in callback and failure callback
@@ -349,6 +353,7 @@ export const getHeaders = (
     }
   } else if (retries !== undefined) {
     baseHeaders["Upstash-Retries"] = retries.toString();
+    baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
   }
 
   if (userHeaders) {
@@ -360,6 +365,7 @@ export const getHeaders = (
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         baseHeaders[`Upstash-Forward-${header}`] = userHeaders.get(header)!;
       }
+      baseHeaders[`Upstash-Failure-Callback-Forward-${header}`] = userHeaders.get(header)!;
     }
   }
 

@@ -490,7 +490,6 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [`Upstash-Failure-Callback-${WORKFLOW_ID_HEADER}`]: workflowRunId,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",

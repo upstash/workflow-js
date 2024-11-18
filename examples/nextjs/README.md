@@ -1,4 +1,4 @@
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fqstash-js%2Ftree%2Fmain%2Fexamples%2Fworkflow%2Fnextjs&env=QSTASH_TOKEN&envDescription=You%20can%20access%20this%20variable%20from%20Upstash%20Console%2C%20under%20QStash%20page.%20&project-name=qstash-workflow-nextjs&repository-name=qstash-workflow-nextjs&demo-title=Upstash%20QStash%20Workflow%20Example&demo-description=A%20Next.js%20application%20utilizing%20QStash%20Workflows)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fworkflow-js%2Ftree%2Fmain%2Fworkflow%2Fnextjs&env=QSTASH_TOKEN&envDescription=You%20can%20access%20this%20variable%20from%20Upstash%20Console%2C%20under%20QStash%20page.%20&project-name=workflow-nextjs&repository-name=workflow-nextjs&demo-title=Upstash%20Workflow%20Example&demo-description=A%20Next.js%20application%20utilizing%20Upstash%20Workflow)
 
 # Upstash Workflow Nextjs Example
 
