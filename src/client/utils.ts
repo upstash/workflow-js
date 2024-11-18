@@ -75,7 +75,7 @@ export const getSteps = async (
       await debug?.log("INFO", "ENDPOINT_START", {
         message:
           `Pulled ${steps.length} steps from QStash` +
-          `and filtered them to ${filteredSteps.length} using messageId.`,
+          ` and filtered them to ${filteredSteps.length} using messageId.`,
       });
       return filteredSteps;
     }

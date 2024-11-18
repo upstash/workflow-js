@@ -297,43 +297,29 @@ export const handleFailure = async <TInitialPayload>(
   }
 
   try {
-    const { status, header, body, url, sourceHeader, sourceBody, workflowRunId, sourceMessageId } =
-      JSON.parse(requestPayload) as {
-        status: number;
-        header: Record<string, string[]>;
-        body: string;
-        url: string;
-        sourceHeader: Record<string, string[]>;
-        sourceBody: string;
-        workflowRunId: string;
-        sourceMessageId: string;
-      };
+    const { status, header, body, url, sourceHeader, sourceBody, workflowRunId } = JSON.parse(
+      requestPayload
+    ) as {
+      status: number;
+      header: Record<string, string[]>;
+      body: string;
+      url: string;
+      sourceHeader: Record<string, string[]>;
+      sourceBody: string;
+      workflowRunId: string;
+      sourceMessageId: string;
+    };
 
     const decodedBody = body ? decodeBase64(body) : "{}";
     const errorPayload = JSON.parse(decodedBody) as FailureFunctionPayload;
-
-    // parse steps
-    const {
-      rawInitialPayload,
-      steps,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      isLastDuplicate: _isLastDuplicate,
-    } = await parseRequest(
-      decodeBase64(sourceBody),
-      false,
-      workflowRunId,
-      qstashClient.http,
-      sourceMessageId,
-      debug
-    );
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
       workflowRunId,
-      initialPayload: initialPayloadParser(rawInitialPayload),
+      initialPayload: initialPayloadParser(decodeBase64(sourceBody)),
       headers: recreateUserHeaders(new Headers(sourceHeader) as Headers),
-      steps,
+      steps: [],
       url: url,
       failureUrl: url,
       debug,

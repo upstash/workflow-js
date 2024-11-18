@@ -2,14 +2,11 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
+import { largeObject, largeObjectLength } from "../utils";
 
 const header = `test-header-foo`
 const headerValue = `header-bar`
-const payload = "“unicode-quotes”"
-
-const someWork = (input: string) => {
-  return `processed '${input}'`;
-};
+const payload = "foo"
 
 export const { POST, GET } = testServe(
   serve<string>(
@@ -19,21 +16,23 @@ export const { POST, GET } = testServe(
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
 
-      const result1 = await context.run("step1", async () => {
-        return await Promise.resolve(someWork(input));
+      const result1 = await context.run("step1", () => {
+        return largeObject;
       });
 
-      expect(result1, "processed '“unicode-quotes”'");
+      expect(result1, largeObject);
+      expect(typeof result1, "string");
+      expect(result1.length, largeObjectLength);
 
-      const result2 = await context.run("step2", async () => {
-        const result = someWork(result1);
-        return await Promise.resolve(result);
-      });
+      const result2 = await context.run("step2", () => {
+        return result1.length;
+      });      
 
-      expect(result2, "processed 'processed '“unicode-quotes”''");
+      expect(result2, largeObjectLength);
+
       await saveResult(
         context,
-        result2
+        result2.toString()
       )
     }, {
       baseUrl: BASE_URL,
@@ -41,10 +40,10 @@ export const { POST, GET } = testServe(
     }
   ), {
     expectedCallCount: 4,
-    expectedResult: "processed 'processed '“unicode-quotes”''",
+    expectedResult: largeObjectLength.toString(),
     payload,
     headers: {
       [ header ]: headerValue
     }
   }
-)
+) 

@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
-import { FAILING_HEADER, FAILING_HEADER_VALUE } from "../constants";
+import { FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE } from "../constants";
 
 const testHeader = `test-header-foo`
 const headerValue = `header-foo`
@@ -28,7 +28,7 @@ export const { POST, GET } = testServe(
 
       expect(context.headers.get(testHeader)!, headerValue)
 
-      const { body: postResult } = await context.call("post call", {
+      const { body: postResult, status: postStatus } = await context.call("post call", {
         url: thirdPartyEndpoint,
         method: "POST",
         body: "post-payload",
@@ -37,18 +37,21 @@ export const { POST, GET } = testServe(
 
       // check payload after first step because we can't check above
       expect(input, payload);
-
+      expect(postStatus, 201)
+      
       expect(postResult as string, 
         "called POST 'third-party-result' 'post-header-value-x' '\"post-payload\"'"
       );
-
+      
       await context.sleep("sleep 1", 2);
-
-      const { body: getResult } = await context.call("get call", {
+      
+      const { body: getResult, header: getHeaders, status: getStatus } = await context.call("get call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
       });
-
+      
+      expect(getStatus, 200)
+      expect(getHeaders[GET_HEADER][0], GET_HEADER_VALUE)
       expect(getResult as string, "called GET 'third-party-result' 'get-header-value-x'");
 
       const { body: patchResult, status, header } = await context.call("get call", {

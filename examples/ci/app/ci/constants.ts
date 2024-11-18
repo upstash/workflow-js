@@ -76,4 +76,25 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
     route: "call/workflow-with-failureUrl",
     waitForSeconds: 5
   },
+  // TEST LARGE PAYLOAD CASES
+  {
+    route: "large-payload/call-result/workflow",
+    waitForSeconds: 5
+  },
+  {
+    route: "large-payload/error",
+    waitForSeconds: 5
+  },
+  {
+    route: "large-payload/initial",
+    waitForSeconds: 5
+  },
+  {
+    route: "large-payload/step-result",
+    waitForSeconds: 2
+  },
+  {
+    route: "large-payload/step-result-parallel",
+    waitForSeconds: 8
+  },
 ]

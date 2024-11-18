@@ -326,7 +326,7 @@ export const getHeaders = (
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
-    [WORKFLOW_FEATURE_HEADER]: "LazyFetch",
+    [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
   };
 
   if (!step?.callUrl) {
@@ -344,7 +344,7 @@ export const getHeaders = (
   // for call url, retry is 0
   if (step?.callUrl) {
     baseHeaders["Upstash-Retries"] = callRetries?.toString() ?? "0";
-    baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete";
+    baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
 
     // if some retries is set, use it in callback and failure callback
     if (retries) {
