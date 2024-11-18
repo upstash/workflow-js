@@ -22,7 +22,9 @@ export const { POST, GET } = testServe(
       const { eventData, timeout } = await context.waitForEvent(
         "wait for event which should timeout",
         `random-event-${nanoid()}`,
-        1
+        {
+          timeout: 1
+        }
       );
       expect(eventData as undefined, undefined);
       expect(timeout, true);
@@ -51,7 +53,9 @@ export const { POST, GET } = testServe(
             headers: { authorization: `Bearer ${NOTIFIER_SECRET}` }
           }
         ),
-        context.waitForEvent("wait sdk", config.sdkEventId, 5)
+        context.waitForEvent("wait sdk", config.sdkEventId, {
+          timeout: "5s"
+        })
       ])
 
       expect(sdkResults[0].status, 200)
@@ -71,7 +75,9 @@ export const { POST, GET } = testServe(
             body: config,
           }
         ),
-        context.waitForEvent("wait text", config.textEventId, 5)
+        context.waitForEvent("wait text", config.textEventId, {
+          timeout: 5
+        })
       ])
 
       expect(textResults[0].status, 200)
@@ -84,7 +90,13 @@ export const { POST, GET } = testServe(
       const {
         eventData: objectEventData,
         timeout: objectTimeout
-      } = await context.waitForEvent("wait object", config.objectEventId, 5)
+      } = await context.waitForEvent(
+        "wait object",
+        config.objectEventId,
+        {
+          timeout: "5s"
+        }
+      )
 
       expect(objectTimeout, false)
       expect(typeof objectEventData, "object")
