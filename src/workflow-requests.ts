@@ -389,7 +389,7 @@ export const getHeaders = (
         "Upstash-Callback-Workflow-CallType": "fromCallback",
         "Upstash-Callback-Workflow-Init": "false",
         "Upstash-Callback-Workflow-Url": workflowUrl,
-        "Upstash-Callback-Feature-Set": "LazyFetch",
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
 
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),

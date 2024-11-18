@@ -133,7 +133,7 @@ describe("serve", () => {
                 destination: WORKFLOW_ENDPOINT,
                 headers: {
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch",
+                  "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-retries": "3",
                   "upstash-failure-callback-retries": "3",
@@ -161,7 +161,7 @@ describe("serve", () => {
                 destination: WORKFLOW_ENDPOINT,
                 headers: {
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch",
+                  "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-method": "POST",
                   "upstash-retries": "3",
@@ -336,7 +336,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -382,7 +382,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -425,7 +425,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -472,7 +472,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -670,7 +670,7 @@ describe("serve", () => {
           timeout: "10d",
           timeoutHeaders: {
             "Content-Type": ["application/json"],
-            "Upstash-Feature-Set": ["LazyFetch"],
+            "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
             "Upstash-Retries": ["3"],
             "Upstash-Failure-Callback-Retries": ["3"],
