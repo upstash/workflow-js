@@ -158,13 +158,13 @@ export class Client {
    * Trigger new workflow run and returns the workflow run id
    *
    * ```ts
-   * const { workflowRunId } await client.trigger({
+   * const { workflowRunId } = await client.trigger({
    *   url: "https://workflow-endpoint.com",
-   *   body: "hello there!", // optional body
-   *   headers: { ... }, // optional headers
-   *   workflowRunId: "my-workflow", // optional workflow run id
-   *   retries: 3 // optional retries in the initial request
-   * })
+   *   body: "hello there!",         // Optional body
+   *   headers: { ... },             // Optional headers
+   *   workflowRunId: "my-workflow", // Optional workflow run ID
+   *   retries: 3                    // Optional retries for the initial request
+   * });
    *
    * console.log(workflowRunId)
    * // wfr_my-workflow
