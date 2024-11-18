@@ -27,7 +27,7 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     // runs sleep parallel with other steps
     route: "sleepWithoutAwait",
-    waitForSeconds: 18
+    waitForSeconds: 20
   },
   {
     // checks auth

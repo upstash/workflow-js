@@ -12,20 +12,20 @@ type Invoice = {
 type Charge = {
   invoice: Invoice;
   success: boolean;
+  counter: number
 };
 
 const header = `test-header-foo`
 const headerValue = `header-bar`
 const payload: Invoice = { date: 123, email: "my@mail.com", amount: 10 }
 
-let counter = 0;
-const attemptCharge = () => {
+const attemptCharge = (counter: number) => {
   counter += 1;
   if (counter === 3) {
     counter = 0;
-    return true;
+    return { success: true, counter };
   }
-  return false;
+  return { success: false, counter };
 };
 
 export const { POST, GET } = testServe(
@@ -36,13 +36,19 @@ export const { POST, GET } = testServe(
       expect(typeof invoice, typeof payload);
       expect(JSON.stringify(invoice), JSON.stringify(payload));
 
-      for (let index = 0; index < 3; index++) {
-        const charge = await context.run("attemptCharge", () => {
-          const success = attemptCharge();
-          const charge: Charge = { invoice, success };
-          return charge;
-        });
+      let charge: Charge = {
+        success: false,
+        counter: 0,
+        invoice
+      }
 
+      for (let index = 0; index < 3; index++) {
+        charge = await context.run("attemptCharge", () => {
+          const { success, counter } = attemptCharge(charge.counter);
+          const newCharge: Charge = { invoice, success, counter };
+          return newCharge;
+        });
+        
         if (charge.success) {
           const [updateDb, receipt, sleepResult] = await Promise.all([
             context.run("updateDb", () => {
@@ -57,6 +63,7 @@ export const { POST, GET } = testServe(
           expect(updateDb, 10);
           expect(receipt, "my@mail.com");
           expect(sleepResult, undefined);
+          console.log("saving");
           
           await saveResult(
             context,
@@ -82,4 +89,4 @@ export const { POST, GET } = testServe(
       [ header ]: headerValue
     }
   }
-) 
+)
