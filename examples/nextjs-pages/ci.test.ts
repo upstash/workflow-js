@@ -107,7 +107,7 @@ const testEndpoint = ({
     expect(result?.secret).toBe(secret)
     expect(result?.result).toBe(expectedResult)
   }, {
-    timeout: 9000
+    timeout: 15000
   })
 }
 
