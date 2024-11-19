@@ -80,4 +80,21 @@ describe("redis", () => {
       ).not.toThrow()
     })
   })
+
+  test("should fail if marked as failed", async () => {
+
+    const route = "fail-route"
+    const randomId = `random-id-${nanoid()}`
+    const result = `random-result-${nanoid()}`
+
+    // increment, save and check
+    await redis.increment(route, randomId)
+    await redis.saveResultsWithoutContext(route, randomId, result)
+    await redis.checkRedisForResults(route, randomId, 1, result)
+
+    // mark as failed and check
+    await redis.failWithoutContext(route, randomId)
+    expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow("Test has failed because it was marked as failed with `fail` method.")
+      
+  })
 })

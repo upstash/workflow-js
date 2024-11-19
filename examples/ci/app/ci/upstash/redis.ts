@@ -8,7 +8,7 @@ const redis = Redis.fromEnv();
 const EXPIRE_IN_SECS = 60
 
 const getRedisKey = (
-  kind: "increment" | "result",
+  kind: "increment" | "result" | "fail",
   route: string,
   randomTestId: string
 ): string => {
@@ -80,6 +80,39 @@ export const saveResult = async (
   )
 }
 
+export const failWithoutContext = async (
+  route: string,
+  randomTestId: string
+) => {
+  const key = getRedisKey("fail", route, randomTestId)
+  const pipe = redis.pipeline()
+  pipe.set<boolean>(key, true)
+  pipe.expire(key, EXPIRE_IN_SECS)
+  await pipe.exec()
+}
+
+/**
+ * marks the workflow as failed
+ * 
+ * @param context 
+ * @returns 
+ */
+export const fail = async (
+  context: WorkflowContext<unknown>,
+) => {
+  const randomTestId = context.headers.get(CI_RANDOM_ID_HEADER)
+  const route = context.headers.get(CI_ROUTE_HEADER)
+
+  if (randomTestId === null) {
+    throw new Error("randomTestId can't be null.")
+  }
+  if (route === null) {
+    throw new Error("route can't be null.")
+  }
+
+  await failWithoutContext(route, randomTestId)
+}
+
 export const checkRedisForResults = async (
   route: string,
   randomTestId: string,
@@ -90,6 +123,12 @@ export const checkRedisForResults = async (
   const testResult = await redis.get<RedisResult>(key)
   if (!testResult) {
     throw new Error(`result not found for route ${route} with randomTestId ${randomTestId}`)
+  }
+
+  const failKey = getRedisKey("fail", route, randomTestId)
+  const failed = await redis.get<boolean>(failKey)
+  if (failed) {
+    throw new Error("Test has failed because it was marked as failed with `fail` method.")
   }
 
   const { callCount, randomTestId: resultRandomTestId, result } = testResult 
