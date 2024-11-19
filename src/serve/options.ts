@@ -72,11 +72,11 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   };
 };
 
-export const determineUrls = async (
+export const determineUrls = async <TInitialPayload = unknown>(
   request: Request,
   url: string | undefined,
   baseUrl: string | undefined,
-  failureFunction: WorkflowServeOptions["failureFunction"],
+  failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
   failureUrl: string | undefined,
   debug: WorkflowLogger | undefined
 ) => {

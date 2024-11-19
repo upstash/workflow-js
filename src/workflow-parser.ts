@@ -15,6 +15,7 @@ import type {
   WorkflowServeOptions,
   WorkflowClient,
   WaitStepResponse,
+  RouteFunction,
 } from "./types";
 import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
@@ -22,6 +23,7 @@ import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
 import { getSteps } from "./client/utils";
 import { Client } from "@upstash/qstash";
+import { DisabledWorkflowContext } from "./serve/authorization";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -281,6 +283,7 @@ export const handleFailure = async <TInitialPayload>(
   initialPayloadParser: Required<
     WorkflowServeOptions<Response, TInitialPayload>
   >["initialPayloadParser"],
+  routeFunction: RouteFunction<TInitialPayload>,
   failureFunction?: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
   debug?: WorkflowLogger
 ): Promise<Ok<"is-failure-callback" | "not-failure-callback", never> | Err<never, Error>> => {
@@ -326,6 +329,21 @@ export const handleFailure = async <TInitialPayload>(
       failureUrl: url,
       debug,
     });
+
+    // attempt running routeFunction until the first step
+    const authCheck = await DisabledWorkflowContext.tryAuthentication(
+      routeFunction,
+      workflowContext
+    );
+    if (authCheck.isErr()) {
+      // got error while running until first step
+      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
+      throw authCheck.error;
+    } else if (authCheck.value === "run-ended") {
+      // finished routeFunction while trying to run until first step.
+      // either there is no step or auth check resulted in `return`
+      return err(new WorkflowError("Not authorized to run the failure function."));
+    }
 
     await failureFunction({
       context: workflowContext,
