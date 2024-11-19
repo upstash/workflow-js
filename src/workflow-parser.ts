@@ -47,12 +47,11 @@ export const getPayload = async (request: Request) => {
  * When returning steps, we add the initial payload as initial step. This is to make it simpler
  * in the rest of the code.
  *
- * @param rawPayload body of the request as a string as explained above
+ * @param rawSteps body of the request as a string as explained above
  * @returns intiial payload and list of steps
  */
-const parsePayload = async (payload: string | RawStep[], debug?: WorkflowLogger) => {
-  const [encodedInitialPayload, ...encodedSteps] =
-    typeof payload === "string" ? (JSON.parse(payload) as RawStep[]) : payload;
+const processRawSteps = async (rawSteps: RawStep[], debug?: WorkflowLogger) => {
+  const [encodedInitialPayload, ...encodedSteps] = rawSteps;
 
   // decode initial payload:
   const rawInitialPayload = decodeBase64(encodedInitialPayload.body);
@@ -240,17 +239,20 @@ export const parseRequest = async (
       isLastDuplicate: false,
     };
   } else {
+    let rawSteps: RawStep[];
+
     if (!requestPayload) {
       await debug?.log(
         "INFO",
         "ENDPOINT_START",
         "request payload is empty, steps will be fetched from QStash."
       );
+      rawSteps = await getSteps(requester, workflowRunId, messageId, debug);
+    } else {
+      rawSteps = JSON.parse(requestPayload) as RawStep[];
     }
-    const { rawInitialPayload, steps } = await parsePayload(
-      requestPayload ? requestPayload : await getSteps(requester, workflowRunId, messageId, debug),
-      debug
-    );
+    const { rawInitialPayload, steps } = await processRawSteps(rawSteps, debug);
+
     const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
     const deduplicatedSteps = deduplicateSteps(steps);
 
