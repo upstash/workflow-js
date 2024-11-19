@@ -307,7 +307,7 @@ export interface WaitEventOptions {
    * Duration in seconds to wait for an event before timing out the workflow.
    * @example 300 // 5 minutes in seconds
    * @example "5m" // 5 minutes as duration string
-   * @default "24h"
+   * @default "7d"
    */
   timeout?: number | Duration;
 }

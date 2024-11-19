@@ -166,7 +166,7 @@ describe("context tests", () => {
       const eventId = "my-event-id";
       await mockQStashServer({
         execute: () => {
-          const throws = () => context.waitForEvent("my-step", eventId, { timeout: 20 });
+          const throws = () => context.waitForEvent("my-step", eventId);
           expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
         },
         responseFields: {
@@ -184,7 +184,7 @@ describe("context tests", () => {
               stepName: "my-step",
               stepType: "Wait",
             },
-            timeout: "20s",
+            timeout: "7d", // default timeout
             timeoutHeaders: {
               "Content-Type": ["application/json"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
