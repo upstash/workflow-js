@@ -370,7 +370,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * @param stepName
    * @param eventId - Unique identifier for the event to wait for
-   * @param options - Configuration options. 
+   * @param options - Configuration options.
    * @returns `{ timeout: boolean, eventData: unknown }`.
    *   The `timeout` property specifies if the workflow has timed out. The `eventData`
    *   is the data passed when notifying this workflow of an event.

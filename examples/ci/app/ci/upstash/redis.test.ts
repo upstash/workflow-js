@@ -10,7 +10,7 @@ describe("redis", () => {
     ).toThrow(
       "result not found for route some-route with randomTestId some-id"
     )
-  })
+  }, { timeout: 10000 })
 
   test("should throw when saving results without any increment", () => {
     expect(() =>

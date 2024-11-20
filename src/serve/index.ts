@@ -165,6 +165,7 @@ export const serve = <
             onCancel: async () => {
               await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
             },
+            debug,
           });
 
       if (result.isErr()) {

@@ -64,8 +64,15 @@ export class WorkflowLogger {
 
   private writeToConsole(logEntry: ChatLogEntry): void {
     const JSON_SPACING = 2;
-    // eslint-disable-next-line no-console
-    console.log(JSON.stringify(logEntry, undefined, JSON_SPACING));
+
+    const logMethod =
+      logEntry.logLevel === "ERROR"
+        ? console.error
+        : logEntry.logLevel === "WARN"
+          ? console.warn
+          : console.log;
+
+    logMethod(JSON.stringify(logEntry, undefined, JSON_SPACING));
   }
 
   private shouldLog(level: LogLevel): boolean {
