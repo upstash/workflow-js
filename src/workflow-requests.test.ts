@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { describe, expect, spyOn, test } from "bun:test";
+import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
 import {
@@ -487,10 +487,20 @@ describe("Workflow Requests", () => {
   });
 
   describe("should omit some errors", () => {
+    const qstashClient = new Client({
+      token: process.env.QSTASH_TOKEN!,
+    });
+
+    const workflowClient = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
+
+    afterAll(async () => {
+      await workflowClient.cancel({ urlStartingWith: WORKFLOW_ENDPOINT });
+    });
+
     test("should omit the error if the triggerWorkflowDelete fails with workflow run doesn't exist", async () => {
       const workflowRunId = `wfr-${nanoid()}`;
       const context = new WorkflowContext({
-        qstashClient: new Client({ token: process.env.QSTASH_TOKEN! }),
+        qstashClient,
         workflowRunId: workflowRunId,
         initialPayload: undefined,
         headers: new Headers({}) as Headers,
@@ -525,7 +535,7 @@ describe("Workflow Requests", () => {
     test("should omit if triggerRouteFunction gets can't publish to canceled workflow error", async () => {
       const workflowRunId = `wfr-${nanoid()}`;
       const context = new WorkflowContext({
-        qstashClient: new Client({ token: process.env.QSTASH_TOKEN! }),
+        qstashClient,
         workflowRunId: workflowRunId,
         initialPayload: undefined,
         headers: new Headers({}) as Headers,
@@ -539,8 +549,7 @@ describe("Workflow Requests", () => {
       await triggerFirstInvocation(context, 3, debug);
       expect(spy).toHaveBeenCalledTimes(1);
 
-      const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
-      await client.cancel({ ids: [workflowRunId] });
+      await workflowClient.cancel({ ids: [workflowRunId] });
 
       const result = await triggerRouteFunction({
         onStep: async () => {
@@ -568,7 +577,7 @@ describe("Workflow Requests", () => {
     test("should omit if triggerRouteFunction (with parallel steps) gets can't publish to canceled workflow error", async () => {
       const workflowRunId = `wfr-${nanoid()}`;
       const context = new WorkflowContext({
-        qstashClient: new Client({ token: process.env.QSTASH_TOKEN! }),
+        qstashClient,
         workflowRunId: workflowRunId,
         initialPayload: undefined,
         headers: new Headers({}) as Headers,
@@ -582,8 +591,7 @@ describe("Workflow Requests", () => {
       await triggerFirstInvocation(context, 3, debug);
       expect(spy).toHaveBeenCalledTimes(1);
 
-      const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
-      await client.cancel({ ids: [workflowRunId] });
+      await workflowClient.cancel({ ids: [workflowRunId] });
 
       const result = await triggerRouteFunction({
         onStep: async () => {
@@ -610,7 +618,7 @@ describe("Workflow Requests", () => {
     test("should omit the error if the workflow is created with the same id", async () => {
       const workflowRunId = `wfr-${nanoid()}`;
       const context = new WorkflowContext({
-        qstashClient: new Client({ token: process.env.QSTASH_TOKEN! }),
+        qstashClient,
         workflowRunId: workflowRunId,
         initialPayload: undefined,
         headers: new Headers({}) as Headers,
@@ -628,17 +636,25 @@ describe("Workflow Requests", () => {
 
       expect(spy).toHaveBeenCalledTimes(1);
 
-      const resultTwo = await triggerFirstInvocation(context, 3, debug);
+      const resultTwo = await triggerFirstInvocation(context, 0, debug);
       expect(resultTwo.isOk()).toBeTrue();
       // @ts-expect-error value will exist because of isOk
       expect(resultTwo.value).toBe("workflow-run-already-exists");
 
       expect(spy).toHaveBeenCalledTimes(2);
       expect(spy).toHaveBeenLastCalledWith("WARN", "SUBMIT_FIRST_INVOCATION", {
-        message: `Workflow run ${workflowRunId} already exists.`,
-        name: "QstashError",
-        originalMessage:
-          '{"error":"a workflow already exists, can not initialize a new one with same id"}',
+        message: `Workflow run ${workflowRunId} already exists. A new one isn't created.`,
+        headers: {
+          "Upstash-Workflow-Init": "true",
+          "Upstash-Workflow-RunId": workflowRunId,
+          "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+          "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
+          "Upstash-Retries": "0",
+          "Upstash-Failure-Callback-Retries": "0",
+        },
+        requestPayload: undefined,
+        url: "https://www.my-website.com/api",
+        messageId: expect.any(String),
       });
 
       const deleteResult = await triggerWorkflowDelete(context, debug);

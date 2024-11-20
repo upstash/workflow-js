@@ -38,11 +38,6 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     workflowContext.failureUrl,
     retries
   );
-  await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-    headers,
-    requestPayload: workflowContext.requestPayload,
-    url: workflowContext.url,
-  });
   try {
     const body =
       typeof workflowContext.requestPayload === "string"
@@ -55,26 +50,26 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       url: workflowContext.url,
     });
 
-    await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-      headers,
-      requestPayload: workflowContext.requestPayload,
-      url: workflowContext.url,
-      messageId: result.messageId,
-    });
-    return ok("success");
-  } catch (error) {
-    const error_ = error as Error;
-    if (
-      error instanceof QstashError &&
-      error.message.includes("a workflow already exists, can not initialize a new one with same id")
-    ) {
+    if (result.deduplicated) {
       await debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
-        message: `Workflow run ${workflowContext.workflowRunId} already exists.`,
-        name: error.name,
-        originalMessage: error.message,
+        message: `Workflow run ${workflowContext.workflowRunId} already exists. A new one isn't created.`,
+        headers,
+        requestPayload: workflowContext.requestPayload,
+        url: workflowContext.url,
+        messageId: result.messageId,
       });
       return ok("workflow-run-already-exists");
+    } else {
+      await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
+        headers,
+        requestPayload: workflowContext.requestPayload,
+        url: workflowContext.url,
+        messageId: result.messageId,
+      });
+      return ok("success");
     }
+  } catch (error) {
+    const error_ = error as Error;
     return err(error_);
   }
 };
