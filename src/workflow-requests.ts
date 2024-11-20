@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { QStashWorkflowAbort, QStashWorkflowError } from "./error";
+import { WorkflowAbort, WorkflowError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   DEFAULT_CONTENT_TYPE,
@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
+import { getSteps } from "./client/utils";
 
 export const triggerFirstInvocation = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
@@ -63,19 +64,29 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 export const triggerRouteFunction = async ({
   onCleanup,
   onStep,
+  onCancel,
 }: {
   onStep: () => Promise<void>;
   onCleanup: () => Promise<void>;
+  onCancel: () => Promise<void>;
 }): Promise<Ok<"workflow-finished" | "step-finished", never> | Err<never, Error>> => {
   try {
-    // When onStep completes successfully, it throws an exception named `QStashWorkflowAbort`, indicating that the step has been successfully executed.
+    // When onStep completes successfully, it throws an exception named `WorkflowAbort`,
+    // indicating that the step has been successfully executed.
     // This ensures that onCleanup is only called when no exception is thrown.
     await onStep();
     await onCleanup();
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
-    return error_ instanceof QStashWorkflowAbort ? ok("step-finished") : err(error_);
+    if (!(error_ instanceof WorkflowAbort)) {
+      return err(error_);
+    } else if (error_.cancelWorkflow) {
+      await onCancel();
+      return ok("workflow-finished");
+    } else {
+      return ok("step-finished");
+    }
   }
 };
 
@@ -152,7 +163,32 @@ export const handleThirdPartyCallResult = async (
 > => {
   try {
     if (request.headers.get("Upstash-Workflow-Callback")) {
-      const callbackMessage = JSON.parse(requestPayload) as {
+      let callbackPayload: string;
+      if (requestPayload) {
+        callbackPayload = requestPayload;
+      } else {
+        const workflowRunId = request.headers.get("upstash-workflow-runid");
+        const messageId = request.headers.get("upstash-message-id");
+
+        if (!workflowRunId)
+          throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
+        if (!messageId) throw new WorkflowError("message id missing in context.call lazy fetch.");
+
+        const steps = await getSteps(client.http, workflowRunId, messageId, debug);
+        const failingStep = steps.find((step) => step.messageId === messageId);
+
+        if (!failingStep)
+          throw new WorkflowError(
+            "Failed to submit the context.call." +
+              (steps.length === 0
+                ? "No steps found."
+                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
+          );
+
+        callbackPayload = atob(failingStep.body);
+      }
+
+      const callbackMessage = JSON.parse(callbackPayload) as {
         status: number;
         body: string;
         retried?: number; // only set after the first try
@@ -256,9 +292,7 @@ export const handleThirdPartyCallResult = async (
   } catch (error) {
     const isCallReturn = request.headers.get("Upstash-Workflow-Callback");
     return err(
-      new QStashWorkflowError(
-        `Error when handling call return (isCallReturn=${isCallReturn}): ${error}`
-      )
+      new WorkflowError(`Error when handling call return (isCallReturn=${isCallReturn}): ${error}`)
     );
   }
 };
@@ -292,6 +326,7 @@ export const getHeaders = (
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
+    [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
   };
 
   if (!step?.callUrl) {
@@ -309,7 +344,7 @@ export const getHeaders = (
   // for call url, retry is 0
   if (step?.callUrl) {
     baseHeaders["Upstash-Retries"] = callRetries?.toString() ?? "0";
-    baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete";
+    baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
 
     // if some retries is set, use it in callback and failure callback
     if (retries) {
@@ -354,6 +389,7 @@ export const getHeaders = (
         "Upstash-Callback-Workflow-CallType": "fromCallback",
         "Upstash-Callback-Workflow-Init": "false",
         "Upstash-Callback-Workflow-Url": workflowUrl,
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
 
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
@@ -411,7 +447,7 @@ export const verifyRequest = async (
       throw new Error("Signature in `Upstash-Signature` header is not valid");
     }
   } catch (error) {
-    throw new QStashWorkflowError(
+    throw new WorkflowError(
       `Failed to verify that the Workflow request comes from QStash: ${error}\n\n` +
         "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
         "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"

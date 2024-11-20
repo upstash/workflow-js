@@ -133,6 +133,7 @@ describe("serve", () => {
                 destination: WORKFLOW_ENDPOINT,
                 headers: {
                   "content-type": "application/json",
+                  "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-retries": "3",
                   "upstash-failure-callback-retries": "3",
@@ -160,6 +161,7 @@ describe("serve", () => {
                 destination: WORKFLOW_ENDPOINT,
                 headers: {
                   "content-type": "application/json",
+                  "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-method": "POST",
                   "upstash-retries": "3",
@@ -334,6 +336,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -379,6 +382,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -421,6 +425,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -467,6 +472,7 @@ describe("serve", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -569,7 +575,8 @@ describe("serve", () => {
         },
       }
     );
-    await endpoint(request);
+    const response = await endpoint(request);
+    expect(response.status).toBe(200);
     expect(called).toBeTrue();
   });
 
@@ -593,6 +600,41 @@ describe("serve", () => {
       },
     });
     expect(receiver).toBeDefined();
+  });
+
+  test("should call qstash to cancel workflow on context.cancel", async () => {
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", []);
+    let called = false;
+    let runs = false;
+    const { handler: endpoint } = serve(
+      async (context) => {
+        called = true;
+        await context.cancel();
+        await context.run("wont run", () => {
+          runs = true;
+        });
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        verbose: true,
+      }
+    );
+
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
+      },
+      responseFields: { body: undefined, status: 200 },
+      receivesRequest: {
+        method: "DELETE",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/wfr-foo?cancel=true`,
+        token,
+      },
+    });
+    expect(called).toBeTrue();
+    expect(runs).toBeFalse();
   });
 
   test("should send waitForEvent", async () => {
@@ -628,6 +670,7 @@ describe("serve", () => {
           timeout: "10d",
           timeoutHeaders: {
             "Content-Type": ["application/json"],
+            "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
             "Upstash-Retries": ["3"],
             "Upstash-Failure-Callback-Retries": ["3"],

@@ -3,4 +3,4 @@ export * from "./context";
 export * from "./types";
 export * from "./logger";
 export * from "./client";
-export { QStashWorkflowError, QStashWorkflowAbort } from "./error";
+export { WorkflowError, WorkflowAbort } from "./error";

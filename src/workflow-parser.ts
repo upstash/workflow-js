@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { QStashWorkflowError } from "./error";
+import { WorkflowError } from "./error";
 import {
   NO_CONCURRENCY,
   WORKFLOW_FAILURE_HEADER,
@@ -20,6 +20,8 @@ import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
+import { getSteps } from "./client/utils";
+import { Client } from "@upstash/qstash";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -45,11 +47,11 @@ export const getPayload = async (request: Request) => {
  * When returning steps, we add the initial payload as initial step. This is to make it simpler
  * in the rest of the code.
  *
- * @param rawPayload body of the request as a string as explained above
+ * @param rawSteps body of the request as a string as explained above
  * @returns intiial payload and list of steps
  */
-const parsePayload = async (rawPayload: string, debug?: WorkflowLogger) => {
-  const [encodedInitialPayload, ...encodedSteps] = JSON.parse(rawPayload) as RawStep[];
+const processRawSteps = async (rawSteps: RawStep[], debug?: WorkflowLogger) => {
+  const [encodedInitialPayload, ...encodedSteps] = rawSteps;
 
   // decode initial payload:
   const rawInitialPayload = decodeBase64(encodedInitialPayload.body);
@@ -172,7 +174,7 @@ const checkIfLastOneIsDuplicate = async (
  * Validates the incoming request checking the workflow protocol
  * version and whether it is the first invocation.
  *
- * Raises `QStashWorkflowError` if:
+ * Raises `WorkflowError` if:
  * - it's not the first invocation and expected protocol version doesn't match
  *   the request.
  * - it's not the first invocation but there is no workflow id in the headers.
@@ -188,7 +190,7 @@ export const validateRequest = (
 
   // if it's not the first invocation, verify that the workflow protocal version is correct
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
-    throw new QStashWorkflowError(
+    throw new WorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
         ` got ${versionHeader} from the request.`
     );
@@ -199,7 +201,7 @@ export const validateRequest = (
     ? getWorkflowRunId()
     : (request.headers.get(WORKFLOW_ID_HEADER) ?? "");
   if (workflowRunId.length === 0) {
-    throw new QStashWorkflowError("Couldn't get workflow id from header");
+    throw new WorkflowError("Couldn't get workflow id from header");
   }
 
   return {
@@ -220,6 +222,9 @@ export const validateRequest = (
 export const parseRequest = async (
   requestPayload: string | undefined,
   isFirstInvocation: boolean,
+  workflowRunId: string,
+  requester: Client["http"],
+  messageId?: string,
   debug?: WorkflowLogger
 ): Promise<{
   rawInitialPayload: string;
@@ -234,11 +239,20 @@ export const parseRequest = async (
       isLastDuplicate: false,
     };
   } else {
-    // if not the first invocation, make sure that body is not empty and parse payload
+    let rawSteps: RawStep[];
+
     if (!requestPayload) {
-      throw new QStashWorkflowError("Only first call can have an empty body");
+      await debug?.log(
+        "INFO",
+        "ENDPOINT_START",
+        "request payload is empty, steps will be fetched from QStash."
+      );
+      rawSteps = await getSteps(requester, workflowRunId, messageId, debug);
+    } else {
+      rawSteps = JSON.parse(requestPayload) as RawStep[];
     }
-    const { rawInitialPayload, steps } = await parsePayload(requestPayload, debug);
+    const { rawInitialPayload, steps } = await processRawSteps(rawSteps, debug);
+
     const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
     const deduplicatedSteps = deduplicateSteps(steps);
 
@@ -255,7 +269,7 @@ export const parseRequest = async (
  * attempts to call the failureFunction function.
  *
  * If the header is set but failureFunction is not passed, returns
- * QStashWorkflowError.
+ * WorkflowError.
  *
  * @param request incoming request
  * @param failureFunction function to handle the failure
@@ -276,7 +290,7 @@ export const handleFailure = async <TInitialPayload>(
 
   if (!failureFunction) {
     return err(
-      new QStashWorkflowError(
+      new WorkflowError(
         "Workflow endpoint is called to handle a failure," +
           " but a failureFunction is not provided in serve options." +
           " Either provide a failureUrl or a failureFunction."
@@ -295,27 +309,19 @@ export const handleFailure = async <TInitialPayload>(
       sourceHeader: Record<string, string[]>;
       sourceBody: string;
       workflowRunId: string;
+      sourceMessageId: string;
     };
 
     const decodedBody = body ? decodeBase64(body) : "{}";
     const errorPayload = JSON.parse(decodedBody) as FailureFunctionPayload;
 
-    // parse steps
-    const {
-      rawInitialPayload,
-      steps,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      isLastDuplicate: _isLastDuplicate,
-    } = await parseRequest(decodeBase64(sourceBody), false, debug);
-
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
       workflowRunId,
-      initialPayload: initialPayloadParser(rawInitialPayload),
-      rawInitialPayload,
+      initialPayload: initialPayloadParser(decodeBase64(sourceBody)),
       headers: recreateUserHeaders(new Headers(sourceHeader) as Headers),
-      steps,
+      steps: [],
       url: url,
       failureUrl: url,
       debug,

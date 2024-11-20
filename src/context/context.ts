@@ -19,6 +19,7 @@ import {
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
+import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
 
 /**
@@ -124,10 +125,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly headers: Headers;
   /**
-   * initial payload as a raw string
-   */
-  public readonly rawInitialPayload: string;
-  /**
    * Map of environment variables and their values.
    *
    * Can be set using the `env` option of serve:
@@ -162,7 +159,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     failureUrl,
     debug,
     initialPayload,
-    rawInitialPayload,
     env,
     retries,
   }: {
@@ -174,7 +170,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     failureUrl?: string;
     debug?: WorkflowLogger;
     initialPayload: TInitialPayload;
-    rawInitialPayload?: string; // optional for tests
     env?: Record<string, string | undefined>;
     retries?: number;
   }) {
@@ -185,7 +180,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.failureUrl = failureUrl;
     this.headers = headers;
     this.requestPayload = initialPayload;
-    this.rawInitialPayload = rawInitialPayload ?? JSON.stringify(this.requestPayload);
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
 
@@ -208,7 +202,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * const [result1, result2] = await Promise.all([
    *   context.run("step 1", () => {
    *     return "result1"
-   *   })
+   *   }),
    *   context.run("step 2", async () => {
    *     return await fetchResults()
    *   })
@@ -231,6 +225,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
   /**
    * Stops the execution for the duration provided.
    *
+   * ```typescript
+   * await context.sleep('sleep1', 3) // wait for three seconds
+   * ```
+   *
    * @param stepName
    * @param duration sleep duration in seconds
    * @returns undefined
@@ -241,6 +239,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
   /**
    * Stops the execution until the date time provided.
+   *
+   * ```typescript
+   * await context.sleepUntil('sleep1', Date.now() / 1000 + 3) // wait for three seconds
+   * ```
    *
    * @param stepName
    * @param datetime time to sleep until. Can be provided as a number (in unix seconds),
@@ -268,7 +270,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * const { status, body } = await context.call<string>(
    *   "post call step",
    *   {
-   *     url: `https://www.some-endpoint.com/api`,
+   *     url: "https://www.some-endpoint.com/api",
    *     method: "POST",
    *     body: "my-payload"
    *   }
@@ -364,6 +366,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * })
    * ```
    *
+   * Alternatively, you can use the `context.notify` method.
+   *
    * @param stepName
    * @param eventId - Unique identifier for the event to wait for
    * @param options - Configuration options. 
@@ -392,6 +396,27 @@ export class WorkflowContext<TInitialPayload = unknown> {
     }
   }
 
+  /**
+   * Notify workflow runs waiting for an event
+   *
+   * ```ts
+   * const { eventId, eventData, notifyResponse } = await context.notify(
+   *   "notify step", "event-id", "event-data"
+   * );
+   * ```
+   *
+   * Upon `context.notify`, the workflow runs waiting for the given eventId (context.waitForEvent)
+   * will receive the given event data and resume execution.
+   *
+   * The response includes the same eventId and eventData. Additionally, there is
+   * a notifyResponse field which contains a list of `Waiter` objects, each corresponding
+   * to a notified workflow run.
+   *
+   * @param stepName
+   * @param eventId event id to notify
+   * @param eventData event data to notify with
+   * @returns notify response which has event id, event data and list of waiters which were notified
+   */
   public async notify(
     stepName: string,
     eventId: string,
@@ -409,6 +434,17 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result;
     }
+  }
+
+  /**
+   * Cancel the current workflow run
+   *
+   * Will throw WorkflowAbort to stop workflow execution.
+   * Shouldn't be inside try/catch.
+   */
+  public async cancel() {
+    // throw an abort which will make the workflow cancel
+    throw new WorkflowAbort("cancel", undefined, true);
   }
 
   /**

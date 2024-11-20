@@ -1,4 +1,4 @@
-import { QStashWorkflowAbort, QStashWorkflowError } from "../error";
+import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, WaitRequest } from "../types";
 import { LazyCallStep, type BaseLazyStep } from "./steps";
@@ -39,14 +39,14 @@ export class AutoExecutor {
    *
    * If a function is already executing (this.executingStep), this
    * means that there is a nested step which is not allowed. In this
-   * case, addStep throws QStashWorkflowError.
+   * case, addStep throws WorkflowError.
    *
    * @param stepInfo step plan to add
    * @returns result of the step function
    */
   public async addStep<TResult>(stepInfo: BaseLazyStep<TResult>) {
     if (this.executingStep) {
-      throw new QStashWorkflowError(
+      throw new WorkflowError(
         "A step can not be run inside another step." +
           ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
       );
@@ -159,7 +159,7 @@ export class AutoExecutor {
 
     if (parallelCallState !== "first" && plannedParallelStepCount !== parallelSteps.length) {
       // user has added/removed a parallel step
-      throw new QStashWorkflowError(
+      throw new WorkflowError(
         `Incompatible number of parallel steps when call state was '${parallelCallState}'.` +
           ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
       );
@@ -194,7 +194,7 @@ export class AutoExecutor {
          */
         const planStep = this.steps.at(-1);
         if (!planStep || planStep.targetStep === undefined) {
-          throw new QStashWorkflowError(
+          throw new WorkflowError(
             `There must be a last step and it should have targetStep larger than 0.` +
               `Received: ${JSON.stringify(planStep)}`
           );
@@ -218,10 +218,10 @@ export class AutoExecutor {
           );
           await this.submitStepsToQStash([resultStep], [parallelStep]);
         } catch (error) {
-          if (error instanceof QStashWorkflowAbort) {
+          if (error instanceof WorkflowAbort) {
             throw error;
           }
-          throw new QStashWorkflowError(
+          throw new WorkflowError(
             `Error submitting steps to QStash in partial parallel step execution: ${error}`
           );
         }
@@ -236,7 +236,7 @@ export class AutoExecutor {
          * This call to the API should be discarded: no operations are to be made. Parallel steps which are still
          * running will finish and call QStash eventually.
          */
-        throw new QStashWorkflowAbort("discarded parallel");
+        throw new WorkflowAbort("discarded parallel");
       }
       case "last": {
         /**
@@ -313,7 +313,7 @@ export class AutoExecutor {
   private async submitStepsToQStash(steps: Step[], lazySteps: BaseLazyStep[]) {
     // if there are no steps, something went wrong. Raise exception
     if (steps.length === 0) {
-      throw new QStashWorkflowError(
+      throw new WorkflowError(
         `Unable to submit steps to QStash. Provided list is empty. Current step: ${this.stepCount}`
       );
     }
@@ -360,7 +360,7 @@ export class AutoExecutor {
         parseResponseAsJson: false,
       });
 
-      throw new QStashWorkflowAbort(steps[0].stepName, steps[0]);
+      throw new WorkflowAbort(steps[0].stepName, steps[0]);
     }
 
     const result = await this.context.qstashClient.batchJSON(
@@ -418,7 +418,7 @@ export class AutoExecutor {
     });
 
     // if the steps are sent successfully, abort to stop the current request
-    throw new QStashWorkflowAbort(steps[0].stepName, steps[0]);
+    throw new WorkflowAbort(steps[0].stepName, steps[0]);
   }
 
   /**
@@ -451,7 +451,7 @@ export class AutoExecutor {
     ) {
       return result[index] as TResult;
     } else {
-      throw new QStashWorkflowError(
+      throw new WorkflowError(
         `Unexpected parallel call result while executing step ${index}: '${result}'. Expected ${lazyStepList.length} many items`
       );
     }
@@ -468,7 +468,7 @@ export class AutoExecutor {
  * from the incoming request; compare the step names and types to make sure
  * that they are the same.
  *
- * Raises `QStashWorkflowError` if there is a difference.
+ * Raises `WorkflowError` if there is a difference.
  *
  * @param lazyStep lazy step created during execution
  * @param stepFromRequest step parsed from incoming request
@@ -476,14 +476,14 @@ export class AutoExecutor {
 const validateStep = (lazyStep: BaseLazyStep, stepFromRequest: Step): void => {
   // check step name
   if (lazyStep.stepName !== stepFromRequest.stepName) {
-    throw new QStashWorkflowError(
+    throw new WorkflowError(
       `Incompatible step name. Expected '${lazyStep.stepName}',` +
         ` got '${stepFromRequest.stepName}' from the request`
     );
   }
   // check type name
   if (lazyStep.stepType !== stepFromRequest.stepType) {
-    throw new QStashWorkflowError(
+    throw new WorkflowError(
       `Incompatible step type. Expected '${lazyStep.stepType}',` +
         ` got '${stepFromRequest.stepType}' from the request`
     );
@@ -494,7 +494,7 @@ const validateStep = (lazyStep: BaseLazyStep, stepFromRequest: Step): void => {
  * validates that each lazy step and step from request has the same step
  * name and type using `validateStep` method.
  *
- * If there is a difference, raises `QStashWorkflowError` with information
+ * If there is a difference, raises `WorkflowError` with information
  * about the difference.
  *
  * @param lazySteps list of lazy steps created during parallel execution
@@ -506,12 +506,12 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
       validateStep(lazySteps[index], stepFromRequest);
     }
   } catch (error) {
-    if (error instanceof QStashWorkflowError) {
+    if (error instanceof WorkflowError) {
       const lazyStepNames = lazySteps.map((lazyStep) => lazyStep.stepName);
       const lazyStepTypes = lazySteps.map((lazyStep) => lazyStep.stepType);
       const requestStepNames = stepsFromRequest.map((step) => step.stepName);
       const requestStepTypes = stepsFromRequest.map((step) => step.stepType);
-      throw new QStashWorkflowError(
+      throw new WorkflowError(
         `Incompatible steps detected in parallel execution: ${error.message}` +
           `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
           `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +

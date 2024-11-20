@@ -10,7 +10,7 @@ import {
   triggerRouteFunction,
   triggerWorkflowDelete,
 } from "./workflow-requests";
-import { QStashWorkflowAbort } from "./error";
+import { WorkflowAbort } from "./error";
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import type { Step, StepType } from "./types";
@@ -29,6 +29,7 @@ import {
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
+import { FinishState } from "./integration.test";
 
 describe("Workflow Requests", () => {
   test("triggerFirstInvocation", async () => {
@@ -67,13 +68,16 @@ describe("Workflow Requests", () => {
   });
 
   describe("triggerRouteFunction", () => {
-    test("should get step-finished when QStashWorkflowAbort is thrown", async () => {
+    test("should get step-finished when WorkflowAbort is thrown", async () => {
       const result = await triggerRouteFunction({
         onStep: () => {
-          throw new QStashWorkflowAbort("name");
+          throw new WorkflowAbort("name");
         },
         onCleanup: async () => {
           await Promise.resolve();
+        },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
         },
       });
       expect(result.isOk()).toBeTrue();
@@ -89,6 +93,9 @@ describe("Workflow Requests", () => {
         onCleanup: async () => {
           await Promise.resolve();
         },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
+        },
       });
       expect(result.isOk()).toBeTrue();
       // @ts-expect-error value will be set since stepFinish isOk
@@ -103,6 +110,9 @@ describe("Workflow Requests", () => {
         onCleanup: async () => {
           await Promise.resolve();
         },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
+        },
       });
       expect(result.isErr()).toBeTrue();
     });
@@ -115,9 +125,46 @@ describe("Workflow Requests", () => {
         onCleanup: () => {
           throw new Error("Something went wrong!");
         },
+        onCancel: () => {
+          throw new Error("Something went wrong!");
+        },
       });
       expect(result.isErr()).toBeTrue();
     });
+  });
+
+  test("should call onCancel if context.cancel is called", async () => {
+    const workflowRunId = nanoid();
+    const token = "myToken";
+
+    const context = new WorkflowContext({
+      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
+      workflowRunId: workflowRunId,
+      initialPayload: undefined,
+      headers: new Headers({}) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+    });
+
+    const finished = new FinishState();
+    const result = await triggerRouteFunction({
+      onStep: async () => {
+        await context.cancel();
+        await context.run("shouldn't call", () => {
+          throw new Error("shouldn't call context.run");
+        });
+      },
+      onCleanup: async () => {
+        throw new Error("shouldn't call");
+      },
+      onCancel: async () => {
+        finished.finish();
+      },
+    });
+    finished.check();
+    expect(result.isOk()).toBeTrue();
+    // @ts-expect-error value will be set since result isOk
+    expect(result.value).toBe("workflow-finished");
   });
 
   test("should call publishJSON in triggerWorkflowDelete", async () => {
@@ -345,6 +392,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
       expect(timeoutHeaders).toBeUndefined();
@@ -371,6 +419,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
       expect(timeoutHeaders).toBeUndefined();
@@ -404,10 +453,11 @@ describe("Workflow Requests", () => {
         }
       );
       expect(headers).toEqual({
-        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete",
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete,InitialBody",
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
@@ -440,6 +490,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
         "Upstash-Failure-Callback": failureUrl,
@@ -466,6 +517,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Init": "false",
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
       });
@@ -473,6 +525,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Init": ["false"],
         "Upstash-Workflow-RunId": [workflowRunId],
         "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+        [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody"],
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
         "Upstash-Workflow-Runid": [workflowRunId],
         "Upstash-Workflow-CallType": ["step"],
