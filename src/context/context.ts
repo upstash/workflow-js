@@ -1,4 +1,10 @@
-import type { CallResponse, NotifyStepResponse, WaitStepResponse, WorkflowClient } from "../types";
+import type {
+  CallResponse,
+  NotifyStepResponse,
+  WaitEventOptions,
+  WaitStepResponse,
+  WorkflowClient,
+} from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
 import type { BaseLazyStep } from "./steps";
@@ -259,11 +265,13 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * network call without consuming any runtime.
    *
    * ```ts
-   * const postResult = await context.call<string>(
+   * const { status, body } = await context.call<string>(
    *   "post call step",
-   *   `https://www.some-endpoint.com/api`,
-   *   "POST",
-   *   "my-payload"
+   *   {
+   *     url: `https://www.some-endpoint.com/api`,
+   *     method: "POST",
+   *     body: "my-payload"
+   *   }
    * );
    * ```
    *
@@ -273,28 +281,30 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * @param stepName
    * @param url url to call
-   * @param method call method
+   * @param method call method. "GET" by default.
    * @param body call body
    * @param headers call headers
+   * @param retries number of call retries. 0 by default
    * @returns call result as {
    *     status: number;
    *     body: unknown;
    *     header: Record<string, string[]>
    *   }
    */
-  public async call(
+  public async call<TResult = unknown>(
     stepName: string,
     settings: {
       url: string;
       method?: HTTPMethods;
       body?: unknown;
       headers?: Record<string, string>;
+      retries?: number;
     }
-  ): Promise<CallResponse> {
-    const { url, method = "GET", body, headers = {} } = settings;
+  ): Promise<CallResponse<TResult>> {
+    const { url, method = "GET", body, headers = {}, retries = 0 } = settings;
 
     const result = await this.addStep(
-      new LazyCallStep<CallResponse | string>(stepName, url, method, body, headers ?? {})
+      new LazyCallStep<CallResponse<string> | string>(stepName, url, method, body, headers, retries)
     );
 
     // <for backwards compatibity>
@@ -313,7 +323,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         return {
           status: 200,
           header: {},
-          body: result,
+          body: result as TResult,
         };
       }
     }
@@ -325,54 +335,52 @@ export class WorkflowContext<TInitialPayload = unknown> {
         body: JSON.parse(result.body as string),
       };
     } catch {
-      return result;
+      return result as CallResponse<TResult>;
     }
   }
 
   /**
-   * Makes the workflow run wait until a notify request is sent or until the
-   * timeout ends
+   * Pauses workflow execution until a specific event occurs or a timeout is reached.
    *
-   * ```ts
-   * const { eventData, timeout } = await context.waitForEvent(
-   *   "wait for event step",
-   *   "my-event-id",
-   *   100 // timeout after 100 seconds
-   * );
-   * ```
+   *```ts
+   * const result = await workflow.waitForEvent("payment-confirmed", {
+   *   timeout: "5m"
+   * });
+   *```
    *
-   * To notify a waiting workflow run, you can use the notify method:
+   * To notify a waiting workflow:
    *
    * ```ts
    * import { Client } from "@upstash/workflow";
    *
-   * const client = new Client({ token: });
+   * const client = new Client({ token: "<QSTASH_TOKEN>" });
    *
    * await client.notify({
-   *   eventId: "my-event-id",
-   *   eventData: "eventData"
+   *   eventId: "payment.confirmed",
+   *   data: {
+   *     amount: 99.99,
+   *     currency: "USD"
+   *   }
    * })
    * ```
    *
    * @param stepName
-   * @param eventId event id to wake up the waiting workflow run
-   * @param timeout timeout duration in seconds
-   * @returns wait response as `{ timeout: boolean, eventData: unknown }`.
-   *   timeout is true if the wait times out, if notified it is false. eventData
-   *   is the value passed to `client.notify`.
+   * @param eventId - Unique identifier for the event to wait for
+   * @param options - Configuration options.
+   * @returns `{ timeout: boolean, eventData: unknown }`.
+   *   The `timeout` property specifies if the workflow has timed out. The `eventData`
+   *   is the data passed when notifying this workflow of an event.
    */
   public async waitForEvent(
     stepName: string,
     eventId: string,
-    timeout: number | Duration
+    options: WaitEventOptions = {}
   ): Promise<WaitStepResponse> {
-    const result = await this.addStep(
-      new LazyWaitForEventStep(
-        stepName,
-        eventId,
-        typeof timeout === "string" ? timeout : `${timeout}s`
-      )
-    );
+    const { timeout = "7d" } = options;
+
+    const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
+
+    const result = await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
 
     try {
       return {

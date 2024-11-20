@@ -540,7 +540,7 @@ describe("Workflow Requests", () => {
       expect(spy).toHaveBeenCalledTimes(1);
 
       const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
-      await client.cancel({ workflowRunId });
+      await client.cancel({ ids: [workflowRunId] });
 
       const result = await triggerRouteFunction({
         onStep: async () => {
@@ -583,7 +583,7 @@ describe("Workflow Requests", () => {
       expect(spy).toHaveBeenCalledTimes(1);
 
       const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
-      await client.cancel({ workflowRunId });
+      await client.cancel({ ids: [workflowRunId] });
 
       const result = await triggerRouteFunction({
         onStep: async () => {

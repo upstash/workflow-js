@@ -396,7 +396,7 @@ describe.skip("live serve tests", () => {
             return;
           }
 
-          const { body: postResult } = await context.call("post call", {
+          const { body: postResult } = await context.call<string>("post call", {
             url: LOCAL_THIRD_PARTY_URL,
             method: "POST",
             body: "post-payload",
@@ -408,7 +408,7 @@ describe.skip("live serve tests", () => {
 
           await context.sleep("sleep 1", 2);
 
-          const { body: getResult } = await context.call("get call", {
+          const { body: getResult } = await context.call<string>("get call", {
             url: LOCAL_THIRD_PARTY_URL,
             headers: getHeader,
           });
@@ -480,7 +480,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 0,
-        failureFunction: (context, failStatus, failResponse, failHeaders) => {
+        failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");
           expect(context.headers.get("authentication")).toBe("Bearer secretPassword");
@@ -516,7 +516,7 @@ describe.skip("live serve tests", () => {
         finishState,
         routeFunction: async (context) => {
           const input = context.requestPayload;
-          const { status, body, header } = await context.call("failing call", {
+          const { status, body, header } = await context.call<string>("failing call", {
             url: LOCAL_THIRD_PARTY_URL,
             body: input,
             method: "POST",
@@ -557,7 +557,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 1,
-        failureFunction: (context, failStatus, failResponse, failHeaders) => {
+        failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");
           expect(context.headers.get("authentication")).toBe("Bearer secretPassword");
@@ -620,14 +620,14 @@ describe.skip("live serve tests", () => {
           const { eventData, timeout } = await context.waitForEvent(
             "single wait for event",
             eventId,
-            1
+            { timeout: 1 }
           );
           expect(eventData).toBeUndefined();
           expect(timeout).toBeTrue();
 
           const [runResponse, waitResponse] = await Promise.all([
             context.run("run-step", () => runResult),
-            context.waitForEvent("wait-event-step", eventId, 3),
+            context.waitForEvent("wait-event-step", eventId, { timeout: 3 }),
           ]);
           expect(runResponse).toBe(runResult);
           expect(waitResponse.timeout).toBe(expectedWaitResponse.timeout);

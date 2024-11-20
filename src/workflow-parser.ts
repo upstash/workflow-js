@@ -19,7 +19,7 @@ import type {
 import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
-import { decodeBase64, nanoid } from "./utils";
+import { decodeBase64, getWorkflowRunId } from "./utils";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -191,7 +191,7 @@ export const validateRequest = (
 
   // get workflow id
   const workflowRunId = isFirstInvocation
-    ? `wfr_${nanoid()}`
+    ? getWorkflowRunId()
     : (request.headers.get(WORKFLOW_ID_HEADER) ?? "");
   if (workflowRunId.length === 0) {
     throw new QStashWorkflowError("Couldn't get workflow id from header");
@@ -316,7 +316,12 @@ export const handleFailure = async <TInitialPayload>(
       debug,
     });
 
-    await failureFunction(workflowContext, status, errorPayload.message, header);
+    await failureFunction({
+      context: workflowContext,
+      failStatus: status,
+      failResponse: errorPayload.message,
+      failHeaders: header,
+    });
   } catch (error) {
     return err(error as Error);
   }

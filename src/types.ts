@@ -12,6 +12,7 @@ import type { WorkflowLogger } from "./logger";
 export type WorkflowClient = {
   batchJSON: InstanceType<typeof Client>["batchJSON"];
   publishJSON: InstanceType<typeof Client>["publishJSON"];
+  publish: InstanceType<typeof Client>["publish"];
   http: InstanceType<typeof Client>["http"];
 };
 /**
@@ -182,12 +183,15 @@ export type WorkflowServeOptions<
    * @param failResponse error message
    * @returns void
    */
-  failureFunction?: (
-    context: Omit<WorkflowContext, "run" | "sleepUntil" | "sleep" | "call">,
-    failStatus: number,
-    failResponse: string,
-    failHeader: Record<string, string[]>
-  ) => Promise<void> | void;
+  failureFunction?: (failureData: {
+    context: Omit<
+      WorkflowContext,
+      "run" | "sleepUntil" | "sleep" | "call" | "waitForEvent" | "notify"
+    >;
+    failStatus: number;
+    failResponse: string;
+    failHeaders: Record<string, string[]>;
+  }) => Promise<void> | void;
   /**
    * Base Url of the workflow endpoint
    *
@@ -286,10 +290,27 @@ export type NotifyStepResponse = {
   notifyResponse: NotifyResponse[];
 };
 
-export type CallResponse = {
+export type CallResponse<TResult = unknown> = {
   status: number;
-  body: unknown;
+  body: TResult;
   header: Record<string, string[]>;
 };
 
-export type Duration = `${bigint}s` | `${bigint}m` | `${bigint}h` | `${bigint}d`;
+/**
+ * Valid duration string formats
+ * @example "30s" // 30 seconds
+ * @example "5m"  // 5 minutes
+ * @example "2h"  // 2 hours
+ * @example "1d"  // 1 day
+ */
+export type Duration = `${bigint}${"s" | "m" | "h" | "d"}`;
+
+export interface WaitEventOptions {
+  /**
+   * Duration in seconds to wait for an event before timing out the workflow.
+   * @example 300 // 5 minutes in seconds
+   * @example "5m" // 5 minutes as duration string
+   * @default "7d"
+   */
+  timeout?: number | Duration;
+}

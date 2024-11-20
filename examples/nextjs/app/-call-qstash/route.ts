@@ -1,7 +1,7 @@
-import { Client } from '@upstash/qstash'
+import { Client as WorkflowClient } from '@upstash/workflow'
 import { NextRequest } from 'next/server'
 
-const client = new Client({
+const client = new WorkflowClient({
   baseUrl: process.env.QSTASH_URL!,
   token: process.env.QSTASH_TOKEN!,
 })
@@ -20,12 +20,15 @@ export const POST = async (request: NextRequest) => {
       process.env.UPSTASH_WORKFLOW_URL ??
       request.url.replace('/-call-qstash', '')
 
-    const { messageId } = await client.publishJSON({
+    const { workflowRunId } = await client.trigger({
       url: `${baseUrl}/${route}`,
       body: payload,
+      headers: {
+        "test": "value"
+      }
     })
 
-    return new Response(JSON.stringify({ messageId }), { status: 200 })
+    return new Response(JSON.stringify({ workflowRunId }), { status: 200 })
   } catch (error) {
     return new Response(
       JSON.stringify({ error: `Error when publishing to QStash: ${error}` }),

@@ -1,10 +1,18 @@
 const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 const NANOID_LENGTH = 21;
 
+function getRandomInt() {
+  return Math.floor(Math.random() * NANOID_CHARS.length);
+}
+
 export function nanoid() {
-  return [...crypto.getRandomValues(new Uint8Array(NANOID_LENGTH))]
-    .map((x) => NANOID_CHARS[x % NANOID_CHARS.length])
+  return Array.from({ length: NANOID_LENGTH })
+    .map(() => NANOID_CHARS[getRandomInt()])
     .join("");
+}
+
+export function getWorkflowRunId(id?: string): string {
+  return `wfr_${id ?? nanoid()}`;
 }
 
 /**

@@ -1,6 +1,10 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
 import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
+import { getWorkflowRunId } from "../utils";
+import { triggerFirstInvocation } from "../workflow-requests";
+import { WorkflowContext } from "../context";
+import { DEFAULT_RETRIES } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -18,7 +22,15 @@ export class Client {
 
   constructor(clientConfig: ClientConfig) {
     if (!clientConfig.token) {
-      console.warn("[Upstash Workflow] url or the token is not set. client will not work.");
+      console.error(
+        "QStash token is required for Upstash Workflow!\n\n" +
+          "To fix this:\n" +
+          "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
+          "2. Initialize the workflow client with:\n\n" +
+          "   const client = new Client({\n" +
+          "     token: '<YOUR_QSTASH_TOKEN>'\n" +
+          "   });"
+      );
     }
     this.client = new QStashClient(clientConfig);
   }
@@ -26,23 +38,84 @@ export class Client {
   /**
    * Cancel an ongoing workflow
    *
-   * ```ts
-   * import { Client } from "@upstash/workflow";
+   * There are multiple ways you can cancel workflows:
+   * - pass one or more workflow run ids to cancel them
+   * - pass a workflow url to cancel all runs starting with this url
+   * - cancel all pending or active workflow runs
    *
-   * const client = new Client({ token: "<QSTASH_TOKEN>" })
-   * await client.cancel({ workflowRunId: "<WORKFLOW_RUN_ID>" })
+   * ### Cancel a set of workflow runs
+   *
+   * ```ts
+   * // cancel a single workflow
+   * await client.cancel({ ids: "<WORKFLOW_RUN_ID>" })
+   *
+   * // cancel a set of workflow runs
+   * await client.cancel({ ids: [
+   *   "<WORKFLOW_RUN_ID_1>",
+   *   "<WORKFLOW_RUN_ID_2>",
+   * ]})
    * ```
    *
-   * @param workflowRunId run id of the workflow to delete
+   * ### Cancel workflows starting with a url
+   *
+   * If you have an endpoint called `https://your-endpoint.com` and you
+   * want to cancel all workflow runs on it, you can use `urlStartingWith`.
+   *
+   * Note that this will cancel workflows in all endpoints under
+   * `https://your-endpoint.com`.
+   *
+   * ```ts
+   * await client.cancel({ urlStartingWith: "https://your-endpoint.com" })
+   * ```
+   *
+   * ### Cancel *all* workflows
+   *
+   * To cancel all pending and currently running workflows, you can
+   * do it like this:
+   *
+   * ```ts
+   * await client.cancel({ all: true })
+   * ```
+   *
+   * @param ids run id of the workflow to delete
+   * @param urlStartingWith cancel workflows starting with this url. Will be ignored
+   *   if `ids` parameter is set.
+   * @param all set to true in order to cancel all workflows. Will be ignored
+   *   if `ids` or `urlStartingWith` parameters are set.
    * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
    */
-  public async cancel({ workflowRunId }: { workflowRunId: string }) {
-    const result = (await this.client.http.request({
-      path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
+  public async cancel({
+    ids,
+    urlStartingWith,
+    all,
+  }: {
+    ids?: string | string[];
+    urlStartingWith?: string;
+    all?: true;
+  }) {
+    let body: string;
+    if (ids) {
+      const runIdArray = typeof ids === "string" ? [ids] : ids;
+
+      body = JSON.stringify({ workflowRunIds: runIdArray });
+    } else if (urlStartingWith) {
+      body = JSON.stringify({ workflowUrl: urlStartingWith });
+    } else if (all) {
+      body = "{}";
+    } else {
+      throw new TypeError("The `cancel` method cannot be called without any options.");
+    }
+
+    const result = await this.client.http.request<{ cancelled: number }>({
+      path: ["v2", "workflows", "runs"],
       method: "DELETE",
-      parseResponseAsJson: false,
-    })) as { error: string } | undefined;
-    return result ?? true;
+      body,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return result;
   }
 
   /**
@@ -87,5 +160,64 @@ export class Client {
    */
   public async getWaiters({ eventId }: { eventId: string }): Promise<Required<Waiter>[]> {
     return await makeGetWaitersRequest(this.client.http, eventId);
+  }
+
+  /**
+   * Trigger new workflow run and returns the workflow run id
+   *
+   * ```ts
+   * const { workflowRunId } = await client.trigger({
+   *   url: "https://workflow-endpoint.com",
+   *   body: "hello there!",         // Optional body
+   *   headers: { ... },             // Optional headers
+   *   workflowRunId: "my-workflow", // Optional workflow run ID
+   *   retries: 3                    // Optional retries for the initial request
+   * });
+   *
+   * console.log(workflowRunId)
+   * // wfr_my-workflow
+   * ```
+   *
+   * @param url URL of the workflow
+   * @param body body to start the workflow with
+   * @param headers headers to use in the request
+   * @param workflowRunId optional workflow run id to use. mind that
+   *   you should pass different workflow run ids for different runs.
+   *   The final workflowRunId will be `wfr_${workflowRunId}`, in
+   *   other words: the workflow run id you pass will be prefixed
+   *   with `wfr_`.
+   * @param retries retry to use in the initial request. in the rest of
+   *   the workflow, `retries` option of the `serve` will be used.
+   * @returns workflow run id
+   */
+  public async trigger({
+    url,
+    body,
+    headers,
+    workflowRunId,
+    retries,
+  }: {
+    url: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+    workflowRunId?: string;
+    retries?: number;
+  }): Promise<{ workflowRunId: string }> {
+    const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
+    const context = new WorkflowContext({
+      qstashClient: this.client,
+      // @ts-expect-error headers type mismatch
+      headers: new Headers(headers ?? {}),
+      initialPayload: body,
+      steps: [],
+      url,
+      workflowRunId: finalWorkflowRunId,
+    });
+    const result = await triggerFirstInvocation(context, retries ?? DEFAULT_RETRIES);
+    if (result.isOk()) {
+      return { workflowRunId: finalWorkflowRunId };
+    } else {
+      throw result.error;
+    }
   }
 }
