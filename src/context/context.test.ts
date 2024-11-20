@@ -167,7 +167,7 @@ describe("context tests", () => {
       const eventId = "my-event-id";
       await mockQStashServer({
         execute: () => {
-          const throws = () => context.waitForEvent("my-step", eventId, 20);
+          const throws = () => context.waitForEvent("my-step", eventId);
           expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
         },
         responseFields: {
@@ -185,7 +185,7 @@ describe("context tests", () => {
               stepName: "my-step",
               stepType: "Wait",
             },
-            timeout: "20s",
+            timeout: "7d", // default timeout
             timeoutHeaders: {
               "Content-Type": ["application/json"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
@@ -220,7 +220,7 @@ describe("context tests", () => {
         execute: () => {
           const throws = () =>
             Promise.all([
-              context.waitForEvent("my-wait-step", eventId, 20),
+              context.waitForEvent("my-wait-step", eventId, { timeout: 20 }),
               context.run("my-run-step", () => "foo"),
             ]);
           expect(throws).toThrowError("Aborting workflow after executing step 'my-wait-step'.");

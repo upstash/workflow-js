@@ -120,7 +120,16 @@ export const checkRedisForResults = async (
   expectedResult: string,
 ) => {
   const key = getRedisKey("result", route, randomTestId)
-  const testResult = await redis.get<RedisResult>(key)
+  let testResult: RedisResult | null = null
+
+  for (let i=0; i<3; i++) {
+    testResult = await redis.get<RedisResult>(key)
+    if (testResult) {
+      break
+    }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
   if (!testResult) {
     throw new Error(`result not found for route ${route} with randomTestId ${randomTestId}`)
   }

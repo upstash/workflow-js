@@ -620,14 +620,14 @@ describe.skip("live serve tests", () => {
           const { eventData, timeout } = await context.waitForEvent(
             "single wait for event",
             eventId,
-            1
+            { timeout: 1 }
           );
           expect(eventData).toBeUndefined();
           expect(timeout).toBeTrue();
 
           const [runResponse, waitResponse] = await Promise.all([
             context.run("run-step", () => runResult),
-            context.waitForEvent("wait-event-step", eventId, 3),
+            context.waitForEvent("wait-event-step", eventId, { timeout: 3 }),
           ]);
           expect(runResponse).toBe(runResult);
           expect(waitResponse.timeout).toBe(expectedWaitResponse.timeout);

@@ -641,7 +641,7 @@ describe("serve", () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
     const { handler: endpoint } = serve(
       async (context) => {
-        await context.waitForEvent("waiting step", "wait-event-id", "10d");
+        await context.waitForEvent("waiting step", "wait-event-id", { timeout: "10d" });
       },
       {
         qstashClient,

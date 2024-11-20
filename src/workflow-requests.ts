@@ -22,13 +22,14 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
+import { QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 
 export const triggerFirstInvocation = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   retries: number,
   debug?: WorkflowLogger
-): Promise<Ok<"success", never> | Err<never, Error>> => {
+): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders(
     "true",
     workflowContext.workflowRunId,
@@ -38,23 +39,36 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     workflowContext.failureUrl,
     retries
   );
-  await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-    headers,
-    requestPayload: workflowContext.requestPayload,
-    url: workflowContext.url,
-  });
   try {
     const body =
       typeof workflowContext.requestPayload === "string"
         ? workflowContext.requestPayload
         : JSON.stringify(workflowContext.requestPayload);
-    await workflowContext.qstashClient.publish({
+    const result = await workflowContext.qstashClient.publish({
       headers,
       method: "POST",
       body,
       url: workflowContext.url,
     });
-    return ok("success");
+
+    if (result.deduplicated) {
+      await debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
+        message: `Workflow run ${workflowContext.workflowRunId} already exists. A new one isn't created.`,
+        headers,
+        requestPayload: workflowContext.requestPayload,
+        url: workflowContext.url,
+        messageId: result.messageId,
+      });
+      return ok("workflow-run-already-exists");
+    } else {
+      await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
+        headers,
+        requestPayload: workflowContext.requestPayload,
+        url: workflowContext.url,
+        messageId: result.messageId,
+      });
+      return ok("success");
+    }
   } catch (error) {
     const error_ = error as Error;
     return err(error_);
@@ -65,11 +79,15 @@ export const triggerRouteFunction = async ({
   onCleanup,
   onStep,
   onCancel,
+  debug,
 }: {
   onStep: () => Promise<void>;
   onCleanup: () => Promise<void>;
   onCancel: () => Promise<void>;
-}): Promise<Ok<"workflow-finished" | "step-finished", never> | Err<never, Error>> => {
+  debug?: WorkflowLogger;
+}): Promise<
+  Ok<"workflow-finished" | "step-finished" | "workflow-was-finished", never> | Err<never, Error>
+> => {
   try {
     // When onStep completes successfully, it throws an exception named `WorkflowAbort`,
     // indicating that the step has been successfully executed.
@@ -79,7 +97,14 @@ export const triggerRouteFunction = async ({
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
-    if (!(error_ instanceof WorkflowAbort)) {
+    if (error instanceof QstashError && error.status === 400) {
+      await debug?.log("WARN", "RESPONSE_WORKFLOW", {
+        message: `tried to append to a cancelled workflow. exiting without publishing.`,
+        name: error.name,
+        errorMessage: error.message,
+      });
+      return ok("workflow-was-finished");
+    } else if (!(error_ instanceof WorkflowAbort)) {
       return err(error_);
     } else if (error_.cancelWorkflow) {
       await onCancel();
@@ -94,16 +119,34 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   debug?: WorkflowLogger,
   cancel = false
-) => {
+): Promise<{ deleted: boolean }> => {
   await debug?.log("SUBMIT", "SUBMIT_CLEANUP", {
     deletedWorkflowRunId: workflowContext.workflowRunId,
   });
-  const result = await workflowContext.qstashClient.http.request({
-    path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
-    method: "DELETE",
-    parseResponseAsJson: false,
-  });
-  await debug?.log("SUBMIT", "SUBMIT_CLEANUP", result);
+
+  try {
+    await workflowContext.qstashClient.http.request({
+      path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
+      method: "DELETE",
+      parseResponseAsJson: false,
+    });
+    await debug?.log(
+      "SUBMIT",
+      "SUBMIT_CLEANUP",
+      `workflow run ${workflowContext.workflowRunId} deleted.`
+    );
+    return { deleted: true };
+  } catch (error) {
+    if (error instanceof QstashError && error.status === 404) {
+      await debug?.log("WARN", "SUBMIT_CLEANUP", {
+        message: `Failed to remove workflow run ${workflowContext.workflowRunId} as it doesn't exist.`,
+        name: error.name,
+        errorMessage: error.message,
+      });
+      return { deleted: false };
+    }
+    throw error;
+  }
 };
 
 /**
