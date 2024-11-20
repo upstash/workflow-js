@@ -674,7 +674,7 @@ describe("Workflow Requests", () => {
       });
     });
 
-    test.only("should omit the error if the workflow is created with the same id", async () => {
+    test("should omit the error if the workflow is created with the same id", async () => {
       const workflowRunId = `wfr-${nanoid()}`;
       const context = new WorkflowContext({
         qstashClient,
