@@ -76,7 +76,7 @@ type Charge = {
   success: boolean;
 };
 
-class FinishState {
+export class FinishState {
   public finished = false;
   public finish() {
     this.finished = true;
@@ -754,5 +754,181 @@ describe.skip("live serve tests", () => {
         { timeout: 170000 }
       );
     });
+  });
+
+  test(
+    "cancel workflow",
+    async () => {
+      const finishState = new FinishState();
+      await testEndpoint({
+        finalCount: 3,
+        waitFor: 7000,
+        initialPayload: "my-payload",
+        finishState,
+        routeFunction: async (context) => {
+          const input = context.requestPayload;
+          expect(input).toBe("my-payload");
+
+          await context.sleep("sleep", 1);
+
+          finishState.finish();
+          await context.cancel();
+
+          throw new Error("shouldn't reach here");
+        },
+      });
+    },
+    {
+      timeout: 10_000,
+    }
+  );
+
+  describe.skip("lazy fetch", () => {
+    // create 5 mb payload.
+    // lazy fetch will become enabled for payloads larger than 3mb
+    const largeObject = "x".repeat(4 * 1024 * 1024);
+
+    test(
+      "large payload",
+      async () => {
+        const finishState = new FinishState();
+        await testEndpoint({
+          finalCount: 3,
+          waitFor: 7000,
+          initialPayload: largeObject,
+          finishState,
+          routeFunction: async (context) => {
+            const input = context.requestPayload;
+
+            expect(input).toBe(largeObject);
+
+            const result = await context.run("step1", async () => {
+              return "step-1-result";
+            });
+            expect(result).toBe("step-1-result");
+
+            finishState.finish();
+          },
+        });
+      },
+      {
+        timeout: 10_000,
+      }
+    );
+    test(
+      "large parallel step response",
+      async () => {
+        const finishState = new FinishState();
+        await testEndpoint({
+          finalCount: 11,
+          waitFor: 7000,
+          initialPayload: "my-payload",
+          finishState,
+          routeFunction: async (context) => {
+            const input = context.requestPayload;
+
+            expect(input).toBe("my-payload");
+
+            const results = await Promise.all([
+              context.run("step1", () => {
+                return largeObject;
+              }),
+              context.sleep("sleep1", 1),
+              context.run("step2", () => {
+                return largeObject;
+              }),
+              context.sleep("sleep2", 1),
+            ]);
+
+            expect(results[0]).toBe(largeObject);
+            expect(results[1]).toBe(undefined);
+            expect(results[2]).toBe(largeObject);
+            expect(results[3]).toBe(undefined);
+
+            await context.sleep("check", 1);
+
+            finishState.finish();
+          },
+        });
+      },
+      {
+        timeout: 10_000,
+      }
+    );
+
+    test.skip(
+      "large error",
+      async () => {
+        const finishState = new FinishState();
+        await testEndpoint({
+          finalCount: 3,
+          waitFor: 7000,
+          initialPayload: "my-payload",
+          finishState,
+          retries: 0,
+          routeFunction: async (context) => {
+            const input = context.requestPayload;
+
+            expect(input).toBe("my-payload");
+
+            await context.run("step1", async () => {
+              throw new Error(largeObject);
+            });
+          },
+          failureFunction({ failResponse }) {
+            expect(failResponse).toBe(largeObject);
+            finishState.finish();
+          },
+        });
+      },
+      {
+        timeout: 10_000,
+      }
+    );
+
+    test(
+      "large call response",
+      async () => {
+        const thirdPartyServer = serve({
+          async fetch() {
+            return new Response(largeObject, { status: 200 });
+          },
+          port: THIRD_PARTY_PORT,
+        });
+
+        const finishState = new FinishState();
+        await testEndpoint({
+          finalCount: 6,
+          waitFor: 9000,
+          initialPayload: "my-payload",
+          finishState,
+          routeFunction: async (context) => {
+            // sleeping to avoid checking input before the first step
+            await context.sleep("sleeping", 1);
+
+            const input = context.requestPayload;
+            expect(input).toBe("my-payload");
+
+            const { status, body } = await context.call("call to large object", {
+              url: LOCAL_THIRD_PARTY_URL,
+              body: input,
+              method: "POST",
+            });
+
+            expect(status).toBe(200);
+            expect(body).toBe(largeObject);
+
+            await context.sleep("sleep", 1);
+
+            finishState.finish();
+          },
+        });
+
+        thirdPartyServer.stop();
+      },
+      {
+        timeout: 10_000,
+      }
+    );
   });
 });

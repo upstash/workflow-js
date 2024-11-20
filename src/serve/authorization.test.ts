@@ -4,7 +4,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { WorkflowContext } from "../context";
 import { Client } from "@upstash/qstash";
 import { nanoid } from "../utils";
-import { QStashWorkflowAbort } from "../error";
+import { WorkflowAbort } from "../error";
 import type { RouteFunction } from "../types";
 import { DisabledWorkflowContext } from "./authorization";
 
@@ -27,7 +27,7 @@ describe("disabled workflow context", () => {
           const throws = disabledContext.run("run-step", () => {
             return 1;
           });
-          expect(throws).rejects.toThrow(QStashWorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -43,7 +43,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.sleep("sleep-step", 1);
-          expect(throws).rejects.toThrow(QStashWorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -59,7 +59,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.sleepUntil("sleepUntil-step", 1);
-          expect(throws).rejects.toThrow(QStashWorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -75,7 +75,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.call("call-step", { url: "some-url" });
-          expect(throws).rejects.toThrow(QStashWorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -85,6 +85,11 @@ describe("disabled workflow context", () => {
         receivesRequest: false,
       });
       expect(called).toBeTrue();
+    });
+
+    test("shouldn't throw on cancel", () => {
+      const dontThrow = disabledContext.cancel;
+      expect(dontThrow).not.toThrowError();
     });
   });
 
@@ -184,7 +189,7 @@ describe("disabled workflow context", () => {
           const throws = context.run("step", async () => {
             return await Promise.resolve("result");
           });
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -207,6 +212,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
@@ -238,7 +244,7 @@ describe("disabled workflow context", () => {
           const throws = context.run("step", () => {
             return Promise.resolve("result");
           });
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -261,6 +267,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
@@ -292,7 +299,7 @@ describe("disabled workflow context", () => {
           const throws = context.run("step", () => {
             return "result";
           });
-          expect(throws).rejects.toThrowError(QStashWorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
           called = true;
           called = true;
         },
@@ -316,6 +323,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",

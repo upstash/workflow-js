@@ -38,6 +38,8 @@ export class Client {
   /**
    * Cancel an ongoing workflow
    *
+   * Returns true if workflow is canceled succesfully. Otherwise, throws error.
+   *
    * There are multiple ways you can cancel workflows:
    * - pass one or more workflow run ids to cancel them
    * - pass a workflow url to cancel all runs starting with this url

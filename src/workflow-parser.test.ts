@@ -10,10 +10,16 @@ import {
 } from "./constants";
 import { nanoid } from "./utils";
 import type { RawStep, Step, WaitStepResponse, WorkflowServeOptions } from "./types";
-import { getRequest, WORKFLOW_ENDPOINT } from "./test-utils";
-import { formatWorkflowError, QStashWorkflowError } from "./error";
+import {
+  getRequest,
+  MOCK_QSTASH_SERVER_URL,
+  mockQStashServer,
+  WORKFLOW_ENDPOINT,
+} from "./test-utils";
+import { formatWorkflowError, WorkflowError } from "./error";
 import { Client } from "@upstash/qstash";
 import { processOptions } from "./serve/options";
+import { FinishState } from "./integration.test";
 
 describe("Workflow Parser", () => {
   describe("validateRequest", () => {
@@ -52,7 +58,7 @@ describe("Workflow Parser", () => {
       });
 
       const throws = () => validateRequest(request);
-      expect(throws).toThrow(new QStashWorkflowError("Couldn't get workflow id from header"));
+      expect(throws).toThrow(new WorkflowError("Couldn't get workflow id from header"));
     });
 
     test("should throw when protocol version is incompatible", () => {
@@ -65,7 +71,7 @@ describe("Workflow Parser", () => {
 
       const throws = () => validateRequest(request);
       expect(throws).toThrow(
-        new QStashWorkflowError(
+        new WorkflowError(
           `Incompatible workflow sdk protocol version.` +
             ` Expected ${WORKFLOW_PROTOCOL_VERSION}, got ${requestProtocol} from the request.`
         )
@@ -88,6 +94,10 @@ describe("Workflow Parser", () => {
   });
 
   describe("parseRequest", () => {
+    const token = nanoid();
+    const workflowRunId = nanoid();
+    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+
     test("should handle first invocation", async () => {
       const payload = { initial: "payload" };
       const rawPayload = JSON.stringify(payload);
@@ -95,28 +105,76 @@ describe("Workflow Parser", () => {
         body: rawPayload,
       });
 
+      const finised = new FinishState();
       const requestPayload = (await getPayload(request)) ?? "";
-      const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
-        requestPayload,
-        true
-      );
+      await mockQStashServer({
+        execute: async () => {
+          const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+            requestPayload,
+            true,
+            workflowRunId,
+            qstashClient.http
+          );
 
-      // payload isn't parsed
-      expect(typeof rawInitialPayload).toBe("string");
-      expect(rawInitialPayload).toBe(rawPayload);
-      // steps are empty:
-      expect(steps).toEqual([]);
-      expect(isLastDuplicate).toBeFalse();
+          // payload isn't parsed
+          expect(typeof rawInitialPayload).toBe("string");
+          expect(rawInitialPayload).toBe(rawPayload);
+          // steps are empty:
+          expect(steps).toEqual([]);
+          expect(isLastDuplicate).toBeFalse();
+          finised.finish();
+        },
+        // shouldn't call get steps
+        receivesRequest: false,
+        responseFields: {
+          body: {},
+          status: 200,
+        },
+      });
+      finised.check();
     });
 
-    test("should throw when not first invocation and body is missing", async () => {
+    test("should fetch steps when not first invocation and body is missing", async () => {
+      const payload = "my-payload";
       const request = new Request(WORKFLOW_ENDPOINT);
 
       const requestPayload = (await getPayload(request)) ?? "";
-      const throws = parseRequest(requestPayload, false);
-      expect(throws).rejects.toThrow(
-        new QStashWorkflowError("Only first call can have an empty body")
-      );
+      const finised = new FinishState();
+
+      const responseBody: RawStep[] = [
+        {
+          messageId: "msg-id",
+          body: btoa(JSON.stringify(payload)),
+          callType: "step",
+        },
+      ];
+      await mockQStashServer({
+        execute: async () => {
+          const result = await parseRequest(
+            requestPayload,
+            false,
+            workflowRunId,
+            qstashClient.http
+          );
+          expect(result.rawInitialPayload).toBe(JSON.stringify(payload));
+          expect(result.steps.length).toBe(1);
+          expect(result.steps[0].out).toBe(JSON.stringify(payload));
+          finised.finish();
+        },
+        // should call get steps
+        receivesRequest: {
+          headers: {},
+          method: "GET",
+          token,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/${workflowRunId}`,
+        },
+        responseFields: {
+          body: responseBody,
+          status: 200,
+        },
+      });
+
+      finised.check();
     });
 
     test("should return steps and initial payload correctly", async () => {
@@ -143,7 +201,9 @@ describe("Workflow Parser", () => {
       const requestPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       // payload is not parsed
@@ -216,7 +276,9 @@ describe("Workflow Parser", () => {
       const requestPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(reqiestInitialPayload);
@@ -270,7 +332,9 @@ describe("Workflow Parser", () => {
 
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         JSON.stringify(payload),
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe("initial");
@@ -294,6 +358,10 @@ describe("Workflow Parser", () => {
   });
 
   describe("parseRequest with duplicates", () => {
+    const token = nanoid();
+    const workflowRunId = nanoid();
+    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+
     const requestPayload = "myPayload";
     const initStep: Step = {
       stepId: 0,
@@ -302,7 +370,6 @@ describe("Workflow Parser", () => {
       out: requestPayload,
       concurrent: 1,
     };
-    const workflowId = "wfr-foo";
 
     test("should ignore extra init steps", async () => {
       // prettier-ignore
@@ -311,12 +378,14 @@ describe("Workflow Parser", () => {
         { stepId: 1, stepName: "retrySleep", stepType: "SleepFor", sleepFor: 1_000_000, concurrent: 1 },
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -339,12 +408,14 @@ describe("Workflow Parser", () => {
         { stepId: 0, stepName: "successStep2", stepType: "Run", concurrent: 2, targetStep: 5 }, // duplicate
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -372,12 +443,14 @@ describe("Workflow Parser", () => {
         { stepId: 0, stepName: "successStep2", stepType: "Run", concurrent: 2, targetStep: 5 },
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -407,12 +480,14 @@ describe("Workflow Parser", () => {
         { stepId: 5, stepName: "successStep2", stepType: "Run", out: "20", concurrent: 2 }, // duplicate
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -443,12 +518,14 @@ describe("Workflow Parser", () => {
         { stepId: 5, stepName: "successStep2", stepType: "Run", out: '"20"', concurrent: 2 }, // duplicate
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -475,12 +552,14 @@ describe("Workflow Parser", () => {
         { stepId: 2, stepName: "retrySleep", stepType: "SleepFor", sleepFor: 1_000_000, concurrent: 1 }, // duplicate
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -502,12 +581,14 @@ describe("Workflow Parser", () => {
         { stepId: 2, stepName: "retrySleep", stepType: "SleepFor", sleepFor: 1_000_000, concurrent: 1 },
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -541,12 +622,14 @@ describe("Workflow Parser", () => {
         { stepId: 5, stepName: "successStep2", stepType: "Run", out: '"20"', concurrent: 2 },
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -584,12 +667,14 @@ describe("Workflow Parser", () => {
         { stepId: 5, stepName: "successStep2", stepType: "Run", out: '"20"', concurrent: 2 },
       ]
 
-      const request = getRequest(WORKFLOW_ENDPOINT, workflowId, requestPayload, requestSteps);
+      const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, requestPayload, requestSteps);
 
       const requestFromPayload = (await getPayload(request)) ?? "";
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
         requestFromPayload,
-        false
+        false,
+        workflowRunId,
+        qstashClient.http
       );
 
       expect(rawInitialPayload).toBe(requestPayload);
@@ -622,7 +707,7 @@ describe("Workflow Parser", () => {
     const body = {
       status: 201,
       header: { myHeader: "value" },
-      body: btoa(JSON.stringify(formatWorkflowError(new QStashWorkflowError(failMessage)))),
+      body: btoa(JSON.stringify(formatWorkflowError(new WorkflowError(failMessage)))),
       url: WORKFLOW_ENDPOINT,
       sourceHeader: {
         Authorization: authorization,
@@ -664,7 +749,7 @@ describe("Workflow Parser", () => {
       expect(result2.isOk() && result2.value === "not-failure-callback").toBeTrue();
     });
 
-    test("should throw QStashWorkflowError if header is set but function is not passed", async () => {
+    test("should throw WorkflowError if header is set but function is not passed", async () => {
       const request = new Request(WORKFLOW_ENDPOINT, {
         headers: {
           [WORKFLOW_FAILURE_HEADER]: "true",
@@ -673,7 +758,7 @@ describe("Workflow Parser", () => {
 
       const result = await handleFailure(request, "", client, initialPayloadParser);
       expect(result.isErr()).toBeTrue();
-      expect(result.isErr() && result.error.name).toBe(QStashWorkflowError.name);
+      expect(result.isErr() && result.error.name).toBe(WorkflowError.name);
       expect(result.isErr() && result.error.message).toBe(
         "Workflow endpoint is called to handle a failure," +
           " but a failureFunction is not provided in serve options." +

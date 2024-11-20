@@ -2,14 +2,12 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
+import { largeObject } from "../utils";
+import { WorkflowContext } from "@upstash/workflow";
 
 const header = `test-header-foo`
 const headerValue = `header-bar`
 const payload = "“unicode-quotes”"
-
-const someWork = (input: string) => {
-  return `processed '${input}'`;
-};
 
 export const { POST, GET } = testServe(
   serve<string>(
@@ -19,29 +17,32 @@ export const { POST, GET } = testServe(
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
 
-      const result1 = await context.run("step1", async () => {
-        return await Promise.resolve(someWork(input));
+      const result1 = await context.run("step1", () => {
+        return input.length;
       });
 
-      expect(result1, "processed '“unicode-quotes”'");
+      expect(result1, payload.length);
 
-      const result2 = await context.run("step2", async () => {
-        const result = someWork(result1);
-        return await Promise.resolve(result);
+      await context.run("step2", () => {
+        throw new Error(largeObject)
       });
-
-      expect(result2, "processed 'processed '“unicode-quotes”''");
-      await saveResult(
-        context,
-        result2
-      )
     }, {
       baseUrl: BASE_URL,
-      retries: 0
+      retries: 0,
+      async failureFunction({ context, failStatus, failResponse }) {
+        expect( failResponse, largeObject )
+        expect( failStatus, 500 )
+        expect( context.requestPayload as string, payload )
+        
+        await saveResult(
+          context as WorkflowContext,
+          `super secret`
+        )
+      },
     }
   ), {
     expectedCallCount: 4,
-    expectedResult: "processed 'processed '“unicode-quotes”''",
+    expectedResult: `super secret`,
     payload,
     headers: {
       [ header ]: headerValue

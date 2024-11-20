@@ -1,3 +1,4 @@
+import { makeCancelRequest } from "../client/utils";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
@@ -79,6 +80,9 @@ export const serve = <
     const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
       requestPayload,
       isFirstInvocation,
+      workflowRunId,
+      qstashClient.http,
+      request.headers.get("upstash-message-id")!,
       debug
     );
 
@@ -109,7 +113,6 @@ export const serve = <
       qstashClient,
       workflowRunId,
       initialPayload: initialPayloadParser(rawInitialPayload),
-      rawInitialPayload,
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
       url: workflowUrl,
@@ -158,6 +161,9 @@ export const serve = <
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async () => {
               await triggerWorkflowDelete(workflowContext, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
             },
             debug,
           });
