@@ -97,14 +97,11 @@ export const triggerRouteFunction = async ({
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
-    if (
-      error instanceof QstashError &&
-      error.message.includes("can not append to a a cancelled workflow")
-    ) {
+    if (error instanceof QstashError && error.status === 400) {
       await debug?.log("WARN", "RESPONSE_WORKFLOW", {
         message: `tried to append to a cancelled workflow. exiting without publishing.`,
         name: error.name,
-        originalMessage: error.message,
+        errorMessage: error.message,
       });
       return ok("workflow-was-finished");
     } else if (!(error_ instanceof WorkflowAbort)) {
@@ -140,14 +137,11 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     );
     return { deleted: true };
   } catch (error) {
-    if (
-      error instanceof QstashError &&
-      error.message.includes(`workflowRun ${workflowContext.workflowRunId} not found`)
-    ) {
+    if (error instanceof QstashError && error.status === 404) {
       await debug?.log("WARN", "SUBMIT_CLEANUP", {
         message: `Failed to remove workflow run ${workflowContext.workflowRunId} as it doesn't exist.`,
         name: error.name,
-        originalMessage: error.message,
+        errorMessage: error.message,
       });
       return { deleted: false };
     }

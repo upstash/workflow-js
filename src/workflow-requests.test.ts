@@ -581,7 +581,7 @@ describe("Workflow Requests", () => {
       expect(spy).toHaveBeenLastCalledWith("WARN", "SUBMIT_CLEANUP", {
         message: `Failed to remove workflow run ${workflowRunId} as it doesn't exist.`,
         name: "QstashError",
-        originalMessage: `{"error":"workflowRun ${workflowRunId} not found"}`,
+        errorMessage: `{"error":"workflowRun ${workflowRunId} not found"}`,
       });
     });
 
@@ -625,7 +625,7 @@ describe("Workflow Requests", () => {
       expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
         message: "tried to append to a cancelled workflow. exiting without publishing.",
         name: "QstashError",
-        originalMessage:
+        errorMessage:
           '[{"error":"failed to publish to url: can not append to a a cancelled workflow"}]',
       });
     });
@@ -670,7 +670,7 @@ describe("Workflow Requests", () => {
       expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
         message: "tried to append to a cancelled workflow. exiting without publishing.",
         name: "QstashError",
-        originalMessage: `[{"error":"failed to publish to url: can not append to a a cancelled workflow"},{"error":"failed to publish to url: can not append to a a cancelled workflow"}]`,
+        errorMessage: `[{"error":"failed to publish to url: can not append to a a cancelled workflow"},{"error":"failed to publish to url: can not append to a a cancelled workflow"}]`,
       });
     });
 
