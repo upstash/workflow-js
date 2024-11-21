@@ -31,13 +31,18 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   },
   {
     // checks auth
-    route: "auth",
+    route: "auth/success",
     waitForSeconds: 1
   },
   {
     // checks auth failing
-    route: "auth-fail",
+    route: "auth/fail",
     waitForSeconds: 0
+  },
+  {
+    // checks custom auth
+    route: "auth/custom/workflow",
+    waitForSeconds: 5
   },
   {
     // checks context.call (sucess and fail case)

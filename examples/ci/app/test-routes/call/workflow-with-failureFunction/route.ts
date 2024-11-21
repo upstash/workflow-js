@@ -1,8 +1,9 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
-import { saveResult } from "app/ci/upstash/redis"
+import { fail, saveResult } from "app/ci/upstash/redis"
 import { FAILING_HEADER, FAILING_HEADER_VALUE } from "../constants";
+import { WorkflowContext } from "@upstash/workflow";
 
 const testHeader = `test-header-foo`
 const headerValue = `header-foo`
@@ -31,8 +32,8 @@ export const { POST, GET } = testServe(
     }, {
       baseUrl: BASE_URL,
       retries: 0,
-      failureFunction() {
-        console.log("SHOULDNT RUN");
+      async failureFunction({ context }) {
+        await fail(context as WorkflowContext)
       },
     }
   ), {

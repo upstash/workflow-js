@@ -8,7 +8,7 @@ const redis = Redis.fromEnv();
 const EXPIRE_IN_SECS = 60
 
 const getRedisKey = (
-  kind: "increment" | "result",
+  kind: "increment" | "result" | "fail",
   route: string,
   randomTestId: string
 ): string => {
@@ -46,11 +46,7 @@ export const saveResultsWithoutContext = async (
 
   // save result
   const key = getRedisKey("result", route, randomTestId)
-
-  const pipe = redis.pipeline()
-  pipe.set<RedisResult>(key, { callCount, result, randomTestId })
-  pipe.expire(key, EXPIRE_IN_SECS)
-  await pipe.exec()
+  await redis.set<RedisResult>(key, { callCount, result, randomTestId }, { ex: EXPIRE_IN_SECS })
 }
 
 /**
@@ -80,6 +76,38 @@ export const saveResult = async (
   )
 }
 
+export const failWithoutContext = async (
+  route: string,
+  randomTestId: string
+) => {
+  const key = getRedisKey("fail", route, randomTestId)
+  await redis.set<boolean>(key, true, { ex: EXPIRE_IN_SECS })
+}
+
+/**
+ * marks the workflow as failed
+ * 
+ * @param context 
+ * @returns 
+ */
+export const fail = async (
+  context: WorkflowContext<unknown>,
+) => {
+  const randomTestId = context.headers.get(CI_RANDOM_ID_HEADER)
+  const route = context.headers.get(CI_ROUTE_HEADER)
+
+  if (randomTestId === null) {
+    throw new Error("randomTestId can't be null.")
+  }
+  if (route === null) {
+    throw new Error("route can't be null.")
+  }
+
+  await failWithoutContext(route, randomTestId)
+}
+
+export const FAILED_TEXT = "Test has failed because it was marked as failed with `fail` method."
+
 export const checkRedisForResults = async (
   route: string,
   randomTestId: string,
@@ -99,6 +127,12 @@ export const checkRedisForResults = async (
 
   if (!testResult) {
     throw new Error(`result not found for route ${route} with randomTestId ${randomTestId}`)
+  }
+
+  const failKey = getRedisKey("fail", route, randomTestId)
+  const failed = await redis.get<boolean>(failKey)
+  if (failed) {
+    throw new Error(FAILED_TEXT)
   }
 
   const { callCount, randomTestId: resultRandomTestId, result } = testResult 

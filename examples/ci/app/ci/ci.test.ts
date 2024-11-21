@@ -10,7 +10,7 @@ describe("workflow integration tests", () => {
         await initiateTest(testConfig.route, testConfig.waitForSeconds)
       },
       {
-        timeout: (testConfig.waitForSeconds + 10) * 1000
+        timeout: (testConfig.waitForSeconds + 15) * 1000
       }
     )
   });

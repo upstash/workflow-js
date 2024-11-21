@@ -97,6 +97,7 @@ export const serve = <
       requestPayload,
       qstashClient,
       initialPayloadParser,
+      routeFunction,
       failureFunction
     );
     if (failureCheck.isErr()) {

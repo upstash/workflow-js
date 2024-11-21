@@ -233,7 +233,7 @@ export const handleThirdPartyCallResult = async (
 
       const callbackMessage = JSON.parse(callbackPayload) as {
         status: number;
-        body: string;
+        body?: string;
         retried?: number; // only set after the first try
         maxRetries: number;
         header: Record<string, string[]>;
@@ -247,13 +247,13 @@ export const handleThirdPartyCallResult = async (
       ) {
         await debug?.log("WARN", "SUBMIT_THIRD_PARTY_RESULT", {
           status: callbackMessage.status,
-          body: atob(callbackMessage.body),
+          body: atob(callbackMessage.body ?? ""),
         });
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
             ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-            ` Error Message:\n${atob(callbackMessage.body)}`
+            ` Error Message:\n${atob(callbackMessage.body ?? "")}`
         );
         return ok("call-will-retry");
       }
@@ -300,7 +300,7 @@ export const handleThirdPartyCallResult = async (
 
       const callResponse: CallResponse = {
         status: callbackMessage.status,
-        body: atob(callbackMessage.body),
+        body: atob(callbackMessage.body ?? ""),
         header: callbackMessage.header,
       };
       const callResultStep: Step<string> = {
@@ -390,7 +390,7 @@ export const getHeaders = (
     baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
 
     // if some retries is set, use it in callback and failure callback
-    if (retries) {
+    if (retries !== undefined) {
       baseHeaders["Upstash-Callback-Retries"] = retries.toString();
       baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
     }

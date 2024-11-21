@@ -30,5 +30,15 @@ export const PATCH = async () => {
       headers: {
         [ FAILING_HEADER ]: FAILING_HEADER_VALUE
       }
-    })
+    }
+  )
+}
+
+export const PUT = async () => {
+  return new Response(
+    undefined,
+    {
+      status: 300,
+    }
+  )
 }

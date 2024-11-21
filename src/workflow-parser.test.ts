@@ -20,6 +20,7 @@ import { formatWorkflowError, WorkflowError } from "./error";
 import { Client } from "@upstash/qstash";
 import { processOptions } from "./serve/options";
 import { FinishState } from "./integration.test";
+import { WorkflowContext } from "./context";
 
 describe("Workflow Parser", () => {
   describe("validateRequest", () => {
@@ -732,8 +733,14 @@ describe("Workflow Parser", () => {
         return;
       };
 
+      let called = false;
+      const routeFunction = async (context: WorkflowContext) => {
+        called = true;
+        await context.sleep("sleeping", 1);
+      };
+
       // no failureFunction
-      const result1 = await handleFailure(request, "", client, initialPayloadParser);
+      const result1 = await handleFailure(request, "", client, initialPayloadParser, routeFunction);
       expect(result1.isOk()).toBeTrue();
       expect(result1.isOk() && result1.value === "not-failure-callback").toBeTrue();
 
@@ -743,20 +750,34 @@ describe("Workflow Parser", () => {
         "",
         client,
         initialPayloadParser,
+        routeFunction,
         failureFunction
       );
       expect(result2.isOk()).toBeTrue();
       expect(result2.isOk() && result2.value === "not-failure-callback").toBeTrue();
+      expect(called).toBeFalse(); // didn't call as the request is not a failure request
+    });
+
+    const failureRequest = new Request(WORKFLOW_ENDPOINT, {
+      headers: {
+        [WORKFLOW_FAILURE_HEADER]: "true",
+      },
     });
 
     test("should throw WorkflowError if header is set but function is not passed", async () => {
-      const request = new Request(WORKFLOW_ENDPOINT, {
-        headers: {
-          [WORKFLOW_FAILURE_HEADER]: "true",
-        },
-      });
+      let called = false;
+      const routeFunction = async (context: WorkflowContext) => {
+        called = true;
+        await context.sleep("sleeping", 1);
+      };
 
-      const result = await handleFailure(request, "", client, initialPayloadParser);
+      const result = await handleFailure(
+        failureRequest,
+        "",
+        client,
+        initialPayloadParser,
+        routeFunction
+      );
       expect(result.isErr()).toBeTrue();
       expect(result.isErr() && result.error.name).toBe(WorkflowError.name);
       expect(result.isErr() && result.error.message).toBe(
@@ -764,41 +785,38 @@ describe("Workflow Parser", () => {
           " but a failureFunction is not provided in serve options." +
           " Either provide a failureUrl or a failureFunction."
       );
+      expect(called).toBeFalse(); // not called since we threw before auth check
     });
 
     test("should return error when the failure function throws an error", async () => {
-      const request = new Request(WORKFLOW_ENDPOINT, {
-        body: JSON.stringify(body),
-        headers: {
-          [WORKFLOW_FAILURE_HEADER]: "true",
-        },
-      });
-      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({
-        failHeaders,
-        failResponse,
-        failStatus,
-      }) => {
+      let called = false;
+      const routeFunction = async (context: WorkflowContext) => {
+        called = true;
+        await context.sleep("sleeping", 1);
+      };
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async () => {
         throw new Error("my-error");
       };
 
       const result = await handleFailure(
-        request,
+        failureRequest,
         JSON.stringify(body),
         client,
         initialPayloadParser,
+        routeFunction,
         failureFunction
       );
       expect(result.isErr()).toBeTrue();
       expect(result.isErr() && result.error.message).toBe("my-error");
+      expect(called).toBeTrue();
     });
 
     test("should return is-failure-callback when failure code runs succesfully", async () => {
-      const request = new Request(WORKFLOW_ENDPOINT, {
-        body: JSON.stringify(body),
-        headers: {
-          [WORKFLOW_FAILURE_HEADER]: "true",
-        },
-      });
+      let called = false;
+      const routeFunction = async (context: WorkflowContext) => {
+        called = true;
+        await context.sleep("sleeping", 1);
+      };
       const failureFunction: WorkflowServeOptions["failureFunction"] = async ({
         context,
         failStatus,
@@ -811,14 +829,40 @@ describe("Workflow Parser", () => {
       };
 
       const result = await handleFailure(
-        request,
+        failureRequest,
         JSON.stringify(body),
         client,
         initialPayloadParser,
+        routeFunction,
         failureFunction
       );
       expect(result.isOk()).toBeTrue();
       expect(result.isOk() && result.value).toBe("is-failure-callback");
+      expect(called).toBeTrue();
+    });
+
+    test("should throw if there are no steps in the route function or when the function returns", async () => {
+      let called = false;
+      const routeFunctionWithoutSteps = async (context: WorkflowContext) => {
+        called = true;
+      };
+      const failureFunction = async () => {};
+
+      const result = await handleFailure(
+        failureRequest,
+        JSON.stringify(body),
+        client,
+        initialPayloadParser,
+        routeFunctionWithoutSteps,
+        failureFunction
+      );
+
+      expect(result.isErr());
+      // @ts-expect-error error will be set bc of the check above
+      const error = result.error as Error;
+      expect(error.name).toBe("WorkflowError");
+      expect(error.message).toBe("Not authorized to run the failure function.");
+      expect(called).toBeTrue();
     });
   });
 });

@@ -1,7 +1,7 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
-import { saveResult } from "app/ci/upstash/redis"
+import { fail, saveResult } from "app/ci/upstash/redis"
 
 const header = `test-header-foo`
 const headerValue = `header-bar`
@@ -28,10 +28,10 @@ export const { POST, GET } = testServe(
         return;
       }
 
-      throw new Error("shouldn't come here.")
+      await fail(context)
     }, {
       baseUrl: BASE_URL,
-      retries: 0
+      retries: 1 // check with retries 1 to see if endpoint will retry
     }
   ), {
     expectedCallCount: 1,

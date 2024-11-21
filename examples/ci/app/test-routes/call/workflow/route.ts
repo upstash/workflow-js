@@ -45,16 +45,16 @@ export const { POST, GET } = testServe(
       
       await context.sleep("sleep 1", 2);
       
-      const { body: getResult, header: getHeaders, status: getStatus } = await context.call("get call", {
+      const { body: getResult, header: getHeaders, status: getStatus } = await context.call<string>("get call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
       });
       
       expect(getStatus, 200)
       expect(getHeaders[GET_HEADER][0], GET_HEADER_VALUE)
-      expect(getResult as string, "called GET 'third-party-result' 'get-header-value-x'");
+      expect(getResult, "called GET 'third-party-result' 'get-header-value-x'");
 
-      const { body: patchResult, status, header } = await context.call("get call", {
+      const { body: patchResult, status, header } = await context.call("patch call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
         method: "PATCH",
@@ -65,16 +65,26 @@ export const { POST, GET } = testServe(
       expect(patchResult as string, "failing request");
       expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
 
+      // put will return with an empty body. should return "" as body in that case.
+      const { body: putBody, status: putStatus } = await context.call<string>("put call", {
+        url: thirdPartyEndpoint,
+        method: "PUT",
+        retries: 0
+      })
+
+      expect(putStatus, 300)
+      expect(putBody, "");
+
       await saveResult(
         context,
-        getResult as string
+        getResult
       )
     }, {
       baseUrl: BASE_URL,
       retries: 0
     }
   ), {
-    expectedCallCount: 10,
+    expectedCallCount: 12,
     expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
     payload,
     headers: {
