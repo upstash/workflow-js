@@ -50,7 +50,6 @@ const makeCall = async (
   })
 
   expect(status, expectedStatus)
-  console.log("BODE", JSON.stringify(body));
   
   expect(typeof body, typeof expectedBody)
   expect(JSON.stringify(body), JSON.stringify(expectedBody))

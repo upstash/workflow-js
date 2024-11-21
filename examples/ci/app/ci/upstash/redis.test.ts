@@ -94,7 +94,7 @@ describe("redis", () => {
 
     // mark as failed and check
     await redis.failWithoutContext(route, randomId)
-    expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow("Test has failed because it was marked as failed with `fail` method.")
+    expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
       
   })
 })

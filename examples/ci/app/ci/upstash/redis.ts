@@ -46,11 +46,7 @@ export const saveResultsWithoutContext = async (
 
   // save result
   const key = getRedisKey("result", route, randomTestId)
-
-  const pipe = redis.pipeline()
-  pipe.set<RedisResult>(key, { callCount, result, randomTestId })
-  pipe.expire(key, EXPIRE_IN_SECS)
-  await pipe.exec()
+  await redis.set<RedisResult>(key, { callCount, result, randomTestId }, { ex: EXPIRE_IN_SECS })
 }
 
 /**
@@ -85,10 +81,7 @@ export const failWithoutContext = async (
   randomTestId: string
 ) => {
   const key = getRedisKey("fail", route, randomTestId)
-  const pipe = redis.pipeline()
-  pipe.set<boolean>(key, true)
-  pipe.expire(key, EXPIRE_IN_SECS)
-  await pipe.exec()
+  await redis.set<boolean>(key, true, { ex: EXPIRE_IN_SECS })
 }
 
 /**
@@ -112,6 +105,8 @@ export const fail = async (
 
   await failWithoutContext(route, randomTestId)
 }
+
+export const FAILED_TEXT = "Test has failed because it was marked as failed with `fail` method."
 
 export const checkRedisForResults = async (
   route: string,
@@ -137,7 +132,7 @@ export const checkRedisForResults = async (
   const failKey = getRedisKey("fail", route, randomTestId)
   const failed = await redis.get<boolean>(failKey)
   if (failed) {
-    throw new Error("Test has failed because it was marked as failed with `fail` method.")
+    throw new Error(FAILED_TEXT)
   }
 
   const { callCount, randomTestId: resultRandomTestId, result } = testResult 
