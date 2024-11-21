@@ -1,5 +1,5 @@
 import { WorkflowContext } from "@upstash/workflow";
-import { serve } from "@upstash/workflow/dist/nextjs";
+import { serve } from "@upstash/workflow/nextjs";
 import { fail } from "app/ci/upstash/redis";
 import { nanoid } from "app/ci/utils";
 
