@@ -540,7 +540,7 @@ jobs:
         shell: bash
 
   integration-test:
-    concurrency: integration-test
+    concurrency: workflow-deployed
     runs-on: ubuntu-latest
     needs:
       - release
@@ -576,7 +576,7 @@ jobs:
         working-directory: examples/ci
 
   cloudflare-workers-hono-deployed:
-    concurrency: cloudflare-workers-hono-deployed
+    concurrency: workflow-deployed
     needs:
       - release
     runs-on: ubuntu-latest
@@ -626,7 +626,7 @@ jobs:
           DEPLOYMENT_URL: https://upstash-workflow-cf-hono.upsdev.workers.dev
 
   nextjs12-node18-deployed:
-    concurrency: nextjs12-node18-deployed
+    concurrency: workflow-deployed
     runs-on: ubuntu-latest
     needs:
       - release
@@ -662,7 +662,7 @@ jobs:
         working-directory: examples/nextjs-12
 
   nextjs-pages-deployed:
-    concurrency: nextjs-pages-deployed
+    concurrency: workflow-deployed
     runs-on: ubuntu-latest
     needs:
       - release
