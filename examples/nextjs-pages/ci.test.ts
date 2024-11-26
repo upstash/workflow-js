@@ -6,6 +6,15 @@ import { Redis } from "@upstash/redis"
 import { serve } from "@upstash/workflow/nextjs"
 import { describe, test, expect } from "bun:test"
 
+export const RETRY_COUNT = 5
+export const RETRY_INTERVAL_DURATION = 5000
+export const CHECK_WF_AFTER_INIT_DURATION = 10000
+const TEST_BUFFER_DURATION = 5000
+export const TEST_TIMEOUT_DURATION = (
+  CHECK_WF_AFTER_INIT_DURATION
+  + (RETRY_COUNT * RETRY_INTERVAL_DURATION)
+  + TEST_BUFFER_DURATION
+)
 
 type TestConfig = {
   testDescription: string,
@@ -99,9 +108,18 @@ const testEndpoint = ({
       }
     })
 
-    await new Promise(r => setTimeout(r, 7000));
+    await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
-    const result = await redis.get<RedisEntry>(`ci-nextjs-pages-ran-${secret}`)
+    let result: RedisEntry | null = null
+    for (let i=1; i<=RETRY_COUNT; i++) {
+      result = await redis.get<RedisEntry>(`ci-cf-ran-${secret}`)
+      if (result) {
+        break
+      }
+      if (i!==RETRY_COUNT) {
+        await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+      }
+    }
     
     expect(result).toBeDefined()
     expect(result?.secret).toBe(secret)

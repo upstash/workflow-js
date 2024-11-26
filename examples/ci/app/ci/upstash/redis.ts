@@ -2,7 +2,7 @@ import { Redis } from "@upstash/redis";
 import { RedisResult } from "../types";
 import { expect } from "../utils";
 import { type WorkflowContext } from "@upstash/workflow";
-import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants";
+import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, RETRY_COUNT, RETRY_INTERVAL_DURATION } from "../constants";
 
 const redis = Redis.fromEnv();
 const EXPIRE_IN_SECS = 60
@@ -117,12 +117,14 @@ export const checkRedisForResults = async (
   const key = getRedisKey("result", route, randomTestId)
   let testResult: RedisResult | null = null
 
-  for (let i=0; i<3; i++) {
+  for (let i=1; i<=RETRY_COUNT; i++) {
     testResult = await redis.get<RedisResult>(key)
     if (testResult) {
       break
     }
-    await new Promise(r => setTimeout(r, 2000));
+    if (i!==RETRY_COUNT) {
+      await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+    }
   }
 
   if (!testResult) {
