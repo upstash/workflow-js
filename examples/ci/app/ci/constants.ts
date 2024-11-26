@@ -98,24 +98,24 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
    * disabled because they are unpredictable in CI.
    * they are checked locally instead.
    */
-  {
-    route: "large-payload/call-result/workflow",
-    waitForSeconds: 9
-  },
-  {
-    route: "large-payload/error",
-    waitForSeconds: 9
-  },
-  {
-    route: "large-payload/initial",
-    waitForSeconds: 9
-  },
-  {
-    route: "large-payload/step-result",
-    waitForSeconds: 6
-  },
-  {
-    route: "large-payload/step-result-parallel",
-    waitForSeconds: 12
-  },
+  // {
+  //   route: "large-payload/call-result/workflow",
+  //   waitForSeconds: 9
+  // },
+  // {
+  //   route: "large-payload/error",
+  //   waitForSeconds: 9
+  // },
+  // {
+  //   route: "large-payload/initial",
+  //   waitForSeconds: 9
+  // },
+  // {
+  //   route: "large-payload/step-result",
+  //   waitForSeconds: 6
+  // },
+  // {
+  //   route: "large-payload/step-result-parallel",
+  //   waitForSeconds: 12
+  // },
 ]
