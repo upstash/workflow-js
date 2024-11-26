@@ -2,6 +2,7 @@ import type { Client, HTTPMethods } from "@upstash/qstash";
 import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
 import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
+import { WorkflowError } from "../error";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -14,6 +15,9 @@ export abstract class BaseLazyStep<TResult = unknown> {
   public readonly stepName;
   public abstract readonly stepType: StepType; // will be set in the subclasses
   constructor(stepName: string) {
+    if (!stepName) {
+      throw new WorkflowError("step name can't be undefined or empty string.");
+    }
     this.stepName = stepName;
   }
 

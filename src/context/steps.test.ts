@@ -11,6 +11,7 @@ import { nanoid } from "../utils";
 import type { NotifyResponse, NotifyStepResponse, Step } from "../types";
 import { Client } from "@upstash/qstash";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
+import { WorkflowError } from "../error";
 
 describe("test steps", () => {
   const stepName = nanoid();
@@ -283,6 +284,19 @@ describe("test steps", () => {
       });
 
       expect(called).toBeTrue();
+    });
+  });
+
+  describe("stepName check", () => {
+    test("should throw when step name is undefined ", () => {
+      // @ts-expect-error allow undefined for test purposes
+      const throws = () => new LazySleepStep(undefined, 10);
+      expect(throws).toThrow(new WorkflowError("step name can't be undefined or empty string."));
+    });
+
+    test("should throw when step name is empty string ", () => {
+      const throws = () => new LazyFunctionStep("", () => {});
+      expect(throws).toThrow(new WorkflowError("step name can't be undefined or empty string."));
     });
   });
 });
