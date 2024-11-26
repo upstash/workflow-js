@@ -9,7 +9,7 @@ const headerValue = `header-bar`
 const authHeaderValue = `Bearer super-secret-token`
 
 const errorMessage = `my-error`
-const payload = "my-payload"
+const payload = undefined
 
 
 export const { POST, GET } = testServe(
@@ -17,6 +17,7 @@ export const { POST, GET } = testServe(
     async (context) => {
       const input = context.requestPayload;
 
+      expect(typeof input, typeof payload);
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
 
@@ -29,6 +30,8 @@ export const { POST, GET } = testServe(
       failureFunction: async ({ context, failStatus, failResponse }) => {
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
+        expect(context.requestPayload, payload);
+        expect(typeof context.requestPayload, typeof payload);
         expect(context.headers.get("authentication")!, authHeaderValue);
 
         await saveResult(
