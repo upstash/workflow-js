@@ -95,59 +95,77 @@ describe("workflow client", () => {
       token: process.env.QSTASH_TOKEN!,
     });
 
-    test("should cancel single workflow run id", async () => {
-      const { workflowRunId } = await liveClient.trigger({
-        url: "http://requestcatcher.com",
-      });
-
-      const cancel = await liveClient.cancel({
-        ids: workflowRunId,
-      });
-      expect(cancel).toEqual({ cancelled: 1 });
-
-      const throws = () => liveClient.cancel({ ids: workflowRunId });
-      expect(throws).toThrow(`{"error":"workflowRun ${workflowRunId} not found"}`);
-    });
-
-    test("should cancel multiple workflow run ids", async () => {
-      const { workflowRunId: workflowRunIdOne } = await liveClient.trigger({
-        url: "http://requestcatcher.com",
-      });
-      const { workflowRunId: workflowRunIdTwo } = await liveClient.trigger({
-        url: "http://requestcatcher.com",
-      });
-
-      const throws = async () =>
-        await liveClient.cancel({
-          ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
+    test(
+      "should cancel single workflow run id",
+      async () => {
+        const { workflowRunId } = await liveClient.trigger({
+          url: "http://requestcatcher.com",
         });
 
-      // if there is any workflow which doesn't exist, we throw
-      expect(throws).toThrow(`{"error":"workflowRun non-existent not found"}`);
+        const cancel = await liveClient.cancel({
+          ids: workflowRunId,
+        });
+        expect(cancel).toEqual({ cancelled: 1 });
 
-      // trying to cancel the workflows one by one gives error, as they were canceled above
-      const throwsFirst = async () => await liveClient.cancel({ ids: workflowRunIdOne });
-      expect(throwsFirst).toThrow(`{"error":"workflowRun ${workflowRunIdOne} not found"}`);
+        const throws = () => liveClient.cancel({ ids: workflowRunId });
+        expect(throws).toThrow(`{"error":"workflowRun ${workflowRunId} not found"}`);
+      },
+      {
+        timeout: 10000,
+      }
+    );
 
-      // trying to cancel the workflows one by one gives error, as they were canceled above
-      const throwsSecond = async () => await liveClient.cancel({ ids: workflowRunIdTwo });
-      expect(throwsSecond).toThrow(`{"error":"workflowRun ${workflowRunIdTwo} not found"}`);
-    });
+    test(
+      "should cancel multiple workflow run ids",
+      async () => {
+        const { workflowRunId: workflowRunIdOne } = await liveClient.trigger({
+          url: "http://requestcatcher.com",
+        });
+        const { workflowRunId: workflowRunIdTwo } = await liveClient.trigger({
+          url: "http://requestcatcher.com",
+        });
 
-    test("should cancel workflowUrl", async () => {
-      await liveClient.trigger({
-        url: "http://requestcatcher.com/first",
-      });
-      await liveClient.trigger({
-        url: "http://requestcatcher.com/second",
-      });
+        const throws = async () =>
+          await liveClient.cancel({
+            ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
+          });
 
-      const cancel = await liveClient.cancel({
-        urlStartingWith: "http://requestcatcher.com",
-      });
+        // if there is any workflow which doesn't exist, we throw
+        expect(throws).toThrow(`{"error":"workflowRun non-existent not found"}`);
 
-      expect(cancel).toEqual({ cancelled: 2 });
-    });
+        // trying to cancel the workflows one by one gives error, as they were canceled above
+        const throwsFirst = async () => await liveClient.cancel({ ids: workflowRunIdOne });
+        expect(throwsFirst).toThrow(`{"error":"workflowRun ${workflowRunIdOne} not found"}`);
+
+        // trying to cancel the workflows one by one gives error, as they were canceled above
+        const throwsSecond = async () => await liveClient.cancel({ ids: workflowRunIdTwo });
+        expect(throwsSecond).toThrow(`{"error":"workflowRun ${workflowRunIdTwo} not found"}`);
+      },
+      {
+        timeout: 10000,
+      }
+    );
+
+    test(
+      "should cancel workflowUrl",
+      async () => {
+        await liveClient.trigger({
+          url: "http://requestcatcher.com/first",
+        });
+        await liveClient.trigger({
+          url: "http://requestcatcher.com/second",
+        });
+
+        const cancel = await liveClient.cancel({
+          urlStartingWith: "http://requestcatcher.com",
+        });
+
+        expect(cancel).toEqual({ cancelled: 2 });
+      },
+      {
+        timeout: 10000,
+      }
+    );
 
     test.skip("should cancel all", async () => {
       // intentionally didn't write a test for cancel.all,
