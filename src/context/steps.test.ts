@@ -145,7 +145,7 @@ describe("test steps", () => {
     const callHeaders = {
       "my-header": headerValue,
     };
-    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders, 14);
+    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders, 14, 30);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);

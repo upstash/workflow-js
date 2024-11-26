@@ -148,8 +148,9 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   private readonly method: HTTPMethods;
   private readonly body: TBody;
   private readonly headers: Record<string, string>;
-  stepType: StepType = "Call";
   public readonly retries: number;
+  public readonly timeout?: number | Duration;
+  stepType: StepType = "Call";
 
   constructor(
     stepName: string,
@@ -157,7 +158,8 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     method: HTTPMethods,
     body: TBody,
     headers: Record<string, string>,
-    retries: number
+    retries: number,
+    timeout: number | Duration | undefined
   ) {
     super(stepName);
     this.url = url;
@@ -165,6 +167,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     this.body = body;
     this.headers = headers;
     this.retries = retries;
+    this.timeout = timeout;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {

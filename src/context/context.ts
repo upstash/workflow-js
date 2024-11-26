@@ -287,6 +287,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param body call body
    * @param headers call headers
    * @param retries number of call retries. 0 by default
+   * @param timeout max duration to wait for the endpoint to respond
    * @returns call result as {
    *     status: number;
    *     body: unknown;
@@ -301,12 +302,21 @@ export class WorkflowContext<TInitialPayload = unknown> {
       body?: unknown;
       headers?: Record<string, string>;
       retries?: number;
+      timeout?: Duration | number;
     }
   ): Promise<CallResponse<TResult>> {
-    const { url, method = "GET", body, headers = {}, retries = 0 } = settings;
+    const { url, method = "GET", body, headers = {}, retries = 0, timeout } = settings;
 
     const result = await this.addStep(
-      new LazyCallStep<CallResponse<string> | string>(stepName, url, method, body, headers, retries)
+      new LazyCallStep<CallResponse<string> | string>(
+        stepName,
+        url,
+        method,
+        body,
+        headers,
+        retries,
+        timeout
+      )
     );
 
     // <for backwards compatibity>
