@@ -112,7 +112,7 @@ const testEndpoint = ({
 
     let result: RedisEntry | null = null
     for (let i=1; i<=RETRY_COUNT; i++) {
-      result = await redis.get<RedisEntry>(`ci-cf-ran-${secret}`)
+      result = await redis.get<RedisEntry>(`ci-nextjs-pages-ran-${secret}`)
       if (result) {
         break
       }
@@ -125,7 +125,7 @@ const testEndpoint = ({
     expect(result?.secret).toBe(secret)
     expect(result?.result).toBe(expectedResult)
   }, {
-    timeout: 15000
+    timeout: TEST_TIMEOUT_DURATION
   })
 }
 
