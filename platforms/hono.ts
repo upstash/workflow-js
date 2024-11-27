@@ -21,13 +21,13 @@ export type WorkflowBindings = {
  */
 export const serve = <
   TInitialPayload = unknown,
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   TBindings extends WorkflowBindings = WorkflowBindings,
+  TVariables extends object = object,
 >(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
-): ((context: Context<{ Bindings: TBindings }>) => Promise<Response>) => {
-  const handler = async (context: Context<{ Bindings: TBindings }>) => {
+): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
+  const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
     const environment = context.env;
     const request = context.req.raw;
 
