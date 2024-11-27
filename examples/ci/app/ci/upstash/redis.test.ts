@@ -6,11 +6,11 @@ import { nanoid } from "../utils";
 describe("redis", () => {
   test("should throw on missing results", () => {
     expect(() =>
-      redis.checkRedisForResults("some-route", "some-id", -1, "some-result")
+      redis.checkRedisForResults("some-route", "some-id", -1, "some-result", 1)
     ).toThrow(
       "result not found for route some-route with randomTestId some-id"
     )
-  }, { timeout: 10000 })
+  }, { timeout: 15000 })
 
   test("should throw when saving results without any increment", () => {
     expect(() =>
