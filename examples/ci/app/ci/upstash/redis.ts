@@ -118,12 +118,13 @@ export const checkRedisForResults = async (
   const key = getRedisKey("result", route, randomTestId)
   let testResult: RedisResult | null = null
 
-  for (let i=1; i<= (retryOverride ?? RETRY_COUNT); i++) {
+  const retryCount = retryOverride ?? RETRY_COUNT
+  for ( let i=1; i <= retryCount; i++ ) {
     testResult = await redis.get<RedisResult>(key)
     if (testResult) {
       break
     }
-    if (i!==RETRY_COUNT) {
+    if (i !== retryCount) {
       await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
     }
   }
