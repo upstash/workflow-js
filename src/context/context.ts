@@ -287,7 +287,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param body call body
    * @param headers call headers
    * @param retries number of call retries. 0 by default
-   * @param timeout max duration to wait for the endpoint to respond
+   * @param timeout max duration to wait for the endpoint to respond. in seconds.
    * @returns call result as {
    *     status: number;
    *     body: unknown;
