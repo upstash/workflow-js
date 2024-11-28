@@ -317,7 +317,9 @@ export const handleFailure = async <TInitialPayload>(
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
       workflowRunId,
-      initialPayload: initialPayloadParser(decodeBase64(sourceBody)),
+      initialPayload: sourceBody
+        ? initialPayloadParser(decodeBase64(sourceBody))
+        : (undefined as TInitialPayload),
       headers: recreateUserHeaders(new Headers(sourceHeader) as Headers),
       steps: [],
       url: url,
