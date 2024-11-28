@@ -204,7 +204,7 @@ describe("workflow client", () => {
           "upstash-retries": "15",
           "upstash-workflow-init": "true",
           "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-          "upstash-workflow-url": "https://www.my-website.com/api",
+          "upstash-workflow-url": "https://requestcatcher.com/api",
         },
       },
     });
