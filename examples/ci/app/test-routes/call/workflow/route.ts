@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
-import { FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE } from "../constants";
+import { FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
 
 const testHeader = `test-header-foo`
 const headerValue = `header-foo`
@@ -54,7 +54,7 @@ export const { POST, GET } = testServe(
       expect(getHeaders[GET_HEADER][0], GET_HEADER_VALUE)
       expect(getResult, "called GET 'third-party-result' 'get-header-value-x'");
 
-      const { body: patchResult, status, header } = await context.call("patch call", {
+      const { body: patchResult, status, header } = await context.call<number>("patch call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
         method: "PATCH",
@@ -62,7 +62,7 @@ export const { POST, GET } = testServe(
       });
 
       expect(status, 401)
-      expect(patchResult as string, "failing request");
+      expect(patchResult, PATCH_RESULT);
       expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
 
       // put will return with an empty body. should return "" as body in that case.
@@ -75,6 +75,17 @@ export const { POST, GET } = testServe(
       expect(putStatus, 300)
       expect(putBody, "");
 
+      // DELETE will return a JSON
+      const { body: deleteBody, status: deleteStatus } = await context.call<{ foo: string, zed: number }>("delete call", {
+        url: thirdPartyEndpoint,
+        method: "DELETE",
+        retries: 0
+      })
+
+      expect(deleteStatus, 400)
+      expect(typeof deleteBody, "object");
+      expect(JSON.stringify(deleteBody), '{"foo":"bar","zed":2}');
+
       await saveResult(
         context,
         getResult
@@ -84,7 +95,7 @@ export const { POST, GET } = testServe(
       retries: 0
     }
   ), {
-    expectedCallCount: 12,
+    expectedCallCount: 14,
     expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
     payload,
     headers: {

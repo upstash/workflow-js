@@ -25,6 +25,12 @@ export type TestConfig<TPayload = unknown> = {
    * expected result in the Redis
    */
   expectedResult: string
+  /**
+   * whether the workflow should start
+   * 
+   * @default true
+   */
+  workflowStarts?: boolean
 }
 
 export type RedisResult = {
