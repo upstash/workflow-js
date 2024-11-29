@@ -18,11 +18,10 @@ export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
 ): { POST: (request: Request) => Promise<Response> } => {
-  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(routeFunction, {
-    onStepFinish: (workflowRunId: string) =>
-      new Response(JSON.stringify({ workflowRunId }), { status: 200 }),
-    ...options,
-  });
+  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
+    routeFunction,
+    options
+  );
 
   return {
     POST: async (request: Request) => {
