@@ -1,5 +1,5 @@
 import { test, describe } from "bun:test"
-import { TEST_ROUTES } from "./constants";
+import { TEST_ROUTES, TEST_TIMEOUT_DURATION } from "./constants";
 import { initiateTest } from "./utils";
 
 describe("workflow integration tests", () => {
@@ -7,10 +7,10 @@ describe("workflow integration tests", () => {
     test(
       testConfig.route,
       async () => {
-        await initiateTest(testConfig.route, testConfig.waitForSeconds)
+        await initiateTest(testConfig.route)
       },
       {
-        timeout: (testConfig.waitForSeconds + 15) * 1000
+        timeout: TEST_TIMEOUT_DURATION
       }
     )
   });

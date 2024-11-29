@@ -4,6 +4,10 @@ import { Client } from "@upstash/qstash"
 import { Redis } from "@upstash/redis"
 import { serve } from "@upstash/workflow/nextjs"
 
+export const RETRY_COUNT = 10
+export const RETRY_INTERVAL_DURATION = 1000
+export const CHECK_WF_AFTER_INIT_DURATION = 10000
+
 const qstashClient = new Client({
   baseUrl: `https://workflow-tests.requestcatcher.com/`,
   token: "mock",
@@ -59,9 +63,19 @@ if (deploymentUrl) {
     }
   })
 
-  await new Promise(r => setTimeout(r, 6000));
+  await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
-  const result = await redis.get(`ci-cf-ran-${secret}`)
+  let result
+
+    for (let i=1; i<=RETRY_COUNT; i++) {
+      result = await redis.get(`ci-cf-ran-${secret}`)
+      if (result) {
+        break
+      }
+      if (i!==RETRY_COUNT) {
+        await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+      }
+    }
   
   if (result !== secret) {
     throw new Error("Cloudflare workflow didn't run")
