@@ -50,6 +50,11 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
     waitForSeconds: 24
   },
   {
+    // check the error when wf early returns
+    route: "returns-before-step",
+    waitForSeconds: 3
+  },
+  {
     // checks context.run with async and sync route methods
     route: "async-sync-run",
     waitForSeconds: 1

@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { fail, saveResult } from "app/ci/upstash/redis"
-import { FAILING_HEADER, FAILING_HEADER_VALUE } from "../constants";
+import { FAILING_HEADER, FAILING_HEADER_VALUE, PATCH_RESULT } from "../constants";
 import { WorkflowContext } from "@upstash/workflow";
 
 const testHeader = `test-header-foo`
@@ -15,19 +15,19 @@ export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
 
-      const { body: patchResult, status, header } = await context.call("get call", {
+      const { body: patchResult, status, header } = await context.call<number>("get call", {
         url: thirdPartyEndpoint,
         method: "PATCH",
         retries: 0
       });
 
       expect(status, 401)
-      expect(patchResult as string, "failing request");
+      expect(patchResult, PATCH_RESULT);
       expect(header[FAILING_HEADER][0], FAILING_HEADER_VALUE)
       
       await saveResult(
         context,
-        patchResult as string,
+        patchResult.toString(),
       )
     }, {
       baseUrl: BASE_URL,
@@ -38,7 +38,7 @@ export const { POST, GET } = testServe(
     }
   ), {
     expectedCallCount: 4,
-    expectedResult: "failing request",
+    expectedResult: PATCH_RESULT.toString(),
     payload,
     headers: {
       [ testHeader ]: headerValue,
