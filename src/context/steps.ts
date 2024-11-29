@@ -16,7 +16,9 @@ export abstract class BaseLazyStep<TResult = unknown> {
   public abstract readonly stepType: StepType; // will be set in the subclasses
   constructor(stepName: string) {
     if (!stepName) {
-      throw new WorkflowError("step name can't be undefined or empty string.");
+      throw new WorkflowError(
+        "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+      );
     }
     this.stepName = stepName;
   }
