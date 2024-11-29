@@ -30,7 +30,7 @@ export type TestConfig<TPayload = unknown> = {
    * 
    * @default true
    */
-  workflowStarts?: boolean
+  shouldWorkflowStart?: boolean
 }
 
 export type RedisResult = {

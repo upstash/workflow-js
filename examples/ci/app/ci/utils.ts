@@ -65,7 +65,7 @@ export const getTestConfig = async (route: string) => {
 
 export const initiateTest = async (route: string, waitForSeconds: number) => {
   const randomTestId = nanoid()
-  const { headers, payload, expectedCallCount, expectedResult, workflowStarts = true } = await getTestConfig(route)
+  const { headers, payload, expectedCallCount, expectedResult, shouldWorkflowStart = true } = await getTestConfig(route)
 
   const { messageId } = await qstash.startWorkflow({ route, headers, payload }, randomTestId)
 
@@ -75,7 +75,8 @@ export const initiateTest = async (route: string, waitForSeconds: number) => {
   try {
     await qstash.checkWorkflowStart(messageId);
   } catch (error) {
-    if (workflowStarts) {
+    console.error(error);
+    if (shouldWorkflowStart) {
       throw error;
     };
   }

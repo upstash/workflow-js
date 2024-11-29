@@ -41,6 +41,6 @@ export const { POST, GET } = testServe(
       [ header ]: headerValue,
       "authentication": authentication
     },
-    workflowStarts: false
+    shouldWorkflowStart: false
   }
 ) 
