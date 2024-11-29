@@ -4,7 +4,7 @@ import { expect } from "../utils";
 import { type WorkflowContext } from "@upstash/workflow";
 import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, RETRY_COUNT, RETRY_INTERVAL_DURATION } from "../constants";
 
-const redis = Redis.fromEnv();
+export const redis = Redis.fromEnv();
 const EXPIRE_IN_SECS = 60
 
 const getRedisKey = (
