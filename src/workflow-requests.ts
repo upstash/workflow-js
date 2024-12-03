@@ -168,7 +168,8 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
       headerLowerCase !== "cf-connecting-ip" &&
       headerLowerCase !== "cdn-loop" &&
       headerLowerCase !== "cf-ew-via" &&
-      headerLowerCase !== "cf-ray"
+      headerLowerCase !== "cf-ray" &&
+      headerLowerCase !== "render-proxy-ttl"
     ) {
       filteredHeaders.append(header, value);
     }
