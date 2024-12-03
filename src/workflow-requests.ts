@@ -14,6 +14,7 @@ import {
 } from "./constants";
 import type {
   CallResponse,
+  Duration,
   Step,
   StepType,
   WorkflowClient,
@@ -363,7 +364,8 @@ export const getHeaders = (
   step?: Step,
   failureUrl?: WorkflowServeOptions["failureUrl"],
   retries?: number,
-  callRetries?: number
+  callRetries?: number,
+  callTimeout?: number | Duration
 ): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
@@ -374,6 +376,9 @@ export const getHeaders = (
 
   if (!step?.callUrl) {
     baseHeaders[`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`] = WORKFLOW_PROTOCOL_VERSION;
+  }
+  if (callTimeout) {
+    baseHeaders[`Upstash-Timeout`] = callTimeout.toString();
   }
 
   if (failureUrl) {

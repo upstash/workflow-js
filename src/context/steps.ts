@@ -2,6 +2,7 @@ import type { Client, HTTPMethods } from "@upstash/qstash";
 import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
 import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
+import { WorkflowError } from "../error";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -14,6 +15,11 @@ export abstract class BaseLazyStep<TResult = unknown> {
   public readonly stepName;
   public abstract readonly stepType: StepType; // will be set in the subclasses
   constructor(stepName: string) {
+    if (!stepName) {
+      throw new WorkflowError(
+        "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+      );
+    }
     this.stepName = stepName;
   }
 
@@ -148,8 +154,9 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   private readonly method: HTTPMethods;
   private readonly body: TBody;
   private readonly headers: Record<string, string>;
-  stepType: StepType = "Call";
   public readonly retries: number;
+  public readonly timeout?: number | Duration;
+  stepType: StepType = "Call";
 
   constructor(
     stepName: string,
@@ -157,7 +164,8 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     method: HTTPMethods,
     body: TBody,
     headers: Record<string, string>,
-    retries: number
+    retries: number,
+    timeout: number | Duration | undefined
   ) {
     super(stepName);
     this.url = url;
@@ -165,6 +173,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     this.body = body;
     this.headers = headers;
     this.retries = retries;
+    this.timeout = timeout;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {

@@ -293,6 +293,7 @@ describe("context tests", () => {
               headers: { "my-header": "my-value" },
               method: "PATCH",
               retries: retries,
+              timeout: 30,
             });
           expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
         },
@@ -332,6 +333,7 @@ describe("context tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-timeout": "30",
               },
             },
           ],
