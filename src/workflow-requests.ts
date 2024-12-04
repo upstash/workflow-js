@@ -163,12 +163,15 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
     const headerLowerCase = header.toLowerCase();
     if (
       !headerLowerCase.startsWith("upstash-workflow-") &&
+      // https://vercel.com/docs/edge-network/headers/request-headers#x-vercel-id
       !headerLowerCase.startsWith("x-vercel-") &&
       !headerLowerCase.startsWith("x-forwarded-") &&
+      // https://blog.cloudflare.com/preventing-request-loops-using-cdn-loop/
       headerLowerCase !== "cf-connecting-ip" &&
       headerLowerCase !== "cdn-loop" &&
       headerLowerCase !== "cf-ew-via" &&
       headerLowerCase !== "cf-ray" &&
+      // For Render https://render.com
       headerLowerCase !== "render-proxy-ttl"
     ) {
       filteredHeaders.append(header, value);
