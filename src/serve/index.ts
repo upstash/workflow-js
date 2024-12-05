@@ -13,7 +13,7 @@ import {
   verifyRequest,
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
-import { determineUrls, processOptions } from "./options";
+import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -135,7 +135,11 @@ export const serve = <
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
-      return onStepFinish("no-workflow-id", "auth-fail");
+      await debug?.log("ERROR", "ERROR", { error: AUTH_FAIL_MESSAGE });
+      return onStepFinish(
+        isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId,
+        "auth-fail"
+      );
     }
 
     // check if request is a third party call result

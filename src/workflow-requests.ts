@@ -14,6 +14,7 @@ import {
 } from "./constants";
 import type {
   CallResponse,
+  Duration,
   Step,
   StepType,
   WorkflowClient,
@@ -163,9 +164,16 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
     const headerLowerCase = header.toLowerCase();
     if (
       !headerLowerCase.startsWith("upstash-workflow-") &&
+      // https://vercel.com/docs/edge-network/headers/request-headers#x-vercel-id
       !headerLowerCase.startsWith("x-vercel-") &&
       !headerLowerCase.startsWith("x-forwarded-") &&
-      headerLowerCase !== "cf-connecting-ip"
+      // https://blog.cloudflare.com/preventing-request-loops-using-cdn-loop/
+      headerLowerCase !== "cf-connecting-ip" &&
+      headerLowerCase !== "cdn-loop" &&
+      headerLowerCase !== "cf-ew-via" &&
+      headerLowerCase !== "cf-ray" &&
+      // For Render https://render.com
+      headerLowerCase !== "render-proxy-ttl"
     ) {
       filteredHeaders.append(header, value);
     }
@@ -363,7 +371,8 @@ export const getHeaders = (
   step?: Step,
   failureUrl?: WorkflowServeOptions["failureUrl"],
   retries?: number,
-  callRetries?: number
+  callRetries?: number,
+  callTimeout?: number | Duration
 ): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
@@ -374,6 +383,9 @@ export const getHeaders = (
 
   if (!step?.callUrl) {
     baseHeaders[`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`] = WORKFLOW_PROTOCOL_VERSION;
+  }
+  if (callTimeout) {
+    baseHeaders[`Upstash-Timeout`] = callTimeout.toString();
   }
 
   if (failureUrl) {

@@ -374,7 +374,8 @@ export class AutoExecutor {
           singleStep,
           this.context.failureUrl,
           this.context.retries,
-          lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined
+          lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined,
+          lazyStep instanceof LazyCallStep ? lazyStep.timeout : undefined
         );
 
         // if the step is a single step execution or a plan step, we can add sleep headers

@@ -17,7 +17,7 @@ import {
   WORKFLOW_INIT_HEADER,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
-import { processOptions } from "./options";
+import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -239,7 +239,8 @@ describe("serve", () => {
       }
     );
 
-    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", []);
+    const workflowRunId = "wfr-foo";
+    const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, "my-payload", []);
     let called = false;
     await mockQStashServer({
       execute: async () => {
@@ -248,7 +249,7 @@ describe("serve", () => {
           workflowRunId: string;
           finishCondition: FinishCondition;
         };
-        expect(workflowRunId).toBe("no-workflow-id");
+        expect(workflowRunId).toBe(workflowRunId);
         expect(finishCondition).toBe("auth-fail");
         called = true;
       },
@@ -553,11 +554,8 @@ describe("serve", () => {
   });
 
   test("should receive env passed in options", async () => {
-    const request = new Request("http://endpoint.com", {
-      headers: {
-        [WORKFLOW_INIT_HEADER]: "false",
-        [WORKFLOW_ID_HEADER]: "wfr-id",
-      },
+    const request = new Request(WORKFLOW_ENDPOINT, {
+      headers: {},
     });
     let called = false;
     const { handler: endpoint } = serve(
@@ -565,6 +563,7 @@ describe("serve", () => {
         expect(context.env["env-var-1"]).toBe("value-1");
         expect(context.env["env-var-2"]).toBe("value-2");
         called = true;
+        return;
       },
       {
         qstashClient,
@@ -576,7 +575,11 @@ describe("serve", () => {
       }
     );
     const response = await endpoint(request);
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: AUTH_FAIL_MESSAGE,
+      workflowRunId: "no-workflow-id",
+    });
     expect(called).toBeTrue();
   });
 

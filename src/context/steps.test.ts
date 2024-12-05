@@ -11,6 +11,7 @@ import { nanoid } from "../utils";
 import type { NotifyResponse, NotifyStepResponse, Step } from "../types";
 import { Client } from "@upstash/qstash";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
+import { WorkflowError } from "../error";
 
 describe("test steps", () => {
   const stepName = nanoid();
@@ -145,7 +146,7 @@ describe("test steps", () => {
     const callHeaders = {
       "my-header": headerValue,
     };
-    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders, 14);
+    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders, 14, 30);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -283,6 +284,27 @@ describe("test steps", () => {
       });
 
       expect(called).toBeTrue();
+    });
+  });
+
+  describe("stepName check", () => {
+    test("should throw when step name is undefined ", () => {
+      // @ts-expect-error allow undefined for test purposes
+      const throws = () => new LazySleepStep(undefined, 10);
+      expect(throws).toThrow(
+        new WorkflowError(
+          "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+        )
+      );
+    });
+
+    test("should throw when step name is empty string ", () => {
+      const throws = () => new LazyFunctionStep("", () => {});
+      expect(throws).toThrow(
+        new WorkflowError(
+          "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+        )
+      );
     });
   });
 });
