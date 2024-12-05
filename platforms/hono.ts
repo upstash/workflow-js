@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import type { RouteFunction, WorkflowServeOptions } from "../src";
 import { serve as serveBase } from "../src";
+import { Variables } from "hono/types";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -22,7 +23,7 @@ export type WorkflowBindings = {
 export const serve = <
   TInitialPayload = unknown,
   TBindings extends WorkflowBindings = WorkflowBindings,
-  TVariables extends object = object,
+  TVariables extends Variables = Variables,
 >(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
