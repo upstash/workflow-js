@@ -79,17 +79,17 @@ export const { POST } = serve<string>(async (context) => {
 			to: user.email,
 			subject: 'Welcome to Your Trial!',
 			html: `
-                <h1>Welcome ${user.firstName || 'there'}!</h1>
-                <p>Thanks for signing up! Your trial starts now.</p>
-                <p>You have 7 days to explore all our premium features.</p>
-                <p>What you get with your trial:</p>
-                <ul>
-                    <li>Feature 1</li>
-                    <li>Feature 2</li>
-                    <li>Feature 3</li>
-                </ul>
-                <p>Get started now: <a href="${process.env.NEXT_PUBLIC_URL}/dashboard">Visit Dashboard</a></p>
-            `
+		        <h1>Welcome ${user.firstName || 'there'}!</h1>
+		        <p>Thanks for signing up! Your trial starts now.</p>
+		        <p>You have 7 days to explore all our premium features.</p>
+		        <p>What you get with your trial:</p>
+		        <ul>
+		            <li>Feature 1</li>
+		            <li>Feature 2</li>
+		            <li>Feature 3</li>
+		        </ul>
+		        <p>Get started now: <a href="${process.env.NEXT_PUBLIC_URL}/dashboard">Visit Dashboard</a></p>
+		    `
 		});
 
 	})
@@ -97,7 +97,7 @@ export const { POST } = serve<string>(async (context) => {
 	const subscription = await context.run("create-trial", async () => {
 		return await stripe.subscriptions.create({
 			customer: customer.id,
-			items: [{ price: "price_1QQQWaCKneMLP9MPbARyGEFt" }],
+			items: [{ price: "price_1QQQWaCKnqweyLP9MPbARyG" }],
 			trial_period_days: 7,
 			metadata: {
 				clerkUserId: user.clerkUserId,
@@ -112,13 +112,12 @@ export const { POST } = serve<string>(async (context) => {
 
 
 	const { timeout } = await context.waitForEvent("await-payment-method", `payment_method_${subscription.id}`, {
-		timeout: "15s"
+		timeout: "7d"
 	})
 
 
 	if (!timeout) {
 		await context.run("send-subscription-start-welcome-mail", async () => {
-
 			console.log("Sending subscription started email to:", user.email)
 
 			await resend.emails.send({
@@ -126,31 +125,30 @@ export const { POST } = serve<string>(async (context) => {
 				to: user.email,
 				subject: 'Payment Method Added Successfully!',
 				html: `
-                    <h1>Thank you for adding your payment method!</h1>
-                    <p>Your subscription will continue automatically after the trial period.</p>
-                    <p>Your trial benefits:</p>
-                    <ul>
-                        <li>Unlimited access to all features</li>
-                        <li>Priority support</li>
-                        <li>No interruption in service</li>
-                    </ul>
-                    <p>Need help? Reply to this email or visit our support center.</p>
-                `
+			        <h1>Thank you for adding your payment method!</h1>
+			        <p>Your subscription will continue automatically after the trial period.</p>
+			        <p>Your trial benefits:</p>
+			        <ul>
+			            <li>Unlimited access to all features</li>
+			            <li>Priority support</li>
+			            <li>No interruption in service</li>
+			        </ul>
+			        <p>Need help? Reply to this email or visit our support center.</p>
+			    `
 			});
 		})
 
 	} else {
 		await context.run("handle-trial-end", async () => {
-
 			await stripe.subscriptions.update(subscription.id, {
 				cancel_at_period_end: true
 			})
+
 			return { status: 'trial_ended' }
 		})
 
 
 		await context.run("send-trial-ending-mail", async () => {
-
 			console.log("Sending trial ending email to:", user.email)
 
 			await resend.emails.send({
@@ -158,27 +156,27 @@ export const { POST } = serve<string>(async (context) => {
 				to: user.email,
 				subject: 'Your Trial is Ending Soon',
 				html: `
-                    <h1>Don't Lose Access!</h1>
-                    <p>Your trial is coming to an end. Add a payment method to keep your access:</p>
-                    <ul>
-                        <li>Keep all your data and settings</li>
-                        <li>Continue using premium features</li>
-                        <li>No interruption in service</li>
-                    </ul>
-                    <a href="${process.env.NEXT_PUBLIC_URL}/billing" style="
-                        display: inline-block;
-                        padding: 12px 24px;
-                        background-color: #0070f3;
-                        color: white;
-                        text-decoration: none;
-                        border-radius: 5px;
-                        margin: 20px 0;
-                    ">Add Payment Method</a>
-                    <p>Questions? Contact our support team!</p>
-                `
+			        <h1>Don't Lose Access!</h1>
+			        <p>Your trial is coming to an end. Add a payment method to keep your access:</p>
+			        <ul>
+			            <li>Keep all your data and settings</li>
+			            <li>Continue using premium features</li>
+			            <li>No interruption in service</li>
+			        </ul>
+			        <a href="${process.env.NEXT_PUBLIC_URL}/billing" style="
+			            display: inline-block;
+			            padding: 12px 24px;
+			            background-color: #0070f3;
+			            color: white;
+			            text-decoration: none;
+			            border-radius: 5px;
+			            margin: 20px 0;
+			        ">Add Payment Method</a>
+			        <p>Questions? Contact our support team!</p>
+			    `
 			});
 
 		})
 	}
 
-}, { baseUrl: "https://5293-88-227-179-125.ngrok-free.app", initialPayloadParser: (payload) => { return payload } })
+}, { baseUrl: "<BASE_URL>", initialPayloadParser: (payload) => { return payload } })

@@ -28,7 +28,6 @@ export async function POST(request: Request) {
 			const trialSubscription = subscriptions.data[0];
 
 			if (trialSubscription) {
-				console.log("SENDING EVENT: ", `payment_method_${trialSubscription.id}`)
 				await wc.notify({
 					eventId: `payment_method_${trialSubscription.id}`, eventData: {
 						customerId: customer.id,
