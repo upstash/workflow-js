@@ -28,6 +28,10 @@ export async function POST(request: Request) {
 			const trialSubscription = subscriptions.data[0];
 
 			if (trialSubscription) {
+				/**
+				 * This is where we notify the Workflow on the `api/workflow/onboarding` endpoint when a payment method is attached to a customer.
+				 * Whether this event is notified within 7 days(arbitrary, customizable timeout), can be handled in onboarding workflow.
+				 */
 				await wc.notify({
 					eventId: `payment_method_${trialSubscription.id}`, eventData: {
 						customerId: customer.id,

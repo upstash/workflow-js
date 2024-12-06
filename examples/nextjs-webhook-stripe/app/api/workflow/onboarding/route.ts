@@ -111,6 +111,11 @@ export const { POST } = serve<string>(async (context) => {
 	})
 
 
+	/**
+	 * This is where we start waiting for the payment method to be added to the subscription.
+	 * If the payment method is added within 7 days, workflow on the `api/stripe/route` will notify this workflow with `payment_method_<SUBSCRIPTION_ID>`.
+	 * If the payment method is not added within 7 days, we will handle the trial end.
+	 */
 	const { timeout } = await context.waitForEvent("await-payment-method", `payment_method_${subscription.id}`, {
 		timeout: "7d"
 	})
