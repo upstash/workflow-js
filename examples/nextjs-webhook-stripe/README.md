@@ -1,37 +1,68 @@
-# Upstash Workflow Nextjs Example
+# Upstash Workflow Nextjs Example with Webhooks Example
 
-This project has some routes showcasing how Upstash Workflow can be used in a nextjs project. You can learn more in [Workflow documentation for Nextjs](https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs).
+This example demonstrates how to use Upstash Workflow with Next.js to handle Clerk webhook events, manage Stripe subscriptions, and send automated emails. 
 
-Under the app directory, you will find 7 folders, each corresponding to a workflow API except the `-call-qstash`. In each of these folders, you will find the `route.ts` file which defines the endpoint.
+## Features
 
-The user calls `-call-qstash` with information about which endpoint is to be called in the body. `-call-qstash` publishes a message to QStash. QStash then calls the specified endpoint.
+- Webhook handling for Clerk user events
+- Stripe customer and subscription management
+- Automated email sending with Resend
+- Trial period management
+- Event-driven workflow orchestration
+- 
+## Prerequisites
 
-![flow-diagram](../imgs/flow-diagram.png)
+- Clerk account and API keys
+- Stripe account and API keys
+- Resend account and API key
+- Upstash account and QStash credentials
 
-## Deploying the Project at Vercel
+## Development
 
-To deploy the project, you can simply use the `Deploy with Vercel` button at the top of this README. If you want to edit the project and deploy it, you can read the rest of this section.
+1. Install the dependencies
 
-To deploy the project at vercel and try the endpoints, you should start with setting up the project by running:
-
+```bash
+npm install
 ```
-vercel
+
+2. Set up your environment variables in `.env.local`:
+
+```shell .env.local
+QSTASH_URL=
+QSTASH_TOKEN=
+CLERK_WEBHOOK_SECRET=
+STRIPE_SECRET_KEY=
+RESEND_API_KEY=
 ```
 
-Next, you shoud go to vercel.com, find your project and add `QSTASH_TOKEN`, to the project as environment variables. You can find this env variables from the [Upstash Console](https://console.upstash.com/qstash). To learn more about other env variables and their use in the context of Upstash Workflow, you can read [the Secure your Endpoint in our documentation](https://upstash.com/docs/qstash/workflow/howto/security#using-qstashs-built-in-request-verification-recommended).
+3. Open a local tunnel to your development server:
 
-Once you add the env variables, you can deploy the project with:
-
-```
-vercel --prod
+```bash
+ngrok http 3000
 ```
 
-Note that the project won't work in preview. It should be deployed to production like above. This is because preview requires authentication.
+Set the UPSTASH_WORKFLOW_URL environment variable to the ngrok URL.
 
-Once you have the app deployed, you can go to the deployment and call the endpoints using the form on the page.
+4. Start the development server.
 
-You can observe the logs at [Upstash console under the Worfklow tab](https://console.upstash.com/qstash?tab=workflow) or vercel.com to see your workflow operate.
+Then, run the `create-user.sh` script in the `sh` folder.
 
-## Local Development
+```bash
+./sh/create-user.sh
+```
 
-For local development setup, refer to the [Local Development section in our documentation](https://upstash.com/docs/qstash/workflow/howto/local-development).
+## Workflow Steps
+
+The example implements the following workflow:
+
+1. Validate incoming Clerk webhook on `/api/workflow/onboarding` endpoint
+2. Process user creation events
+3. Create Stripe customer
+4. Send welcome email
+5. Set up trial subscription
+6. Wait for `await-payment-method` event. If a payment method is added to user, `/api/workflow/stripe` endpoint will be triggered by Stripe workflow.
+7. Handle trial period completion
+8. Send appropriate follow-up emails
+
+## Contributing
+Contributions are welcome! Please read our contributing guidelines before submitting pull requests.
