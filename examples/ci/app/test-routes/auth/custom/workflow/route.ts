@@ -15,8 +15,10 @@ const makeCall = async (
   context: WorkflowContext,
   stepName: string,
   method: "GET" | "POST",
+  headers: Record<string, string>,
   expectedStatus: number,
-  expectedBody: unknown
+  expectedBody: unknown,
+  callBody?: unknown
 ) => {
   const randomId = context.headers.get(CI_RANDOM_ID_HEADER)
   const route = context.headers.get(CI_ROUTE_HEADER)
@@ -27,8 +29,7 @@ const makeCall = async (
 
   const { status, body } = await context.call<FailureFunctionPayload>(stepName, {
     url: thirdPartyEndpoint,
-    body: 
-    {
+    body: callBody ?? {
       status: 200,
       header: "",
       body: "",
@@ -45,7 +46,7 @@ const makeCall = async (
     headers: {
       [ CI_RANDOM_ID_HEADER ]: randomId,
       [ CI_ROUTE_HEADER ]: route,
-      "Upstash-Workflow-Is-Failure": "true"
+      ...headers
     }
   })
 
@@ -63,14 +64,64 @@ export const { POST, GET } = testServe(
       
       await makeCall(
         context,
-        "regular call should fail",
+        "failure call should fail",
         "POST",
+        {
+          "Upstash-Workflow-Is-Failure": "true"
+        },
         500,
         {
           error: "WorkflowError",
           message: "Not authorized to run the failure function."
         }
       )
+      
+      await makeCall(
+        context,
+        "callback request should fail",
+        "POST",
+        {
+          "Upstash-Workflow-Callback": "true",
+        },
+        400,
+        {
+          message: "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run",
+          workflowRunId: "no-workflow-id"
+        }
+      )
+      
+      await makeCall(
+        context,
+        "init call should fail",
+        "POST",
+        {},
+        400,
+        {
+          message: "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run",
+          workflowRunId: "no-workflow-id"
+        }
+      )
+      
+      // TODO: enable back
+      // was disabled because Upstash-Workflow-RunId header is being overwritten by backend with the current workflow
+      // await makeCall(
+      //   context,
+      //   "intermediate call should fail",
+      //   "POST",
+      //   {
+      //     "Upstash-Workflow-Sdk-Version": "1",
+      //     "Upstash-Workflow-RunId": customRunId
+      //   },
+      //   400,
+      //   {
+      //     message: "Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run",
+      //     workflowRunId: customRunId
+      //   },
+      //   [{
+      //     body: btoa("hello there"),
+      //     callType: "step"
+      //   }]
+      // )
       
       const input = context.requestPayload;
       expect(input, payload);
@@ -84,7 +135,7 @@ export const { POST, GET } = testServe(
       retries: 0,
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 8,
     expectedResult: "not authorized for failure",
     payload,
     headers: {

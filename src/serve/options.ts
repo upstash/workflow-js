@@ -35,11 +35,23 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
       baseUrl: environment.QSTASH_URL!,
       token: environment.QSTASH_TOKEN!,
     }),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    onStepFinish: (workflowRunId: string, _finishCondition: FinishCondition) =>
-      new Response(JSON.stringify({ workflowRunId }), {
+    onStepFinish: (workflowRunId: string, finishCondition: FinishCondition) => {
+      if (finishCondition === "auth-fail") {
+        console.error(AUTH_FAIL_MESSAGE);
+        return new Response(
+          JSON.stringify({
+            message: AUTH_FAIL_MESSAGE,
+            workflowRunId,
+          }),
+          {
+            status: 400,
+          }
+        ) as TResponse;
+      }
+      return new Response(JSON.stringify({ workflowRunId }), {
         status: 200,
-      }) as TResponse,
+      }) as TResponse;
+    },
     initialPayloadParser: (initialRequest: string) => {
       // if there is no payload, simply return undefined
       if (!initialRequest) {
@@ -104,3 +116,5 @@ export const determineUrls = async <TInitialPayload = unknown>(
     workflowFailureUrl,
   };
 };
+
+export const AUTH_FAIL_MESSAGE = `Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run`;
