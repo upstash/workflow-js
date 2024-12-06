@@ -21,6 +21,7 @@ import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
+import { getProviderInfo } from "./provider";
 
 /**
  * Upstash Workflow context
@@ -349,6 +350,27 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result as CallResponse<TResult>;
     }
+  }
+
+  public async callApi<TResult = unknown>(
+    stepName: string,
+    settings: {
+      api: Parameters<typeof getProviderInfo>[0];
+    } & Omit<Parameters<WorkflowContext["call"]>[1], "url">
+  ): Promise<CallResponse<TResult>> {
+    const { url, appendHeaders, method } = getProviderInfo(settings.api);
+    const { method: userMethod, body, headers = {}, retries = 0, timeout } = settings;
+    return await this.call(stepName, {
+      url,
+      method: userMethod ?? method,
+      body,
+      headers: {
+        ...appendHeaders,
+        ...headers,
+      },
+      retries,
+      timeout,
+    });
   }
 
   /**
