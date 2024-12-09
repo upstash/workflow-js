@@ -690,4 +690,52 @@ describe("serve", () => {
     });
     expect(called).toBeTrue();
   });
+
+  test("should override request headers using the headers options in serve", async () => {
+    const { handler: endpoint } = serve<string>(
+      async (context) => {
+        await context.sleep("sleep 1", 1);
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        retries: 1,
+        headers: {
+          "x-override": "overridden",
+        },
+      }
+    );
+
+    const initialPayload = nanoid();
+    const request = new Request(WORKFLOW_ENDPOINT, {
+      method: "POST",
+      body: initialPayload,
+      headers: {
+        "x-override": "original",
+        "x-same": "same",
+      },
+    });
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
+      },
+      responseFields: { body: "msgId", status: 200 },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+        token,
+        body: initialPayload,
+        headers: {
+          [WORKFLOW_INIT_HEADER]: "true",
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: null,
+          [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: "1",
+          "upstash-failure-callback-retries": "1",
+          "upstash-retries": "1",
+          "Upstash-Forward-x-override": "overridden",
+          "Upstash-Forward-x-same": "same",
+        },
+      },
+    });
+  });
 });
