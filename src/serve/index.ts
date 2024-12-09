@@ -110,15 +110,18 @@ export const serve = <
       return onStepFinish("no-workflow-id", "failure-callback");
     }
 
+    const finalHeaders = recreateUserHeaders(request.headers as Headers);
+
+    for (const [key, value] of Object.entries(headers ?? {})) {
+      finalHeaders.set(key, value);
+    }
+
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
       workflowRunId,
       initialPayload: initialPayloadParser(rawInitialPayload),
-      headers: {
-        ...recreateUserHeaders(request.headers as Headers),
-        ...headers,
-      },
+      headers: finalHeaders,
       steps,
       url: workflowUrl,
       failureUrl: workflowFailureUrl,
