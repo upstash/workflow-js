@@ -563,9 +563,9 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-      await triggerFirstInvocation(context, 3);
-      const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-      const spy = spyOn(debug, "log");
+        await triggerFirstInvocation(context, 3);
+        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
+        const spy = spyOn(debug, "log");
 
         const firstDelete = await triggerWorkflowDelete(context, debug);
         expect(firstDelete).toEqual({ deleted: true });
