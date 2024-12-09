@@ -218,6 +218,16 @@ export type WorkflowServeOptions<
    * 3 by default
    */
   retries?: number;
+  /**
+   * Headers to overwrite the request headers.
+   *
+   * The sdk will forward headers in the initial request to the subsequent
+   * requests using the Upstash-Forward-* headers.
+   *
+   * This option allows you to overwrite unwanted headers,
+   * such as 'cdn-loop' in Cloudflare, to prevent them from being passed.
+   */
+  headers?: Record<string, string>;
 };
 
 /**

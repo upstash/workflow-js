@@ -44,6 +44,7 @@ export const serve = <
     baseUrl,
     env,
     retries,
+    headers,
   } = processOptions<TResponse, TInitialPayload>(options);
   const debug = WorkflowLogger.getLogger(verbose);
 
@@ -114,7 +115,10 @@ export const serve = <
       qstashClient,
       workflowRunId,
       initialPayload: initialPayloadParser(rawInitialPayload),
-      headers: recreateUserHeaders(request.headers as Headers),
+      headers: {
+        ...recreateUserHeaders(request.headers as Headers),
+        ...headers,
+      },
       steps,
       url: workflowUrl,
       failureUrl: workflowFailureUrl,
