@@ -1,6 +1,6 @@
 import type { APIContext, APIRoute } from "astro";
 
-import type { WorkflowServeOptions, WorkflowContext } from "../src";
+import type { PublicServeOptions, WorkflowContext } from "../src";
 import { serve as serveBase } from "../src";
 
 export function serve<TInitialPayload = unknown>(
@@ -8,7 +8,7 @@ export function serve<TInitialPayload = unknown>(
     workflowContext: WorkflowContext<TInitialPayload>,
     apiContext: APIContext
   ) => Promise<void>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ) {
   const POST: APIRoute = (apiContext) => {
     const { handler } = serveBase<TInitialPayload>(

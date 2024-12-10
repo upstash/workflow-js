@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-import type { WorkflowServeOptions, RouteFunction } from "../src";
+import type { RouteFunction, PublicServeOptions } from "../src";
 import { serve as serveBase } from "../src";
 
 /**
@@ -16,7 +16,7 @@ import { serve as serveBase } from "../src";
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ): { POST: (request: Request) => Promise<Response> } => {
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
     routeFunction,
@@ -32,7 +32,7 @@ export const serve = <TInitialPayload = unknown>(
 
 export const servePagesRouter = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ): { handler: NextApiHandler } => {
   const { handler: serveHandler } = serveBase(routeFunction, options);
 

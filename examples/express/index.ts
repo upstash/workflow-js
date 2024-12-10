@@ -34,11 +34,93 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
     console.log('step 2 input', result1, 'output', output)
     return output
   })
+}, {
+  verbose: true,
+  retries: 0
 }));
 
 app.post("/get-data", (req, res) => {
   res.send("hey there");
 });
+
+// here we are
+
+app.use(
+  "/test",
+  serveQstashWorkflow(async (context: Parameters<RouteFunction<unknown>>[0]) => {
+    await context.run("test", async () => {
+      // console.log("test");
+    });
+  }, {
+    useJSONContent: true
+  })
+);
+
+import { IncomingHttpHeaders } from "http";
+import { RouteFunction, serve as basicServe, WorkflowServeOptions } from "@upstash/workflow";
+import { Request as ExpressRequest, Response, Router } from "express";
+
+function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
+return Object.entries(headers).map(([key, value]) => [
+  key,
+  Array.isArray(value) ? value.join(", ") : value ?? "",
+]);
+}
+
+export function serveQstashWorkflow<TInitialPayload = unknown>(
+routeFunction: RouteFunction<TInitialPayload>,
+options?: Omit<WorkflowServeOptions<globalThis.Response, TInitialPayload>, "onStepFinish">
+): Router {
+const router = express.Router();
+
+router.post("*", async (req: ExpressRequest, res: Response) => {
+  const protocol = (req.headers["x-forwarded-proto"] as string) || req.protocol;
+  const host = req.headers.host;
+  const url = `${protocol}://${host}${req.originalUrl}`;
+  const headers = transformHeaders(req.headers);
+
+  let reqBody: string | undefined;
+
+  if (req.headers["content-type"]?.includes("text/plain")) {
+    reqBody = req.body;
+  } else if (req.headers["content-type"]?.includes("application/json")) {
+    reqBody = JSON.stringify(req.body);
+  }
+
+  const request = new Request(url, {
+    headers: headers,
+    body: reqBody || "{}",
+    method: "POST",
+  });
+
+  const { handler: serveHandler } = basicServe<TInitialPayload>(routeFunction, options);
+
+  try {
+    const response = await serveHandler(request);
+
+    // Set status code
+    res.status(response.status);
+
+    // Set headers
+    response.headers.forEach((value, key) => {
+      res.setHeader(key, value);
+    });
+
+    // Send body
+    if (response.body) {
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } else {
+      res.end();
+    }
+  } catch (error) {
+    console.error("Error in workflow handler:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+return router;
+}
 
 app.listen(3001, () => {
   console.log('Server running on port 3001');

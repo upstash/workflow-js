@@ -1,6 +1,6 @@
 import { defineEventHandler, readRawBody } from "h3";
 
-import type { RouteFunction, WorkflowServeOptions } from "../src";
+import type { PublicServeOptions, RouteFunction } from "../src";
 import { serve as serveBase } from "../src";
 import type { IncomingHttpHeaders } from "node:http";
 
@@ -14,7 +14,7 @@ function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
 
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ) => {
   const handler = defineEventHandler(async (event) => {
     const method = event.node.req.method;

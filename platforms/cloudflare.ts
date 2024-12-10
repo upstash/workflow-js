@@ -1,4 +1,4 @@
-import type { RouteFunction, WorkflowServeOptions } from "../src";
+import type { PublicServeOptions, RouteFunction } from "../src";
 import { serve as serveBase } from "../src";
 
 export type WorkflowBindings = {
@@ -58,7 +58,7 @@ const getArgs = (
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ): { fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response> } => {
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);

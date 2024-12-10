@@ -1,6 +1,6 @@
 import type { RequestHandler } from "@sveltejs/kit";
 
-import type { RouteFunction, WorkflowServeOptions } from "../src";
+import type { PublicServeOptions, RouteFunction } from "../src";
 import { serve as serveBase } from "../src";
 
 /**
@@ -14,12 +14,15 @@ import { serve as serveBase } from "../src";
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish"> & {
-    env: WorkflowServeOptions["env"];
+  options: PublicServeOptions<TInitialPayload> & {
+    env: PublicServeOptions["env"]; // make env required
   }
 ): { POST: RequestHandler } => {
   const handler: RequestHandler = async ({ request }) => {
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, options);
+    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, {
+      ...options,
+      useJSONContent: true,
+    });
     return await serveHandler(request);
   };
 
