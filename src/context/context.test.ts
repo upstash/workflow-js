@@ -13,6 +13,7 @@ import {
 } from "../constants";
 import { upstash, openai } from "@upstash/qstash";
 import { anthropic } from "@upstash/qstash";
+import { resend } from "@upstash/qstash";
 
 describe("context tests", () => {
   const token = nanoid();
@@ -558,6 +559,88 @@ describe("context tests", () => {
                 "upstash-failure-callback-retries": "2",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-authorization": `Bearer ${openAIToken}`,
+                "upstash-forward-content-type": "application/json",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should work with resend provider", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+      });
+
+      const resendToken = `hello-there`;
+      const stepName = "call step";
+      const timeout = "10s";
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.callApi(stepName, {
+              timeout,
+              api: {
+                name: "email",
+                provider: resend({ token: resendToken }),
+              },
+              body: {
+                from: "Acme <onboarding@resend.dev>",
+                to: ["delivered@resend.dev"],
+                subject: "Hello World",
+                html: "<p>It works!</p>",
+              },
+              headers: {
+                "content-type": "application/json",
+              },
+            });
+          expect(throws).toThrowError(
+            "This is an Upstash Workflow error thrown after a step executes"
+          );
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '{"from":"Acme <onboarding@resend.dev>","to":["delivered@resend.dev"],"subject":"Hello World","html":"<p>It works!</p>"}',
+              destination: "https://api.resend.com/emails",
+              headers: {
+                "upstash-timeout": timeout,
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": stepName,
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "2",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-failure-callback-retries": "2",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-forward-authorization": `Bearer ${resendToken}`,
                 "upstash-forward-content-type": "application/json",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
