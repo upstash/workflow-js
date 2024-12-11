@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import type { RouteFunction, WorkflowServeOptions } from "../src";
+import type { PublicServeOptions, RouteFunction } from "../src";
 import { serve as serveBase } from "../src";
 import { Variables } from "hono/types";
 
@@ -26,7 +26,7 @@ export const serve = <
   TVariables extends Variables = Variables,
 >(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
     const environment = context.env;

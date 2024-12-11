@@ -44,6 +44,7 @@ export const serve = <
     baseUrl,
     env,
     retries,
+    useJSONContent,
   } = processOptions<TResponse, TInitialPayload>(options);
   const debug = WorkflowLogger.getLogger(verbose);
 
@@ -161,7 +162,7 @@ export const serve = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation(workflowContext, retries, debug)
+        ? await triggerFirstInvocation(workflowContext, retries, useJSONContent, debug)
         : await triggerRouteFunction({
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async () => {

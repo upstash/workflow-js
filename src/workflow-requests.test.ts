@@ -563,9 +563,9 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-      await triggerFirstInvocation(context, 3);
-      const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-      const spy = spyOn(debug, "log");
+        await triggerFirstInvocation(context, 3);
+        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
+        const spy = spyOn(debug, "log");
 
         const firstDelete = await triggerWorkflowDelete(context, debug);
         expect(firstDelete).toEqual({ deleted: true });
@@ -606,7 +606,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, debug);
+        await triggerFirstInvocation(context, 3, false, debug);
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -657,7 +657,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, debug);
+        await triggerFirstInvocation(context, 3, false, debug);
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -707,14 +707,14 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        const resultOne = await triggerFirstInvocation(context, 3, debug);
+        const resultOne = await triggerFirstInvocation(context, 3, false, debug);
         expect(resultOne.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultOne.value).toBe("success");
 
         expect(spy).toHaveBeenCalledTimes(1);
 
-        const resultTwo = await triggerFirstInvocation(context, 0, debug);
+        const resultTwo = await triggerFirstInvocation(context, 0, false, debug);
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultTwo.value).toBe("workflow-run-already-exists");

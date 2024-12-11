@@ -29,6 +29,7 @@ import { getSteps } from "./client/utils";
 export const triggerFirstInvocation = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   retries: number,
+  useJSONContent?: boolean,
   debug?: WorkflowLogger
 ): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders(
@@ -40,6 +41,11 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     workflowContext.failureUrl,
     retries
   );
+
+  if (useJSONContent) {
+    headers["content-type"] = "application/json";
+  }
+
   try {
     const body =
       typeof workflowContext.requestPayload === "string"
