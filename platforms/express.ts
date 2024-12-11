@@ -30,8 +30,6 @@ export function serve<TInitialPayload = unknown>(
         typeof request_.body === "string" ? request_.body : JSON.stringify(request_.body);
     }
 
-    console.log(request_.headers, request_.body);
-
     // create Request
     const protocol = request_.protocol;
     const host = request_.get("host") || "localhost";
