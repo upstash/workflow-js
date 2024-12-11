@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
   driveWorkflow,
@@ -11,6 +11,7 @@ import {
 } from "../test-utils";
 import { nanoid } from "../utils";
 import { Client } from "@upstash/qstash";
+import { Client as WorkflowClient } from "../client";
 import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
 import {
   WORKFLOW_ID_HEADER,
@@ -18,6 +19,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
+import { WorkflowLogger } from "../logger";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -689,5 +691,86 @@ describe("serve", () => {
       },
     });
     expect(called).toBeTrue();
+  });
+
+  describe.only("incorrect url will prod client", () => {
+    const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
+    const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
+
+    test("allow http://", async () => {
+      const url = "http://requestcatcher.com";
+      const { handler } = serve(
+        async (context) => {
+          await context.sleep("sleeping", 1);
+        },
+        {
+          url,
+          baseUrl: undefined,
+          qstashClient,
+          receiver: undefined,
+        }
+      );
+
+      const response = await handler(new Request(url, { method: "POST" }));
+      expect(response.status).toBe(200);
+      const { workflowRunId } = (await response.json()) as { workflowRunId: string };
+      expect(workflowRunId).toBeString();
+
+      await client.cancel({ ids: workflowRunId });
+    });
+
+    test("allow https://", async () => {
+      const url = "https://requestcatcher.com";
+      const { handler } = serve(
+        async (context) => {
+          await context.sleep("sleeping", 1);
+        },
+        {
+          url,
+          baseUrl: undefined,
+          qstashClient,
+          receiver: undefined,
+        }
+      );
+
+      const response = await handler(new Request(url, { method: "POST" }));
+      expect(response.status).toBe(200);
+      const { workflowRunId } = (await response.json()) as { workflowRunId: string };
+      expect(workflowRunId).toBeString();
+
+      await client.cancel({ ids: workflowRunId });
+    });
+
+    test("should not allow when not http:// or https://", async () => {
+      const url = "localhost.com";
+      const verbose = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
+
+      const logSpy = spyOn(verbose, "log");
+
+      const { handler } = serve(
+        async (context) => {
+          await context.sleep("sleeping", 1);
+        },
+        {
+          url,
+          baseUrl: undefined,
+          qstashClient,
+          receiver: undefined,
+          verbose,
+        }
+      );
+
+      const response = await handler(new Request("https://requestcatcher.com", { method: "POST" }));
+      expect(response.status).toBe(500);
+      const content = await response.json();
+      expect(content).toEqual({
+        error: "WorkflowError",
+        message: `Workflow URL should start with 'http://' or 'https://'. Recevied is '${url}'`,
+      });
+
+      expect(logSpy).toBeCalledWith("WARN", "ENDPOINT_START", {
+        message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${url}`,
+      });
+    });
   });
 });
