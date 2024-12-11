@@ -3,6 +3,7 @@ import { Client } from "@upstash/qstash";
 import { DEFAULT_RETRIES } from "../constants";
 import type { FinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
+import { WorkflowError } from "../error";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -84,6 +85,20 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   };
 };
 
+/**
+ * Determines the workflow and failure url based on the passed parameters.
+ *
+ * throws error if the url doesn't start with http:// or https://.
+ *
+ * @param request request. used to retrieve the request.url
+ * @param url user passed url (which also has the full route)
+ * @param baseUrl UPSTASH_WORKFLOW_URL env var or the user passed baseUrl. Used to replace
+ *    the beginning of the final URLs before returning.
+ * @param failureFunction failureFunction. failureUrl will be workflow url if set.
+ * @param failureUrl used as failureUrl if failureFunction isn't passed.
+ * @param debug logger
+ * @returns
+ */
 export const determineUrls = async <TInitialPayload = unknown>(
   request: Request,
   url: string | undefined,
@@ -110,6 +125,18 @@ export const determineUrls = async <TInitialPayload = unknown>(
 
   // set url to call in case of failure
   const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
+
+  if (workflowUrl.includes("localhost")) {
+    await debug?.log("WARN", "ENDPOINT_START", {
+      message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
+    });
+  }
+
+  if (!(workflowUrl.startsWith("http://") || workflowUrl.startsWith("https://"))) {
+    throw new WorkflowError(
+      `Workflow URL should start with 'http://' or 'https://'. Recevied is '${workflowUrl}'`
+    );
+  }
 
   return {
     workflowUrl,
