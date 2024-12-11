@@ -223,17 +223,27 @@ export const parseRequest = async (
   requester: Client["http"],
   messageId?: string,
   debug?: WorkflowLogger
-): Promise<{
-  rawInitialPayload: string;
-  steps: Step[];
-  isLastDuplicate: boolean;
-}> => {
+): Promise<
+  | {
+      rawInitialPayload: string;
+      steps: Step[];
+      isLastDuplicate: boolean;
+      workflowRunEnded: false;
+    }
+  | {
+      rawInitialPayload: undefined;
+      steps: undefined;
+      isLastDuplicate: undefined;
+      workflowRunEnded: true;
+    }
+> => {
   if (isFirstInvocation) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
     return {
       rawInitialPayload: requestPayload ?? "",
       steps: [],
       isLastDuplicate: false,
+      workflowRunEnded: false,
     };
   } else {
     let rawSteps: RawStep[];
@@ -244,7 +254,21 @@ export const parseRequest = async (
         "ENDPOINT_START",
         "request payload is empty, steps will be fetched from QStash."
       );
-      rawSteps = await getSteps(requester, workflowRunId, messageId, debug);
+      const { steps: fetchedSteps, workflowRunEnded } = await getSteps(
+        requester,
+        workflowRunId,
+        messageId,
+        debug
+      );
+      if (workflowRunEnded) {
+        return {
+          rawInitialPayload: undefined,
+          steps: undefined,
+          isLastDuplicate: undefined,
+          workflowRunEnded: true,
+        };
+      }
+      rawSteps = fetchedSteps;
     } else {
       rawSteps = JSON.parse(requestPayload) as RawStep[];
     }
@@ -257,6 +281,7 @@ export const parseRequest = async (
       rawInitialPayload,
       steps: deduplicatedSteps,
       isLastDuplicate,
+      workflowRunEnded: false,
     };
   }
 };

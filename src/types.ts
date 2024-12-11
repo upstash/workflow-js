@@ -128,7 +128,9 @@ export type FinishCondition =
   | "duplicate-step"
   | "fromCallback"
   | "auth-fail"
-  | "failure-callback";
+  | "failure-callback"
+  | "workflow-already-ended";
+
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
