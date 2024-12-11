@@ -77,7 +77,7 @@ export const serve = <
     debug?.setWorkflowRunId(workflowRunId);
 
     // parse steps
-    const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
       requestPayload,
       isFirstInvocation,
       workflowRunId,
@@ -86,9 +86,13 @@ export const serve = <
       debug
     );
 
+    if (workflowRunEnded) {
+      return onStepFinish(workflowRunId, "workflow-already-ended");
+    }
+
     // terminate current call if it's a duplicate branch
     if (isLastDuplicate) {
-      return onStepFinish("no-workflow-id", "duplicate-step");
+      return onStepFinish(workflowRunId, "duplicate-step");
     }
 
     // check if the request is a failure callback
@@ -106,7 +110,7 @@ export const serve = <
     } else if (failureCheck.value === "is-failure-callback") {
       // is a failure ballback.
       await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
-      return onStepFinish("no-workflow-id", "failure-callback");
+      return onStepFinish(workflowRunId, "failure-callback");
     }
 
     // create context
@@ -182,6 +186,8 @@ export const serve = <
       // Returns a Response with `workflowRunId` at the end of each step.
       await debug?.log("INFO", "RESPONSE_WORKFLOW");
       return onStepFinish(workflowContext.workflowRunId, "success");
+    } else if (callReturnCheck.value === "workflow-ended") {
+      return onStepFinish(workflowContext.workflowRunId, "workflow-already-ended");
     }
     // response to QStash in call cases
     await debug?.log("INFO", "RESPONSE_DEFAULT");
