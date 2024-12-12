@@ -223,7 +223,7 @@ export type WorkflowServeOptions<
    * Whether the framework should use `content-type: application/json`
    * in `triggerFirstInvocation`.
    *
-   * Not part of the public API.
+   * Not part of the public API. Only available in serveBase, which is not exported.
    */
   useJSONContent?: boolean;
 };

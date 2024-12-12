@@ -1,7 +1,7 @@
 import type { RequestHandler } from "@sveltejs/kit";
 
 import type { PublicServeOptions, RouteFunction } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project

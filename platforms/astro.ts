@@ -1,7 +1,7 @@
 import type { APIContext, APIRoute } from "astro";
 
 import type { PublicServeOptions, WorkflowContext } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 
 export function serve<TInitialPayload = unknown>(
   routeFunction: (

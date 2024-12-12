@@ -1,5 +1,5 @@
 import type { PublicServeOptions, RouteFunction } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { PublicServeOptions, RouteFunction } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
 
 export type WorkflowBindings = {

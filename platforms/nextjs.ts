@@ -3,7 +3,7 @@
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
 import type { RouteFunction, PublicServeOptions } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project

@@ -1,5 +1,5 @@
 import type { WorkflowServeOptions, RouteFunction } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 import {
   Request as ExpressRequest,
   Response as ExpressResponse,

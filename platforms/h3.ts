@@ -1,7 +1,7 @@
 import { defineEventHandler, readRawBody } from "h3";
 
 import type { PublicServeOptions, RouteFunction } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 import type { IncomingHttpHeaders } from "node:http";
 
 function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
