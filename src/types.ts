@@ -130,6 +130,7 @@ export type FinishCondition =
   | "auth-fail"
   | "failure-callback"
   | "workflow-already-ended";
+  | "failure-callback";
 
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
@@ -220,7 +221,19 @@ export type WorkflowServeOptions<
    * 3 by default
    */
   retries?: number;
+  /**
+   * Whether the framework should use `content-type: application/json`
+   * in `triggerFirstInvocation`.
+   *
+   * Not part of the public API. Only available in serveBase, which is not exported.
+   */
+  useJSONContent?: boolean;
 };
+
+export type PublicServeOptions<
+  TInitialPayload = unknown,
+  TResponse extends Response = Response,
+> = Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "onStepFinish" | "useJSONContent">;
 
 /**
  * Payload passed as body in failureFunction

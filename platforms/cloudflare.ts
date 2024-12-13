@@ -1,5 +1,5 @@
-import type { RouteFunction, WorkflowServeOptions } from "../src";
-import { serve as serveBase } from "../src";
+import type { PublicServeOptions, RouteFunction } from "../src";
+import { serveBase } from "../src/serve";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -58,7 +58,7 @@ const getArgs = (
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ): { fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response> } => {
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);

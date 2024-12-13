@@ -1,5 +1,5 @@
 import type { WorkflowServeOptions, RouteFunction } from "../src";
-import { serve as serveBase } from "../src";
+import { serveBase } from "../src/serve";
 import {
   Request as ExpressRequest,
   Response as ExpressResponse,
@@ -20,10 +20,14 @@ export function serve<TInitialPayload = unknown>(
       return;
     }
 
-    // only allow application/json content type
-    if (request_.headers["content-type"] !== "application/json") {
-      res.status(400).json("Only application/json content type is allowed in express workflows");
-      return;
+    let requestBody: string;
+    if (request_.headers["content-type"]?.includes("text/plain")) {
+      requestBody = request_.body;
+    } else if (request_.headers["content-type"]?.includes("application/json")) {
+      requestBody = JSON.stringify(request_.body);
+    } else {
+      requestBody =
+        typeof request_.body === "string" ? request_.body : JSON.stringify(request_.body);
     }
 
     // create Request
@@ -34,13 +38,16 @@ export function serve<TInitialPayload = unknown>(
     const webRequest = new Request(url, {
       method: request_.method,
       headers: new Headers(request_.headers as Record<string, string>),
-      body: JSON.stringify(request_.body),
+      body: requestBody,
     });
 
     // create handler
     const { handler: serveHandler } = serveBase<TInitialPayload>(
       (workflowContext) => routeFunction(workflowContext),
-      options
+      {
+        ...options,
+        useJSONContent: true,
+      }
     );
 
     const response = await serveHandler(webRequest);

@@ -19,11 +19,15 @@ import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
  * Creates an async method that handles incoming requests and runs the provided
  * route function as a workflow.
  *
+ * Not exported in the package. Instead, used in framework specific serve implementations.
+ *
+ * Only difference from regular serve is the `useJSONContent` parameter.
+ *
  * @param routeFunction - A function that uses WorkflowContext as a parameter and runs a workflow.
  * @param options - Options including the client, onFinish callback, and initialPayloadParser.
  * @returns An async method that consumes incoming requests and runs the workflow.
  */
-export const serve = <
+export const serveBase = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
@@ -44,6 +48,7 @@ export const serve = <
     baseUrl,
     env,
     retries,
+    useJSONContent,
   } = processOptions<TResponse, TInitialPayload>(options);
   const debug = WorkflowLogger.getLogger(verbose);
 
@@ -165,7 +170,7 @@ export const serve = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation(workflowContext, retries, debug)
+        ? await triggerFirstInvocation(workflowContext, retries, useJSONContent, debug)
         : await triggerRouteFunction({
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async () => {
@@ -206,4 +211,23 @@ export const serve = <
   };
 
   return { handler: safeHandler };
+};
+
+/**
+ * Creates an async method that handles incoming requests and runs the provided
+ * route function as a workflow.
+ *
+ * @param routeFunction - A function that uses WorkflowContext as a parameter and runs a workflow.
+ * @param options - Options including the client, onFinish callback, and initialPayloadParser.
+ * @returns An async method that consumes incoming requests and runs the workflow.
+ */
+export const serve = <
+  TInitialPayload = unknown,
+  TRequest extends Request = Request,
+  TResponse extends Response = Response,
+>(
+  routeFunction: RouteFunction<TInitialPayload>,
+  options?: Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "useJSONContent">
+): { handler: (request: TRequest) => Promise<TResponse> } => {
+  return serveBase(routeFunction, options);
 };
