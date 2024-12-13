@@ -12,10 +12,8 @@ export default function Header() {
       <h1 className="text-xl font-bold">Upstash Workflow x NextJS Template</h1>
 
       <h2>
-        This demo shows the cost-saving benefits of using Upstash Workflow for
-        Vercel functions.{' '}
         <span className="font-bold">
-          It compares two methods of calling a mock long running API.
+          This example has two methods of calling a mock long running API.
         </span>
       </h2>
 
