@@ -693,7 +693,7 @@ describe("serve", () => {
     expect(called).toBeTrue();
   });
 
-  describe.only("incorrect url will prod client", () => {
+  describe("incorrect url will prod client", () => {
     const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
     const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
