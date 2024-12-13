@@ -80,6 +80,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     baseUrl: environment.UPSTASH_WORKFLOW_URL,
     env: environment,
     retries: DEFAULT_RETRIES,
+    useJSONContent: false,
     ...options,
   };
 };

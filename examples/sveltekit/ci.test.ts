@@ -1,10 +1,8 @@
 
-import { RedisEntry } from "@/utils/types"
-import { Client } from "@upstash/qstash"
-import { Client as WorkflowClient } from "@upstash/workflow"
 import { Redis } from "@upstash/redis"
-import { serve } from "@upstash/workflow/nextjs"
+import { Client as WorkflowClient } from "@upstash/workflow"
 import { describe, test, expect } from "bun:test"
+import { RedisEntry } from "./src/types"
 
 export const RETRY_COUNT = 10
 export const RETRY_INTERVAL_DURATION = 1000
@@ -27,63 +25,51 @@ type TestConfig = {
 const tests: TestConfig[] = [
   {
     testDescription: "should return undefined from undefined string",
-    route: "api/ci",
+    route: "ci",
     payload: undefined,
-    headers: {
-      "Content-Type": "text/plain"
-    },
+    headers: {},
     expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
   },
   {
     testDescription: "should return undefined from empty string",
-    route: "api/ci",
+    route: "ci",
     payload: "",
-    headers: {
-      "Content-Type": "text/plain"
-    },
+    headers: {},
     expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
   },
   {
     testDescription: "should return foo correctly",
-    route: "api/ci",
+    route: "ci",
     payload: "foo",
-    headers: {
-      "Content-Type": "text/plain"
-    },
+    headers: {},
     expectedResult: `step 1 input: 'foo', type: 'string', stringified input: '"foo"'`
   },
   {
     testDescription: "should allow json without space",
-    route: "api/ci",
+    route: "ci",
     payload: `{"foo":"bar"}`,
-    headers: {
-      "Content-Type": "text/plain"
-    },
+    headers: {},
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   },
   {
     testDescription: "should allow json object",
-    route: "api/ci",
+    route: "ci",
     payload: {"foo":"bar"},
     headers: {},
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   },
   {
     testDescription: "should allow json with one space",
-    route: "api/ci",
+    route: "ci",
     payload: `{"foo": "bar"}`,
-    headers: {
-      "Content-Type": "text/plain"
-    },
+    headers: {},
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   },
   {
     testDescription: "should allow json with 3 spaces",
-    route: "api/ci",
+    route: "ci",
     payload: `{   "foo"   :   "bar"   }`,
-    headers: {
-      "Content-Type": "text/plain"
-    },
+    headers: {},
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
   }
 ]
@@ -113,7 +99,8 @@ const testEndpoint = ({
       body: payload,
       headers: {
         "secret-header": secret,
-        ...headers
+        ...headers,
+        "content-type": "application/json"
       },
       retries: 0
     })
@@ -122,7 +109,7 @@ const testEndpoint = ({
 
     let result: RedisEntry | null = null
     for (let i=1; i<=RETRY_COUNT; i++) {
-      result = await redis.get<RedisEntry>(`ci-nextjs-pages-ran-${secret}`)
+      result = await redis.get<RedisEntry>(`ci-cf-ran-${secret}`)
       if (result) {
         break
       }
@@ -139,36 +126,7 @@ const testEndpoint = ({
   })
 }
 
-describe("nextjs-pages", () => {
-  test("should send first invocation", async () => {
-    const qstashClient = new Client({
-      baseUrl: "https://workflow-tests.requestcatcher.com/",
-      token: "mock"
-    })
-    
-    // @ts-expect-error mocking publish
-    qstashClient.publish = async () => {
-      return { messageId: "msgId" }
-    }
-    
-    const { POST: serveHandler } = serve(
-      async (context) => {
-        await context.sleep("sleeping", 10)
-      }, {
-        qstashClient,
-        receiver: undefined
-      }
-    )
-
-    const request = new Request("https://workflow-tests.requestcatcher.com/")
-    const response = await serveHandler(request)
-
-    // it should send a request, but get failed to parse error because
-    // request catcher returns string
-    expect(response.status).toBe(200)
-    const result = await response.json() as { workflowRunId: string }
-    expect(result.workflowRunId).toBeTruthy()
-  })
+describe("cloudflare workers", () => {
 
   if (process.env.DEPLOYMENT_URL) {
     tests.forEach(test => {

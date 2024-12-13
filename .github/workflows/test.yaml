@@ -696,3 +696,67 @@ jobs:
       - name: Test
         run: bun test ci.test.ts
         working-directory: examples/nextjs-pages
+
+  sveltekit-deployed:
+    concurrency: sveltekit-deployed
+    runs-on: ubuntu-latest
+    needs:
+      - release
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Deploy
+        run: |
+          bun add @upstash/workflow@${{needs.release.outputs.version}}
+          DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
+          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+        env:
+          VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
+          VERCEL_PROJECT_ID: "prj_XPoNFgpAih2OiJ70TxZCq9Xry5ob"
+        working-directory: examples/sveltekit
+
+      - name: Test
+        run: bun test ci.test.ts
+        working-directory: examples/sveltekit
+
+  express-deployed:
+    concurrency: express-deployed
+    runs-on: ubuntu-latest
+    needs:
+      - release
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Deploy
+        run: |
+          bun add @upstash/workflow@${{needs.release.outputs.version}}
+          DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
+          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+        env:
+          VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
+          VERCEL_PROJECT_ID: "prj_x1NFwrvYg8VymtlwKmAwJCg8WI8m"
+        working-directory: examples/express
+
+      - name: Test
+        run: bun test ci.test.ts
+        working-directory: examples/express
