@@ -21,7 +21,6 @@ import {
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
-import { parseRequest } from "../workflow-parser";
 import { WorkflowLogger } from "../logger";
 
 const someWork = (input: string) => {
@@ -822,6 +821,9 @@ describe("serve", () => {
         expect(response.status).toBe(200);
 
         expect(called).toBeTrue();
+      });
+    });
+  });
 
   describe("incorrect url will throw", () => {
     const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });

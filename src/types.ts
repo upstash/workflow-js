@@ -130,7 +130,6 @@ export type FinishCondition =
   | "auth-fail"
   | "failure-callback"
   | "workflow-already-ended";
-  | "failure-callback";
 
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
