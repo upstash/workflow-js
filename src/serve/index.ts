@@ -19,11 +19,15 @@ import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
  * Creates an async method that handles incoming requests and runs the provided
  * route function as a workflow.
  *
+ * Not exported in the package. Instead, used in framework specific serve implementations.
+ *
+ * Only difference from regular serve is the `useJSONContent` parameter.
+ *
  * @param routeFunction - A function that uses WorkflowContext as a parameter and runs a workflow.
  * @param options - Options including the client, onFinish callback, and initialPayloadParser.
  * @returns An async method that consumes incoming requests and runs the workflow.
  */
-export const serve = <
+export const serveBase = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
@@ -44,6 +48,7 @@ export const serve = <
     baseUrl,
     env,
     retries,
+    useJSONContent,
   } = processOptions<TResponse, TInitialPayload>(options);
   const debug = WorkflowLogger.getLogger(verbose);
 
@@ -77,7 +82,7 @@ export const serve = <
     debug?.setWorkflowRunId(workflowRunId);
 
     // parse steps
-    const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
       requestPayload,
       isFirstInvocation,
       workflowRunId,
@@ -86,9 +91,13 @@ export const serve = <
       debug
     );
 
+    if (workflowRunEnded) {
+      return onStepFinish(workflowRunId, "workflow-already-ended");
+    }
+
     // terminate current call if it's a duplicate branch
     if (isLastDuplicate) {
-      return onStepFinish("no-workflow-id", "duplicate-step");
+      return onStepFinish(workflowRunId, "duplicate-step");
     }
 
     // check if the request is a failure callback
@@ -106,7 +115,7 @@ export const serve = <
     } else if (failureCheck.value === "is-failure-callback") {
       // is a failure ballback.
       await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
-      return onStepFinish("no-workflow-id", "failure-callback");
+      return onStepFinish(workflowRunId, "failure-callback");
     }
 
     // create context
@@ -161,7 +170,7 @@ export const serve = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation(workflowContext, retries, debug)
+        ? await triggerFirstInvocation(workflowContext, retries, useJSONContent, debug)
         : await triggerRouteFunction({
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async () => {
@@ -182,6 +191,8 @@ export const serve = <
       // Returns a Response with `workflowRunId` at the end of each step.
       await debug?.log("INFO", "RESPONSE_WORKFLOW");
       return onStepFinish(workflowContext.workflowRunId, "success");
+    } else if (callReturnCheck.value === "workflow-ended") {
+      return onStepFinish(workflowContext.workflowRunId, "workflow-already-ended");
     }
     // response to QStash in call cases
     await debug?.log("INFO", "RESPONSE_DEFAULT");
@@ -200,4 +211,23 @@ export const serve = <
   };
 
   return { handler: safeHandler };
+};
+
+/**
+ * Creates an async method that handles incoming requests and runs the provided
+ * route function as a workflow.
+ *
+ * @param routeFunction - A function that uses WorkflowContext as a parameter and runs a workflow.
+ * @param options - Options including the client, onFinish callback, and initialPayloadParser.
+ * @returns An async method that consumes incoming requests and runs the workflow.
+ */
+export const serve = <
+  TInitialPayload = unknown,
+  TRequest extends Request = Request,
+  TResponse extends Response = Response,
+>(
+  routeFunction: RouteFunction<TInitialPayload>,
+  options?: Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "useJSONContent">
+): { handler: (request: TRequest) => Promise<TResponse> } => {
+  return serveBase(routeFunction, options);
 };

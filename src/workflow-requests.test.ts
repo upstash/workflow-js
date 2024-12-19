@@ -172,6 +172,39 @@ describe("Workflow Requests", () => {
     expect(result.value).toBe("workflow-finished");
   });
 
+  test("should call onCancel if context.cancel is called inside context.run", async () => {
+    const workflowRunId = nanoid();
+    const token = "myToken";
+
+    const context = new WorkflowContext({
+      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
+      workflowRunId: workflowRunId,
+      initialPayload: undefined,
+      headers: new Headers({}) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+    });
+
+    const finished = new FinishState();
+    const result = await triggerRouteFunction({
+      onStep: async () => {
+        await context.run("should call cancel", async () => {
+          await context.cancel();
+        });
+      },
+      onCleanup: async () => {
+        throw new Error("shouldn't call");
+      },
+      onCancel: async () => {
+        finished.finish();
+      },
+    });
+    finished.check();
+    expect(result.isOk()).toBeTrue();
+    // @ts-expect-error value will be set since result isOk
+    expect(result.value).toBe("workflow-finished");
+  });
+
   test("should call publishJSON in triggerWorkflowDelete", async () => {
     const workflowRunId = nanoid();
     const token = "myToken";
@@ -606,7 +639,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, debug);
+        await triggerFirstInvocation(context, 3, false, debug);
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -657,7 +690,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, debug);
+        await triggerFirstInvocation(context, 3, false, debug);
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -707,14 +740,14 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        const resultOne = await triggerFirstInvocation(context, 3, debug);
+        const resultOne = await triggerFirstInvocation(context, 3, false, debug);
         expect(resultOne.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultOne.value).toBe("success");
 
         expect(spy).toHaveBeenCalledTimes(1);
 
-        const resultTwo = await triggerFirstInvocation(context, 0, debug);
+        const resultTwo = await triggerFirstInvocation(context, 0, false, debug);
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultTwo.value).toBe("workflow-run-already-exists");

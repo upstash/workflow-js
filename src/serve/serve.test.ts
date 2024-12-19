@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
   driveWorkflow,
@@ -11,13 +11,17 @@ import {
 } from "../test-utils";
 import { nanoid } from "../utils";
 import { Client } from "@upstash/qstash";
+import { Client as WorkflowClient } from "../client";
 import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
+  WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_URL_HEADER,
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
+import { WorkflowLogger } from "../logger";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -297,7 +301,7 @@ describe("serve", () => {
             workflowRunId: string;
             finishCondition: FinishCondition;
           };
-          expect(workflowRunId).toBe("no-workflow-id");
+          expect(workflowRunId).toBe("wfr-foo");
           expect(finishCondition).toBe("duplicate-step");
           called = true;
         },
@@ -689,5 +693,216 @@ describe("serve", () => {
       },
     });
     expect(called).toBeTrue();
+  });
+
+  describe("finish conditions", () => {
+    describe("workflow-already-ended", () => {
+      test("third party return", async () => {
+        const workflowRunId = `wfr-${nanoid()}`;
+        const request = new Request(WORKFLOW_ENDPOINT, {
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            "upstash-workflow-callback": "true",
+            "upstash-workflow-runid": workflowRunId,
+            "upstash-message-id": "msg-id",
+          },
+          method: "POST",
+        });
+
+        let called = false;
+        const { handler } = serve(
+          async (context) => {
+            await context.sleep("first step", 2);
+          },
+          {
+            onStepFinish(finishRunId, finishCondition) {
+              console.log(finishRunId, workflowRunId);
+
+              expect(finishRunId).toBe(workflowRunId);
+              expect(finishCondition).toBe("workflow-already-ended");
+              called = true;
+              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
+            },
+            receiver: undefined,
+            qstashClient,
+          }
+        );
+
+        await mockQStashServer({
+          execute: () => handler(request),
+          receivesRequest: {
+            url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
+            method: "GET",
+            token,
+            body: "",
+          },
+          responseFields: {
+            status: 404,
+            body: "not found",
+          },
+        });
+
+        expect(called).toBeTrue();
+      });
+
+      test("regular call", async () => {
+        const workflowRunId = `wfr-${nanoid()}`;
+        const request = new Request(WORKFLOW_ENDPOINT, {
+          method: "POST",
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            [WORKFLOW_ID_HEADER]: workflowRunId,
+            [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+          },
+        });
+
+        let called = false;
+        const { handler } = serve(
+          async (context) => {
+            console.log(context);
+          },
+          {
+            onStepFinish(finishRunId, finishCondition) {
+              expect(finishRunId).toBe(workflowRunId);
+              expect(finishCondition).toBe("workflow-already-ended");
+              called = true;
+              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
+            },
+            receiver: undefined,
+            qstashClient,
+          }
+        );
+
+        await mockQStashServer({
+          execute: () => handler(request),
+          receivesRequest: {
+            url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
+            method: "GET",
+            token,
+            body: "",
+          },
+          responseFields: {
+            status: 404,
+            body: "not found",
+          },
+        });
+
+        expect(called).toBeTrue();
+      });
+
+      test("regular call live", async () => {
+        const workflowRunId = `wfr-${nanoid()}`;
+        const request = new Request(WORKFLOW_ENDPOINT, {
+          method: "POST",
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            [WORKFLOW_ID_HEADER]: workflowRunId,
+            [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+          },
+        });
+
+        let called = false;
+        const { handler } = serve(
+          async (context) => {
+            console.log(context);
+          },
+          {
+            onStepFinish(finishRunId, finishCondition) {
+              expect(finishRunId).toBe(workflowRunId);
+              expect(finishCondition).toBe("workflow-already-ended");
+              called = true;
+              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
+            },
+            receiver: undefined,
+          }
+        );
+
+        const response = await handler(request);
+        expect(response.status).toBe(200);
+
+        expect(called).toBeTrue();
+      });
+    });
+  });
+
+  describe("incorrect url will throw", () => {
+    const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
+    const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
+
+    test("allow http://", async () => {
+      const url = "http://requestcatcher.com";
+      const { handler } = serve(
+        async (context) => {
+          await context.sleep("sleeping", 1);
+        },
+        {
+          url,
+          baseUrl: undefined,
+          qstashClient,
+          receiver: undefined,
+        }
+      );
+
+      const response = await handler(new Request(url, { method: "POST" }));
+      expect(response.status).toBe(200);
+      const { workflowRunId } = (await response.json()) as { workflowRunId: string };
+      expect(workflowRunId).toBeString();
+
+      await client.cancel({ ids: workflowRunId });
+    });
+
+    test("allow https://", async () => {
+      const url = "https://requestcatcher.com";
+      const { handler } = serve(
+        async (context) => {
+          await context.sleep("sleeping", 1);
+        },
+        {
+          url,
+          baseUrl: undefined,
+          qstashClient,
+          receiver: undefined,
+        }
+      );
+
+      const response = await handler(new Request(url, { method: "POST" }));
+      expect(response.status).toBe(200);
+      const { workflowRunId } = (await response.json()) as { workflowRunId: string };
+      expect(workflowRunId).toBeString();
+
+      await client.cancel({ ids: workflowRunId });
+    });
+
+    test("should not allow when not http:// or https://", async () => {
+      const url = "localhost.com";
+      const verbose = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
+
+      const logSpy = spyOn(verbose, "log");
+
+      const { handler } = serve(
+        async (context) => {
+          await context.sleep("sleeping", 1);
+        },
+        {
+          url,
+          baseUrl: undefined,
+          qstashClient,
+          receiver: undefined,
+          verbose,
+        }
+      );
+
+      const response = await handler(new Request("https://requestcatcher.com", { method: "POST" }));
+      expect(response.status).toBe(500);
+      const content = await response.json();
+      expect(content).toEqual({
+        error: "WorkflowError",
+        message: `Workflow URL should start with 'http://' or 'https://'. Recevied is '${url}'`,
+      });
+
+      expect(logSpy).toBeCalledWith("WARN", "ENDPOINT_START", {
+        message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${url}`,
+      });
+    });
   });
 });

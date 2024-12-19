@@ -157,6 +157,9 @@ describe("Workflow Parser", () => {
             workflowRunId,
             qstashClient.http
           );
+          if (result.workflowRunEnded) {
+            throw new Error("failed test");
+          }
           expect(result.rawInitialPayload).toBe(JSON.stringify(payload));
           expect(result.steps.length).toBe(1);
           expect(result.steps[0].out).toBe(JSON.stringify(payload));
@@ -200,12 +203,15 @@ describe("Workflow Parser", () => {
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-id", requestInitialPayload, resultSteps);
 
       const requestPayload = (await getPayload(request)) ?? "";
-      const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+      const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
         requestPayload,
         false,
         workflowRunId,
         qstashClient.http
       );
+      if (workflowRunEnded) {
+        throw new Error("failed test");
+      }
 
       // payload is not parsed
       expect(typeof rawInitialPayload).toEqual("string");
@@ -275,12 +281,15 @@ describe("Workflow Parser", () => {
       });
 
       const requestPayload = (await getPayload(request)) ?? "";
-      const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+      const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
         requestPayload,
         false,
         workflowRunId,
         qstashClient.http
       );
+      if (workflowRunEnded) {
+        throw new Error("failed test");
+      }
 
       expect(rawInitialPayload).toBe(reqiestInitialPayload);
 
@@ -331,12 +340,16 @@ describe("Workflow Parser", () => {
         },
       ];
 
-      const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest(
+      const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
         JSON.stringify(payload),
         false,
         workflowRunId,
         qstashClient.http
       );
+
+      if (workflowRunEnded) {
+        throw new Error("failed test");
+      }
 
       expect(rawInitialPayload).toBe("initial");
 

@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 
-import type { RouteFunction, WorkflowServeOptions } from "../src";
-import { serve as serveBase } from "../src";
+import type { PublicServeOptions, RouteFunction } from "../src";
+import { serveBase } from "../src/serve";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -14,7 +14,7 @@ import { serve as serveBase } from "../src";
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<Response, TInitialPayload>, "onStepFinish">
+  options?: PublicServeOptions<TInitialPayload>
 ) => {
   // Create a handler which receives an event and calls the
   // serveBase method

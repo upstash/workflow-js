@@ -29,6 +29,7 @@ import { getSteps } from "./client/utils";
 export const triggerFirstInvocation = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   retries: number,
+  useJSONContent?: boolean,
   debug?: WorkflowLogger
 ): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders(
@@ -40,6 +41,11 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     workflowContext.failureUrl,
     retries
   );
+
+  if (useJSONContent) {
+    headers["content-type"] = "application/json";
+  }
+
   try {
     const body =
       typeof workflowContext.requestPayload === "string"
@@ -210,7 +216,8 @@ export const handleThirdPartyCallResult = async (
   retries: number,
   debug?: WorkflowLogger
 ): Promise<
-  Ok<"is-call-return" | "continue-workflow" | "call-will-retry", never> | Err<never, Error>
+  | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
+  | Err<never, Error>
 > => {
   try {
     if (request.headers.get("Upstash-Workflow-Callback")) {
@@ -225,12 +232,20 @@ export const handleThirdPartyCallResult = async (
           throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
         if (!messageId) throw new WorkflowError("message id missing in context.call lazy fetch.");
 
-        const steps = await getSteps(client.http, workflowRunId, messageId, debug);
+        const { steps, workflowRunEnded } = await getSteps(
+          client.http,
+          workflowRunId,
+          messageId,
+          debug
+        );
+        if (workflowRunEnded) {
+          return ok("workflow-ended");
+        }
         const failingStep = steps.find((step) => step.messageId === messageId);
 
         if (!failingStep)
           throw new WorkflowError(
-            "Failed to submit the context.call." +
+            "Failed to submit the context.call. " +
               (steps.length === 0
                 ? "No steps found."
                 : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)

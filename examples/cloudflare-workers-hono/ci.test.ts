@@ -28,6 +28,13 @@ const tests: TestConfig[] = [
   {
     testDescription: "should return undefined from empty string",
     route: "ci",
+    payload: undefined,
+    headers: {},
+    expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
+  },
+  {
+    testDescription: "should return undefined from empty string",
+    route: "ci",
     payload: "",
     headers: {},
     expectedResult: `step 1 input: 'undefined', type: 'undefined', stringified input: 'undefined'`
@@ -95,7 +102,8 @@ const testEndpoint = ({
       headers: {
         "secret-header": secret,
         ...headers
-      }
+      },
+      retries: 0
     })
 
     await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
