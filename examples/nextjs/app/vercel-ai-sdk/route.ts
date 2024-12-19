@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { WorkflowContext } from '@upstash/workflow';
-import { QStashWorkflowAbort } from '@upstash/workflow';
+import { QStashWorkflowAbort } from '@upstash/qstash';
 import { HTTPMethods } from '@upstash/qstash';
 import { generateText, tool, ToolExecutionError } from 'ai';
 import { z } from 'zod';
