@@ -21,7 +21,16 @@ import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
-import { getProviderInfo } from "./provider";
+import { WorkflowApi } from "./api";
+
+export type CallSettings<TBody = unknown> = {
+  url: string;
+  method?: HTTPMethods;
+  body?: TBody;
+  headers?: Record<string, string>;
+  retries?: number;
+  timeout?: Duration | number;
+};
 
 /**
  * Upstash Workflow context
@@ -295,16 +304,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *     header: Record<string, string[]>
    *   }
    */
-  public async call<TResult = unknown>(
+  public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
-    settings: {
-      url: string;
-      method?: HTTPMethods;
-      body?: unknown;
-      headers?: Record<string, string>;
-      retries?: number;
-      timeout?: Duration | number;
-    }
+    settings: CallSettings<TBody>
   ): Promise<CallResponse<TResult>> {
     const { url, method = "GET", body, headers = {}, retries = 0, timeout } = settings;
 
@@ -350,27 +352,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result as CallResponse<TResult>;
     }
-  }
-
-  public async callApi<TResult = unknown>(
-    stepName: string,
-    settings: {
-      api: Parameters<typeof getProviderInfo>[0];
-    } & Omit<Parameters<WorkflowContext["call"]>[1], "url">
-  ): Promise<CallResponse<TResult>> {
-    const { url, appendHeaders, method } = getProviderInfo(settings.api);
-    const { method: userMethod, body, headers = {}, retries = 0, timeout } = settings;
-    return await this.call(stepName, {
-      url,
-      method: userMethod ?? method,
-      body,
-      headers: {
-        ...appendHeaders,
-        ...headers,
-      },
-      retries,
-      timeout,
-    });
   }
 
   /**
@@ -485,5 +466,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   protected async addStep<TResult = unknown>(step: BaseLazyStep<TResult>) {
     return await this.executor.addStep(step);
+  }
+
+  public get api() {
+    return new WorkflowApi({
+      context: this,
+    });
   }
 }

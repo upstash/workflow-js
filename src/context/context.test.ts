@@ -11,9 +11,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
 } from "../constants";
-import { upstash, openai } from "@upstash/qstash";
-import { anthropic } from "@upstash/qstash";
-import { resend } from "@upstash/qstash";
+import { upstash } from "@upstash/qstash";
 
 describe("context tests", () => {
   const token = nanoid();
@@ -445,7 +443,8 @@ describe("context tests", () => {
       await mockQStashServer({
         execute: () => {
           const throws = () =>
-            context.callApi("call step", {
+            // @ts-expect-error checking private method
+            context.api.callApi("call step", {
               api: {
                 name: "llm",
               },
@@ -474,7 +473,8 @@ describe("context tests", () => {
       await mockQStashServer({
         execute: () => {
           const throws = () =>
-            context.callApi("call step", {
+            // @ts-expect-error checking private method
+            context.api.callApi("call step", {
               api: {
                 name: "llm",
                 provider: upstash(),
@@ -507,12 +507,10 @@ describe("context tests", () => {
       await mockQStashServer({
         execute: () => {
           const throws = () =>
-            context.callApi(stepName, {
+            context.api.openai.call(stepName, {
+              token: openAIToken,
+              operation: "chat.completions.create",
               timeout,
-              api: {
-                name: "llm",
-                provider: openai({ token: openAIToken }),
-              },
               body: {
                 model: "gpt-4o",
                 messages: [
@@ -590,12 +588,9 @@ describe("context tests", () => {
       await mockQStashServer({
         execute: () => {
           const throws = () =>
-            context.callApi(stepName, {
+            context.api.resend.call(stepName, {
               timeout,
-              api: {
-                name: "email",
-                provider: resend({ token: resendToken }),
-              },
+              token: resendToken,
               body: {
                 from: "Acme <onboarding@resend.dev>",
                 to: ["delivered@resend.dev"],
@@ -677,11 +672,9 @@ describe("context tests", () => {
       await mockQStashServer({
         execute: () => {
           const throws = () =>
-            context.callApi(stepName, {
-              api: {
-                name: "llm",
-                provider: anthropic({ token: anthropicToken }),
-              },
+            context.api.anthropic.call(stepName, {
+              token: anthropicToken,
+              operation: "messages.create",
               method,
               headers: {
                 [header]: headerValue,
