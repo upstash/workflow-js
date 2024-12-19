@@ -6,7 +6,7 @@ import { generateText, tool, ToolExecutionError } from 'ai';
 import { z } from 'zod';
 import { serve } from "@upstash/workflow/nextjs";
 
-export const createWorkflowOpenAI = (context: WorkflowContext) => {
+const createWorkflowOpenAI = (context: WorkflowContext) => {
 	return createOpenAI({
 		apiKey: process.env.OPENAI_API_KEY ?? "",
 		compatibility: "strict",
