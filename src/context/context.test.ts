@@ -11,6 +11,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
 } from "../constants";
+import { upstash } from "@upstash/qstash";
 
 describe("context tests", () => {
   const token = nanoid();
@@ -425,5 +426,318 @@ describe("context tests", () => {
       return;
     }
     throw new Error("Test error: context.cancel should have thrown abort error.");
+  });
+
+  describe("context.api steps", () => {
+    test("should throw if provider isn't provdided", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+      });
+
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            // @ts-expect-error checking private method
+            context.api.callApi("call step", {
+              api: {
+                name: "llm",
+              },
+            });
+          expect(throws).toThrowError("A Provider must be provided.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: false,
+      });
+    });
+
+    test("should throw if provider is upstash", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+      });
+
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            // @ts-expect-error checking private method
+            context.api.callApi("call step", {
+              api: {
+                name: "llm",
+                provider: upstash(),
+              },
+            });
+          expect(throws).toThrowError("Upstash provider isn't supported.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: false,
+      });
+    });
+
+    test("should work with openai provider", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+      });
+
+      const openAIToken = `hello-there`;
+      const stepName = "call step";
+      const timeout = "10s";
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.api.openai.call(stepName, {
+              token: openAIToken,
+              operation: "chat.completions.create",
+              timeout,
+              body: {
+                model: "gpt-4o",
+                messages: [
+                  {
+                    role: "system",
+                    content: "Assistant says hello!",
+                  },
+                  { role: "user", content: "User shouts there!" },
+                ],
+              },
+            });
+          expect(throws).toThrowError(
+            "This is an Upstash Workflow error thrown after a step executes"
+          );
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '{"model":"gpt-4o","messages":[{"role":"system","content":"Assistant says hello!"},{"role":"user","content":"User shouts there!"}]}',
+              destination: "https://api.openai.com/v1/chat/completions",
+              headers: {
+                "upstash-timeout": timeout,
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": stepName,
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "2",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-failure-callback-retries": "2",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-forward-authorization": `Bearer ${openAIToken}`,
+                "upstash-forward-content-type": "application/json",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should work with resend provider", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+      });
+
+      const resendToken = `hello-there`;
+      const stepName = "call step";
+      const timeout = "10s";
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.api.resend.call(stepName, {
+              timeout,
+              token: resendToken,
+              body: {
+                from: "Acme <onboarding@resend.dev>",
+                to: ["delivered@resend.dev"],
+                subject: "Hello World",
+                html: "<p>It works!</p>",
+              },
+              headers: {
+                "content-type": "application/json",
+              },
+            });
+          expect(throws).toThrowError(
+            "This is an Upstash Workflow error thrown after a step executes"
+          );
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '{"from":"Acme <onboarding@resend.dev>","to":["delivered@resend.dev"],"subject":"Hello World","html":"<p>It works!</p>"}',
+              destination: "https://api.resend.com/emails",
+              headers: {
+                "upstash-timeout": timeout,
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": stepName,
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "2",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-failure-callback-retries": "2",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-forward-authorization": `Bearer ${resendToken}`,
+                "upstash-forward-content-type": "application/json",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should override method and add headers if passed", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+      });
+
+      const anthropicToken = `hello-there`;
+      const stepName = "call step";
+
+      const header = "header-foo";
+      const headerValue = "header-value-bar";
+
+      const method = "GET";
+
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.api.anthropic.call(stepName, {
+              token: anthropicToken,
+              operation: "messages.create",
+              method,
+              headers: {
+                [header]: headerValue,
+              },
+              body: {
+                model: "gpt-4o",
+                messages: [
+                  {
+                    role: "system",
+                    content: "Assistant says hello!",
+                  },
+                  { role: "user", content: "User shouts there!" },
+                ],
+              },
+            });
+          expect(throws).toThrowError(
+            "This is an Upstash Workflow error thrown after a step executes"
+          );
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '{"model":"gpt-4o","messages":[{"role":"system","content":"Assistant says hello!"},{"role":"user","content":"User shouts there!"}]}',
+              destination: "https://api.anthropic.com/v1/messages",
+              headers: {
+                [`upstash-forward-${header}`]: headerValue,
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": stepName,
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "2",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-failure-callback-retries": "2",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-forward-x-api-key": anthropicToken,
+                "upstash-forward-anthropic-version": "2023-06-01",
+                "upstash-forward-content-type": "application/json",
+                "upstash-method": method,
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
   });
 });

@@ -1,5 +1,6 @@
 import type {
   CallResponse,
+  CallSettings,
   NotifyStepResponse,
   WaitEventOptions,
   WaitStepResponse,
@@ -16,11 +17,11 @@ import {
   LazySleepUntilStep,
   LazyWaitForEventStep,
 } from "./steps";
-import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
+import { WorkflowApi } from "./api";
 
 /**
  * Upstash Workflow context
@@ -294,16 +295,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *     header: Record<string, string[]>
    *   }
    */
-  public async call<TResult = unknown>(
+  public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
-    settings: {
-      url: string;
-      method?: HTTPMethods;
-      body?: unknown;
-      headers?: Record<string, string>;
-      retries?: number;
-      timeout?: Duration | number;
-    }
+    settings: CallSettings<TBody>
   ): Promise<CallResponse<TResult>> {
     const { url, method = "GET", body, headers = {}, retries = 0, timeout } = settings;
 
@@ -463,5 +457,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   protected async addStep<TResult = unknown>(step: BaseLazyStep<TResult>) {
     return await this.executor.addStep(step);
+  }
+
+  public get api() {
+    return new WorkflowApi({
+      context: this,
+    });
   }
 }
