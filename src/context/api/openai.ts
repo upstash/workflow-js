@@ -89,7 +89,7 @@ type ChatCompletionChoice = {
 };
 
 export class OpenAIAPI extends BaseWorkflowApi {
-  public async call<TBody = CreateChatCompletion, TResponse = ChatCompletion>(
+  public async call<TResult = ChatCompletion, TBody = CreateChatCompletion>(
     stepName: string,
     settings: ApiCallSettings<
       TBody,
@@ -99,10 +99,10 @@ export class OpenAIAPI extends BaseWorkflowApi {
         operation: "chat.completions.create";
       }
     >
-  ): Promise<CallResponse<TResponse>> {
+  ): Promise<CallResponse<TResult>> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { token, organization, operation, ...parameters } = settings;
-    return await this.callApi<TResponse>(stepName, {
+    return await this.callApi<TResult, TBody>(stepName, {
       api: {
         name: "llm",
         provider: openai({ token, organization }),

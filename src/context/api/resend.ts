@@ -28,8 +28,8 @@ type SendBatchEmailResponse = {
 export class ResendAPI extends BaseWorkflowApi {
   public async call<
     TBatch extends boolean = false,
+    TResult = TBatch extends true ? SendBatchEmailResponse : SendEmailResponse,
     TBody = TBatch extends true ? SendBatchEmail : SendEmail,
-    TResponse = TBatch extends true ? SendBatchEmailResponse : SendEmailResponse,
   >(
     stepName: string,
     settings: ApiCallSettings<
@@ -39,9 +39,9 @@ export class ResendAPI extends BaseWorkflowApi {
         batch?: TBatch;
       }
     >
-  ): Promise<CallResponse<TResponse>> {
+  ): Promise<CallResponse<TResult>> {
     const { token, batch = false, ...parameters } = settings;
-    return await this.callApi<TResponse>(stepName, {
+    return await this.callApi<TResult, TBody>(stepName, {
       api: {
         name: "email",
         provider: resend({ token, batch }),

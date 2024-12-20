@@ -1,5 +1,5 @@
-import { CallResponse } from "../../types";
-import { CallSettings, WorkflowContext } from "../context";
+import { CallResponse, CallSettings } from "../../types";
+import { WorkflowContext } from "../context";
 import { getProviderInfo } from "../provider";
 
 export type ApiCallSettings<TBody = unknown, TFields extends object = object> = Omit<
@@ -34,7 +34,7 @@ export abstract class BaseWorkflowApi {
     const { url, appendHeaders, method } = getProviderInfo(settings.api);
     const { method: userMethod, body, headers = {}, retries = 0, timeout } = settings;
 
-    return await this.context.call(stepName, {
+    return await this.context.call<TResult, TBody>(stepName, {
       url,
       method: userMethod ?? method,
       body,

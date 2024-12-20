@@ -428,7 +428,7 @@ describe("context tests", () => {
     throw new Error("Test error: context.cancel should have thrown abort error.");
   });
 
-  describe("context.callApi step", () => {
+  describe("context.api steps", () => {
     test("should throw if provider isn't provdided", async () => {
       const context = new WorkflowContext({
         qstashClient,
@@ -725,6 +725,7 @@ describe("context tests", () => {
                 "upstash-failure-callback-retries": "2",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-x-api-key": anthropicToken,
+                "upstash-forward-anthropic-version": "2023-06-01",
                 "upstash-forward-content-type": "application/json",
                 "upstash-method": method,
                 "upstash-retries": "0",

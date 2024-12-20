@@ -1,5 +1,6 @@
 import type {
   CallResponse,
+  CallSettings,
   NotifyStepResponse,
   WaitEventOptions,
   WaitStepResponse,
@@ -16,21 +17,11 @@ import {
   LazySleepUntilStep,
   LazyWaitForEventStep,
 } from "./steps";
-import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
-
-export type CallSettings<TBody = unknown> = {
-  url: string;
-  method?: HTTPMethods;
-  body?: TBody;
-  headers?: Record<string, string>;
-  retries?: number;
-  timeout?: Duration | number;
-};
 
 /**
  * Upstash Workflow context

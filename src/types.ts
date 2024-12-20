@@ -328,3 +328,12 @@ export interface WaitEventOptions {
    */
   timeout?: number | Duration;
 }
+
+export type CallSettings<TBody = unknown> = {
+  url: string;
+  method?: HTTPMethods;
+  body?: TBody;
+  headers?: Record<string, string>;
+  retries?: number;
+  timeout?: Duration | number;
+};
