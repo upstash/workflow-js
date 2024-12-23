@@ -38,7 +38,6 @@ export const serve = <
       {
         sdk: SDK_TELEMETRY,
         platform: "hono",
-        runtime: `node@${process.version}`,
       },
       {
         // when hono is used without cf workers, it sends a DebugHTTPServer
