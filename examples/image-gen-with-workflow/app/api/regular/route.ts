@@ -11,8 +11,8 @@ export const maxDuration = 30
 import { NextRequest, NextResponse } from 'next/server'
 import { ratelimit, validateRequest } from 'utils/redis'
 import { getFetchParameters } from 'utils/request'
-import { CallPayload, ImageResponse, RedisEntry } from 'utils/types'
-import { PLACEHOLDER_IMAGE, PROMPTS, RATELIMIT_CODE } from 'utils/constants'
+import { CallPayload, ImageResponse, Prompt, RedisEntry } from 'utils/types'
+import { IMAGES, MOCK_WAIT_MS, PROMPTS, RATELIMIT_CODE } from 'utils/constants'
 
 export const POST = async (request: NextRequest) => {
   // check the ratelimit
@@ -45,16 +45,16 @@ export const POST = async (request: NextRequest) => {
  * @param prompt prompt to use
  * @returns image url
  */
-const makeRequest = async (prompt: string) => {
+const makeRequest = async (prompt: Prompt) => {
   // get parameters for fetch
   const parameters = getFetchParameters(prompt)
 
   if (!parameters) {
     // Exists for development purposes.
     // if the parameters are not present, return a mock image
-    // after waiting for 3 seconds.
-    await new Promise((r) => setTimeout(r, 3000))
-    return PLACEHOLDER_IMAGE
+    // after waiting for MOCK_WAIT_MS.
+    await new Promise((r) => setTimeout(r, MOCK_WAIT_MS))
+    return IMAGES[prompt]
   }
 
   // make the fetch request

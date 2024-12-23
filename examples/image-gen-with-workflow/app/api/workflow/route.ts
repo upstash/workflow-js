@@ -14,7 +14,7 @@ import { waitUntil } from '@vercel/functions'
 import { ratelimit, redis, validateRequest } from 'utils/redis'
 import { getFetchParameters } from 'utils/request'
 import { CallPayload, ImageResponse, RedisEntry } from 'utils/types'
-import { PLACEHOLDER_IMAGE, PROMPTS, RATELIMIT_CODE } from 'utils/constants'
+import { IMAGES, MOCK_WAIT_MS, PROMPTS, RATELIMIT_CODE } from 'utils/constants'
 
 // get key to store the time for each workflow run
 const getTimeKey = (key: string) => `time-${key}`
@@ -82,14 +82,14 @@ const { POST: serveMethod } = serve<CallPayload>(async (context) => {
   } else {
     // Exists for development purposes.
     // if the parameters are not present, return a mock image
-    // after waiting for 2 seconds.
-    await context.sleep('mock call', 2)
+    // after waiting for MOCK_WAIT_MS - 1 seconds.
+    await context.sleep('mock call', ( MOCK_WAIT_MS / 1000 ) - 1 )
     result = {
       created: '',
       data: [
         {
           prompt,
-          url: PLACEHOLDER_IMAGE,
+          url: IMAGES[prompt],
         },
       ],
     }
