@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import type { PublicServeOptions, RouteFunction } from "../src";
 import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
+import { SDK_TELEMETRY } from "../src/constants";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -32,12 +33,20 @@ export const serve = <
     const environment = context.env;
     const request = context.req.raw;
 
-    const { handler: serveHandler } = serveBase(routeFunction, {
-      // when hono is used without cf workers, it sends a DebugHTTPServer
-      // object in `context.env`. don't pass env if this is the case:
-      env: "QSTASH_TOKEN" in environment ? environment : undefined,
-      ...options,
-    });
+    const { handler: serveHandler } = serveBase(
+      routeFunction,
+      {
+        sdk: SDK_TELEMETRY,
+        platform: "hono",
+        runtime: `node@${process.version}`,
+      },
+      {
+        // when hono is used without cf workers, it sends a DebugHTTPServer
+        // object in `context.env`. don't pass env if this is the case:
+        env: "QSTASH_TOKEN" in environment ? environment : undefined,
+        ...options,
+      }
+    );
     return await serveHandler(request);
   };
   return handler;

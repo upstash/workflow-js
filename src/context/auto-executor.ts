@@ -1,6 +1,6 @@
 import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step, WaitRequest } from "../types";
+import type { StepFunction, ParallelCallState, Step, WaitRequest, Telemetry } from "../types";
 import { LazyCallStep, type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
@@ -15,15 +15,24 @@ export class AutoExecutor {
   private readonly nonPlanStepCount: number;
   private readonly steps: Step[];
   private indexInCurrentList = 0;
+  private telemetry?: Telemetry;
+
   public stepCount = 0;
   public planStepCount = 0;
 
   protected executingStep: string | false = false;
 
-  constructor(context: WorkflowContext, steps: Step[], debug?: WorkflowLogger) {
+  constructor(
+    context: WorkflowContext,
+    steps: Step[],
+    telemetry?: Telemetry,
+    debug?: WorkflowLogger
+  ) {
     this.context = context;
-    this.debug = debug;
     this.steps = steps;
+    this.telemetry = telemetry;
+    this.debug = debug;
+
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
 
@@ -323,18 +332,21 @@ export class AutoExecutor {
       steps,
     });
 
+    // must check length to be 1, otherwise was the if would return
+    // true for plan steps.
     if (steps[0].waitEventId && steps.length === 1) {
       const waitStep = steps[0];
 
-      const { headers, timeoutHeaders } = getHeaders(
-        "false",
-        this.context.workflowRunId,
-        this.context.url,
-        this.context.headers,
-        waitStep,
-        this.context.failureUrl,
-        this.context.retries
-      );
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "false",
+        workflowRunId: this.context.workflowRunId,
+        workflowUrl: this.context.url,
+        userHeaders: this.context.headers,
+        step: waitStep,
+        failureUrl: this.context.failureUrl,
+        retries: this.context.retries,
+        telemetry: this.telemetry,
+      });
 
       // call wait
       const waitBody: WaitRequest = {
@@ -366,17 +378,18 @@ export class AutoExecutor {
     const result = await this.context.qstashClient.batchJSON(
       steps.map((singleStep, index) => {
         const lazyStep = lazySteps[index];
-        const { headers } = getHeaders(
-          "false",
-          this.context.workflowRunId,
-          this.context.url,
-          this.context.headers,
-          singleStep,
-          this.context.failureUrl,
-          this.context.retries,
-          lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined,
-          lazyStep instanceof LazyCallStep ? lazyStep.timeout : undefined
-        );
+        const { headers } = getHeaders({
+          initHeaderValue: "false",
+          workflowRunId: this.context.workflowRunId,
+          workflowUrl: this.context.url,
+          userHeaders: this.context.headers,
+          step: singleStep,
+          failureUrl: this.context.failureUrl,
+          retries: this.context.retries,
+          callRetries: lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined,
+          callTimeout: lazyStep instanceof LazyCallStep ? lazyStep.timeout : undefined,
+          telemetry: this.telemetry,
+        });
 
         // if the step is a single step execution or a plan step, we can add sleep headers
         const willWait = singleStep.concurrent === NO_CONCURRENCY || singleStep.stepId === 0;

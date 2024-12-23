@@ -4,7 +4,6 @@ import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
-import { DEFAULT_RETRIES } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -214,8 +213,13 @@ export class Client {
       steps: [],
       url,
       workflowRunId: finalWorkflowRunId,
+      retries,
+      telemetry: undefined, // can't know workflow telemetry here
     });
-    const result = await triggerFirstInvocation(context, retries ?? DEFAULT_RETRIES);
+    const result = await triggerFirstInvocation({
+      workflowContext: context,
+      telemetry: undefined, // can't know workflow telemetry here
+    });
     if (result.isOk()) {
       return { workflowRunId: finalWorkflowRunId };
     } else {

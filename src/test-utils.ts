@@ -53,7 +53,7 @@ export const mockQStashServer = async ({
 
       if (!receivesRequest) {
         return new Response("assertion in mock QStash failed. fetch shouldn't have been called.", {
-          status: 400,
+          status: 500,
         });
       }
       const { method, url, token, body } = receivesRequest;
@@ -85,7 +85,7 @@ export const mockQStashServer = async ({
         if (error instanceof Error) {
           console.error(error);
           return new Response(`assertion in mock QStash failed.`, {
-            status: 400,
+            status: 500,
           });
         }
       }
@@ -120,18 +120,20 @@ export const driveWorkflow = async ({
   initialPayload,
   iterations,
 }: {
-  execute: (intialPayload: unknown, steps: Step[]) => Promise<void>;
+  execute: (intialPayload: unknown, steps: Step[], first: boolean) => Promise<void>;
   initialPayload: unknown;
   iterations: IterationTape;
 }) => {
   const steps: Step[] = [];
+  let counter = 0;
   for (const { stepsToAdd, responseFields, receivesRequest } of iterations) {
     steps.push(...stepsToAdd);
     await mockQStashServer({
-      execute: async () => execute(initialPayload, steps),
+      execute: async () => execute(initialPayload, steps, counter === 0),
       responseFields,
       receivesRequest,
     });
+    counter++;
   }
 };
 

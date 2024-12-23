@@ -1,7 +1,8 @@
 import type { APIContext, APIRoute } from "astro";
 
-import type { PublicServeOptions, WorkflowContext } from "../src";
+import { PublicServeOptions, WorkflowContext } from "../src";
 import { serveBase } from "../src/serve";
+import { SDK_TELEMETRY } from "../src/constants";
 
 export function serve<TInitialPayload = unknown>(
   routeFunction: (
@@ -13,6 +14,11 @@ export function serve<TInitialPayload = unknown>(
   const POST: APIRoute = (apiContext) => {
     const { handler } = serveBase<TInitialPayload>(
       (workflowContext) => routeFunction(workflowContext, apiContext),
+      {
+        sdk: SDK_TELEMETRY,
+        platform: "astro",
+        runtime: `node@${process.version}`,
+      },
       options
     );
 

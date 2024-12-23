@@ -2,6 +2,7 @@ import type {
   CallResponse,
   CallSettings,
   NotifyStepResponse,
+  Telemetry,
   WaitEventOptions,
   WaitStepResponse,
   WorkflowClient,
@@ -162,6 +163,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     initialPayload,
     env,
     retries,
+    telemetry,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -173,6 +175,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
     retries?: number;
+    telemetry?: Telemetry;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -184,7 +187,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
 
-    this.executor = new AutoExecutor(this, this.steps, debug);
+    this.executor = new AutoExecutor(this, this.steps, telemetry, debug);
   }
 
   /**

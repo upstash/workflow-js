@@ -229,6 +229,21 @@ export type WorkflowServeOptions<
   useJSONContent?: boolean;
 };
 
+export type Telemetry = {
+  /**
+   * sdk version
+   */
+  sdk: string;
+  /**
+   * platform (such as nextjs/cloudflare)
+   */
+  platform: string;
+  /**
+   * node version
+   */
+  runtime?: string;
+};
+
 export type PublicServeOptions<
   TInitialPayload = unknown,
   TResponse extends Response = Response,
@@ -337,3 +352,70 @@ export type CallSettings<TBody = unknown> = {
   retries?: number;
   timeout?: Duration | number;
 };
+
+export type HeaderParams = {
+  /**
+   * whether the request is a first invocation request.
+   */
+  initHeaderValue: "true" | "false";
+  /**
+   * run id of the workflow
+   */
+  workflowRunId: string;
+  /**
+   * url where the workflow is hosted
+   */
+  workflowUrl: string;
+  /**
+   * user headers which will be forwarded in the request
+   */
+  userHeaders?: Headers;
+  /**
+   * failure url to call incase of failure
+   */
+  failureUrl?: WorkflowServeOptions["failureUrl"];
+  /**
+   * retry setting of requests except context.call
+   */
+  retries?: number;
+  /**
+   * telemetry to include in timeoutHeaders.
+   *
+   * Only needed/used when the step is a waitForEvent step
+   */
+  telemetry?: Telemetry;
+} & (
+  | {
+      /**
+       * step to generate headers for
+       */
+      step: Step;
+      /**
+       * number of retries in context.call
+       */
+      callRetries?: number;
+      /**
+       * timeout duration in context.call
+       */
+      callTimeout?: number | Duration;
+    }
+  | {
+      /**
+       * step not passed. Either first invocation or simply getting headers for
+       * third party callack.
+       */
+      step?: never;
+      /**
+       * number of retries in context.call
+       *
+       * set to never because this is not a context.call step
+       */
+      callRetries?: never;
+      /**
+       * timeout duration in context.call
+       *
+       * set to never because this is not a context.call step
+       */
+      callTimeout?: never;
+    }
+);

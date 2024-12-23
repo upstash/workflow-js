@@ -4,6 +4,7 @@ import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
 import type { RouteFunction, PublicServeOptions } from "../src";
 import { serveBase } from "../src/serve";
+import { SDK_TELEMETRY } from "../src/constants";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -20,6 +21,11 @@ export const serve = <TInitialPayload = unknown>(
 ): { POST: (request: Request) => Promise<Response> } => {
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
     routeFunction,
+    {
+      sdk: SDK_TELEMETRY,
+      platform: "nextjs",
+      runtime: `node@${process.version}`,
+    },
     options
   );
 
@@ -34,7 +40,15 @@ export const servePagesRouter = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
   options?: PublicServeOptions<TInitialPayload>
 ): { handler: NextApiHandler } => {
-  const { handler: serveHandler } = serveBase(routeFunction, options);
+  const { handler: serveHandler } = serveBase(
+    routeFunction,
+    {
+      sdk: SDK_TELEMETRY,
+      platform: "nextjs-pages",
+      runtime: `node@${process.version}`,
+    },
+    options
+  );
 
   const handler = async (request_: NextApiRequest, res: NextApiResponse) => {
     if (request_.method?.toUpperCase() !== "POST") {

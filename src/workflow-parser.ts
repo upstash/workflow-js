@@ -354,6 +354,7 @@ export const handleFailure = async <TInitialPayload>(
       debug,
       env,
       retries,
+      telemetry: undefined, // not going to make requests in authentication check
     });
 
     // attempt running routeFunction until the first step

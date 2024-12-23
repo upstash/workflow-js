@@ -1,3 +1,5 @@
+import { Telemetry } from "./types";
+
 export const WORKFLOW_ID_HEADER = "Upstash-Workflow-RunId";
 export const WORKFLOW_INIT_HEADER = "Upstash-Workflow-Init";
 export const WORKFLOW_URL_HEADER = "Upstash-Workflow-Url";
@@ -12,3 +14,15 @@ export const DEFAULT_CONTENT_TYPE = "application/json";
 export const NO_CONCURRENCY = 1;
 export const NOT_SET = "not-set";
 export const DEFAULT_RETRIES = 3;
+
+export const VERSION = "v0.2.3";
+export const SDK_TELEMETRY = `@upstash/workflow@${VERSION}`;
+
+export const TELEMETRY_HEADER_SDK = "Upstash-Telemetry-Sdk" as const;
+export const TELEMETRY_HEADER_PLATFORM = "Upstash-Telemetry-Platform" as const;
+export const TELEMETRY_HEADER_RUNTIME = "Upstash-Telemetry-Runtime" as const;
+
+export const MOCK_TELEMETRY: Telemetry = {
+  platform: "mock",
+  sdk: "mock",
+};

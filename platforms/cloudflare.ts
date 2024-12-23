@@ -1,4 +1,5 @@
 import type { PublicServeOptions, RouteFunction } from "../src";
+import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 
 export type WorkflowBindings = {
@@ -62,10 +63,17 @@ export const serve = <TInitialPayload = unknown>(
 ): { fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response> } => {
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);
-    const { handler: serveHandler } = serveBase(routeFunction, {
-      env,
-      ...options,
-    });
+    const { handler: serveHandler } = serveBase(
+      routeFunction,
+      {
+        sdk: SDK_TELEMETRY,
+        platform: "cloudflare",
+      },
+      {
+        env,
+        ...options,
+      }
+    );
     return await serveHandler(request);
   };
   return { fetch };
