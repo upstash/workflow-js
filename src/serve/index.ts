@@ -107,7 +107,10 @@ export const serveBase = <
       qstashClient,
       initialPayloadParser,
       routeFunction,
-      failureFunction
+      failureFunction,
+      env,
+      retries,
+      debug
     );
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
