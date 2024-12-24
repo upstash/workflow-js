@@ -10,7 +10,7 @@ export const { POST } = serve<{ prompt: string }>(async (context) => {
 
   // make the call to Idogram through QStash
   const { body: result } = await context.call(
-    'call Ideogram',
+    'call image generation API',
     {
       url: 'https://api.ideogram.ai/generate',
       method: 'POST',

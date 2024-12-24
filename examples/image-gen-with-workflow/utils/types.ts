@@ -1,3 +1,5 @@
+import { PROMPTS } from "./constants"
+
 export type CallInfo = {
   duration: number
   result: string
@@ -37,3 +39,5 @@ export type ImageResponse = IdeogramResponse | OpenAIResponse
 export type CallPayload = {
   promptIndex: number  
 }
+
+export type Prompt = typeof PROMPTS[number]
