@@ -171,7 +171,7 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
  * @param headers incoming headers
  * @returns headers with `Upstash-Workflow-` headers removed
  */
-export const recreateUserHeaders = (headers: Headers): Headers => {
+export const recreateUserHeaders = (headers: Request["headers"]): Request["headers"] => {
   const filteredHeaders = new Headers();
 
   const pairs = headers.entries() as unknown as [string, string][];
@@ -217,7 +217,7 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
  * @returns
  */
 export const handleThirdPartyCallResult = async ({
-  request,
+  headers,
   requestPayload,
   client,
   workflowUrl,
@@ -226,26 +226,26 @@ export const handleThirdPartyCallResult = async ({
   telemetry,
   debug,
 }: {
-  request: Request;
+  headers: Request["headers"];
   requestPayload: string;
   client: WorkflowClient;
   workflowUrl: string;
   failureUrl: WorkflowServeOptions["failureUrl"];
   retries: number;
-  telemetry: Telemetry;
+  telemetry?: Telemetry;
   debug?: WorkflowLogger;
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
   | Err<never, Error>
 > => {
   try {
-    if (request.headers.get("Upstash-Workflow-Callback")) {
+    if (headers.get("Upstash-Workflow-Callback")) {
       let callbackPayload: string;
       if (requestPayload) {
         callbackPayload = requestPayload;
       } else {
-        const workflowRunId = request.headers.get("upstash-workflow-runid");
-        const messageId = request.headers.get("upstash-message-id");
+        const workflowRunId = headers.get("upstash-workflow-runid");
+        const messageId = headers.get("upstash-message-id");
 
         if (!workflowRunId)
           throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
@@ -300,12 +300,12 @@ export const handleThirdPartyCallResult = async ({
         return ok("call-will-retry");
       }
 
-      const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
-      const stepIdString = request.headers.get("Upstash-Workflow-StepId");
-      const stepName = request.headers.get("Upstash-Workflow-StepName");
-      const stepType = request.headers.get("Upstash-Workflow-StepType") as StepType;
-      const concurrentString = request.headers.get("Upstash-Workflow-Concurrent");
-      const contentType = request.headers.get("Upstash-Workflow-ContentType");
+      const workflowRunId = headers.get(WORKFLOW_ID_HEADER);
+      const stepIdString = headers.get("Upstash-Workflow-StepId");
+      const stepName = headers.get("Upstash-Workflow-StepName");
+      const stepType = headers.get("Upstash-Workflow-StepType") as StepType;
+      const concurrentString = headers.get("Upstash-Workflow-Concurrent");
+      const contentType = headers.get("Upstash-Workflow-ContentType");
 
       if (
         !(
@@ -329,7 +329,7 @@ export const handleThirdPartyCallResult = async ({
         );
       }
 
-      const userHeaders = recreateUserHeaders(request.headers as Headers);
+      const userHeaders = recreateUserHeaders(headers);
       const { headers: requestHeaders } = getHeaders({
         initHeaderValue: "false",
         workflowRunId,
@@ -375,7 +375,7 @@ export const handleThirdPartyCallResult = async ({
       return ok("continue-workflow");
     }
   } catch (error) {
-    const isCallReturn = request.headers.get("Upstash-Workflow-Callback");
+    const isCallReturn = headers.get("Upstash-Workflow-Callback");
     return err(
       new WorkflowError(`Error when handling call return (isCallReturn=${isCallReturn}): ${error}`)
     );

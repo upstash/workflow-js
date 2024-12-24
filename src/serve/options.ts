@@ -100,7 +100,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
  * @param debug logger
  * @returns
  */
-export const determineUrls = async <TInitialPayload = unknown>(
+export const resolveUrls = async <TInitialPayload = unknown>(
   request: Request,
   url: string | undefined,
   baseUrl: string | undefined,

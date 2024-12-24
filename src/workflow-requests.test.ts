@@ -253,27 +253,20 @@ describe("Workflow Requests", () => {
       const token = nanoid();
       const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
-      // create the request which will be received by the serve method:
-      const request = new Request(WORKFLOW_ENDPOINT, {
-        method: "POST",
-        body: JSON.stringify(requestPayload),
-        headers: new Headers({
-          "Upstash-Workflow-Callback": "true",
-          "Upstash-Workflow-StepId": "3",
-          "Upstash-Workflow-StepName": stepName,
-          "Upstash-Workflow-StepType": stepType,
-          "Upstash-Workflow-Concurrent": "1",
-          "Upstash-Workflow-ContentType": "application/json",
-          [WORKFLOW_ID_HEADER]: workflowRunId,
-        }),
-      });
-
       // create mock server and run the code
       await mockQStashServer({
         execute: async () => {
           const result = await handleThirdPartyCallResult({
-            request,
-            requestPayload: await request.text(),
+            headers: new Headers({
+              "Upstash-Workflow-Callback": "true",
+              "Upstash-Workflow-StepId": "3",
+              "Upstash-Workflow-StepName": stepName,
+              "Upstash-Workflow-StepType": stepType,
+              "Upstash-Workflow-Concurrent": "1",
+              "Upstash-Workflow-ContentType": "application/json",
+              [WORKFLOW_ID_HEADER]: workflowRunId,
+            }),
+            requestPayload: JSON.stringify(requestPayload),
             client,
             workflowUrl: WORKFLOW_ENDPOINT,
             failureUrl: WORKFLOW_ENDPOINT,
@@ -332,10 +325,8 @@ describe("Workflow Requests", () => {
       const token = "myToken";
       const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
-      // create the request which will be received by the serve method:
-      const request = new Request(WORKFLOW_ENDPOINT, {
-        method: "POST",
-        body: JSON.stringify(requestPayload),
+      const spy = spyOn(client, "publishJSON");
+      const result = await handleThirdPartyCallResult({
         headers: new Headers({
           "Upstash-Workflow-Callback": "true",
           "Upstash-Workflow-StepId": "3",
@@ -345,12 +336,7 @@ describe("Workflow Requests", () => {
           "Upstash-Workflow-ContentType": "application/json",
           [WORKFLOW_ID_HEADER]: workflowRunId,
         }),
-      });
-
-      const spy = spyOn(client, "publishJSON");
-      const result = await handleThirdPartyCallResult({
-        request,
-        requestPayload: await request.text(),
+        requestPayload: JSON.stringify(requestPayload),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
         failureUrl: WORKFLOW_ENDPOINT,
@@ -383,28 +369,10 @@ describe("Workflow Requests", () => {
       const token = "myToken";
       const client = new Client({ baseUrl: MOCK_SERVER_URL, token });
 
-      // create the request which will be received by the serve method:
-      const initialRequest = new Request(WORKFLOW_ENDPOINT, {
-        method: "POST",
-        body: initialPayload,
-        headers: new Headers({}),
-      });
-
-      const workflowRequest = new Request(WORKFLOW_ENDPOINT, {
-        method: "POST",
-        body: JSON.stringify([initialPayload, requestPayload]),
-        headers: new Headers({
-          [WORKFLOW_INIT_HEADER]: "false",
-          [WORKFLOW_ID_HEADER]: workflowRunId,
-          [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-          [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
-        }),
-      });
-
       const spy = spyOn(client, "publishJSON");
       const initialResult = await handleThirdPartyCallResult({
-        request: initialRequest,
-        requestPayload: await initialRequest.text(),
+        headers: new Headers({}),
+        requestPayload: initialPayload,
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
         failureUrl: WORKFLOW_ENDPOINT,
@@ -421,8 +389,13 @@ describe("Workflow Requests", () => {
 
       // second call
       const result = await handleThirdPartyCallResult({
-        request: workflowRequest,
-        requestPayload: await workflowRequest.text(),
+        headers: new Headers({
+          [WORKFLOW_INIT_HEADER]: "false",
+          [WORKFLOW_ID_HEADER]: workflowRunId,
+          [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+          [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        }),
+        requestPayload: JSON.stringify([initialPayload, requestPayload]),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
         failureUrl: WORKFLOW_ENDPOINT,

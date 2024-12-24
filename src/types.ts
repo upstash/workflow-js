@@ -369,7 +369,7 @@ export type HeaderParams = {
   /**
    * user headers which will be forwarded in the request
    */
-  userHeaders?: Headers;
+  userHeaders?: Request["headers"];
   /**
    * failure url to call incase of failure
    */
@@ -419,3 +419,5 @@ export type HeaderParams = {
       callTimeout?: never;
     }
 );
+
+export type Claim = "first-invocation" | "failure-callback" | "callback" | "regular";

@@ -207,7 +207,6 @@ export class Client {
     const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
     const context = new WorkflowContext({
       qstashClient: this.client,
-      // @ts-expect-error headers type mismatch
       headers: new Headers(headers ?? {}),
       initialPayload: body,
       steps: [],

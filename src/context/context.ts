@@ -125,7 +125,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   /**
    * headers of the initial request
    */
-  public readonly headers: Headers;
+  public readonly headers: Request["headers"];
   /**
    * Map of environment variables and their values.
    *
@@ -167,7 +167,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
-    headers: Headers;
+    headers: Request["headers"];
     steps: Step[];
     url: string;
     failureUrl?: string;

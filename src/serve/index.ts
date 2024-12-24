@@ -1,20 +1,12 @@
-import { makeCancelRequest } from "../client/utils";
 import { SDK_TELEMETRY } from "../constants";
-import { WorkflowContext } from "../context";
+import { ContextFactory } from "../context/factory";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
 import { RouteFunction, Telemetry, WorkflowServeOptions } from "../types";
-import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
-import {
-  handleThirdPartyCallResult,
-  recreateUserHeaders,
-  triggerFirstInvocation,
-  triggerRouteFunction,
-  triggerWorkflowDelete,
-  verifyRequest,
-} from "../workflow-requests";
-import { DisabledWorkflowContext } from "./authorization";
-import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
+import { getPayload } from "../workflow-parser";
+import { verifyRequest } from "../workflow-requests";
+import { getClaim } from "./claim";
+import { resolveUrls, processOptions } from "./options";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -66,7 +58,11 @@ export const serveBase = <
   const handler = async (request: TRequest) => {
     await debug?.log("INFO", "ENDPOINT_START");
 
-    const { workflowUrl, workflowFailureUrl } = await determineUrls(
+    // get payload as raw string
+    const requestPayload = (await getPayload(request)) ?? "";
+    await verifyRequest(requestPayload, request.headers.get("upstash-signature"), receiver);
+
+    const { workflowUrl, workflowFailureUrl } = await resolveUrls(
       request,
       url,
       baseUrl,
@@ -75,135 +71,24 @@ export const serveBase = <
       debug
     );
 
-    // get payload as raw string
-    const requestPayload = (await getPayload(request)) ?? "";
-    await verifyRequest(requestPayload, request.headers.get("upstash-signature"), receiver);
-
-    // validation & parsing
-    const { isFirstInvocation, workflowRunId } = validateRequest(request);
-    debug?.setWorkflowRunId(workflowRunId);
-
-    // parse steps
-    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
-      requestPayload,
-      isFirstInvocation,
-      workflowRunId,
-      qstashClient.http,
-      request.headers.get("upstash-message-id")!,
-      debug
-    );
-
-    if (workflowRunEnded) {
-      return onStepFinish(workflowRunId, "workflow-already-ended");
-    }
-
-    // terminate current call if it's a duplicate branch
-    if (isLastDuplicate) {
-      return onStepFinish(workflowRunId, "duplicate-step");
-    }
-
-    // check if the request is a failure callback
-    const failureCheck = await handleFailure<TInitialPayload>(
-      request,
-      requestPayload,
-      qstashClient,
+    // check claim
+    const claim = getClaim({ headers: request.headers });
+    return await ContextFactory.fromClaim<TInitialPayload, TResponse>(claim, {
+      rawRequestPayload: requestPayload,
+      rawHeaders: request.headers,
+      env,
+      debug,
       initialPayloadParser,
-      routeFunction,
       failureFunction,
-      env,
+      onStepFinish,
       retries,
-      debug
-    );
-    if (failureCheck.isErr()) {
-      // unexpected error during handleFailure
-      throw failureCheck.error;
-    } else if (failureCheck.value === "is-failure-callback") {
-      // is a failure ballback.
-      await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
-      return onStepFinish(workflowRunId, "failure-callback");
-    }
-
-    // create context
-    const workflowContext = new WorkflowContext<TInitialPayload>({
-      qstashClient,
-      workflowRunId,
-      initialPayload: initialPayloadParser(rawInitialPayload),
-      headers: recreateUserHeaders(request.headers as Headers),
-      steps,
-      url: workflowUrl,
-      failureUrl: workflowFailureUrl,
-      debug,
-      env,
-      retries,
-      telemetry,
-    });
-
-    // attempt running routeFunction until the first step
-    const authCheck = await DisabledWorkflowContext.tryAuthentication(
       routeFunction,
-      workflowContext
-    );
-    if (authCheck.isErr()) {
-      // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
-      throw authCheck.error;
-    } else if (authCheck.value === "run-ended") {
-      // finished routeFunction while trying to run until first step.
-      // either there is no step or auth check resulted in `return`
-      await debug?.log("ERROR", "ERROR", { error: AUTH_FAIL_MESSAGE });
-      return onStepFinish(
-        isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId,
-        "auth-fail"
-      );
-    }
-
-    // check if request is a third party call result
-    const callReturnCheck = await handleThirdPartyCallResult({
-      request,
-      requestPayload: rawInitialPayload,
-      client: qstashClient,
-      workflowUrl,
-      failureUrl: workflowFailureUrl,
-      retries,
       telemetry,
-      debug,
+      qstashClient,
+      useJSONContent,
+      workflowUrl,
+      workflowFailureUrl,
     });
-    if (callReturnCheck.isErr()) {
-      // error while checking
-      await debug?.log("ERROR", "SUBMIT_THIRD_PARTY_RESULT", {
-        error: callReturnCheck.error.message,
-      });
-      throw callReturnCheck.error;
-    } else if (callReturnCheck.value === "continue-workflow") {
-      // request is not third party call. Continue workflow as usual
-      const result = isFirstInvocation
-        ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
-        : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
-            onCleanup: async () => {
-              await triggerWorkflowDelete(workflowContext, debug);
-            },
-            onCancel: async () => {
-              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-            },
-            debug,
-          });
-
-      if (result.isErr()) {
-        // error while running the workflow or when cleaning up
-        await debug?.log("ERROR", "ERROR", { error: result.error.message });
-        throw result.error;
-      }
-
-      // Returns a Response with `workflowRunId` at the end of each step.
-      await debug?.log("INFO", "RESPONSE_WORKFLOW");
-      return onStepFinish(workflowContext.workflowRunId, "success");
-    } else if (callReturnCheck.value === "workflow-ended") {
-      return onStepFinish(workflowContext.workflowRunId, "workflow-already-ended");
-    }
-    // response to QStash in call cases
-    await debug?.log("INFO", "RESPONSE_DEFAULT");
-    return onStepFinish("no-workflow-id", "fromCallback");
   };
 
   const safeHandler = async (request: TRequest) => {
