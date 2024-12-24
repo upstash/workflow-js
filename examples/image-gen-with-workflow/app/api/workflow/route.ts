@@ -14,7 +14,7 @@ import { waitUntil } from '@vercel/functions'
 import { ratelimit, redis, validateRequest } from 'utils/redis'
 import { getFetchParameters } from 'utils/request'
 import { CallPayload, ImageResponse, RedisEntry } from 'utils/types'
-import { IMAGES, MOCK_WAIT_MS, PROMPTS, RATELIMIT_CODE } from 'utils/constants'
+import { PROMPTS, RATELIMIT_CODE } from 'utils/constants'
 
 // get key to store the time for each workflow run
 const getTimeKey = (key: string) => `time-${key}`
@@ -26,6 +26,7 @@ export const POST = async (request: NextRequest) => {
 
   // record the start time and run the workflow serve method
   const t1 = performance.now()
+  
   const result = await serveMethod(request)
 
   // get the workflow run identifier header
@@ -68,32 +69,14 @@ const { POST: serveMethod } = serve<CallPayload>(async (context) => {
   const prompt = PROMPTS[payload.promptIndex]
 
   // get parameters for context.call
-  const parameters = getFetchParameters(prompt)
-  let result: ImageResponse
+  const parameters = getFetchParameters(prompt, context.url)
 
-  if (parameters) {
-    // if the parameters are present, make context.call request
-    // to call Ideogram through QStash
-    const { body } = await context.call(
-      'call Ideogram',
-      parameters
-    );
-    result = body as ImageResponse
-  } else {
-    // Exists for development purposes.
-    // if the parameters are not present, return a mock image
-    // after waiting for MOCK_WAIT_MS - 1 seconds.
-    await context.sleep('mock call', ( MOCK_WAIT_MS / 1000 ) - 1 )
-    result = {
-      created: '',
-      data: [
-        {
-          prompt,
-          url: IMAGES[prompt],
-        },
-      ],
-    }
-  }
+  // if the parameters are present, make context.call request
+  // to call Ideogram through QStash
+  const { body } = await context.call<ImageResponse>(
+    'call image generation API',
+    parameters
+  );
 
   await context.run('save results in redis', async () => {
     // get callKey from headers
@@ -108,7 +91,7 @@ const { POST: serveMethod } = serve<CallPayload>(async (context) => {
       callKey,
       {
         time: (await redis.get(getTimeKey(callKey))) ?? 0,
-        url: result.data[0].url,
+        url: body.data[0].url,
       },
       { ex: 120 },
     ) // expire in 120 seconds

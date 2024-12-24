@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ratelimit, validateRequest } from 'utils/redis'
 import { getFetchParameters } from 'utils/request'
 import { CallPayload, ImageResponse, Prompt, RedisEntry } from 'utils/types'
-import { IMAGES, MOCK_WAIT_MS, PROMPTS, RATELIMIT_CODE } from 'utils/constants'
+import { PROMPTS, RATELIMIT_CODE } from 'utils/constants'
 
 export const POST = async (request: NextRequest) => {
   // check the ratelimit
@@ -26,7 +26,7 @@ export const POST = async (request: NextRequest) => {
   const prompt = PROMPTS[promptIndex]
 
   // call Ideogram and record the time
-  const url = await makeRequest(prompt)
+  const url = await makeRequest(prompt, request.url)
   const time = performance.now() - t1
 
   // return the results in the same format as how Worklow saves
@@ -43,19 +43,12 @@ export const POST = async (request: NextRequest) => {
  * Calls Ideogram to get an image and returns its URL
  *
  * @param prompt prompt to use
+ * @param requestUrl url of the request. passed to getFetchParameters 
  * @returns image url
  */
-const makeRequest = async (prompt: Prompt) => {
+const makeRequest = async (prompt: Prompt, requestUrl: string) => {
   // get parameters for fetch
-  const parameters = getFetchParameters(prompt)
-
-  if (!parameters) {
-    // Exists for development purposes.
-    // if the parameters are not present, return a mock image
-    // after waiting for MOCK_WAIT_MS.
-    await new Promise((r) => setTimeout(r, MOCK_WAIT_MS))
-    return IMAGES[prompt]
-  }
+  const parameters = getFetchParameters(prompt, requestUrl)
 
   // make the fetch request
   const response = await fetch(parameters.url, {
@@ -66,5 +59,6 @@ const makeRequest = async (prompt: Prompt) => {
 
   // return the response
   const data = (await response.json()) as ImageResponse
+  
   return data.data[0].url
 }

@@ -18,4 +18,4 @@ export const IMAGES: Record<Prompt, string> = {
   "A supersonic jet rising to the stars in 1980s propaganda posters style. For coloring, use a contrast between a calm white/blue and a striking red": "supersonic-jet.png",
   "A tranquil mountain village under a starry night sky, painted in the style of traditional Japanese woodblock prints with a modern touch. Use soft blues and greens for the landscape, with glowing golden stars in the sky.": "mountain-village.png"
 }
-export const MOCK_WAIT_MS = 5_000
+export const MOCK_WAIT_MS = 7_000
