@@ -37,7 +37,7 @@ export const serve = <
       routeFunction,
       {
         sdk: SDK_TELEMETRY,
-        platform: "hono",
+        framework: "hono",
       },
       {
         // when hono is used without cf workers, it sends a DebugHTTPServer

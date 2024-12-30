@@ -23,7 +23,7 @@ export const serve = <TInitialPayload = unknown>(
     routeFunction,
     {
       sdk: SDK_TELEMETRY,
-      platform: "nextjs",
+      framework: "nextjs",
       runtime: `node@${process.version}`,
     },
     options
@@ -44,8 +44,10 @@ export const servePagesRouter = <TInitialPayload = unknown>(
     routeFunction,
     {
       sdk: SDK_TELEMETRY,
-      platform: "nextjs-pages",
-      runtime: `node@${process.version}`,
+      framework: "nextjs-pages",
+      runtime: process.versions.bun
+        ? `bun@${process.versions.bun}/node@${process.version}`
+        : `node@${process.version}`,
     },
     options
   );

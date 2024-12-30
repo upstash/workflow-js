@@ -279,7 +279,7 @@ describe("Workflow Requests", () => {
             failureUrl: WORKFLOW_ENDPOINT,
             retries: 2,
             telemetry: {
-              platform: "some-platform",
+              framework: "some-platform",
               sdk: "some-sdk",
             },
           });
@@ -356,7 +356,7 @@ describe("Workflow Requests", () => {
         failureUrl: WORKFLOW_ENDPOINT,
         retries: 3,
         telemetry: {
-          platform: "some-platform",
+          framework: "some-platform",
           sdk: "some-sdk",
         },
       });
@@ -410,7 +410,7 @@ describe("Workflow Requests", () => {
         failureUrl: WORKFLOW_ENDPOINT,
         retries: 5,
         telemetry: {
-          platform: "some-platform",
+          framework: "some-platform",
           sdk: "some-sdk",
         },
       });
@@ -428,7 +428,7 @@ describe("Workflow Requests", () => {
         failureUrl: WORKFLOW_ENDPOINT,
         retries: 0,
         telemetry: {
-          platform: "some-platform",
+          framework: "some-platform",
           sdk: "some-sdk",
         },
       });

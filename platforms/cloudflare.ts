@@ -67,7 +67,7 @@ export const serve = <TInitialPayload = unknown>(
       routeFunction,
       {
         sdk: SDK_TELEMETRY,
-        platform: "cloudflare",
+        framework: "cloudflare",
       },
       {
         env,

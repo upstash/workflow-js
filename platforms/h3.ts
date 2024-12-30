@@ -42,8 +42,10 @@ export const serve = <TInitialPayload = unknown>(
       routeFunction,
       {
         sdk: SDK_TELEMETRY,
-        platform: "h3",
-        runtime: `node@${process.version}`,
+        framework: "h3",
+        runtime: process.versions.bun
+          ? `bun@${process.versions.bun}/node@${process.version}`
+          : `node@${process.version}`,
       },
       options
     );

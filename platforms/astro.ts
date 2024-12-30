@@ -16,8 +16,10 @@ export function serve<TInitialPayload = unknown>(
       (workflowContext) => routeFunction(workflowContext, apiContext),
       {
         sdk: SDK_TELEMETRY,
-        platform: "astro",
-        runtime: `node@${process.version}`,
+        framework: "astro",
+        runtime: process.versions.bun
+          ? `bun@${process.versions.bun}/node@${process.version}`
+          : `node@${process.version}`,
       },
       options
     );

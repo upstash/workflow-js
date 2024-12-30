@@ -24,7 +24,7 @@ export const serve = <TInitialPayload = unknown>(
       routeFunction,
       {
         sdk: SDK_TELEMETRY,
-        platform: "svelte",
+        framework: "svelte",
       },
       {
         ...options,

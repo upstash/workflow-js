@@ -82,6 +82,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     env: environment,
     retries: DEFAULT_RETRIES,
     useJSONContent: false,
+    disableTelemetry: false,
     ...options,
   };
 };

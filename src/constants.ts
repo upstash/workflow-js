@@ -19,10 +19,10 @@ export const VERSION = "v0.2.3";
 export const SDK_TELEMETRY = `@upstash/workflow@${VERSION}`;
 
 export const TELEMETRY_HEADER_SDK = "Upstash-Telemetry-Sdk" as const;
-export const TELEMETRY_HEADER_PLATFORM = "Upstash-Telemetry-Platform" as const;
+export const TELEMETRY_HEADER_FRAMEWORK = "Upstash-Telemetry-Framework" as const;
 export const TELEMETRY_HEADER_RUNTIME = "Upstash-Telemetry-Runtime" as const;
 
 export const MOCK_TELEMETRY: Telemetry = {
-  platform: "mock",
+  framework: "mock",
   sdk: "mock",
 };

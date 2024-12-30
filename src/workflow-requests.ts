@@ -4,7 +4,7 @@ import { WorkflowAbort, WorkflowError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   DEFAULT_CONTENT_TYPE,
-  TELEMETRY_HEADER_PLATFORM,
+  TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
   TELEMETRY_HEADER_SDK,
   WORKFLOW_FAILURE_HEADER,
@@ -232,7 +232,7 @@ export const handleThirdPartyCallResult = async ({
   workflowUrl: string;
   failureUrl: WorkflowServeOptions["failureUrl"];
   retries: number;
-  telemetry: Telemetry;
+  telemetry?: Telemetry;
   debug?: WorkflowLogger;
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
@@ -390,7 +390,7 @@ export type HeadersResponse = {
 export const getTelemetryHeaders = (telemetry: Telemetry) => {
   return {
     [TELEMETRY_HEADER_SDK]: telemetry.sdk,
-    [TELEMETRY_HEADER_PLATFORM]: telemetry.platform,
+    [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework,
     [TELEMETRY_HEADER_RUNTIME]: telemetry.runtime ?? "unknown",
   };
 };

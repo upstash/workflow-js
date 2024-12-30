@@ -227,6 +227,12 @@ export type WorkflowServeOptions<
    * Not part of the public API. Only available in serveBase, which is not exported.
    */
   useJSONContent?: boolean;
+  /**
+   * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
+   *
+   * Set `disableTelemetry` to disable this behavior.
+   */
+  disableTelemetry?: boolean;
 };
 
 export type Telemetry = {
@@ -237,7 +243,7 @@ export type Telemetry = {
   /**
    * platform (such as nextjs/cloudflare)
    */
-  platform: string;
+  framework: string;
   /**
    * node version
    */

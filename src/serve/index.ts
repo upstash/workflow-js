@@ -34,7 +34,7 @@ export const serveBase = <
   TResponse extends Response = Response,
 >(
   routeFunction: RouteFunction<TInitialPayload>,
-  telemetry: Telemetry,
+  telemetry?: Telemetry,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): { handler: (request: TRequest) => Promise<TResponse> } => {
   // Prepares options with defaults if they are not provided.
@@ -51,7 +51,9 @@ export const serveBase = <
     env,
     retries,
     useJSONContent,
+    disableTelemetry,
   } = processOptions<TResponse, TInitialPayload>(options);
+  telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
 
   /**
@@ -240,7 +242,7 @@ export const serve = <
     routeFunction,
     {
       sdk: SDK_TELEMETRY,
-      platform: "unknown",
+      framework: "unknown",
     },
     options
   );

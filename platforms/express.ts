@@ -47,8 +47,10 @@ export function serve<TInitialPayload = unknown>(
       routeFunction,
       {
         sdk: SDK_TELEMETRY,
-        platform: "express",
-        runtime: `node@${process.version}`,
+        framework: "express",
+        runtime: process.versions.bun
+          ? `bun@${process.versions.bun}/node@${process.version}`
+          : `node@${process.version}`,
       },
       {
         ...options,
