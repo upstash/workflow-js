@@ -46,11 +46,12 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
+      retries: 0,
     });
 
     await mockQStashServer({
       execute: async () => {
-        const result = await triggerFirstInvocation(context, 0);
+        const result = await triggerFirstInvocation({ workflowContext: context });
         expect(result.isOk()).toBeTrue();
       },
       responseFields: {
@@ -270,14 +271,18 @@ describe("Workflow Requests", () => {
       // create mock server and run the code
       await mockQStashServer({
         execute: async () => {
-          const result = await handleThirdPartyCallResult(
+          const result = await handleThirdPartyCallResult({
             request,
-            await request.text(),
+            requestPayload: await request.text(),
             client,
-            WORKFLOW_ENDPOINT,
-            WORKFLOW_ENDPOINT,
-            2
-          );
+            workflowUrl: WORKFLOW_ENDPOINT,
+            failureUrl: WORKFLOW_ENDPOINT,
+            retries: 2,
+            telemetry: {
+              framework: "some-platform",
+              sdk: "some-sdk",
+            },
+          });
           expect(result.isOk()).toBeTrue();
           // @ts-expect-error value will be set since stepFinish isOk
           expect(result.value).toBe("is-call-return");
@@ -343,14 +348,18 @@ describe("Workflow Requests", () => {
       });
 
       const spy = spyOn(client, "publishJSON");
-      const result = await handleThirdPartyCallResult(
+      const result = await handleThirdPartyCallResult({
         request,
-        await request.text(),
+        requestPayload: await request.text(),
         client,
-        WORKFLOW_ENDPOINT,
-        WORKFLOW_ENDPOINT,
-        3
-      );
+        workflowUrl: WORKFLOW_ENDPOINT,
+        failureUrl: WORKFLOW_ENDPOINT,
+        retries: 3,
+        telemetry: {
+          framework: "some-platform",
+          sdk: "some-sdk",
+        },
+      });
       expect(result.isOk()).toBeTrue();
       // @ts-expect-error value will be set since stepFinish isOk
       expect(result.value).toBe("call-will-retry");
@@ -393,28 +402,36 @@ describe("Workflow Requests", () => {
       });
 
       const spy = spyOn(client, "publishJSON");
-      const initialResult = await handleThirdPartyCallResult(
-        initialRequest,
-        await initialRequest.text(),
+      const initialResult = await handleThirdPartyCallResult({
+        request: initialRequest,
+        requestPayload: await initialRequest.text(),
         client,
-        WORKFLOW_ENDPOINT,
-        WORKFLOW_ENDPOINT,
-        5
-      );
+        workflowUrl: WORKFLOW_ENDPOINT,
+        failureUrl: WORKFLOW_ENDPOINT,
+        retries: 5,
+        telemetry: {
+          framework: "some-platform",
+          sdk: "some-sdk",
+        },
+      });
       expect(initialResult.isOk()).toBeTrue();
       // @ts-expect-error value will be set since stepFinish isOk
       expect(initialResult.value).toBe("continue-workflow");
       expect(spy).toHaveBeenCalledTimes(0);
 
       // second call
-      const result = await handleThirdPartyCallResult(
-        workflowRequest,
-        await workflowRequest.text(),
+      const result = await handleThirdPartyCallResult({
+        request: workflowRequest,
+        requestPayload: await workflowRequest.text(),
         client,
-        WORKFLOW_ENDPOINT,
-        WORKFLOW_ENDPOINT,
-        0
-      );
+        workflowUrl: WORKFLOW_ENDPOINT,
+        failureUrl: WORKFLOW_ENDPOINT,
+        retries: 0,
+        telemetry: {
+          framework: "some-platform",
+          sdk: "some-sdk",
+        },
+      });
       expect(result.isOk()).toBeTrue();
       // @ts-expect-error value will be set since stepFinish isOk
       expect(result.value).toBe("continue-workflow");
@@ -425,7 +442,11 @@ describe("Workflow Requests", () => {
   describe("getHeaders", () => {
     const workflowRunId = nanoid();
     test("should create headers without step passed", () => {
-      const { headers, timeoutHeaders } = getHeaders("true", workflowRunId, WORKFLOW_ENDPOINT);
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "true",
+        workflowRunId,
+        workflowUrl: WORKFLOW_ENDPOINT,
+      });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -441,18 +462,17 @@ describe("Workflow Requests", () => {
       const stepName = "some step";
       const stepType: StepType = "Run";
 
-      const { headers, timeoutHeaders } = getHeaders(
-        "false",
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "false",
         workflowRunId,
-        WORKFLOW_ENDPOINT,
-        undefined,
-        {
+        workflowUrl: WORKFLOW_ENDPOINT,
+        step: {
           stepId,
           stepName,
           stepType: stepType,
           concurrent: 1,
-        }
-      );
+        },
+      });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -474,12 +494,11 @@ describe("Workflow Requests", () => {
       };
       const callBody = undefined;
 
-      const { headers, timeoutHeaders } = getHeaders(
-        "false",
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "false",
         workflowRunId,
-        WORKFLOW_ENDPOINT,
-        undefined,
-        {
+        workflowUrl: WORKFLOW_ENDPOINT,
+        step: {
           stepId,
           stepName,
           stepType: stepType,
@@ -488,8 +507,8 @@ describe("Workflow Requests", () => {
           callMethod,
           callHeaders,
           callBody,
-        }
-      );
+        },
+      });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -516,14 +535,13 @@ describe("Workflow Requests", () => {
 
     test("should include failure header", () => {
       const failureUrl = "https://my-failure-endpoint.com";
-      const { headers, timeoutHeaders } = getHeaders(
-        "true",
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "true",
         workflowRunId,
-        WORKFLOW_ENDPOINT,
-        new Headers() as Headers,
-        undefined,
-        failureUrl
-      );
+        workflowUrl: WORKFLOW_ENDPOINT,
+        userHeaders: new Headers() as Headers,
+        failureUrl,
+      });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -537,20 +555,19 @@ describe("Workflow Requests", () => {
     });
 
     test("should return timeout headers for wait step", () => {
-      const { headers, timeoutHeaders } = getHeaders(
-        "false",
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "false",
         workflowRunId,
-        WORKFLOW_ENDPOINT,
-        undefined,
-        {
+        workflowUrl: WORKFLOW_ENDPOINT,
+        step: {
           stepId: 1,
           stepName: "waiting-step-name",
           stepType: "Wait",
           concurrent: 1,
           waitEventId: "wait event id",
           timeout: "20s",
-        }
-      );
+        },
+      });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",
         "Upstash-Workflow-RunId": workflowRunId,
@@ -596,7 +613,7 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        await triggerFirstInvocation(context, 3);
+        await triggerFirstInvocation({ workflowContext: context });
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
@@ -639,7 +656,11 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, false, debug);
+        await triggerFirstInvocation({
+          workflowContext: context,
+          useJSONContent: false,
+          debug,
+        });
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -690,7 +711,11 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, false, debug);
+        await triggerFirstInvocation({
+          workflowContext: context,
+          useJSONContent: false,
+          debug,
+        });
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -740,14 +765,31 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        const resultOne = await triggerFirstInvocation(context, 3, false, debug);
+        const resultOne = await triggerFirstInvocation({
+          workflowContext: context,
+          useJSONContent: false,
+          debug,
+        });
         expect(resultOne.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultOne.value).toBe("success");
 
         expect(spy).toHaveBeenCalledTimes(1);
 
-        const resultTwo = await triggerFirstInvocation(context, 0, false, debug);
+        const noRetryContext = new WorkflowContext({
+          qstashClient,
+          workflowRunId: workflowRunId,
+          initialPayload: undefined,
+          headers: new Headers({}) as Headers,
+          steps: [],
+          url: WORKFLOW_ENDPOINT,
+          retries: 0,
+        });
+        const resultTwo = await triggerFirstInvocation({
+          workflowContext: noRetryContext,
+          useJSONContent: false,
+          debug,
+        });
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultTwo.value).toBe("workflow-run-already-exists");
@@ -771,6 +813,9 @@ describe("Workflow Requests", () => {
 
         const deleteResult = await triggerWorkflowDelete(context, debug);
         expect(deleteResult).toEqual({ deleted: true });
+
+        const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, debug);
+        expect(deleteResultSecond).toEqual({ deleted: false });
       },
       {
         timeout: 10000,

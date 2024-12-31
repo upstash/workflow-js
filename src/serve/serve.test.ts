@@ -92,6 +92,7 @@ describe("serve", () => {
         qstashClient,
         verbose: true,
         receiver: undefined,
+        disableTelemetry: true,
       }
     );
 
@@ -114,13 +115,41 @@ describe("serve", () => {
     ];
 
     await driveWorkflow({
-      execute: async (initialPayload, steps) => {
-        const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
+      execute: async (initialPayload, steps, first) => {
+        const request = first
+          ? new Request(WORKFLOW_ENDPOINT, {
+              body: JSON.stringify(initialPayload),
+              method: "POST",
+            })
+          : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
+
         const response = await endpoint(request);
         expect(response.status).toBe(200);
       },
       initialPayload,
       iterations: [
+        {
+          stepsToAdd: [],
+          responseFields: {
+            body: { messageId: "some-message-id" },
+            status: 200,
+          },
+          receivesRequest: {
+            method: "POST",
+            url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/https://requestcatcher.com/api`,
+            token,
+            body: initialPayload,
+            headers: {
+              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-retries": "3",
+              "upstash-failure-callback-retries": "3",
+              "upstash-method": "POST",
+              "upstash-workflow-init": "true",
+              "upstash-workflow-url": WORKFLOW_ENDPOINT,
+            },
+          },
+        },
         {
           stepsToAdd: [],
           responseFields: {
@@ -349,6 +378,9 @@ describe("serve", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-foo",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": "unknown",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
               },
               body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
@@ -396,6 +428,9 @@ describe("serve", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": "unknown",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -441,6 +476,9 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback": myFailureEndpoint,
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": "unknown",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -488,6 +526,9 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": "unknown",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -686,6 +727,9 @@ describe("serve", () => {
             "Upstash-Workflow-RunId": ["wfr-bar"],
             "Upstash-Workflow-Runid": ["wfr-bar"],
             "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+            "Upstash-Telemetry-Framework": ["unknown"],
+            "Upstash-Telemetry-Runtime": ["unknown"],
+            "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.3"],
           },
           timeoutUrl: WORKFLOW_ENDPOINT,
           url: WORKFLOW_ENDPOINT,
@@ -904,5 +948,72 @@ describe("serve", () => {
         message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${url}`,
       });
     });
+  });
+
+  test("should forward client headers", async () => {
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
+    let called = false;
+    const myFailureFunction: WorkflowServeOptions["failureFunction"] = async () => {
+      return;
+    };
+
+    const header = "test-header";
+    const headerValue = `test-header-value-${nanoid()}`;
+    const qstashClient = new Client({
+      baseUrl: MOCK_QSTASH_SERVER_URL,
+      token,
+      headers: {
+        [header]: headerValue,
+      },
+    });
+
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await context.sleep("sleep-step", 1);
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        failureFunction: myFailureFunction,
+      }
+    );
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
+        called = true;
+      },
+      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: {
+              "content-type": "application/json",
+              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-delay": "1s",
+              "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-method": "POST",
+              "upstash-retries": "3",
+              "upstash-failure-callback-retries": "3",
+              "upstash-workflow-init": "false",
+              "upstash-workflow-runid": "wfr-bar",
+              "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              "upstash-failure-callback": WORKFLOW_ENDPOINT,
+              "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+              "upstash-forward-test-header": headerValue,
+              "upstash-telemetry-framework": "unknown",
+              "upstash-telemetry-runtime": "unknown",
+              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
+            },
+            body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
+          },
+        ],
+      },
+    });
+    expect(called).toBeTrue();
   });
 });

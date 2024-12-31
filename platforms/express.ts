@@ -1,4 +1,5 @@
 import type { WorkflowServeOptions, RouteFunction } from "../src";
+import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import {
   Request as ExpressRequest,
@@ -43,7 +44,14 @@ export function serve<TInitialPayload = unknown>(
 
     // create handler
     const { handler: serveHandler } = serveBase<TInitialPayload>(
-      (workflowContext) => routeFunction(workflowContext),
+      routeFunction,
+      {
+        sdk: SDK_TELEMETRY,
+        framework: "express",
+        runtime: process.versions.bun
+          ? `bun@${process.versions.bun}/node@${process.version}`
+          : `node@${process.version}`,
+      },
       {
         ...options,
         useJSONContent: true,

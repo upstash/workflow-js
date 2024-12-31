@@ -304,7 +304,9 @@ export const handleFailure = async <TInitialPayload>(
     WorkflowServeOptions<Response, TInitialPayload>
   >["initialPayloadParser"],
   routeFunction: RouteFunction<TInitialPayload>,
-  failureFunction?: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
+  failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
+  env: WorkflowServeOptions["env"],
+  retries: WorkflowServeOptions["retries"],
   debug?: WorkflowLogger
 ): Promise<Ok<"is-failure-callback" | "not-failure-callback", never> | Err<never, Error>> => {
   if (request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true") {
@@ -350,6 +352,9 @@ export const handleFailure = async <TInitialPayload>(
       url: url,
       failureUrl: url,
       debug,
+      env,
+      retries,
+      telemetry: undefined, // not going to make requests in authentication check
     });
 
     // attempt running routeFunction until the first step

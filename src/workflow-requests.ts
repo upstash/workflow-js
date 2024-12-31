@@ -4,6 +4,9 @@ import { WorkflowAbort, WorkflowError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   DEFAULT_CONTENT_TYPE,
+  TELEMETRY_HEADER_FRAMEWORK,
+  TELEMETRY_HEADER_RUNTIME,
+  TELEMETRY_HEADER_SDK,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
@@ -14,9 +17,10 @@ import {
 } from "./constants";
 import type {
   CallResponse,
-  Duration,
+  HeaderParams,
   Step,
   StepType,
+  Telemetry,
   WorkflowClient,
   WorkflowReceiver,
   WorkflowServeOptions,
@@ -26,21 +30,26 @@ import type { WorkflowLogger } from "./logger";
 import { QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 
-export const triggerFirstInvocation = async <TInitialPayload>(
-  workflowContext: WorkflowContext<TInitialPayload>,
-  retries: number,
-  useJSONContent?: boolean,
-  debug?: WorkflowLogger
-): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
-  const { headers } = getHeaders(
-    "true",
-    workflowContext.workflowRunId,
-    workflowContext.url,
-    workflowContext.headers,
-    undefined,
-    workflowContext.failureUrl,
-    retries
-  );
+export const triggerFirstInvocation = async <TInitialPayload>({
+  workflowContext,
+  useJSONContent,
+  telemetry,
+  debug,
+}: {
+  workflowContext: WorkflowContext<TInitialPayload>;
+  useJSONContent?: boolean;
+  telemetry?: Telemetry;
+  debug?: WorkflowLogger;
+}): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
+  const { headers } = getHeaders({
+    initHeaderValue: "true",
+    workflowRunId: workflowContext.workflowRunId,
+    workflowUrl: workflowContext.url,
+    userHeaders: workflowContext.headers,
+    failureUrl: workflowContext.failureUrl,
+    retries: workflowContext.retries,
+    telemetry,
+  });
 
   if (useJSONContent) {
     headers["content-type"] = "application/json";
@@ -207,15 +216,25 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
  * @param client QStash client
  * @returns
  */
-export const handleThirdPartyCallResult = async (
-  request: Request,
-  requestPayload: string,
-  client: WorkflowClient,
-  workflowUrl: string,
-  failureUrl: WorkflowServeOptions["failureUrl"],
-  retries: number,
-  debug?: WorkflowLogger
-): Promise<
+export const handleThirdPartyCallResult = async ({
+  request,
+  requestPayload,
+  client,
+  workflowUrl,
+  failureUrl,
+  retries,
+  telemetry,
+  debug,
+}: {
+  request: Request;
+  requestPayload: string;
+  client: WorkflowClient;
+  workflowUrl: string;
+  failureUrl: WorkflowServeOptions["failureUrl"];
+  retries: number;
+  telemetry?: Telemetry;
+  debug?: WorkflowLogger;
+}): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
   | Err<never, Error>
 > => {
@@ -311,15 +330,15 @@ export const handleThirdPartyCallResult = async (
       }
 
       const userHeaders = recreateUserHeaders(request.headers as Headers);
-      const { headers: requestHeaders } = getHeaders(
-        "false",
+      const { headers: requestHeaders } = getHeaders({
+        initHeaderValue: "false",
         workflowRunId,
         workflowUrl,
         userHeaders,
-        undefined,
         failureUrl,
-        retries
-      );
+        retries,
+        telemetry,
+      });
 
       const callResponse: CallResponse = {
         status: callbackMessage.status,
@@ -368,32 +387,39 @@ export type HeadersResponse = {
   timeoutHeaders?: Record<string, string[]>;
 };
 
+export const getTelemetryHeaders = (telemetry: Telemetry) => {
+  return {
+    [TELEMETRY_HEADER_SDK]: telemetry.sdk,
+    [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework,
+    [TELEMETRY_HEADER_RUNTIME]: telemetry.runtime ?? "unknown",
+  };
+};
+
 /**
  * Gets headers for calling QStash
  *
- * @param initHeaderValue Whether the invocation should create a new workflow
- * @param workflowRunId id of the workflow
- * @param workflowUrl url of the workflow endpoint
- * @param step step to get headers for. If the step is a third party call step, more
- *       headers are added.
+ * See HeaderParams for more details about parameters.
+ *
  * @returns headers to submit
  */
-export const getHeaders = (
-  initHeaderValue: "true" | "false",
-  workflowRunId: string,
-  workflowUrl: string,
-  userHeaders?: Headers,
-  step?: Step,
-  failureUrl?: WorkflowServeOptions["failureUrl"],
-  retries?: number,
-  callRetries?: number,
-  callTimeout?: number | Duration
-): HeadersResponse => {
+export const getHeaders = ({
+  initHeaderValue,
+  workflowRunId,
+  workflowUrl,
+  userHeaders,
+  failureUrl,
+  retries,
+  step,
+  callRetries,
+  callTimeout,
+  telemetry,
+}: HeaderParams): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
     [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+    ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
   };
 
   if (!step?.callUrl) {
@@ -483,6 +509,15 @@ export const getHeaders = (
         ...Object.fromEntries(
           Object.entries(baseHeaders).map(([header, value]) => [header, [value]])
         ),
+        // to include telemetry headers:
+        ...(telemetry
+          ? Object.fromEntries(
+              Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+                header,
+                [value],
+              ])
+            )
+          : {}),
         // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
         "Upstash-Workflow-Runid": [workflowRunId],
         [WORKFLOW_INIT_HEADER]: ["false"],

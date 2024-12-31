@@ -3,6 +3,7 @@ import { defineEventHandler, readRawBody } from "h3";
 import type { PublicServeOptions, RouteFunction } from "../src";
 import { serveBase } from "../src/serve";
 import type { IncomingHttpHeaders } from "node:http";
+import { SDK_TELEMETRY } from "../src/constants";
 
 function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
   const formattedHeaders = Object.entries(headers).map(([key, value]) => [
@@ -37,7 +38,17 @@ export const serve = <TInitialPayload = unknown>(
       method: "POST",
     });
 
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, options);
+    const { handler: serveHandler } = serveBase<TInitialPayload>(
+      routeFunction,
+      {
+        sdk: SDK_TELEMETRY,
+        framework: "h3",
+        runtime: process.versions.bun
+          ? `bun@${process.versions.bun}/node@${process.version}`
+          : `node@${process.version}`,
+      },
+      options
+    );
     return await serveHandler(request);
   });
 

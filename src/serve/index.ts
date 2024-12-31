@@ -1,8 +1,9 @@
 import { makeCancelRequest } from "../client/utils";
+import { SDK_TELEMETRY } from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
-import { RouteFunction, WorkflowServeOptions } from "../types";
+import { RouteFunction, Telemetry, WorkflowServeOptions } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
@@ -33,6 +34,7 @@ export const serveBase = <
   TResponse extends Response = Response,
 >(
   routeFunction: RouteFunction<TInitialPayload>,
+  telemetry?: Telemetry,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): { handler: (request: TRequest) => Promise<TResponse> } => {
   // Prepares options with defaults if they are not provided.
@@ -49,7 +51,9 @@ export const serveBase = <
     env,
     retries,
     useJSONContent,
+    disableTelemetry,
   } = processOptions<TResponse, TInitialPayload>(options);
+  telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
 
   /**
@@ -107,7 +111,10 @@ export const serveBase = <
       qstashClient,
       initialPayloadParser,
       routeFunction,
-      failureFunction
+      failureFunction,
+      env,
+      retries,
+      debug
     );
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
@@ -130,6 +137,7 @@ export const serveBase = <
       debug,
       env,
       retries,
+      telemetry,
     });
 
     // attempt running routeFunction until the first step
@@ -152,15 +160,16 @@ export const serveBase = <
     }
 
     // check if request is a third party call result
-    const callReturnCheck = await handleThirdPartyCallResult(
+    const callReturnCheck = await handleThirdPartyCallResult({
       request,
-      rawInitialPayload,
-      qstashClient,
+      requestPayload: rawInitialPayload,
+      client: qstashClient,
       workflowUrl,
-      workflowFailureUrl,
+      failureUrl: workflowFailureUrl,
       retries,
-      debug
-    );
+      telemetry,
+      debug,
+    });
     if (callReturnCheck.isErr()) {
       // error while checking
       await debug?.log("ERROR", "SUBMIT_THIRD_PARTY_RESULT", {
@@ -170,7 +179,7 @@ export const serveBase = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation(workflowContext, retries, useJSONContent, debug)
+        ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async () => {
@@ -229,5 +238,12 @@ export const serve = <
   routeFunction: RouteFunction<TInitialPayload>,
   options?: Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "useJSONContent">
 ): { handler: (request: TRequest) => Promise<TResponse> } => {
-  return serveBase(routeFunction, options);
+  return serveBase(
+    routeFunction,
+    {
+      sdk: SDK_TELEMETRY,
+      framework: "unknown",
+    },
+    options
+  );
 };

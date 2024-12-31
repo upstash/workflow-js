@@ -2,6 +2,7 @@ import type { RequestHandler } from "@sveltejs/kit";
 
 import type { PublicServeOptions, RouteFunction } from "../src";
 import { serveBase } from "../src/serve";
+import { SDK_TELEMETRY } from "../src/constants";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -19,10 +20,17 @@ export const serve = <TInitialPayload = unknown>(
   }
 ): { POST: RequestHandler } => {
   const handler: RequestHandler = async ({ request }) => {
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, {
-      ...options,
-      useJSONContent: true,
-    });
+    const { handler: serveHandler } = serveBase<TInitialPayload>(
+      routeFunction,
+      {
+        sdk: SDK_TELEMETRY,
+        framework: "svelte",
+      },
+      {
+        ...options,
+        useJSONContent: true,
+      }
+    );
     return await serveHandler(request);
   };
 

@@ -753,7 +753,16 @@ describe("Workflow Parser", () => {
       };
 
       // no failureFunction
-      const result1 = await handleFailure(request, "", client, initialPayloadParser, routeFunction);
+      const result1 = await handleFailure(
+        request,
+        "",
+        client,
+        initialPayloadParser,
+        routeFunction,
+        undefined,
+        {},
+        3
+      );
       expect(result1.isOk()).toBeTrue();
       expect(result1.isOk() && result1.value === "not-failure-callback").toBeTrue();
 
@@ -764,7 +773,9 @@ describe("Workflow Parser", () => {
         client,
         initialPayloadParser,
         routeFunction,
-        failureFunction
+        failureFunction,
+        {},
+        0
       );
       expect(result2.isOk()).toBeTrue();
       expect(result2.isOk() && result2.value === "not-failure-callback").toBeTrue();
@@ -789,7 +800,10 @@ describe("Workflow Parser", () => {
         "",
         client,
         initialPayloadParser,
-        routeFunction
+        routeFunction,
+        undefined,
+        {},
+        0
       );
       expect(result.isErr()).toBeTrue();
       expect(result.isErr() && result.error.name).toBe(WorkflowError.name);
@@ -817,7 +831,9 @@ describe("Workflow Parser", () => {
         client,
         initialPayloadParser,
         routeFunction,
-        failureFunction
+        failureFunction,
+        {},
+        3
       );
       expect(result.isErr()).toBeTrue();
       expect(result.isErr() && result.error.message).toBe("my-error");
@@ -847,7 +863,9 @@ describe("Workflow Parser", () => {
         client,
         initialPayloadParser,
         routeFunction,
-        failureFunction
+        failureFunction,
+        {},
+        0
       );
       expect(result.isOk()).toBeTrue();
       expect(result.isOk() && result.value).toBe("is-failure-callback");
@@ -867,7 +885,9 @@ describe("Workflow Parser", () => {
         client,
         initialPayloadParser,
         routeFunctionWithoutSteps,
-        failureFunction
+        failureFunction,
+        {},
+        3
       );
 
       expect(result.isErr());
