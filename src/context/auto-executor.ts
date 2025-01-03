@@ -5,6 +5,7 @@ import { LazyCallStep, type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
 import { NO_CONCURRENCY } from "../constants";
+import { QstashError } from "@upstash/qstash";
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -227,7 +228,10 @@ export class AutoExecutor {
           );
           await this.submitStepsToQStash([resultStep], [parallelStep]);
         } catch (error) {
-          if (error instanceof WorkflowAbort) {
+          if (
+            error instanceof WorkflowAbort ||
+            (error instanceof QstashError && error.status === 400)
+          ) {
             throw error;
           }
           throw new WorkflowError(

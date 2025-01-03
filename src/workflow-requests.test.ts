@@ -750,6 +750,72 @@ describe("Workflow Requests", () => {
     );
 
     test(
+      "should omit if triggerRouteFunction (with partial parallel step execution) gets can't publish to canceled workflow error",
+      async () => {
+        const workflowRunId = `wfr-${nanoid()}`;
+        const context = new WorkflowContext({
+          qstashClient,
+          workflowRunId: workflowRunId,
+          initialPayload: undefined,
+          headers: new Headers({}) as Headers,
+          steps: [
+            {
+              stepId: 0,
+              concurrent: 1,
+              stepName: "init",
+              stepType: "Initial",
+              targetStep: 1,
+            },
+            {
+              stepId: 0,
+              concurrent: 2,
+              stepName: "sleeping",
+              stepType: "SleepFor",
+              targetStep: 1,
+            },
+          ],
+          url: WORKFLOW_ENDPOINT,
+        });
+
+        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
+        const spy = spyOn(debug, "log");
+
+        await triggerFirstInvocation(context, 3, false, debug);
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        await workflowClient.cancel({ ids: [workflowRunId] });
+
+        const result = await triggerRouteFunction({
+          onStep: async () => {
+            await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
+          },
+          onCleanup: async () => {
+            throw new Error("shouldn't come here.");
+          },
+          onCancel: async () => {
+            throw new Error("shouldn't come here.");
+          },
+          debug,
+        });
+
+        expect(result.isOk()).toBeTrue();
+        // @ts-expect-error value will be set since stepFinish isOk
+        expect(result.value).toBe("workflow-was-finished");
+
+        expect(spy).toHaveBeenCalledTimes(2);
+        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
+          message: "tried to append to a cancelled workflow. exiting without publishing.",
+          name: "QstashError",
+          errorMessage:
+            '[{"error":"failed to publish to url: can not append to a a cancelled workflow"}]',
+        });
+      },
+      {
+        timeout: 10000,
+      }
+    );
+
+    test(
       "should omit the error if the workflow is created with the same id",
       async () => {
         const workflowRunId = `wfr-${nanoid()}`;

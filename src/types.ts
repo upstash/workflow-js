@@ -188,7 +188,7 @@ export type WorkflowServeOptions<
   failureFunction?: (failureData: {
     context: Omit<
       WorkflowContext<TInitialPayload>,
-      "run" | "sleepUntil" | "sleep" | "call" | "waitForEvent" | "notify"
+      "run" | "sleepUntil" | "sleep" | "call" | "waitForEvent" | "notify" | "cancel" | "api"
     >;
     failStatus: number;
     failResponse: string;
