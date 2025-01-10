@@ -1,5 +1,6 @@
 import { CoreTool, generateText, tool, ToolExecutionError } from "ai";
 import { z } from "zod";
+import { AGENT_NAME_HEADER } from "./adapters";
 
 type GenerateTextParams = Parameters<typeof generateText>[0];
 export type Model = GenerateTextParams["model"];
@@ -8,6 +9,7 @@ export type AgentParameters = {
   background: string;
   tools: Record<string, CoreTool>;
   name: string;
+  model: Model;
 };
 
 export class Agent {
@@ -15,22 +17,27 @@ export class Agent {
   public readonly tools: Required<AgentParameters["tools"]>;
   public readonly maxSteps: AgentParameters["maxSteps"];
   public readonly background: AgentParameters["background"];
+  public readonly model: AgentParameters["model"];
 
-  constructor({ tools, maxSteps, background, name }: AgentParameters) {
+  constructor({ tools, maxSteps, background, name, model }: AgentParameters) {
     this.name = name;
     this.tools = tools ?? {};
     this.maxSteps = maxSteps;
     this.background = background;
+    this.model = model;
   }
 
-  public async call({ prompt, model }: { prompt: string; model: Model }) {
+  public async call({ prompt }: { prompt: string }) {
     try {
       return await generateText({
-        model,
+        model: this.model,
         tools: this.tools,
         maxSteps: this.maxSteps,
         system: this.background,
         prompt,
+        headers: {
+          [AGENT_NAME_HEADER]: this.name,
+        },
       });
     } catch (error) {
       if (error instanceof ToolExecutionError) {
@@ -51,7 +58,7 @@ export class Agent {
     }
   }
 
-  public asTool({ model }: { model: Model }): CoreTool {
+  public asTool(): CoreTool {
     const toolDescriptions = Object.values(this.tools)
       // @ts-expect-error description exists but can't be resolved
       .map((tool) => tool.description)
@@ -59,7 +66,7 @@ export class Agent {
     return tool({
       parameters: z.object({ prompt: z.string() }),
       execute: async ({ prompt }) => {
-        return await this.call({ prompt, model });
+        return await this.call({ prompt });
       },
       description:
         `An AI Agent with the following background: ${this.background}` +
@@ -76,7 +83,9 @@ type ManagerAgentParameters = {
 
 const MANAGER_AGENT_PROMPT = `You are an AI agent who orchestrates other AI Agents.
 These other agents have tools available to them.
-Given a prompt, utilize these agents to address requests.`;
+Given a prompt, utilize these agents to address requests.
+Don't always call all the agents provided to you at the same time. You can call one and use it's response to call another. 
+`;
 
 export class ManagerAgent extends Agent {
   public agents: ManagerAgentParameters["agents"];
@@ -90,8 +99,9 @@ export class ManagerAgent extends Agent {
     super({
       background,
       maxSteps,
-      tools: Object.fromEntries(agents.map((agent) => [agent.name, agent.asTool({ model })])),
+      tools: Object.fromEntries(agents.map((agent) => [agent.name, agent.asTool()])),
       name,
+      model,
     });
     this.agents = agents;
   }

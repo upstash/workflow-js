@@ -6,6 +6,11 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { HTTPMethods } from "@upstash/qstash";
 import { WorkflowContext } from "../context";
 import { tool } from "ai";
+import { AgentParameters } from "./agent";
+
+export type ToolParams = Parameters<typeof tool>[0];
+
+export const AGENT_NAME_HEADER = "upstash-agent-name";
 
 export const createWorkflowOpenAI = (context: WorkflowContext) => {
   return createOpenAI({
@@ -20,8 +25,12 @@ export const createWorkflowOpenAI = (context: WorkflowContext) => {
         // Prepare body from init.body
         const body = init?.body ? JSON.parse(init.body as string) : undefined;
 
+        // create step name
+        const agentName = headers[AGENT_NAME_HEADER] as string | undefined;
+        const stepName = agentName ? `Call Agent ${agentName}` : "Call Agent";
+
         // Make network call
-        const responseInfo = await context.call("call OpenAI", {
+        const responseInfo = await context.call(stepName, {
           url: input.toString(),
           method: init?.method as HTTPMethods,
           headers,
@@ -56,17 +65,25 @@ export const createWorkflowOpenAI = (context: WorkflowContext) => {
   });
 };
 
-export const workflowTool = ({
+export const wrapTools = ({
   context,
-  params,
+  tools,
 }: {
   context: WorkflowContext;
-  params: Parameters<typeof tool>[0];
+  tools: AgentParameters["tools"];
 }) => {
-  const { execute, ...rest } = params;
-  return tool({
-    // @ts-expect-error can't resolve execute
-    execute: (params: unknown) => context.run("run tool", () => execute(params)),
-    ...rest,
-  });
+  return Object.fromEntries(
+    Object.entries(tools).map((toolInfo) => {
+      const [toolName, tool] = toolInfo;
+      const execute = tool.execute;
+      if (execute) {
+        const wrappedExecute = (...params: Parameters<typeof execute>) => {
+          return context.run(`Run tool ${toolName}`, () => execute(...params));
+        };
+        tool.execute = wrappedExecute;
+      }
+
+      return [toolName, tool];
+    })
+  );
 };
