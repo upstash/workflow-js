@@ -108,6 +108,7 @@
     "@ai-sdk/openai": "^1.0.15",
     "@upstash/qstash": "^2.7.20",
     "ai": "^4.0.30",
+    "langchain": "^0.3.11",
     "zod": "^3.24.1"
   },
   "directories": {

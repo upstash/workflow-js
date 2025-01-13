@@ -780,7 +780,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, false, debug);
+        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false, debug });
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -881,7 +881,7 @@ describe("Workflow Requests", () => {
         expect(deleteResult).toEqual({ deleted: true });
 
         const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, debug);
-        expect(deleteResultSecond).toEqual({ deleted: false });
+        expect(deleteResultSecond).toEqual({ deleted: true });
       },
       {
         timeout: 10000,

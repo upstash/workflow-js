@@ -1,6 +1,7 @@
 import { WorkflowContext } from "../context";
 import { createWorkflowOpenAI, wrapTools } from "./adapters";
-import { Agent, AgentParameters, ManagerAgent, Model } from "./agent";
+import { Agent, ManagerAgent } from "./agent";
+import { AgentParameters, AISDKTool, LangchainTool, Model } from "./types";
 
 export { createWorkflowOpenAI } from "./adapters";
 export { Agent, ManagerAgent } from "./agent";
@@ -24,7 +25,7 @@ export class WorkflowAgents {
     this.context = context;
   }
 
-  public agent(params: AgentParameters) {
+  public agent(params: AgentParameters<AISDKTool | LangchainTool>) {
     // wrap tools of agent with context.run
     const wrappedTools = wrapTools({ context: this.context, tools: params.tools });
 

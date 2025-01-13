@@ -1,20 +1,12 @@
-import { CoreTool, generateText, tool, ToolExecutionError } from "ai";
 import { z } from "zod";
 import { AGENT_NAME_HEADER } from "./adapters";
 
-type GenerateTextParams = Parameters<typeof generateText>[0];
-export type Model = GenerateTextParams["model"];
-export type AgentParameters = {
-  maxSteps: number;
-  background: string;
-  tools: Record<string, CoreTool>;
-  name: string;
-  model: Model;
-};
+import { generateText, tool, ToolExecutionError } from "ai";
+import { AgentParameters, AISDKTool, Model } from "./types";
 
 export class Agent {
   public readonly name: AgentParameters["name"];
-  public readonly tools: Required<AgentParameters["tools"]>;
+  public readonly tools: AgentParameters["tools"];
   public readonly maxSteps: AgentParameters["maxSteps"];
   public readonly background: AgentParameters["background"];
   public readonly model: AgentParameters["model"];
@@ -58,7 +50,7 @@ export class Agent {
     }
   }
 
-  public asTool(): CoreTool {
+  public asTool(): AISDKTool {
     const toolDescriptions = Object.values(this.tools)
       // @ts-expect-error description exists but can't be resolved
       .map((tool) => tool.description)

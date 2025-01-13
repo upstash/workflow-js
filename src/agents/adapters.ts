@@ -6,7 +6,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { HTTPMethods } from "@upstash/qstash";
 import { WorkflowContext } from "../context";
 import { tool } from "ai";
-import { AgentParameters } from "./agent";
+import { AISDKTool, LangchainTool } from "./types";
 
 export type ToolParams = Parameters<typeof tool>[0];
 
@@ -70,20 +70,36 @@ export const wrapTools = ({
   tools,
 }: {
   context: WorkflowContext;
-  tools: AgentParameters["tools"];
-}) => {
+  tools: Record<string, AISDKTool | LangchainTool>;
+}): Record<string, AISDKTool> => {
   return Object.fromEntries(
     Object.entries(tools).map((toolInfo) => {
       const [toolName, tool] = toolInfo;
-      const execute = tool.execute;
+      const aiSDKTool: AISDKTool = convertToAISDKTool(tool);
+
+      const execute = aiSDKTool.execute;
       if (execute) {
         const wrappedExecute = (...params: Parameters<typeof execute>) => {
           return context.run(`Run tool ${toolName}`, () => execute(...params));
         };
-        tool.execute = wrappedExecute;
+        aiSDKTool.execute = wrappedExecute;
       }
 
-      return [toolName, tool];
+      return [toolName, aiSDKTool];
     })
   );
+};
+
+const convertToAISDKTool = (tool: AISDKTool | LangchainTool): AISDKTool => {
+  const isLangchainTool = "invoke" in tool;
+  return isLangchainTool ? convertLangchainTool(tool as LangchainTool) : (tool as AISDKTool);
+};
+
+export const convertLangchainTool = (langchainTool: LangchainTool): AISDKTool => {
+  return tool({
+    description: langchainTool.description,
+    parameters: langchainTool.schema,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    execute: async (param: any) => langchainTool.invoke(param),
+  });
 };
