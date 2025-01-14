@@ -35,7 +35,8 @@ export class WorkflowAgents {
     return new Task({ context: this.context, taskParameters });
   }
 
-  public getOpenai() {
-    return createWorkflowOpenAI(this.context);
+  public openai(...params: Parameters<ReturnType<typeof createWorkflowOpenAI>>) {
+    const openai = createWorkflowOpenAI(this.context);
+    return openai(...params);
   }
 }
