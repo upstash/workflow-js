@@ -1,23 +1,17 @@
 import { WorkflowContext } from "../context";
 import { createWorkflowOpenAI, wrapTools } from "./adapters";
-import { Agent, ManagerAgent } from "./agent";
-import { AgentParameters, AISDKTool, LangchainTool, Model } from "./types";
+import { Agent } from "./agent";
+import { Task } from "./task";
+import {
+  AgentParameters,
+  AISDKTool,
+  LangchainTool,
+  MultiAgentTaskParams,
+  SingleAgentTaskParams,
+} from "./types";
 
 export { createWorkflowOpenAI } from "./adapters";
 export { Agent, ManagerAgent } from "./agent";
-
-type TaskParams = {
-  prompt: string;
-};
-type SingleAgentTaskParams = TaskParams & {
-  agent: Agent;
-};
-type MultiAgentTaskParams = TaskParams & {
-  agents: Agent[];
-  maxSteps: number;
-  model: Model;
-  background?: string;
-};
 
 export class WorkflowAgents {
   private context: WorkflowContext;
@@ -35,29 +29,10 @@ export class WorkflowAgents {
     });
   }
 
-  public async task(params: SingleAgentTaskParams): Promise<string>;
-  public async task(params: MultiAgentTaskParams): Promise<string>;
-  public async task(params: SingleAgentTaskParams | MultiAgentTaskParams): Promise<string> {
-    const { prompt, ...otherParams } = params;
-    if ("agent" in otherParams) {
-      const agent = otherParams.agent;
-      const result = await agent.call({
-        prompt,
-      });
-      return result.text;
-    } else {
-      const { agents, maxSteps, model, background } = otherParams;
-      const managerAgent = new ManagerAgent({
-        model,
-        maxSteps,
-        agents,
-        name: "manager llm",
-        background,
-      });
-
-      const result = await managerAgent.call({ prompt });
-      return result.text;
-    }
+  public task(taskParameters: SingleAgentTaskParams): Task;
+  public task(taskParameters: MultiAgentTaskParams): Task;
+  public task(taskParameters: SingleAgentTaskParams | MultiAgentTaskParams): Task {
+    return new Task({ context: this.context, taskParameters });
   }
 
   public getOpenai() {
