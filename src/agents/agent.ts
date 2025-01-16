@@ -23,7 +23,7 @@ export class Agent {
 
   public async call({ prompt }: { prompt: string }) {
     try {
-      return await generateText({
+      const result = await generateText({
         model: this.model,
         tools: this.tools,
         maxSteps: this.maxSteps,
@@ -34,6 +34,7 @@ export class Agent {
         },
         temperature: this.temparature,
       });
+      return { text: result.text };
     } catch (error) {
       if (error instanceof ToolExecutionError) {
         if (error.cause instanceof Error && error.cause.name === "WorkflowAbort") {
