@@ -52,10 +52,6 @@
     "./express": {
       "import": "./express.mjs",
       "require": "./express.js"
-    },
-    "./agents": {
-      "import": "./agents.mjs",
-      "require": "./agents.js"
     }
   },
   "scripts": {
