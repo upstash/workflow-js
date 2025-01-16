@@ -11,7 +11,7 @@ import {
 } from "./types";
 
 export { createWorkflowOpenAI } from "./adapters";
-export { Agent, ManagerAgent } from "./agent";
+export { Agent } from "./agent";
 
 export class WorkflowAgents {
   private context: WorkflowContext;

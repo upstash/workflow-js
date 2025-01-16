@@ -10,13 +10,15 @@ export class Agent {
   public readonly maxSteps: AgentParameters["maxSteps"];
   public readonly background: AgentParameters["background"];
   public readonly model: AgentParameters["model"];
+  public readonly temparature: AgentParameters["temparature"];
 
-  constructor({ tools, maxSteps, background, name, model }: AgentParameters) {
+  constructor({ tools, maxSteps, background, name, model, temparature = 0.1 }: AgentParameters) {
     this.name = name;
     this.tools = tools ?? {};
     this.maxSteps = maxSteps;
     this.background = background;
     this.model = model;
+    this.temparature = temparature;
   }
 
   public async call({ prompt }: { prompt: string }) {
@@ -30,6 +32,7 @@ export class Agent {
         headers: {
           [AGENT_NAME_HEADER]: this.name,
         },
+        temperature: this.temparature,
       });
     } catch (error) {
       if (error instanceof ToolExecutionError) {
@@ -73,10 +76,16 @@ type ManagerAgentParameters = {
 } & Pick<Partial<AgentParameters>, "name" | "background"> &
   Pick<AgentParameters, "maxSteps">;
 
-const MANAGER_AGENT_PROMPT = `You are an AI agent who orchestrates other AI Agents.
+const MANAGER_AGENT_PROMPT = `You are an agent orchestrating other AI Agents.
+
 These other agents have tools available to them.
+
 Given a prompt, utilize these agents to address requests.
-Don't always call all the agents provided to you at the same time. You can call one and use it's response to call another. 
+
+Don't always call all the agents provided to you at the same time. You can call one and use it's response to call another.
+
+Avoid calling the same agent twice in one turn. Instead, prefer to call it once but provide everything
+you need from that agent.
 `;
 
 export class ManagerAgent extends Agent {

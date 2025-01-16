@@ -19,6 +19,7 @@ export type AgentParameters<TTool extends AISDKTool | LangchainTool = AISDKTool>
   tools: Record<string, TTool>;
   name: string;
   model: Model;
+  temparature?: number;
 };
 
 type TaskParams = {
