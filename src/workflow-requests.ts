@@ -135,34 +135,20 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   debug?: WorkflowLogger,
   cancel = false
-): Promise<{ deleted: boolean }> => {
+): Promise<void> => {
   await debug?.log("SUBMIT", "SUBMIT_CLEANUP", {
     deletedWorkflowRunId: workflowContext.workflowRunId,
   });
-
-  try {
-    await workflowContext.qstashClient.http.request({
-      path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
-      method: "DELETE",
-      parseResponseAsJson: false,
-    });
-    await debug?.log(
-      "SUBMIT",
-      "SUBMIT_CLEANUP",
-      `workflow run ${workflowContext.workflowRunId} deleted.`
-    );
-    return { deleted: true };
-  } catch (error) {
-    if (error instanceof QstashError && error.status === 404) {
-      await debug?.log("WARN", "SUBMIT_CLEANUP", {
-        message: `Failed to remove workflow run ${workflowContext.workflowRunId} as it doesn't exist.`,
-        name: error.name,
-        errorMessage: error.message,
-      });
-      return { deleted: false };
-    }
-    throw error;
-  }
+  await workflowContext.qstashClient.http.request({
+    path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
+    method: "DELETE",
+    parseResponseAsJson: false,
+  });
+  await debug?.log(
+    "SUBMIT",
+    "SUBMIT_CLEANUP",
+    `workflow run ${workflowContext.workflowRunId} deleted.`
+  );
 };
 
 /**
