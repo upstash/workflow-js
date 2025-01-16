@@ -1,9 +1,13 @@
 import type { CoreTool, generateText } from "ai";
-import type { Tool } from "langchain/tools";
 import { Agent } from "./agent";
 
 export type AISDKTool = CoreTool;
-export type LangchainTool = Tool;
+export type LangchainTool = {
+  description: string;
+  schema: AISDKTool["parameters"];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  invoke: (...params: any[]) => any;
+};
 
 type GenerateTextParams = Parameters<typeof generateText>[0];
 

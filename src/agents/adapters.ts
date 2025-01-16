@@ -99,7 +99,6 @@ export const convertLangchainTool = (langchainTool: LangchainTool): AISDKTool =>
   return tool({
     description: langchainTool.description,
     parameters: langchainTool.schema,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    execute: async (param: any) => langchainTool.invoke(param),
+    execute: async (...param: unknown[]) => langchainTool.invoke(...param),
   });
 };
