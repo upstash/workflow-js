@@ -1,57 +1,22 @@
 import { serve } from '@upstash/workflow/nextjs'
-import * as mathjs from 'mathjs'
-import { z } from 'zod'
-import { tool } from 'ai'
 
-export const { POST } = serve<{ prompt: string }>(
-  async (context) => {
-    const prompt = await context.run('get prompt', () => {
-      return context.requestPayload.prompt
-    })
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
+}
 
-    const openai = context.agents.getOpenai()
-    const model = openai('gpt-3.5-turbo')
+export const { POST } = serve<string>(async (context) => {
+  const input = context.requestPayload
+  const result1 = await context.run('step1', async () => {
+    const output = someWork(input)
+    console.log('step 1 input', input, 'output', output)
+    return output
+  })
 
-    const writerAgent = context.agents.agent({
-      model,
-      tools: {},
-      maxSteps: 2,
-      background:
-        'you are a content creator. make the information provided to you more understandable to the general public',
-      name: 'writer',
-    })
+  await context.sleepUntil('sleep1', Date.now() / 1000 + 3)
 
-    const mathAgent = context.agents.agent({
-      model,
-      tools: {
-        calculate: tool({
-          description:
-            'A tool for evaluating mathematical expressions. ' +
-            'Example expressions: ' +
-            "'1.2 * (2 + 4.5)', '12.7 cm to inch', 'sin(45 deg) ^ 2'.",
-          parameters: z.object({ expression: z.string() }),
-          execute: async ({ expression }) => mathjs.evaluate(expression),
-        }),
-      },
-      maxSteps: 2,
-      background: 'you are a mathematician',
-      name: 'mathematician',
-    })
-
-    const response = await context.agents.task({
-      agents: [writerAgent, mathAgent],
-      prompt,
-      maxSteps: 3,
-      model,
-    })
-
-    await context.run('return response', () => {
-      console.log('response:', response)
-      return response
-    })
-  },
-  {
-    retries: 0,
-    verbose: true,
-  },
-)
+  const result2 = await context.run('step2', async () => {
+    const output = someWork(result1)
+    console.log('step 2 input', result1, 'output', output)
+    return output
+  })
+})
