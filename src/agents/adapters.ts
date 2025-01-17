@@ -10,8 +10,21 @@ import { AISDKTool, LangchainTool } from "./types";
 
 export type ToolParams = Parameters<typeof tool>[0];
 
+/**
+ * header we pass to generateText to designate the agent name
+ *
+ * this allows us to access the agent name when naming the context.call step,
+ * inside fetch implementation
+ */
 export const AGENT_NAME_HEADER = "upstash-agent-name";
 
+/**
+ * creates an AI SDK openai client with a custom
+ * fetch implementation which uses context.call.
+ *
+ * @param context workflow context
+ * @returns ai sdk openai
+ */
 export const createWorkflowOpenAI = (context: WorkflowContext) => {
   return createOpenAI({
     compatibility: "strict",
@@ -65,6 +78,15 @@ export const createWorkflowOpenAI = (context: WorkflowContext) => {
   });
 };
 
+/**
+ * converts LangChain tools to AI SDK tools and updates
+ * the execute method of these tools by wrapping it with
+ * context.run.
+ *
+ * @param context workflow context
+ * @param tools map of AI SDK or LangChain tools and their names
+ * @returns
+ */
 export const wrapTools = ({
   context,
   tools,
@@ -90,12 +112,24 @@ export const wrapTools = ({
   );
 };
 
+/**
+ * Converts tools to AI SDK tool if it already isn't
+ *
+ * @param tool LangChain or AI SDK Tool
+ * @returns AI SDK Tool
+ */
 const convertToAISDKTool = (tool: AISDKTool | LangchainTool): AISDKTool => {
   const isLangchainTool = "invoke" in tool;
   return isLangchainTool ? convertLangchainTool(tool as LangchainTool) : (tool as AISDKTool);
 };
 
-export const convertLangchainTool = (langchainTool: LangchainTool): AISDKTool => {
+/**
+ * converts a langchain tool to AI SDK tool
+ *
+ * @param langchainTool
+ * @returns AI SDK Tool
+ */
+const convertLangchainTool = (langchainTool: LangchainTool): AISDKTool => {
   return tool({
     description: langchainTool.description,
     parameters: langchainTool.schema,

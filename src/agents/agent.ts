@@ -4,6 +4,19 @@ import { AGENT_NAME_HEADER } from "./adapters";
 import { generateText, tool, ToolExecutionError } from "ai";
 import { AgentParameters, AISDKTool, Model } from "./types";
 
+/**
+ * An Agent which utilizes the model and tools available to it
+ * to achieve a given task
+ *
+ * @param name Name of the agent
+ * @param background Background of the agent
+ * @param model LLM model to use
+ * @param tools tools available to the agent
+ * @param maxSteps number of times the agent can call the LLM at most. If
+ *   the agent abruptly stops execution after calling tools, you may need
+ *   to increase maxSteps
+ * @param temparature temparature used when calling the LLM
+ */
 export class Agent {
   public readonly name: AgentParameters["name"];
   public readonly tools: AgentParameters["tools"];
@@ -21,6 +34,12 @@ export class Agent {
     this.temparature = temparature;
   }
 
+  /**
+   * Trigger the agent by passing a prompt
+   *
+   * @param prompt task to assign to the agent
+   * @returns Response as `{ text: string }`
+   */
   public async call({ prompt }: { prompt: string }) {
     try {
       const result = await generateText({
@@ -54,6 +73,11 @@ export class Agent {
     }
   }
 
+  /**
+   * Convert the agent to a tool which can be used by other agents.
+   *
+   * @returns the agent as a tool
+   */
   public asTool(): AISDKTool {
     const toolDescriptions = Object.values(this.tools)
       // @ts-expect-error description exists but can't be resolved
@@ -72,7 +96,13 @@ export class Agent {
 }
 
 type ManagerAgentParameters = {
+  /**
+   * agents which will coordinate to achieve a given task
+   */
   agents: Agent[];
+  /**
+   * model to use when coordinating the agents
+   */
   model: Model;
 } & Pick<Partial<AgentParameters>, "name" | "background"> &
   Pick<AgentParameters, "maxSteps">;
@@ -91,11 +121,24 @@ you need from that agent.
 
 export class ManagerAgent extends Agent {
   public agents: ManagerAgentParameters["agents"];
+
+  /**
+   * A manager agent which coordinates agents available to it to achieve a
+   * given task
+   *
+   * @param name Name of the agent
+   * @param background Background of the agent. If not passed, default will be used.
+   * @param model LLM model to use
+   * @param agents: List of agents available to the agent
+   * @param maxSteps number of times the manager agent can call the LLM at most.
+   *   If the agent abruptly stops execution after calling other agents, you may
+   *   need to increase maxSteps
+   */
   constructor({
-    maxSteps,
-    background = MANAGER_AGENT_PROMPT,
     agents,
+    background = MANAGER_AGENT_PROMPT,
     model,
+    maxSteps,
     name = "manager llm",
   }: ManagerAgentParameters) {
     super({
