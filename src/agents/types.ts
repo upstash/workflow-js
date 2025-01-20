@@ -76,3 +76,15 @@ export type MultiAgentTaskParams = TaskParams & {
    */
   background?: string;
 };
+
+export type ManagerAgentParameters = {
+  /**
+   * agents which will coordinate to achieve a given task
+   */
+  agents: Agent[];
+  /**
+   * model to use when coordinating the agents
+   */
+  model: Model;
+} & Pick<Partial<AgentParameters>, "name" | "background"> &
+  Pick<AgentParameters, "maxSteps">;

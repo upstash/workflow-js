@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { AGENT_NAME_HEADER } from "./adapters";
 
 import { generateText, tool, ToolExecutionError } from "ai";
-import { AgentParameters, AISDKTool, Model } from "./types";
+import { AgentParameters, AISDKTool, ManagerAgentParameters } from "./types";
+import { AGENT_NAME_HEADER, MANAGER_AGENT_PROMPT } from "./constants";
 
 /**
  * An Agent which utilizes the model and tools available to it
@@ -94,30 +94,6 @@ export class Agent {
     });
   }
 }
-
-type ManagerAgentParameters = {
-  /**
-   * agents which will coordinate to achieve a given task
-   */
-  agents: Agent[];
-  /**
-   * model to use when coordinating the agents
-   */
-  model: Model;
-} & Pick<Partial<AgentParameters>, "name" | "background"> &
-  Pick<AgentParameters, "maxSteps">;
-
-const MANAGER_AGENT_PROMPT = `You are an agent orchestrating other AI Agents.
-
-These other agents have tools available to them.
-
-Given a prompt, utilize these agents to address requests.
-
-Don't always call all the agents provided to you at the same time. You can call one and use it's response to call another.
-
-Avoid calling the same agent twice in one turn. Instead, prefer to call it once but provide everything
-you need from that agent.
-`;
 
 export class ManagerAgent extends Agent {
   public agents: ManagerAgentParameters["agents"];

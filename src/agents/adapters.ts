@@ -7,16 +7,7 @@ import { HTTPMethods } from "@upstash/qstash";
 import { WorkflowContext } from "../context";
 import { tool } from "ai";
 import { AISDKTool, LangchainTool } from "./types";
-
-export type ToolParams = Parameters<typeof tool>[0];
-
-/**
- * header we pass to generateText to designate the agent name
- *
- * this allows us to access the agent name when naming the context.call step,
- * inside fetch implementation
- */
-export const AGENT_NAME_HEADER = "upstash-agent-name";
+import { AGENT_NAME_HEADER } from "./constants";
 
 /**
  * creates an AI SDK openai client with a custom
