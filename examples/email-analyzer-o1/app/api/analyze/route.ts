@@ -47,8 +47,7 @@ export const { POST } = serve<EmailPayload>(async (context) => {
 				},
 				{
 					role: "user",
-					content: `Here's the email thread context:
-                       
+					content: `
                        Here's the email thread context. Please write a response to this email thread that addresses the latest message:
                        ${message}.
 
@@ -69,4 +68,4 @@ export const { POST } = serve<EmailPayload>(async (context) => {
 			text: aiResponse.body.choices[0].message.content
 		}
 	})
-}, { baseUrl: "https://1db2-85-101-27-246.ngrok-free.app", retries: 0 })
+})
