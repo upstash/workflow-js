@@ -41,19 +41,19 @@ You can also use `ngrok` to setup a publicly accessible endpoint on your local. 
 2. Choose "Webhooks by Zapier"
 3. Select "POST" as the action event
 4. Configure the webhook with these settings:
-   - **URL**: Your API endpoint (e.g., `https://your-domain.com/api/analyze`)
-   - **Payload Type**: `json`
-   - **Data**:
-     ```json
+  - **URL**: Your API endpoint (e.g., `https://your-domain.com/api/analyze`)
+  - **Payload Type**: `json`
+  - **Data**:
+    ```json
       {
         "message": "{{body_plain}}",
         "subject": "{{subject}}",
         "to": "{{to_email}}",
         "attachment": "{{attachment_1}}"
       }
-     ```
-   - **Wrap Request in Array**: No
-   - **Unflatten**: Yes
+    ```
+  - **Wrap Request in Array**: No
+  - **Unflatten**: Yes
 
 ![webhook config](./img/webhook-config.png)
 
