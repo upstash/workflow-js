@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Email Analysis Workflow with OpenAI o1
 
-## Getting Started
+This project allows you to automatically analyze email threads and their attachments using AI.  When you forward an email to specific email address, Zapier will trigger a webhook that processes the content and sends back an AI generated response suggestion.
 
-First, run the development server:
+## Setup Instructions
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### 1. Deploy Your API Endpoint
+
+First, deploy your API endpoint that will receive the webhook from Zapier. The endpoint should be accessible at 
+
+```
+https://your-domain.com/api/analyze
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Zapier Integration
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+#### Step 1: Create a New Zap
+1. Go to [Zapier](https://zapier.com) and click "Create Zap"
+2. Name your Zap (e.g., "Email Analysis Workflow")
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+#### Step 2: Configure Gmail Trigger
+1. Choose "Gmail" as your trigger app
+2. Select "New Email" as the trigger event
+3. Connect your Gmail account if not already done. This email address will be the account you'll forward the emails to get the response suggestions.
+4. Optional: Add filters to only trigger on specific emails
 
-## Learn More
+![flow](./img/flow.png)
 
-To learn more about Next.js, take a look at the following resources:
+#### Step 3: Configure Webhook Action
+1. Add a new action step
+2. Choose "Webhooks by Zapier"
+3. Select "POST" as the action event
+4. Configure the webhook with these settings:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   - **URL**: Your API endpoint (e.g., `https://your-domain.com/api/analyze`)
+   - **Payload Type**: `json`
+   - **Data**:
+     ```json
+     {
+       "message": "{{body_plain}}",
+       "subject": "{{subject}}",
+       "to": "{{to_email}}",
+       "attachment": "{{attachment_1}}"
+     }
+     ```
+   - **Wrap Request in Array**: No
+   - **Unflatten**: Yes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+![webhook config](./img/webhook-config.png)
 
-## Deploy on Vercel
+### Field Mappings
+- `message`: Use Gmail's "Body Plain" field
+- `subject`: Use Gmail's "Raw Payload Headers Subject" field
+- `to`: Use Gmail's "From Email" field
+- `attachment`: Use Gmail's "Attachment 1 Attachment" field
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Limitations
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Currently handles one attachment per email
+- Supports PDF attachments
+- Maximum email size limit based on your API endpoint's limitations
