@@ -107,8 +107,8 @@ describe("workflow client", () => {
         });
         expect(cancel).toEqual({ cancelled: 1 });
 
-        const throws = () => liveClient.cancel({ ids: workflowRunId });
-        expect(throws).toThrow(`{"error":"workflowRun ${workflowRunId} not found"}`);
+        const secondCancel = await liveClient.cancel({ ids: workflowRunId });
+        expect(secondCancel).toEqual({ cancelled: 0 });
       },
       {
         timeout: 10000,
@@ -125,21 +125,18 @@ describe("workflow client", () => {
           url: "http://requestcatcher.com",
         });
 
-        const throws = async () =>
-          await liveClient.cancel({
-            ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
-          });
-
-        // if there is any workflow which doesn't exist, we throw
-        expect(throws).toThrow(`{"error":"workflowRun non-existent not found"}`);
+        const firstCancel = await liveClient.cancel({
+          ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
+        });
+        expect(firstCancel).toEqual({ cancelled: 2 });
 
         // trying to cancel the workflows one by one gives error, as they were canceled above
-        const throwsFirst = async () => await liveClient.cancel({ ids: workflowRunIdOne });
-        expect(throwsFirst).toThrow(`{"error":"workflowRun ${workflowRunIdOne} not found"}`);
+        const secondCancel = await liveClient.cancel({ ids: workflowRunIdOne });
+        expect(secondCancel).toEqual({ cancelled: 0 });
 
         // trying to cancel the workflows one by one gives error, as they were canceled above
-        const throwsSecond = async () => await liveClient.cancel({ ids: workflowRunIdTwo });
-        expect(throwsSecond).toThrow(`{"error":"workflowRun ${workflowRunIdTwo} not found"}`);
+        const thirdCancel = await liveClient.cancel({ ids: workflowRunIdTwo });
+        expect(thirdCancel).toEqual({ cancelled: 0 });
       },
       {
         timeout: 10000,
