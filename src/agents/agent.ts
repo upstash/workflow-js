@@ -47,7 +47,7 @@ export class Agent {
         tools: this.tools,
         maxSteps: this.maxSteps,
         system: this.background,
-        prompt,
+        prompt: prompt ?? "",
         headers: {
           [AGENT_NAME_HEADER]: this.name,
         },

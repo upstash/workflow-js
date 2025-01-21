@@ -54,15 +54,10 @@ export class Task {
   public async run(): Promise<{ text: string }> {
     const { prompt, ...otherParams } = this.taskParameters;
 
-    // during context.call execution, prompt may become undefined if it's derived from
-    // context.requestPayload. generateText will throw in this case. Put a context.run
-    // to guard against this.
-    const safePrompt = await this.context.run("Get Prompt", () => prompt);
-
     if ("agent" in otherParams) {
       const agent = otherParams.agent;
       const result = await agent.call({
-        prompt: safePrompt,
+        prompt,
       });
       return { text: result.text };
     } else {
@@ -75,7 +70,7 @@ export class Task {
         background,
       });
 
-      const result = await managerAgent.call({ prompt: safePrompt });
+      const result = await managerAgent.call({ prompt });
       return { text: result.text };
     }
   }
