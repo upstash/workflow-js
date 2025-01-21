@@ -19,9 +19,11 @@
     "html-to-text": "^9.0.5",
     "jsdom": "^26.0.0",
     "next": "15.1.5",
+    "pdf-parse": "^1.1.1",
     "playwright-core": "^1.49.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^4.1.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -29,6 +31,7 @@
     "@types/html-to-text": "^9.0.4",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
