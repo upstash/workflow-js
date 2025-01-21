@@ -37,7 +37,7 @@ const searchTools = {
 			const page = context.pages()[0];
 
 			await page.goto(url);
-			await page.waitForTimeout(25000); // Wait for flight search to complete
+			await page.waitForTimeout(25000);
 
 			const content = await page.content();
 			const text = convert(content, {
@@ -54,7 +54,6 @@ const searchTools = {
 export const { POST } = serve(async (context) => {
 	const model = context.agents.openai('gpt-4');
 
-	// Flight search agent
 	const flightAgent = context.agents.agent({
 		model,
 		name: 'flightAgent',
@@ -63,7 +62,6 @@ export const { POST } = serve(async (context) => {
 		tools: searchTools
 	});
 
-	// Summary agent
 	const summaryAgent = context.agents.agent({
 		model,
 		name: 'summaryAgent',
