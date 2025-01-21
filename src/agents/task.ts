@@ -62,13 +62,16 @@ export class Task {
       return { text: result.text };
     } else {
       const { agents, maxSteps, model, background } = otherParams;
-      const managerAgent = new ManagerAgent({
-        model,
-        maxSteps,
-        agents,
-        name: "Manager LLM",
-        background,
-      });
+      const managerAgent = new ManagerAgent(
+        {
+          model,
+          maxSteps,
+          agents,
+          name: "Manager LLM",
+          background,
+        },
+        this.context
+      );
 
       const result = await managerAgent.call({ prompt });
       return { text: result.text };

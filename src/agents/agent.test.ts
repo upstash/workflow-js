@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeEach } from "bun:test";
 import { Agent, ManagerAgent } from "./agent";
 import { WorkflowContext } from "../context";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
@@ -7,10 +7,13 @@ import { getWorkflowRunId, nanoid } from "../utils";
 import { WorkflowAgents } from ".";
 import { tool } from "ai";
 import { z } from "zod";
+import { getAgentsApi } from "./task.test";
 
 describe("agents", () => {
   const openaiToken = nanoid();
-  process.env["OPENAI_API_KEY"] = openaiToken;
+  beforeEach(() => {
+    process.env["OPENAI_API_KEY"] = openaiToken;
+  });
 
   const token = getWorkflowRunId();
   const workflowRunId = nanoid();
@@ -31,20 +34,23 @@ describe("agents", () => {
   const temparature = 0.4;
   const model = agentsApi.openai("gpt-3.5-turbo");
 
-  const agent = new Agent({
-    tools: {
-      tool: tool({
-        description: "ai sdk tool",
-        parameters: z.object({ expression: z.string() }),
-        execute: async ({ expression }) => expression,
-      }),
+  const agent = new Agent(
+    {
+      tools: {
+        tool: tool({
+          description: "ai sdk tool",
+          parameters: z.object({ expression: z.string() }),
+          execute: async ({ expression }) => expression,
+        }),
+      },
+      background,
+      maxSteps,
+      name,
+      model,
+      temparature,
     },
-    background,
-    maxSteps,
-    name,
-    model,
-    temparature,
-  });
+    context
+  );
 
   describe("single agent", () => {
     test("should initialize and call agent", async () => {
@@ -176,11 +182,14 @@ describe("agents", () => {
   });
 
   test("multi agent", async () => {
-    const managerAgent = new ManagerAgent({
-      agents: [agent],
-      maxSteps: 2,
-      model,
-    });
+    const managerAgent = new ManagerAgent(
+      {
+        agents: [agent],
+        maxSteps: 2,
+        model,
+      },
+      context
+    );
 
     await mockQStashServer({
       execute: () => {
@@ -233,4 +242,46 @@ describe("agents", () => {
       },
     });
   });
+
+  describe("disabled context", () => {
+    const { agent } = getAgentsApi({ disabledContext: true });
+    test("should throw abort when empty prompt", async () => {
+      // @ts-expect-error for testing purposes, prompt is object
+      const prompt: string = { some: "object" };
+
+      await mockQStashServer({
+        execute: async () => {
+          const throws = () => agent.call({ prompt });
+          expect(throws).toThrow(
+            "Aborting workflow after executing step 'disabled-qstash-worklfow-run'"
+          );
+        },
+        receivesRequest: false,
+        responseFields: {
+          body: "",
+          status: 200,
+        },
+      });
+    });
+
+    test("should throw abort when object prompt", async () => {
+      // @ts-expect-error for testing purposes, prompt is undefiend
+      const prompt: string = undefined;
+
+      await mockQStashServer({
+        execute: async () => {
+          const throws = () => agent.call({ prompt });
+          expect(throws).toThrow(
+            "Aborting workflow after executing step 'disabled-qstash-worklfow-run'"
+          );
+        },
+        receivesRequest: false,
+        responseFields: {
+          body: "",
+          status: 200,
+        },
+      });
+    });
+  });
+  test("disabled context with empty or object prompt should throw abort", async () => {});
 });

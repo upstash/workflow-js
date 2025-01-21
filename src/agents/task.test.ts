@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeEach } from "bun:test";
 import { getWorkflowRunId, nanoid } from "../utils";
 import { WorkflowContext } from "../context";
 import { Client } from "@upstash/qstash";
@@ -6,61 +6,73 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { WorkflowAgents } from ".";
 import { tool } from "ai";
 import { z } from "zod";
+import { DisabledWorkflowContext } from "../serve/authorization";
 
-describe("tasks", () => {
-  const openaiToken = nanoid();
-  process.env["OPENAI_API_KEY"] = openaiToken;
+export const getAgentsApi = ({ disabledContext }: { disabledContext: boolean }) => {
+  const token = getWorkflowRunId();
+  const workflowRunId = nanoid();
 
-  const getAgentsApi = () => {
-    const token = getWorkflowRunId();
-    const workflowRunId = nanoid();
-
-    const context = new WorkflowContext({
+  let context: WorkflowContext;
+  if (disabledContext) {
+    context = new DisabledWorkflowContext({
       headers: new Headers({}) as Headers,
       initialPayload: "mock",
       qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
-      steps: [
-        { stepId: 0, stepName: "init", concurrent: 1, stepType: "Initial" },
-        { stepId: 1, stepName: "Get Prompt", stepType: "Run", out: "hello world!", concurrent: 1 },
-      ],
+      steps: [{ stepId: 0, stepName: "init", concurrent: 1, stepType: "Initial" }],
       url: WORKFLOW_ENDPOINT,
       workflowRunId,
     });
-
-    const agentsApi = new WorkflowAgents({ context });
-
-    const background = "an agent";
-    const maxSteps = 2;
-    const name = "my agent";
-    const temparature = 0.4;
-    const model = agentsApi.openai("gpt-3.5-turbo");
-
-    const agent = agentsApi.agent({
-      tools: {
-        tool: tool({
-          description: "ai sdk tool",
-          parameters: z.object({ expression: z.string() }),
-          execute: async ({ expression }) => expression,
-        }),
-      },
-      background,
-      maxSteps,
-      name,
-      model,
-      temparature,
-    });
-
-    return {
-      agent,
-      token,
+  } else {
+    context = new WorkflowContext({
+      headers: new Headers({}) as Headers,
+      initialPayload: "mock",
+      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+      steps: [{ stepId: 0, stepName: "init", concurrent: 1, stepType: "Initial" }],
+      url: WORKFLOW_ENDPOINT,
       workflowRunId,
-      context,
-      agentsApi,
-    };
+    });
+  }
+
+  const agentsApi = new WorkflowAgents({ context });
+
+  const background = "an agent";
+  const maxSteps = 2;
+  const name = "my agent";
+  const temparature = 0.4;
+  const model = agentsApi.openai("gpt-3.5-turbo");
+
+  const agent = agentsApi.agent({
+    tools: {
+      tool: tool({
+        description: "ai sdk tool",
+        parameters: z.object({ expression: z.string() }),
+        execute: async ({ expression }) => expression,
+      }),
+    },
+    background,
+    maxSteps,
+    name,
+    model,
+    temparature,
+  });
+
+  return {
+    agent,
+    token,
+    workflowRunId,
+    context,
+    agentsApi,
   };
+};
+
+describe("tasks", () => {
+  const openaiToken = nanoid();
+  beforeEach(() => {
+    process.env["OPENAI_API_KEY"] = openaiToken;
+  });
 
   test("single agent", async () => {
-    const { agentsApi, agent, token, workflowRunId } = getAgentsApi();
+    const { agentsApi, agent, token, workflowRunId } = getAgentsApi({ disabledContext: false });
     const task = agentsApi.task({
       agent,
       prompt: "hello world!",
@@ -90,7 +102,7 @@ describe("tasks", () => {
               "upstash-callback-forward-upstash-workflow-callback": "true",
               "upstash-callback-forward-upstash-workflow-concurrent": "1",
               "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
-              "upstash-callback-forward-upstash-workflow-stepid": "2",
+              "upstash-callback-forward-upstash-workflow-stepid": "1",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
               "upstash-callback-retries": "3",
@@ -117,7 +129,7 @@ describe("tasks", () => {
   });
 
   test("multi agent", async () => {
-    const { agentsApi, agent, token, workflowRunId } = getAgentsApi();
+    const { agentsApi, agent, token, workflowRunId } = getAgentsApi({ disabledContext: false });
     const task = agentsApi.task({
       agents: [agent],
       model: agentsApi.openai("gpt-3.5-turbo"),
@@ -151,7 +163,7 @@ describe("tasks", () => {
               "upstash-callback-forward-upstash-workflow-callback": "true",
               "upstash-callback-forward-upstash-workflow-concurrent": "1",
               "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
-              "upstash-callback-forward-upstash-workflow-stepid": "2",
+              "upstash-callback-forward-upstash-workflow-stepid": "1",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent Manager LLM",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
               "upstash-callback-retries": "3",

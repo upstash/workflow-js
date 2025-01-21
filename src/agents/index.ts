@@ -54,10 +54,13 @@ export class WorkflowAgents {
     // wrap tools of agent with context.run
     const wrappedTools = wrapTools({ context: this.context, tools: params.tools });
 
-    return new Agent({
-      ...params,
-      tools: wrappedTools,
-    });
+    return new Agent(
+      {
+        ...params,
+        tools: wrappedTools,
+      },
+      this.context
+    );
   }
 
   /**
