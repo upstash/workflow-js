@@ -32,6 +32,7 @@ export const { POST } = serve<Payload>(async (context) => {
 					 in-depth insights to guide marketing strategies.`,
 		tools: {
 			searchWeb: tool({
+
 				description: 'Search the web using SerpAPI',
 				parameters: z.object({
 					query: z.string().describe('The search query')
