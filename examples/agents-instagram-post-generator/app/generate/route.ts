@@ -203,6 +203,4 @@ export const { POST } = serve<Payload>(async (context) => {
 			}).run()
 		)
 	);
-}, {
-	baseUrl: "https://5db5-85-101-27-246.ngrok-free.app"
 })
