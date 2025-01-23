@@ -1,18 +1,18 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { SerpAPIClient } from '@agentic/serpapi';
 import { FirecrawlClient } from '@agentic/firecrawl';
-import OpenAI from 'openai';
 import { tool } from 'ai';
 import { z } from "zod";
 import { Redis } from "@upstash/redis"
+import { ImagesResponse } from "../types";
+
+
 
 
 const redis = Redis.fromEnv();
 const serpapi = new SerpAPIClient();
 const firecrawl = new FirecrawlClient();
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+
 
 type Payload = {
     productWebsite: string;
@@ -100,57 +100,6 @@ export const { POST } = serve<Payload>(async (context) => {
         tools: {}
     });
 
-    const photoGenerator = context.agents.agent({
-        model,
-        name: 'photoGenerator',
-        maxSteps: 3,
-        background: `You are an AI image generation specialist who creates detailed, 
-					 professional prompts for generating Instagram-worthy photos.`,
-        tools: {
-            generateImage: tool({
-                description: 'Generate an image using DALL-E',
-                parameters: z.object({
-                    prompt: z.string().describe('The image generation prompt'),
-                    caption: z.string().describe('The Instagram caption'),
-                    style: z.string().optional().describe('The style of the image')
-                }),
-                execute: async ({ prompt, style, caption }) => {
-                    try {
-                        const response = await openai.images.generate({
-                            model: "dall-e-3",
-                            prompt: `${prompt}${style ? `. Style: ${style}` : ''}. Make it look professional and Instagram-worthy.`,
-                            n: 1,
-                            size: "1024x1024",
-                            quality: "hd",
-                            style: "natural"
-                        });
-
-                        const result = {
-                            imageUrl: response.data[0].url,
-                            prompt,
-                            caption
-                        };
-
-                        const callKey = context.headers.get('callKey');
-                        if (callKey) {
-                            await redis.lpush(
-                                `${callKey}-posts`,
-                                JSON.stringify(result)
-                            );
-                        }
-
-                        return result;
-
-
-                    } catch (error) {
-                        console.error('Image generation error:', error);
-                        throw new Error('Failed to generate image');
-                    }
-                }
-            })
-        }
-    });
-
     const productAnalysis = await context.agents.task({
         agent: productAnalysisAgent,
         prompt: `Analyze the product website: ${productWebsite}. 
@@ -194,14 +143,52 @@ export const { POST } = serve<Payload>(async (context) => {
     // 2. Limit the array to 3 items when splitting
     const photoPrompts = photoDescription.text.split('\n\n').slice(0, 3);
 
-    // 3. Generate exactly 3 images in parallel
-    await Promise.all(
-        photoPrompts.slice(0, 3).map(async (prompt) =>
-            await context.agents.task({
-                agent: photoGenerator,
-                prompt: `Generate a professional Instagram photo based on this description: "${prompt}". 
-              Make it visually appealing and suitable for social media.`
-            }).run()
+    const instagramPostResults = await Promise.all(
+        photoPrompts.slice(0, 3).map(async (prompt, index) =>
+            await context.call<ImagesResponse>(
+                `generate-image-${index + 1}`,
+                {
+                    url: "https://api.openai.com/v1/images/generations",
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+                    },
+                    body: {
+                        model: "dall-e-3",
+                        prompt: `${prompt}. Make it look professional and Instagram-worthy.`,
+                        n: 1,
+                        size: "1024x1024",
+                        quality: "hd",
+                        style: "natural"
+                    }
+                }
+            )
         )
     );
+
+    await Promise.all(
+        instagramPostResults.map((async (post, index) => {
+            await context.run(`persist post to redis ${index}`, async () => {
+                const callKey = context.headers.get('callKey');
+
+
+                const { url, revised_prompt } = post.body.data[0]
+                const result = {
+                    imageUrl: url,
+                    prompt: revised_prompt,
+                    caption: instagramCaptions.text.split('\n\n')[index]
+                }
+
+                if (callKey) {
+                    await redis.lpush(
+                        `${callKey}-posts`,
+                        JSON.stringify(result)
+                    );
+                }
+            })
+        }))
+    )
+}, {
+    baseUrl: "https://abac-85-101-27-246.ngrok-free.app"
 })
