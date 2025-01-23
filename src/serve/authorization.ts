@@ -35,6 +35,7 @@ export class DisabledWorkflowContext<
   TInitialPayload = unknown,
 > extends WorkflowContext<TInitialPayload> {
   private static readonly disabledMessage = "disabled-qstash-worklfow-run";
+  public readonly disabled = true;
 
   /**
    * overwrite the WorkflowContext.addStep method to always raise WorkflowAbort

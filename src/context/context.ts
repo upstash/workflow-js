@@ -23,6 +23,7 @@ import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
+import { WorkflowAgents } from "../agents";
 
 /**
  * Upstash Workflow context
@@ -464,6 +465,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
   public get api() {
     return new WorkflowApi({
+      context: this,
+    });
+  }
+
+  public get agents() {
+    return new WorkflowAgents({
       context: this,
     });
   }

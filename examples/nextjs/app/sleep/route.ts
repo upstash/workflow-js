@@ -19,11 +19,4 @@ export const { POST } = serve<string>(async (context) => {
     console.log('step 2 input', result1, 'output', output)
     return output
   })
-
-  await context.sleep('sleep2', 2)
-
-  await context.run('step3', async () => {
-    const output = someWork(result2)
-    console.log('step 3 input', result2, 'output', output)
-  })
 })

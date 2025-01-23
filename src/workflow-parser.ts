@@ -160,6 +160,7 @@ const checkIfLastOneIsDuplicate = async (
         `Upstash Workflow: The step '${step.stepName}' with id '${step.stepId}'` +
         "  has run twice during workflow execution. Rest of the workflow will continue running as usual.";
       await debug?.log("WARN", "RESPONSE_DEFAULT", message);
+
       console.warn(message);
       return true;
     }

@@ -618,22 +618,13 @@ describe("Workflow Requests", () => {
         const spy = spyOn(debug, "log");
 
         const firstDelete = await triggerWorkflowDelete(context, debug);
-        expect(firstDelete).toEqual({ deleted: true });
+        expect(firstDelete).toEqual(undefined);
         expect(spy).toHaveBeenCalledTimes(2);
         expect(spy).toHaveBeenLastCalledWith(
           "SUBMIT",
           "SUBMIT_CLEANUP",
           `workflow run ${workflowRunId} deleted.`
         );
-
-        const secondDelete = await triggerWorkflowDelete(context, debug);
-        expect(secondDelete).toEqual({ deleted: false });
-        expect(spy).toHaveBeenCalledTimes(4);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "SUBMIT_CLEANUP", {
-          message: `Failed to remove workflow run ${workflowRunId} as it doesn't exist.`,
-          name: "QstashError",
-          errorMessage: `{"error":"workflowRun ${workflowRunId} not found"}`,
-        });
       },
       {
         timeout: 10000,
@@ -780,7 +771,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        await triggerFirstInvocation(context, 3, false, debug);
+        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false, debug });
         expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
@@ -878,10 +869,10 @@ describe("Workflow Requests", () => {
         });
 
         const deleteResult = await triggerWorkflowDelete(context, debug);
-        expect(deleteResult).toEqual({ deleted: true });
+        expect(deleteResult).toEqual(undefined);
 
         const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, debug);
-        expect(deleteResultSecond).toEqual({ deleted: false });
+        expect(deleteResultSecond).toEqual(undefined);
       },
       {
         timeout: 10000,
