@@ -172,7 +172,6 @@ export const { POST } = serve<Payload>(async (context) => {
             await context.run(`persist post to redis ${index}`, async () => {
                 const callKey = context.headers.get('callKey');
 
-
                 const { url, revised_prompt } = post.body.data[0]
                 const result = {
                     imageUrl: url,
@@ -189,6 +188,4 @@ export const { POST } = serve<Payload>(async (context) => {
             })
         }))
     )
-}, {
-    baseUrl: "https://abac-85-101-27-246.ngrok-free.app"
 })
