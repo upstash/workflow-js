@@ -54,6 +54,7 @@ const searchTools = {
 export const { POST } = serve(async (context) => {
     const model = context.agents.openai('gpt-4');
 
+
     const flightAgent = context.agents.agent({
         model,
         name: 'flightAgent',
