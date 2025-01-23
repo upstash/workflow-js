@@ -17,7 +17,7 @@ import { SDK_TELEMETRY } from "../src/constants";
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: PublicServeOptions<TInitialPayload>,
 ): { POST: (request: Request) => Promise<Response> } => {
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
     routeFunction,
@@ -26,7 +26,13 @@ export const serve = <TInitialPayload = unknown>(
       framework: "nextjs",
       runtime: `node@${process.version}`,
     },
-    options
+    {
+      ...options,
+      initialPayloadParser: options?.initialPayloadParser ?? ((payload: string) => {
+        const parsed = JSON.parse(payload);
+        return options?.schema ? options.schema.parse(parsed) : parsed;
+      })
+    }
   );
 
   return {

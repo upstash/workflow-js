@@ -3,6 +3,7 @@ import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
+import { z } from "zod";
 
 /**
  * Interface for Client with required methods
@@ -233,6 +234,8 @@ export type WorkflowServeOptions<
    * Set `disableTelemetry` to disable this behavior.
    */
   disableTelemetry?: boolean;
+
+  schema?: z.ZodType<TInitialPayload>
 };
 
 export type Telemetry = {
@@ -391,7 +394,7 @@ export type HeaderParams = {
    */
   telemetry?: Telemetry;
 } & (
-  | {
+    | {
       /**
        * step to generate headers for
        */
@@ -405,7 +408,7 @@ export type HeaderParams = {
        */
       callTimeout?: number | Duration;
     }
-  | {
+    | {
       /**
        * step not passed. Either first invocation or simply getting headers for
        * third party callack.
@@ -424,4 +427,4 @@ export type HeaderParams = {
        */
       callTimeout?: never;
     }
-);
+  );
