@@ -148,10 +148,6 @@ export type WorkflowServeOptions<
    */
   onStepFinish?: (workflowRunId: string, finishCondition: FinishCondition) => TResponse;
   /**
-   * Function to parse the initial payload passed by the user
-   */
-  initialPayloadParser?: (initialPayload: string) => TInitialPayload;
-  /**
    * Url of the endpoint where the workflow is set up.
    *
    * If not set, url will be inferred from the request.
@@ -234,9 +230,13 @@ export type WorkflowServeOptions<
    * Set `disableTelemetry` to disable this behavior.
    */
   disableTelemetry?: boolean;
+} & ValidationOptions<TInitialPayload>;
 
-  schema?: z.ZodType<TInitialPayload>
-};
+export type ValidationOptions<T> =
+  | { schema: z.ZodType<T>; initialPayloadParser?: never }
+  | { schema?: never; initialPayloadParser: (initialPayload: string) => T }
+  | { schema?: never; initialPayloadParser?: never };
+
 
 export type Telemetry = {
   /**
@@ -256,7 +256,7 @@ export type Telemetry = {
 export type PublicServeOptions<
   TInitialPayload = unknown,
   TResponse extends Response = Response,
-> = Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "onStepFinish" | "useJSONContent">;
+> = Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "onStepFinish" | "useJSONContent"> & ValidationOptions<TInitialPayload>;
 
 /**
  * Payload passed as body in failureFunction
@@ -276,6 +276,8 @@ export type FailureFunctionPayload = {
  * Makes all fields except the ones selected required
  */
 export type RequiredExceptFields<T, K extends keyof T> = Omit<Required<T>, K> & Partial<Pick<T, K>>;
+
+
 
 export type Waiter = {
   url: string;

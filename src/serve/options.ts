@@ -4,6 +4,7 @@ import { DEFAULT_RETRIES } from "../constants";
 import type { FinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
 import { WorkflowError } from "../error";
+import { z } from "zod";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -61,7 +62,8 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
 
       // try to parse the payload
       try {
-        return JSON.parse(initialRequest) as TInitialPayload;
+        const parsed = JSON.parse(initialRequest) as TInitialPayload;
+        return options?.schema ? options.schema.parse(parsed) : parsed;
       } catch (error) {
         // if you get an error when parsing, return it as it is
         // needed in plain string case.
@@ -74,15 +76,16 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     },
     receiver: receiverEnvironmentVariablesSet
       ? new Receiver({
-          currentSigningKey: environment.QSTASH_CURRENT_SIGNING_KEY!,
-          nextSigningKey: environment.QSTASH_NEXT_SIGNING_KEY!,
-        })
+        currentSigningKey: environment.QSTASH_CURRENT_SIGNING_KEY!,
+        nextSigningKey: environment.QSTASH_NEXT_SIGNING_KEY!,
+      })
       : undefined,
     baseUrl: environment.UPSTASH_WORKFLOW_URL,
     env: environment,
     retries: DEFAULT_RETRIES,
     useJSONContent: false,
     disableTelemetry: false,
+    schema: z.any(),
     ...options,
   };
 };
@@ -112,8 +115,8 @@ export const determineUrls = async <TInitialPayload = unknown>(
   const initialWorkflowUrl = url ?? request.url;
   const workflowUrl = baseUrl
     ? initialWorkflowUrl.replace(/^(https?:\/\/[^/]+)(\/.*)?$/, (_, matchedBaseUrl, path) => {
-        return baseUrl + ((path as string) || "");
-      })
+      return baseUrl + ((path as string) || "");
+    })
     : initialWorkflowUrl;
 
   // log workflow url change

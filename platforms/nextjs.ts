@@ -26,13 +26,7 @@ export const serve = <TInitialPayload = unknown>(
       framework: "nextjs",
       runtime: `node@${process.version}`,
     },
-    {
-      ...options,
-      initialPayloadParser: options?.initialPayloadParser ?? ((payload: string) => {
-        const parsed = JSON.parse(payload);
-        return options?.schema ? options.schema.parse(parsed) : parsed;
-      })
-    }
+    options
   );
 
   return {
