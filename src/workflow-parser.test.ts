@@ -903,7 +903,8 @@ describe("Workflow Parser", () => {
 });
 
 
-describe("schema validation in serve", () => {
+
+describe.only("schema validation in serve", () => {
   const testServe = async (
     options: WorkflowServeOptions,
     payload: unknown,
@@ -920,7 +921,7 @@ describe("schema validation in serve", () => {
     expect(response.status).toBe(expectedStatus);
 
     if (expectedError) {
-      const { error, message } = await response.json();
+      const { error, message } = await response.json() as { error: string; message: string }
       expect(error).toBe("ZodError");
       expect(message).toContain(expectedError);
     }
