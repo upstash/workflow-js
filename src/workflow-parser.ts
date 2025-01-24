@@ -190,7 +190,7 @@ export const validateRequest = (
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
     throw new WorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
-        ` got ${versionHeader} from the request.`
+      ` got ${versionHeader} from the request.`
     );
   }
 
@@ -223,20 +223,20 @@ export const parseRequest = async (
   workflowRunId: string,
   requester: Client["http"],
   messageId?: string,
-  debug?: WorkflowLogger
+  debug?: WorkflowLogger,
 ): Promise<
   | {
-      rawInitialPayload: string;
-      steps: Step[];
-      isLastDuplicate: boolean;
-      workflowRunEnded: false;
-    }
+    rawInitialPayload: string;
+    steps: Step[];
+    isLastDuplicate: boolean;
+    workflowRunEnded: false;
+  }
   | {
-      rawInitialPayload: undefined;
-      steps: undefined;
-      isLastDuplicate: undefined;
-      workflowRunEnded: true;
-    }
+    rawInitialPayload: undefined;
+    steps: undefined;
+    isLastDuplicate: undefined;
+    workflowRunEnded: true;
+  }
 > => {
   if (isFirstInvocation) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
@@ -318,8 +318,8 @@ export const handleFailure = async <TInitialPayload>(
     return err(
       new WorkflowError(
         "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
+        " but a failureFunction is not provided in serve options." +
+        " Either provide a failureUrl or a failureFunction."
       )
     );
   }
