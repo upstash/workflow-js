@@ -4,7 +4,6 @@ import { DEFAULT_RETRIES } from "../constants";
 import type { FinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
 import { WorkflowError } from "../error";
-import { z } from "zod";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -23,7 +22,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): RequiredExceptFields<
   WorkflowServeOptions<TResponse, TInitialPayload>,
-  "verbose" | "receiver" | "url" | "failureFunction" | "failureUrl" | "baseUrl"
+  "verbose" | "receiver" | "url" | "failureFunction" | "failureUrl" | "baseUrl" | "schema"
 > => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
@@ -85,7 +84,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     retries: DEFAULT_RETRIES,
     useJSONContent: false,
     disableTelemetry: false,
-    schema: z.any(),
     ...options,
   };
 };
