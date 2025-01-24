@@ -9,9 +9,5 @@ export const { POST } = serve<string>(async (context) => {
 		return "hey"
 	})
 }, {
-	initialPayloadParser: (request) => {
-		return "a"
-	},
-	// schema: mySchema,
-
-})
+	schema: mySchema,
+},)
