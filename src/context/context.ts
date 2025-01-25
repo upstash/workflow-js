@@ -483,23 +483,36 @@ export class WorkflowContext<
     });
   }
 
-  async invoke<K extends keyof Router>({
-    function: fn,
-    payload
-  }: {
-    function: K & string;
-    payload?: Router[K]["payload"];
-  }): Promise<Router[K]["output"]> {
+  async invoke<K extends keyof Router>(
+    request: InvokeRequestWithFunction<Router, K> | InvokeRequestWithURL
+  ): Promise<Router[K]["output"] | unknown> {
     if (!this.router) throw new Error("Router not initialized");
 
-    const res = await fetch(`${this.url}/${fn}`, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    })
-
-    return res.json() as Promise<Router[K]["output"]>
+    if ("function" in request) {
+      const res = await fetch(`${this.url}/${request.function}`, {
+        method: 'POST',
+        body: JSON.stringify(request.payload)
+      });
+      return res.json() as Promise<Router[K]["output"]>;
+    } else {
+      const res = await fetch(request.url, {
+        method: request.method || 'POST',
+        headers: request.headers,
+        body: JSON.stringify(request.payload)
+      });
+      return res.json();
+    }
   }
-
 }
 
+type InvokeRequestWithFunction<T extends Record<string, { payload: unknown; output: unknown }>, K extends keyof T> = {
+  function: K & string;
+  payload: T[K]["payload"];
+}
 
+type InvokeRequestWithURL = {
+  url: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  headers?: Headers;
+  payload: unknown;
+}

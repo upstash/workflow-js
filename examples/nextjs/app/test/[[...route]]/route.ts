@@ -23,9 +23,9 @@ export const { invokeWorkflow, route } = w.router<{
 }>({
     workflow1: async (context) => {
         const res = await context.invoke({
-            function: "workflow2",
+            function: "workflow1",
             payload: {
-                key: 3
+                key: "1"
             }
         })
         return await context.run("WORKFLOW1", async () => {
