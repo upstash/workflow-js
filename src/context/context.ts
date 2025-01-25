@@ -483,26 +483,6 @@ export class WorkflowContext<
     });
   }
 
-
-
-
-  // async invoke<K extends keyof InferRoutes<typeof this.router>, Router = typeof this.router>({
-  //   function: fn,
-  //   payload
-  // }: {
-  //   function: K & string;
-  //   payload?: ExtractPayload<InferRoutes<Router>, K>;
-  // }): Promise<ExtractOutput<InferRoutes<Router>, K>> {
-  //   if (!this.router) throw new Error("Router not initialized");
-
-  //   const res = await fetch(`${this.url}/${fn}`, {
-  //     method: 'POST',
-  //     body: JSON.stringify(payload)
-  //   });
-
-  //   return res.json() as Promise<ExtractOutput<InferRoutes<Router>, K>>;
-  // }
-
   async invoke<K extends keyof Router>({
     function: fn,
     payload
@@ -523,6 +503,3 @@ export class WorkflowContext<
 }
 
 
-// type InferRoutes<T> = T extends Hono<Env, infer R> ? R : never;
-// type ExtractPayload<R, K extends keyof R> = R[K] extends { payload: infer P } ? P : never;
-// type ExtractOutput<R, K extends keyof R> = R[K] extends { output: infer O } ? O : never;
