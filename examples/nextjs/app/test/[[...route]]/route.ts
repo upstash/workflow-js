@@ -13,30 +13,33 @@ const w = new W({
 
 export const { invokeWorkflow, route } = w.router<{
     workflow1: {
-        payload: { key: string }
-        output: { value: string }
+        payload: { key1: string }
+        output: { value1: string }
     },
     workflow2: {
-        payload: { key: number }
-        output: { value: number }
+        payload: { key1: number }
+        output: { value2: number }
     }
 }>({
     workflow1: async (context) => {
         const res = await context.invoke({
-            function: "workflow1",
+            function: "workflow2",
             payload: {
-                key: "1"
+                key1: 1
             }
         })
+
+        const { value2 } = res
+
         return await context.run("WORKFLOW1", async () => {
             console.log("WORKFLOW 1")
-            return { value: "WORKFLOW 1 RUN" }
+            return { value1: "WORKFLOW 1 RUN" }
         })
     },
     workflow2: async (context) => {
         return await context.run("WORKFLOW2", async () => {
             console.log("WORKFLOW 2")
-            return { value: 2 }
+            return { value2: 2 }
         })
     }
 })

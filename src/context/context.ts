@@ -485,7 +485,7 @@ export class WorkflowContext<
 
   async invoke<K extends keyof Router>(
     request: InvokeRequestWithFunction<Router, K> | InvokeRequestWithURL
-  ): Promise<Router[K]["output"] | unknown> {
+  ): Promise<Router[Extract<K, keyof Router>]["output"]> {
     if (!this.router) throw new Error("Router not initialized");
 
     if ("function" in request) {
