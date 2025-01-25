@@ -24,13 +24,16 @@ import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { WorkflowAgents } from "../agents";
+import { Env, Hono } from "hono";
 
 /**
  * Upstash Workflow context
  *
  * See the docs for fields and methods https://upstash.com/docs/qstash/workflows/basics/context
  */
-export class WorkflowContext<TInitialPayload = unknown> {
+export class WorkflowContext<
+  TInitialPayload = unknown,
+  Router extends Record<string, { payload: unknown; output: unknown }> = Record<string, { payload: unknown; output: unknown }>> {
   protected readonly executor: AutoExecutor;
   protected readonly steps: Step[];
 
@@ -153,6 +156,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly retries: number;
 
+  protected readonly router?: Hono<Env, Router>;
+
   constructor({
     qstashClient,
     workflowRunId,
@@ -165,6 +170,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env,
     retries,
     telemetry,
+    router,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -177,6 +183,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env?: Record<string, string | undefined>;
     retries?: number;
     telemetry?: Telemetry;
+    router?: Hono
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -187,6 +194,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.requestPayload = initialPayload;
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
+    this.router = router
 
     this.executor = new AutoExecutor(this, this.steps, telemetry, debug);
   }
@@ -474,4 +482,47 @@ export class WorkflowContext<TInitialPayload = unknown> {
       context: this,
     });
   }
+
+
+
+
+  // async invoke<K extends keyof InferRoutes<typeof this.router>, Router = typeof this.router>({
+  //   function: fn,
+  //   payload
+  // }: {
+  //   function: K & string;
+  //   payload?: ExtractPayload<InferRoutes<Router>, K>;
+  // }): Promise<ExtractOutput<InferRoutes<Router>, K>> {
+  //   if (!this.router) throw new Error("Router not initialized");
+
+  //   const res = await fetch(`${this.url}/${fn}`, {
+  //     method: 'POST',
+  //     body: JSON.stringify(payload)
+  //   });
+
+  //   return res.json() as Promise<ExtractOutput<InferRoutes<Router>, K>>;
+  // }
+
+  async invoke<K extends keyof Router>({
+    function: fn,
+    payload
+  }: {
+    function: K & string;
+    payload?: Router[K]["payload"];
+  }): Promise<Router[K]["output"]> {
+    if (!this.router) throw new Error("Router not initialized");
+
+    const res = await fetch(`${this.url}/${fn}`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+
+    return res.json() as Promise<Router[K]["output"]>
+  }
+
 }
+
+
+// type InferRoutes<T> = T extends Hono<Env, infer R> ? R : never;
+// type ExtractPayload<R, K extends keyof R> = R[K] extends { payload: infer P } ? P : never;
+// type ExtractOutput<R, K extends keyof R> = R[K] extends { output: infer O } ? O : never;

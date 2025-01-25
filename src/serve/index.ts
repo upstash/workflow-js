@@ -52,6 +52,7 @@ export const serveBase = <
     retries,
     useJSONContent,
     disableTelemetry,
+    router,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -138,6 +139,7 @@ export const serveBase = <
       env,
       retries,
       telemetry,
+      router
     });
 
     // attempt running routeFunction until the first step
@@ -181,15 +183,15 @@ export const serveBase = <
       const result = isFirstInvocation
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
-            onCleanup: async () => {
-              await triggerWorkflowDelete(workflowContext, debug);
-            },
-            onCancel: async () => {
-              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-            },
-            debug,
-          });
+          onStep: async () => routeFunction(workflowContext),
+          onCleanup: async () => {
+            await triggerWorkflowDelete(workflowContext, debug);
+          },
+          onCancel: async () => {
+            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+          },
+          debug,
+        });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
