@@ -1,5 +1,5 @@
 import { WorkflowContext } from "../context";
-import { createWorkflowOpenAI, wrapTools } from "./adapters";
+import { createWorkflowOpenAI, ModelParamsWithBaseURL, wrapTools } from "./adapters";
 import { Agent } from "./agent";
 import { Task } from "./task";
 import {
@@ -94,8 +94,10 @@ export class WorkflowAgents {
   /**
    * creates an openai model for agents
    */
-  public openai(...params: Parameters<ReturnType<typeof createWorkflowOpenAI>>) {
-    const openai = createWorkflowOpenAI(this.context);
-    return openai(...params);
+  public openai(...params: ModelParamsWithBaseURL) {
+    const [model, settings] = params;
+    const { baseURL, ...otherSettings } = settings ?? {};
+    const openai = createWorkflowOpenAI(this.context, baseURL);
+    return openai(model, otherSettings);
   }
 }
