@@ -1,4 +1,4 @@
-import { openai } from "@upstash/qstash";
+import { custom, openai } from "@upstash/qstash";
 import { ApiCallSettings, BaseWorkflowApi } from "./base";
 import { CallResponse } from "../../types";
 
@@ -96,16 +96,23 @@ export class OpenAIAPI extends BaseWorkflowApi {
       {
         token: string;
         organization?: string;
+        baseURL?: string;
         operation: "chat.completions.create";
       }
     >
   ): Promise<CallResponse<TResult>> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { token, organization, operation, ...parameters } = settings;
+    const { token, organization, operation, baseURL, ...parameters } = settings;
+
+    const useOpenAI = baseURL === undefined;
+    const provider = useOpenAI
+      ? openai({ token, organization })
+      : custom({ baseUrl: baseURL, token });
+
     return await this.callApi<TResult, TBody>(stepName, {
       api: {
         name: "llm",
-        provider: openai({ token, organization }),
+        provider,
       },
       ...parameters,
     });
