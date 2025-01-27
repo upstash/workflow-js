@@ -3,7 +3,12 @@ import { SDK_TELEMETRY } from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
-import { RouteFunction, Telemetry, ValidationOptions, WorkflowServeOptions } from "../types";
+import {
+  ExclusiveValidationOptions,
+  RouteFunction,
+  Telemetry,
+  WorkflowServeOptions,
+} from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
@@ -38,8 +43,6 @@ export const serveBase = <
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): { handler: (request: TRequest) => Promise<TResponse> } => {
   // Prepares options with defaults if they are not provided.
-
-
 
   const {
     qstashClient,
@@ -184,15 +187,15 @@ export const serveBase = <
       const result = isFirstInvocation
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
-          onStep: async () => routeFunction(workflowContext),
-          onCleanup: async () => {
-            await triggerWorkflowDelete(workflowContext, debug);
-          },
-          onCancel: async () => {
-            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-          },
-          debug,
-        });
+            onStep: async () => routeFunction(workflowContext),
+            onCleanup: async () => {
+              await triggerWorkflowDelete(workflowContext, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+            },
+            debug,
+          });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
@@ -239,7 +242,11 @@ export const serve = <
   TResponse extends Response = Response,
 >(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "useJSONContent"> & ValidationOptions<TInitialPayload>
+  options?: Omit<
+    WorkflowServeOptions<TResponse, TInitialPayload>,
+    "useJSONContent" | "schema" | "initialPayloadParser"
+  > &
+    ExclusiveValidationOptions<TInitialPayload>
 ): { handler: (request: TRequest) => Promise<TResponse> } => {
   return serveBase(
     routeFunction,
