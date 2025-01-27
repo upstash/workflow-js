@@ -902,14 +902,19 @@ describe("Workflow Parser", () => {
   });
 });
 
-describe.only("schema validation in serve", () => {
+describe("schema validation in serve", () => {
   const testServe = async (
     options: Parameters<typeof serve>[1],
     payload: unknown,
     expectedStatus: number,
     expectedError?: string
   ) => {
-    const { POST } = serve(async () => {}, options);
+    const { POST } = serve(async () => {}, {
+      ...options,
+      env: {
+        QSTASH_TOKEN: process.env.QSTASH_TOKEN,
+      },
+    });
 
     const response = await POST(
       new Request("http://localhost", {
@@ -924,6 +929,13 @@ describe.only("schema validation in serve", () => {
       const { error, message } = (await response.json()) as { error: string; message: string };
       expect(error).toBe("ZodError");
       expect(message).toContain(expectedError);
+    } else {
+      const { message, workflowRunId } = (await response.json()) as {
+        message: string;
+        workflowRunId: string;
+      };
+      expect(workflowRunId).toBe("no-workflow-id");
+      expect(message).toContain("Failed to authenticate Workflow request");
     }
   };
 

@@ -17,7 +17,7 @@ import { SDK_TELEMETRY } from "../src/constants";
  */
 export const serve = <TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
-  options?: PublicServeOptions<TInitialPayload>,
+  options?: PublicServeOptions<TInitialPayload>
 ): { POST: (request: Request) => Promise<Response> } => {
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
     routeFunction,
