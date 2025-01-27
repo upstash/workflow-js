@@ -22,7 +22,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): RequiredExceptFields<
   WorkflowServeOptions<TResponse, TInitialPayload>,
-  "verbose" | "receiver" | "url" | "failureFunction" | "failureUrl" | "baseUrl"
+  "verbose" | "receiver" | "url" | "failureFunction" | "failureUrl" | "baseUrl" | "schema"
 > => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
@@ -61,7 +61,8 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
 
       // try to parse the payload
       try {
-        return JSON.parse(initialRequest) as TInitialPayload;
+        const parsed = JSON.parse(initialRequest) as TInitialPayload;
+        return options?.schema ? options.schema.parse(parsed) : parsed;
       } catch (error) {
         // if you get an error when parsing, return it as it is
         // needed in plain string case.

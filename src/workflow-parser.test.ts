@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-magic-numbers */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "./workflow-parser";
 import {
   WORKFLOW_FAILURE_HEADER,
@@ -21,6 +21,8 @@ import { Client } from "@upstash/qstash";
 import { processOptions } from "./serve/options";
 import { FinishState } from "./integration.test";
 import { WorkflowContext } from "./context";
+import { z } from "zod";
+import { serve } from "../platforms/nextjs";
 
 describe("Workflow Parser", () => {
   describe("validateRequest", () => {
@@ -898,4 +900,71 @@ describe("Workflow Parser", () => {
       expect(called).toBeTrue();
     });
   });
+});
+
+describe("schema validation in serve", () => {
+  const testServe = async (
+    options: Parameters<typeof serve>[1],
+    payload: unknown,
+    expectedStatus: number,
+    expectedError?: string
+  ) => {
+    const { POST } = serve(async () => {}, {
+      ...options,
+      env: {
+        QSTASH_TOKEN: process.env.QSTASH_TOKEN,
+      },
+    });
+
+    const response = await POST(
+      new Request("http://localhost", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+    );
+
+    expect(response.status).toBe(expectedStatus);
+
+    if (expectedError) {
+      const { error, message } = (await response.json()) as { error: string; message: string };
+      expect(error).toBe("ZodError");
+      expect(message).toContain(expectedError);
+    } else {
+      const { message, workflowRunId } = (await response.json()) as {
+        message: string;
+        workflowRunId: string;
+      };
+      expect(workflowRunId).toBe("no-workflow-id");
+      expect(message).toContain("Failed to authenticate Workflow request");
+    }
+  };
+
+  const schema = z.object({ field: z.string() });
+  const parser = (payload: string) => JSON.parse(payload);
+
+  const validPayload = { field: "test" };
+  const invalidPayload = { field: 123 };
+
+  test("schema - valid payload", () => testServe({ schema }, validPayload, 400));
+
+  test("schema - invalid payload", () =>
+    testServe({ schema }, invalidPayload, 500, "Expected string, received number"));
+
+  test("parser - valid payload", () =>
+    testServe({ initialPayloadParser: parser }, validPayload, 400));
+
+  test("parser - invalid payload", () =>
+    testServe({ initialPayloadParser: parser }, invalidPayload, 400));
+
+  test("schema + parser - valid payload", () =>
+    // @ts-expect-error Schema and initialPayloadParser are mutually exclusive
+    testServe({ schema, initialPayloadParser: parser }, validPayload, 400));
+
+  test("schema + parser - invalid payload", () =>
+    // @ts-expect-error Schema and initialPayloadParser are mutually
+    testServe({ schema, initialPayloadParser: parser }, invalidPayload, 400));
+
+  test("no validation - valid payload", () => testServe({}, validPayload, 400));
+
+  test("no validation - invalid payload", () => testServe({}, invalidPayload, 400));
 });

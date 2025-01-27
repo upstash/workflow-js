@@ -3,6 +3,7 @@ import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
+import { z } from "zod";
 
 /**
  * Interface for Client with required methods
@@ -134,7 +135,7 @@ export type FinishCondition =
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
-> = {
+> = ValidationOptions<TInitialPayload> & {
   /**
    * QStash client
    */
@@ -146,10 +147,6 @@ export type WorkflowServeOptions<
    * @returns response
    */
   onStepFinish?: (workflowRunId: string, finishCondition: FinishCondition) => TResponse;
-  /**
-   * Function to parse the initial payload passed by the user
-   */
-  initialPayloadParser?: (initialPayload: string) => TInitialPayload;
   /**
    * Url of the endpoint where the workflow is set up.
    *
@@ -233,7 +230,21 @@ export type WorkflowServeOptions<
    * Set `disableTelemetry` to disable this behavior.
    */
   disableTelemetry?: boolean;
+} & ValidationOptions<TInitialPayload>;
+
+type ValidationOptions<TInitialPayload> = {
+  schema?: z.ZodType<TInitialPayload>;
+  initialPayloadParser?: (initialPayload: string) => TInitialPayload;
 };
+export type ExclusiveValidationOptions<TInitialPayload> =
+  | {
+      schema?: ValidationOptions<TInitialPayload>["schema"];
+      initialPayloadParser?: never;
+    }
+  | {
+      schema?: never;
+      initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
+    };
 
 export type Telemetry = {
   /**
@@ -253,7 +264,11 @@ export type Telemetry = {
 export type PublicServeOptions<
   TInitialPayload = unknown,
   TResponse extends Response = Response,
-> = Omit<WorkflowServeOptions<TResponse, TInitialPayload>, "onStepFinish" | "useJSONContent">;
+> = Omit<
+  WorkflowServeOptions<TResponse, TInitialPayload>,
+  "onStepFinish" | "useJSONContent" | "schema" | "initialPayloadParser"
+> &
+  ExclusiveValidationOptions<TInitialPayload>;
 
 /**
  * Payload passed as body in failureFunction
