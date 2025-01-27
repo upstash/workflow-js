@@ -9,8 +9,8 @@ import { z } from "zod";
 import { DisabledWorkflowContext } from "../serve/authorization";
 
 export const getAgentsApi = ({ disabledContext }: { disabledContext: boolean }) => {
-  const token = getWorkflowRunId();
-  const workflowRunId = nanoid();
+  const workflowRunId = getWorkflowRunId();
+  const token = nanoid();
 
   let context: WorkflowContext;
   if (disabledContext) {
@@ -130,9 +130,12 @@ describe("tasks", () => {
 
   test("multi agent with baseURL", async () => {
     const { agentsApi, agent, token, workflowRunId } = getAgentsApi({ disabledContext: false });
+
+    const customURL = "https://api.deepseek.com/v1";
+    const customApiKey = nanoid();
     const task = agentsApi.task({
       agents: [agent],
-      model: agentsApi.openai("gpt-3.5-turbo", { baseURL: "https://api.deepseek.com/v1" }),
+      model: agentsApi.openai("gpt-3.5-turbo", { baseURL: customURL, apiKey: customApiKey }),
       maxSteps: 2,
       prompt: "hello world!",
     });
@@ -173,7 +176,7 @@ describe("tasks", () => {
               "upstash-callback-workflow-url": "https://requestcatcher.com/api",
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "WF_NoDelete,InitialBody",
-              "upstash-forward-authorization": `Bearer ${openaiToken}`,
+              "upstash-forward-authorization": `Bearer ${customApiKey}`,
               "upstash-forward-content-type": "application/json",
               "upstash-forward-upstash-agent-name": "Manager LLM",
               "upstash-method": "POST",

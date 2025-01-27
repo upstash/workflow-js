@@ -9,10 +9,6 @@ import { tool } from "ai";
 import { AISDKTool, LangchainTool } from "./types";
 import { AGENT_NAME_HEADER } from "./constants";
 
-type ModelParams = Parameters<ReturnType<typeof createWorkflowOpenAI>>;
-type ModelSettingsWithBaseURL = ModelParams["1"] & { baseURL?: string };
-export type ModelParamsWithBaseURL = [ModelParams[0], ModelSettingsWithBaseURL?];
-
 /**
  * creates an AI SDK openai client with a custom
  * fetch implementation which uses context.call.
@@ -20,9 +16,14 @@ export type ModelParamsWithBaseURL = [ModelParams[0], ModelSettingsWithBaseURL?]
  * @param context workflow context
  * @returns ai sdk openai
  */
-export const createWorkflowOpenAI = (context: WorkflowContext, baseURL?: string) => {
+export const createWorkflowOpenAI = (
+  context: WorkflowContext,
+  config?: { baseURL?: string; apiKey?: string }
+) => {
+  const { baseURL, apiKey } = config ?? {};
   return createOpenAI({
     baseURL,
+    apiKey,
     compatibility: "strict",
     fetch: async (input, init) => {
       try {
