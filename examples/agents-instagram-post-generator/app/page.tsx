@@ -12,7 +12,6 @@ import {
 
 import { Loader2 } from "lucide-react";
 
-
 export type Post = {
   imageUrl: string;
     prompt: string;
@@ -70,16 +69,12 @@ const InstagramGeneratorPage = () => {
     setStatus('Initializing generation...');
     const initialTimer = setTimeout(() => {
       setStatus('Checking results...');
-      
-
       const interval = setInterval(async () => {
        
         const succeeded = await pollResults();
         if (succeeded){
           clearInterval(interval);
         }
-
-
 
       }, POLLING_INTERVAL);
 
@@ -230,13 +225,6 @@ const InstagramGeneratorPage = () => {
                             {post.caption}
                           </p>
                         </div>
-
-                        {/* <div>
-                          <h4 className="mb-2 text-sm font-medium text-gray-500">Image Prompt</h4>
-                          <p className="text-sm text-gray-500">
-                            {post.prompt}
-                          </p>
-                        </div> */}
                       </div>
                     </div>
                   </div>
