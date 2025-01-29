@@ -9,7 +9,7 @@ import {
 } from "express";
 
 export function serve<TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: Omit<WorkflowServeOptions<globalThis.Response, TInitialPayload>, "onStepFinish">
 ): Router {
   const router = Router();

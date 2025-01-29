@@ -14,7 +14,7 @@ function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
 }
 
 export const serve = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: PublicServeOptions<TInitialPayload>
 ) => {
   const handler = defineEventHandler(async (event) => {

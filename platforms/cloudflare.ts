@@ -58,7 +58,7 @@ const getArgs = (
  * @returns
  */
 export const serve = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: PublicServeOptions<TInitialPayload>
 ): { fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response> } => {
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {

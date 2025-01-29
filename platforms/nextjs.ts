@@ -15,11 +15,11 @@ import { SDK_TELEMETRY } from "../src/constants";
  * @param options workflow options
  * @returns
  */
-export const serve = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+export const serve = <TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
-): { POST: (request: Request) => Promise<Response> } => {
-  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
+) => {
+  const { handler: serveHandler, workflow, workflowId } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
     {
       sdk: SDK_TELEMETRY,
@@ -33,11 +33,12 @@ export const serve = <TInitialPayload = unknown>(
     POST: async (request: Request) => {
       return await serveHandler(request);
     },
+    workflow, workflowId
   };
 };
 
 export const servePagesRouter = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: PublicServeOptions<TInitialPayload>
 ): { handler: NextApiHandler } => {
   const { handler: serveHandler } = serveBase(

@@ -14,7 +14,7 @@ import { SDK_TELEMETRY } from "../src/constants";
  * @returns
  */
 export const serve = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   options: PublicServeOptions<TInitialPayload> & {
     env: PublicServeOptions["env"]; // make env required
   }

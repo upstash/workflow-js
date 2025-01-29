@@ -26,7 +26,7 @@ export const serve = <
   TBindings extends WorkflowBindings = WorkflowBindings,
   TVariables extends Variables = Variables,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: PublicServeOptions<TInitialPayload>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
