@@ -1,4 +1,4 @@
-export { serve } from "./serve"; // exclude serveBase
+export { serve, serveMany } from "./serve"; // exclude serveBase
 export * from "./context";
 export * from "./types";
 export * from "./logger";

@@ -4,6 +4,7 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
+import { LazyInvokeStepParams } from "./context/steps";
 
 /**
  * Interface for Client with required methods
@@ -33,6 +34,7 @@ export const StepTypes = [
   "Call",
   "Wait",
   "Notify",
+  "Invoke",
 ] as const;
 export type StepType = (typeof StepTypes)[number];
 
@@ -120,9 +122,9 @@ export type StepFunction<TResult> = AsyncStepFunction<TResult> | SyncStepFunctio
 
 export type ParallelCallState = "first" | "partial" | "discard" | "last";
 
-export type RouteFunction<TInitialPayload> = (
+export type RouteFunction<TInitialPayload, TResult> = (
   context: WorkflowContext<TInitialPayload>
-) => Promise<void>;
+) => Promise<TResult>;
 
 export type FinishCondition =
   | "success"
@@ -135,6 +137,7 @@ export type FinishCondition =
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
+  TWorkflowId extends string = string,
 > = ValidationOptions<TInitialPayload> & {
   /**
    * QStash client
@@ -230,6 +233,10 @@ export type WorkflowServeOptions<
    * Set `disableTelemetry` to disable this behavior.
    */
   disableTelemetry?: boolean;
+  /**
+   *
+   */
+  workflowId?: TWorkflowId;
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -440,3 +447,21 @@ export type HeaderParams = {
       callTimeout?: never;
     }
 );
+
+export type InvokeWorkflowRequest = {
+  workflowUrl: string;
+  workflowRunId: string;
+  headers: Record<string, string[]>;
+  step: Step;
+  body: string;
+};
+export type InvokeStepResponse<TBody> = {
+  body?: TBody;
+  isCanceled?: boolean;
+  isFailed?: boolean;
+};
+export type ServeFunction<TResult, TBody> = (
+  settings: Required<LazyInvokeStepParams<TBody, TResult>>,
+  invokeStep: Step,
+  context: WorkflowContext
+) => Promise<TResult>;

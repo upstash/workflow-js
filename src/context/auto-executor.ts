@@ -1,7 +1,7 @@
 import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, WaitRequest, Telemetry } from "../types";
-import { LazyCallStep, type BaseLazyStep } from "./steps";
+import { LazyCallStep, LazyInvokeStep, type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
 import { NO_CONCURRENCY } from "../constants";
@@ -376,7 +376,17 @@ export class AutoExecutor {
         parseResponseAsJson: false,
       });
 
-      throw new WorkflowAbort(steps[0].stepName, steps[0]);
+      throw new WorkflowAbort(waitStep.stepName, waitStep);
+    }
+    // must check length to be 1, otherwise was the if would return
+    // true for plan steps.
+    if (steps.length === 1 && lazySteps[0] instanceof LazyInvokeStep) {
+      const invokeStep = steps[0];
+      const lazyInvokeStep = lazySteps[0];
+
+      await lazyInvokeStep.params.invokeFunction(lazyInvokeStep.params, invokeStep, this.context);
+
+      throw new WorkflowAbort(invokeStep.stepName, invokeStep);
     }
 
     const result = await this.context.qstashClient.batchJSON(

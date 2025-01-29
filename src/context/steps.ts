@@ -1,8 +1,17 @@
 import type { Client, HTTPMethods } from "@upstash/qstash";
-import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
+import type {
+  InvokeStepResponse,
+  NotifyStepResponse,
+  ServeFunction,
+  Step,
+  StepFunction,
+  StepType,
+  WaitStepResponse,
+} from "../types";
 import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
 import { WorkflowError } from "../error";
+import { getWorkflowRunId } from "../utils";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -251,6 +260,55 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
         eventData,
         notifyResponse,
       };
+    });
+  }
+}
+
+export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
+  invokeFunction: ServeFunction<TResult, TInitiaPayload>;
+  body: TInitiaPayload;
+  headers?: Record<string, string>;
+  workflowRunId?: string;
+};
+export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazyStep<
+  InvokeStepResponse<TResult>
+> {
+  stepType: StepType = "Invoke";
+  params: Required<LazyInvokeStepParams<TBody, TResult>>;
+  constructor(
+    stepName: string,
+    { invokeFunction, body, headers = {}, workflowRunId }: LazyInvokeStepParams<TBody, TResult>
+  ) {
+    super(stepName);
+    this.params = {
+      invokeFunction,
+      body,
+      headers,
+      workflowRunId: getWorkflowRunId(workflowRunId),
+    };
+  }
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      targetStep,
+    };
+  }
+  /**
+   * won't be used as it's the server who will add the result step
+   * in Invoke step.
+   */
+  public getResultStep(
+    concurrent: number,
+    stepId: number
+  ): Promise<Step<InvokeStepResponse<TResult>>> {
+    return Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
     });
   }
 }
