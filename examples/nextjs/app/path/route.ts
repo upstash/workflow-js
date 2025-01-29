@@ -1,19 +1,36 @@
-import { serve } from '@upstash/workflow/nextjs'
 
-const someWork = (input: string) => {
-  return `processed '${JSON.stringify(input)}'`
-}
+import { serveMany } from "@upstash/workflow";
+import { z } from "zod";
 
-export const { POST } = serve<string>(async (context) => {
-  const input = context.requestPayload
-  const result1 = await context.run('step1', async () => {
-    const output = someWork(input)
-    console.log('step 1 input', input, 'output', output)
-    return output
-  })
-
-  await context.run('step2', async () => {
-    const output = someWork(result1)
-    console.log('step 2 input', result1, 'output', output)
-  })
+export const { POST } = serveMany({
+  routes: {
+    "route-one": {
+      route: async (context) => {
+        await context.run("print", () => console.log("hello"));
+        await context.run("print", () => console.log("from"));
+        await context.run("print", () => console.log("route"));
+        await context.run("print", () => console.log("one"));
+        await context.invoke("invoking", {routeName: "route-two", body: 4})
+        await context.run("print", () => console.log("hello"));
+        await context.run("print", () => console.log("from"));
+        await context.run("print", () => console.log("route"));
+        await context.run("print", () => console.log("one"));
+      },
+      options: {
+        schema: z.string()
+      }
+    },
+    "route-two": {
+      route: async (context) => {
+        await context.run("print", () => console.log("XXX hello"));
+        await context.run("print", () => console.log("XXX from"));
+        await context.run("print", () => console.log("XXX route"));
+        await context.run("print", () => console.log("XXX two"));
+      },
+      options: {
+        schema: z.number()
+      }
+    }
+  },
+  defaultRoute: "route-one"
 })
