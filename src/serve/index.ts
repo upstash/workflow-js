@@ -1,10 +1,11 @@
 import { makeCancelRequest } from "../client/utils";
-import { SDK_TELEMETRY } from "../constants";
+import { SDK_TELEMETRY, UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
-import { formatWorkflowError } from "../error";
+import { formatWorkflowError, WorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
+  PublicServeOptions,
   RouteFunction,
   Telemetry,
   WorkflowServeOptions,
@@ -38,7 +39,7 @@ export const serveBase = <
   TRequest extends Request = Request,
   TResponse extends Response = Response,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, unknown>,
   telemetry?: Telemetry,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): { handler: (request: TRequest) => Promise<TResponse> } => {
@@ -240,8 +241,9 @@ export const serve = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
+  TRoutePayloads = unknown,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, TRoutePayloads>,
   options?: Omit<
     WorkflowServeOptions<TResponse, TInitialPayload>,
     "useJSONContent" | "schema" | "initialPayloadParser"
@@ -256,4 +258,57 @@ export const serve = <
     },
     options
   );
+};
+
+type Route<TPayload, TRoutePayloads> = ReturnType<
+  typeof serve<TPayload, Request, Response, TRoutePayloads>
+>;
+
+type Routes<TRoutePayloads> = {
+  [K in keyof TRoutePayloads]: Route<TRoutePayloads[K], TRoutePayloads>;
+};
+
+export const serveMany = <TRoutePayloads>({
+  routes,
+  defaultRoute,
+}: {
+  routes: {
+    [K in keyof TRoutePayloads]: {
+      route: RouteFunction<TRoutePayloads[K], TRoutePayloads>;
+      options?: PublicServeOptions<TRoutePayloads[K]>;
+    };
+  };
+  defaultRoute?: keyof TRoutePayloads;
+}) => {
+  const mappedRoutes = Object.fromEntries(
+    Object.entries(routes).map(([routeName, routeParams]) => {
+      const { route, options } = routeParams as {
+        route: RouteFunction<unknown>;
+        options: PublicServeOptions;
+      };
+
+      return [routeName, serve(route, options)];
+    })
+  ) as Routes<TRoutePayloads>;
+
+  return {
+    POST: async (request: Request) => {
+      const routeChoice =
+        request.headers.get(UPSTASH_WORKFLOW_ROUTE_HEADER) ?? (defaultRoute as string);
+
+      if (!routeChoice) {
+        throw new WorkflowError(
+          `Unexpected route: '${routeChoice}'. Please set a default route or pass ${UPSTASH_WORKFLOW_ROUTE_HEADER}`
+        );
+      }
+
+      const route = (mappedRoutes as Record<string, ReturnType<typeof serve>>)[routeChoice];
+
+      if (!route) {
+        throw new WorkflowError(`No routes found for '${routeChoice}'`);
+      }
+
+      return await route.handler(request);
+    },
+  };
 };

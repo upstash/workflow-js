@@ -1,10 +1,17 @@
 import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step, WaitRequest, Telemetry } from "../types";
-import { LazyCallStep, type BaseLazyStep } from "./steps";
+import type {
+  StepFunction,
+  ParallelCallState,
+  Step,
+  WaitRequest,
+  Telemetry,
+  InvokeWorkflowRequest,
+} from "../types";
+import { LazyCallStep, LazyInvokeStep, type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
-import { NO_CONCURRENCY } from "../constants";
+import { NO_CONCURRENCY, UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
 import { QstashError } from "@upstash/qstash";
 
 export class AutoExecutor {
@@ -376,7 +383,51 @@ export class AutoExecutor {
         parseResponseAsJson: false,
       });
 
-      throw new WorkflowAbort(steps[0].stepName, steps[0]);
+      throw new WorkflowAbort(waitStep.stepName, waitStep);
+    }
+
+    // must check length to be 1, otherwise was the if would return
+    // true for plan steps.
+    if (steps.length === 1 && lazySteps[0] instanceof LazyInvokeStep) {
+      const invokeStep = steps[0];
+      const params = lazySteps[0].params;
+
+      const { headers } = getHeaders({
+        initHeaderValue: "false",
+        workflowRunId: this.context.workflowRunId,
+        workflowUrl: this.context.url,
+        userHeaders: this.context.headers,
+        step: invokeStep,
+        failureUrl: this.context.failureUrl,
+        retries: this.context.retries,
+        telemetry: this.telemetry,
+      });
+
+      headers[`Upstash-Forward-${UPSTASH_WORKFLOW_ROUTE_HEADER}`] = params.routeName as string;
+
+      const request: InvokeWorkflowRequest = {
+        body: typeof params.body === "string" ? params.body : JSON.stringify(params.body),
+        headers: params.headers,
+        workflowRunId: params.workflowRunId,
+        workflowUrl: this.context.url,
+        step: invokeStep,
+      };
+
+      console.log({
+        headers,
+        method: "POST",
+        body: request,
+        url: this.context.url,
+      });
+
+      this.context.qstashClient.publishJSON({
+        headers,
+        method: "POST",
+        body: request,
+        url: this.context.url,
+      });
+
+      throw new WorkflowAbort(invokeStep.stepName, invokeStep);
     }
 
     const result = await this.context.qstashClient.batchJSON(

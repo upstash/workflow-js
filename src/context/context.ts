@@ -9,10 +9,11 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep } from "./steps";
+import type { BaseLazyStep, LazyInvokeStepParams } from "./steps";
 import {
   LazyCallStep,
   LazyFunctionStep,
+  LazyInvokeStep,
   LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
@@ -30,7 +31,7 @@ import { WorkflowAgents } from "../agents";
  *
  * See the docs for fields and methods https://upstash.com/docs/qstash/workflows/basics/context
  */
-export class WorkflowContext<TInitialPayload = unknown> {
+export class WorkflowContext<TInitialPayload = unknown, TRoutePayloads = unknown> {
   protected readonly executor: AutoExecutor;
   protected readonly steps: Step[];
 
@@ -442,6 +443,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result;
     }
+  }
+
+  public async invoke<K extends keyof TRoutePayloads>(
+    stepName: string,
+    settings: LazyInvokeStepParams<TRoutePayloads, K>
+  ) {
+    const result = await this.addStep(new LazyInvokeStep(stepName, settings));
+    return result;
   }
 
   /**

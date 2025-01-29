@@ -514,6 +514,10 @@ export const getHeaders = ({
     };
   }
 
+  if (step?.stepType === "Invoke") {
+    baseHeaders["upstash-workflow-invoke"] = "true";
+  }
+
   return { headers: baseHeaders };
 };
 

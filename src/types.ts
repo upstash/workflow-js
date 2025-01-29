@@ -33,6 +33,7 @@ export const StepTypes = [
   "Call",
   "Wait",
   "Notify",
+  "Invoke",
 ] as const;
 export type StepType = (typeof StepTypes)[number];
 
@@ -120,8 +121,8 @@ export type StepFunction<TResult> = AsyncStepFunction<TResult> | SyncStepFunctio
 
 export type ParallelCallState = "first" | "partial" | "discard" | "last";
 
-export type RouteFunction<TInitialPayload> = (
-  context: WorkflowContext<TInitialPayload>
+export type RouteFunction<TInitialPayload, TRoutePayloads = unknown> = (
+  context: WorkflowContext<TInitialPayload, TRoutePayloads>
 ) => Promise<void>;
 
 export type FinishCondition =
@@ -338,6 +339,20 @@ export type NotifyStepResponse = {
    * response from notify
    */
   notifyResponse: NotifyResponse[];
+};
+
+export type InvokeWorkflowRequest = {
+  workflowUrl: string;
+  workflowRunId: string;
+  headers: Record<string, string>;
+  step: Step;
+  body: string;
+};
+
+export type InvokeStepResponse<TBody> = {
+  body?: TBody;
+  isCanceled?: boolean;
+  isFailed?: boolean;
 };
 
 export type CallResponse<TResult = unknown> = {
