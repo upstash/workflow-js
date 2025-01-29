@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-import type { RouteFunction, PublicServeOptions } from "../src";
+import type { RouteFunction, PublicServeOptions, ServeMany } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
+import { serveManyBase } from "../src/serve/serve-many";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -19,7 +20,7 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
 ) => {
-  const { handler: serveHandler, workflow, workflowId } = serveBase<TInitialPayload, Request, Response, TResult>(
+  const { handler: serveHandler, invokeWorkflow, workflowId } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
     {
       sdk: SDK_TELEMETRY,
@@ -33,7 +34,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
     POST: async (request: Request) => {
       return await serveHandler(request);
     },
-    workflow, workflowId
+    invokeWorkflow,
+    workflowId
   };
 };
 
@@ -81,3 +83,20 @@ export const servePagesRouter = <TInitialPayload = unknown>(
 
   return { handler };
 };
+
+export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes }) => {
+  return {
+    POST: serveManyBase<[Request]>({
+      routes: routes.map(route => {
+        return {
+          ...route,
+          handler: route.POST
+        }
+      }),
+      getHeader(header, params) {
+        const [request] = params
+        return request.headers.get(header)
+      },
+    }).handler
+  }
+}

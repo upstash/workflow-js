@@ -1,6 +1,7 @@
-import type { PublicServeOptions, RouteFunction } from "../src";
+import type { PublicServeOptions, RouteFunction, ServeMany, Telemetry } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
+import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -57,18 +58,23 @@ const getArgs = (
  * @param options workflow options
  * @returns
  */
-export const serve = <TInitialPayload = unknown>(
+export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: PublicServeOptions<TInitialPayload>
-): { fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response> } => {
+): {
+  fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>,
+  invokeWorkflow: ReturnType<typeof createInvokeCallback<TInitialPayload, TResult>>,
+  workflowId: string | undefined
+} => {
+  const telemetry: Telemetry = {
+    sdk: SDK_TELEMETRY,
+    framework: "cloudflare",
+  }
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);
     const { handler: serveHandler } = serveBase(
       routeFunction,
-      {
-        sdk: SDK_TELEMETRY,
-        framework: "cloudflare",
-      },
+      telemetry,
       {
         env,
         ...options,
@@ -76,5 +82,24 @@ export const serve = <TInitialPayload = unknown>(
     );
     return await serveHandler(request);
   };
-  return { fetch };
+
+  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(options?.workflowId, telemetry)
+  return { fetch, invokeWorkflow, workflowId: options?.workflowId };
 };
+
+export const serveMany: ServeMany<typeof serve, "fetch"> = ({ routes }) => {
+  return {
+    fetch: serveManyBase<PagesHandlerArgs | WorkersHandlerArgs>({
+      routes: routes.map(route => {
+        return {
+          ...route,
+          handler: route.fetch
+        }
+      }),
+      getHeader(header, params) {
+        const request: Request = params[0] instanceof Request ? params[0] : params[0].request
+        return request.headers.get(header)
+      },
+    }).handler
+  }
+}

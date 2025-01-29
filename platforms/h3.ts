@@ -1,9 +1,10 @@
 import { defineEventHandler, readRawBody } from "h3";
 
-import type { PublicServeOptions, RouteFunction } from "../src";
+import type { PublicServeOptions, RouteFunction, ServeMany, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import type { IncomingHttpHeaders } from "node:http";
 import { SDK_TELEMETRY } from "../src/constants";
+import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
 
 function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
   const formattedHeaders = Object.entries(headers).map(([key, value]) => [
@@ -13,17 +14,24 @@ function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
   return formattedHeaders as [string, string][];
 }
 
-export const serve = <TInitialPayload = unknown>(
+export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, unknown>,
   options?: PublicServeOptions<TInitialPayload>
 ) => {
+  const telemetry: Telemetry = {
+    sdk: SDK_TELEMETRY,
+    framework: "h3",
+    runtime: process.versions.bun
+      ? `bun@${process.versions.bun}/node@${process.version}`
+      : `node@${process.version}`,
+  }
+
   const handler = defineEventHandler(async (event) => {
     const method = event.node.req.method;
     if (method?.toUpperCase() !== "POST") {
-      return {
-        status: 405,
-        body: "Only POST requests are allowed in worklfows",
-      };
+      return new Response("Only POST requests are allowed in worklfows", {
+        status: 405
+      });
     }
 
     const request_ = event.node.req;
@@ -40,17 +48,24 @@ export const serve = <TInitialPayload = unknown>(
 
     const { handler: serveHandler } = serveBase<TInitialPayload>(
       routeFunction,
-      {
-        sdk: SDK_TELEMETRY,
-        framework: "h3",
-        runtime: process.versions.bun
-          ? `bun@${process.versions.bun}/node@${process.version}`
-          : `node@${process.version}`,
-      },
+      telemetry,
       options
     );
     return await serveHandler(request);
   });
 
-  return { handler };
+  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(options?.workflowId, telemetry)
+  return { handler, invokeWorkflow, workflowId: options?.workflowId };
 };
+
+export const serveMany: ServeMany<typeof serve, "handler"> = ({ routes }) => {
+  return {
+    handler: serveManyBase({
+      routes,
+      getHeader(header, params) {
+        const [request] = params
+        return request.headers.get(header)
+      },
+    }).handler
+  }
+}

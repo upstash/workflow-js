@@ -23,6 +23,7 @@ import {
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
 import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
+import { createInvokeCallback } from "./serve-many";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -48,7 +49,7 @@ export const serveBase = <
   options?: WorkflowServeOptions<TResponse, TInitialPayload, TWorkflowId>
 ): {
   handler: (request: TRequest) => Promise<TResponse>;
-  workflow: ServeFunction<TResult, TInitialPayload>;
+  invokeWorkflow: ServeFunction<TResult, TInitialPayload>;
   workflowId?: string;
 } => {
   // Prepares options with defaults if they are not provided.
@@ -197,15 +198,15 @@ export const serveBase = <
       const result = isFirstInvocation
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
-            onCleanup: async (result) => {
-              await triggerWorkflowDelete(workflowContext, result, debug);
-            },
-            onCancel: async () => {
-              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-            },
-            debug,
-          });
+          onStep: async () => routeFunction(workflowContext),
+          onCleanup: async (result) => {
+            await triggerWorkflowDelete(workflowContext, result, debug);
+          },
+          onCancel: async () => {
+            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+          },
+          debug,
+        });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
@@ -235,58 +236,9 @@ export const serveBase = <
     }
   };
 
-  const workflow: ServeFunction<TResult, TInitialPayload> = async (
-    settings,
-    invokeStep,
-    context
-  ) => {
-    if (!workflowId) {
-      throw new WorkflowError("You can only invoke workflow which have workflowRunId");
-    }
+  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(workflowId, telemetry)
 
-    const { headers } = getHeaders({
-      initHeaderValue: "false",
-      workflowRunId: context.workflowRunId,
-      workflowUrl: context.url,
-      userHeaders: context.headers,
-      failureUrl: context.failureUrl,
-      retries: context.retries,
-      telemetry: telemetry,
-    });
-    
-    const { headers: triggerHeaders } = getHeaders({
-      initHeaderValue: "true",
-      workflowRunId: settings.workflowRunId,
-      workflowUrl: context.url,
-      userHeaders: new Headers(settings.headers) as Headers,
-      telemetry,
-    });
-    triggerHeaders[`Upstash-Forward-${UPSTASH_WORKFLOW_ROUTE_HEADER}`] = workflowId;
-    triggerHeaders["Upstash-Workflow-Invoke"] = "true";
-
-    const request: InvokeWorkflowRequest = {
-      body: typeof settings.body === "string" ? settings.body : JSON.stringify(settings.body),
-      headers: Object.fromEntries(Object.entries(headers).map(pairs => [pairs[0], [pairs[1]]])),
-      workflowRunId: settings.workflowRunId,
-      workflowUrl: context.url,
-      step: invokeStep,
-    };
-    console.log(triggerHeaders);
-    console.log(request);
-    
-    
-
-    await context.qstashClient.publish({
-      headers: triggerHeaders,
-      method: "POST",
-      body: JSON.stringify(request),
-      url: context.url,
-    });
-
-    return undefined as TResult;
-  };
-
-  return { handler: safeHandler, workflow, workflowId };
+  return { handler: safeHandler, invokeWorkflow, workflowId };
 };
 
 /**
@@ -309,10 +261,7 @@ export const serve = <
     "useJSONContent" | "schema" | "initialPayloadParser"
   > &
     ExclusiveValidationOptions<TInitialPayload>
-): {
-  handler: (request: TRequest) => Promise<TResponse>;
-  workflow: ServeFunction<TResult, TInitialPayload>;
-} => {
+): ReturnType<typeof serveBase<TInitialPayload, TRequest, TResponse, TResult>> => {
   return serveBase(
     routeFunction,
     {
@@ -323,43 +272,4 @@ export const serve = <
   );
 };
 
-export const serveMany = <TWorkflowIds extends string[] = string[]>(routes: {
-  [K in keyof TWorkflowIds]: { POST: (request: Request) => Promise<Response>; workflowId?: string };
-}) => {
-  let defaultRoute: undefined | ((request: Request) => Promise<Response>);
-  const routeIds: (string | undefined)[] = [];
-  const routeMap: Record<string, (request: Request) => Response> = Object.fromEntries(
-    routes.map((route) => {
-      const { workflowId, POST } = route;
 
-      if (routeIds.includes(workflowId)) {
-        throw new WorkflowError(
-          `duplicate workflowId found: ${workflowId}. please set different workflowIds.`
-        );
-      }
-
-      if (workflowId === undefined) {
-        defaultRoute = POST;
-      }
-      return [workflowId, POST];
-    })
-  );
-  return {
-    POST: async (request: Request) => {
-      const routeChoice = request.headers.get(UPSTASH_WORKFLOW_ROUTE_HEADER);
-      if (!routeChoice) {
-        if (!defaultRoute) {
-          throw new WorkflowError(
-            `Unexpected route: '${routeChoice}'. Please set a default route or pass ${UPSTASH_WORKFLOW_ROUTE_HEADER}`
-          );
-        }
-        return await defaultRoute(request);
-      }
-      const route = routeMap[routeChoice];
-      if (!route) {
-        throw new WorkflowError(`No routes found for '${routeChoice}'`);
-      }
-      return await route(request);
-    },
-  };
-};

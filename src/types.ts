@@ -245,13 +245,13 @@ type ValidationOptions<TInitialPayload> = {
 };
 export type ExclusiveValidationOptions<TInitialPayload> =
   | {
-      schema?: ValidationOptions<TInitialPayload>["schema"];
-      initialPayloadParser?: never;
-    }
+    schema?: ValidationOptions<TInitialPayload>["schema"];
+    initialPayloadParser?: never;
+  }
   | {
-      schema?: never;
-      initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
-    };
+    schema?: never;
+    initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
+  };
 
 export type Telemetry = {
   /**
@@ -413,7 +413,7 @@ export type HeaderParams = {
    */
   telemetry?: Telemetry;
 } & (
-  | {
+    | {
       /**
        * step to generate headers for
        */
@@ -427,7 +427,7 @@ export type HeaderParams = {
        */
       callTimeout?: number | Duration;
     }
-  | {
+    | {
       /**
        * step not passed. Either first invocation or simply getting headers for
        * third party callack.
@@ -446,7 +446,7 @@ export type HeaderParams = {
        */
       callTimeout?: never;
     }
-);
+  );
 
 export type InvokeWorkflowRequest = {
   workflowUrl: string;
@@ -465,3 +465,11 @@ export type ServeFunction<TResult, TBody> = (
   invokeStep: Step,
   context: WorkflowContext
 ) => Promise<TResult>;
+
+export type ServeMany<
+  TServe extends (...args: any) => any,
+  TPick extends keyof ReturnType<TServe>,
+  TReturn = Pick<ReturnType<TServe>, TPick>
+> = ({ routes }: {
+  routes: Pick<ReturnType<TServe>, TPick | "workflowId">[],
+}) => TReturn

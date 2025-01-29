@@ -384,7 +384,7 @@ export class AutoExecutor {
       const invokeStep = steps[0];
       const lazyInvokeStep = lazySteps[0];
 
-      await lazyInvokeStep.params.invokeFunction(lazyInvokeStep.params, invokeStep, this.context);
+      await lazyInvokeStep.params.workflow.invokeWorkflow(lazyInvokeStep.params, invokeStep, this.context);
 
       throw new WorkflowAbort(invokeStep.stepName, invokeStep);
     }

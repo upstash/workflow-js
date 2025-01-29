@@ -22,6 +22,7 @@ import {
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
 import { WorkflowLogger } from "../logger";
+import { z } from "zod";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -34,16 +35,18 @@ const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
 describe("serve", () => {
   test("should send create workflow request in initial request", async () => {
-    const { handler: endpoint } = serve<string>(
+    const { handler: endpoint, serveFunction } = serve(
       async (context) => {
         const _input = context.requestPayload;
         await context.sleep("sleep 1", 1);
+        return 2;
       },
       {
         qstashClient,
         verbose: true,
         receiver: undefined,
         retries: 1,
+        schema: z.string(),
       }
     );
 

@@ -12,6 +12,7 @@ import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
 import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
+import { serveBase } from "../serve";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -265,7 +266,7 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
 }
 
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  invokeFunction: ServeFunction<TResult, TInitiaPayload>;
+  workflow: Pick<ReturnType<typeof serveBase<TInitiaPayload, Request, Response, TResult>>, "invokeWorkflow">;
   body: TInitiaPayload;
   headers?: Record<string, string>;
   workflowRunId?: string;
@@ -277,11 +278,11 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   params: Required<LazyInvokeStepParams<TBody, TResult>>;
   constructor(
     stepName: string,
-    { invokeFunction, body, headers = {}, workflowRunId }: LazyInvokeStepParams<TBody, TResult>
+    { workflow, body, headers = {}, workflowRunId }: LazyInvokeStepParams<TBody, TResult>
   ) {
     super(stepName);
     this.params = {
-      invokeFunction,
+      workflow,
       body,
       headers,
       workflowRunId: getWorkflowRunId(workflowRunId),
