@@ -220,10 +220,11 @@ describe("Workflow Requests", () => {
     });
 
     const spy = spyOn(context.qstashClient.http, "request");
-    await triggerWorkflowDelete(context);
+    await triggerWorkflowDelete(context, "hello world");
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenLastCalledWith({
       path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=false`],
+      body: '"hello world"',
       method: "DELETE",
       parseResponseAsJson: false,
     });
@@ -452,6 +453,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
       expect(timeoutHeaders).toBeUndefined();
@@ -478,6 +480,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
       });
       expect(timeoutHeaders).toBeUndefined();
@@ -514,6 +517,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
@@ -547,6 +551,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
         "Upstash-Failure-Callback": failureUrl,
@@ -572,6 +577,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Init": "false",
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
@@ -580,6 +586,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Init": ["false"],
         "Upstash-Workflow-RunId": [workflowRunId],
         "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
         [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody"],
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
         "Upstash-Workflow-Runid": [workflowRunId],
@@ -617,7 +624,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        const firstDelete = await triggerWorkflowDelete(context, debug);
+        const firstDelete = await triggerWorkflowDelete(context, "hello world", debug);
         expect(firstDelete).toEqual(undefined);
         expect(spy).toHaveBeenCalledTimes(2);
         expect(spy).toHaveBeenLastCalledWith(
@@ -859,6 +866,7 @@ describe("Workflow Requests", () => {
             "Upstash-Workflow-RunId": workflowRunId,
             "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
             "Upstash-Feature-Set": "LazyFetch,InitialBody",
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
             "Upstash-Retries": "0",
             "Upstash-Failure-Callback-Retries": "0",

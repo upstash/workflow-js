@@ -2,7 +2,6 @@ import type { Client, HTTPMethods } from "@upstash/qstash";
 import type {
   InvokeStepResponse,
   NotifyStepResponse,
-  ServeFunction,
   Step,
   StepFunction,
   StepType,
@@ -266,7 +265,10 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
 }
 
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  workflow: Pick<ReturnType<typeof serveBase<TInitiaPayload, Request, Response, TResult>>, "invokeWorkflow">;
+  workflow: Pick<
+    ReturnType<typeof serveBase<TInitiaPayload, Request, Response, TResult>>,
+    "invokeWorkflow"
+  >;
   body: TInitiaPayload;
   headers?: Record<string, string>;
   workflowRunId?: string;

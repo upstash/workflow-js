@@ -139,7 +139,7 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
 ): Promise<void> => {
   await debug?.log("SUBMIT", "SUBMIT_CLEANUP", {
     deletedWorkflowRunId: workflowContext.workflowRunId,
-  });  
+  });
   await workflowContext.qstashClient.http.request({
     path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
     method: "DELETE",

@@ -8,6 +8,7 @@ import { WorkflowAbort, WorkflowError } from "../error";
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
+  WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
 } from "../constants";
@@ -138,6 +139,7 @@ describe("context tests", () => {
             body: '{"stepId":1,"stepName":"my-step","stepType":"Run","out":"\\"my-result\\"","concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -191,6 +193,7 @@ describe("context tests", () => {
               "Content-Type": ["application/json"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
               "Upstash-Retries": ["3"],
               "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Workflow-CallType": ["step"],
@@ -239,6 +242,7 @@ describe("context tests", () => {
               body: '{"stepId":0,"stepName":"my-wait-step","stepType":"Wait","waitEventId":"my-event-id","timeout":"20s","concurrent":2,"targetStep":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -255,6 +259,7 @@ describe("context tests", () => {
               body: '{"stepId":0,"stepName":"my-run-step","stepType":"Run","concurrent":2,"targetStep":2}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -311,6 +316,7 @@ describe("context tests", () => {
               body: '"request-body"',
               destination: url,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
                 "upstash-callback-feature-set": "LazyFetch,InitialBody",
@@ -375,6 +381,7 @@ describe("context tests", () => {
               body: '"request-body"',
               destination: url,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
                 "upstash-callback-feature-set": "LazyFetch,InitialBody",
@@ -539,6 +546,7 @@ describe("context tests", () => {
               body: '{"model":"gpt-4o","messages":[{"role":"system","content":"Assistant says hello!"},{"role":"user","content":"User shouts there!"}]}',
               destination: "https://api.openai.com/v1/chat/completions",
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "upstash-timeout": timeout,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
@@ -621,6 +629,7 @@ describe("context tests", () => {
               body: '{"model":"gpt-4o","messages":[{"role":"system","content":"Assistant says hello!"},{"role":"user","content":"User shouts there!"}]}',
               destination: "https://api.deepseek.com/v1/chat/completions",
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "upstash-timeout": timeout,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
@@ -700,6 +709,7 @@ describe("context tests", () => {
               body: '{"from":"Acme <onboarding@resend.dev>","to":["delivered@resend.dev"],"subject":"Hello World","html":"<p>It works!</p>"}',
               destination: "https://api.resend.com/emails",
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "upstash-timeout": timeout,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
@@ -789,6 +799,7 @@ describe("context tests", () => {
               body: '{"model":"gpt-4o","messages":[{"role":"system","content":"Assistant says hello!"},{"role":"user","content":"User shouts there!"}]}',
               destination: "https://api.anthropic.com/v1/messages",
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 [`upstash-forward-${header}`]: headerValue,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,

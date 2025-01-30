@@ -1,11 +1,10 @@
 import { makeCancelRequest } from "../client/utils";
-import { SDK_TELEMETRY, UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
+import { SDK_TELEMETRY } from "../constants";
 import { WorkflowContext } from "../context";
-import { formatWorkflowError, WorkflowError } from "../error";
+import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
-  InvokeWorkflowRequest,
   RouteFunction,
   ServeFunction,
   Telemetry,
@@ -13,7 +12,6 @@ import {
 } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
-  getHeaders,
   handleThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
@@ -198,15 +196,15 @@ export const serveBase = <
       const result = isFirstInvocation
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
-          onStep: async () => routeFunction(workflowContext),
-          onCleanup: async (result) => {
-            await triggerWorkflowDelete(workflowContext, result, debug);
-          },
-          onCancel: async () => {
-            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-          },
-          debug,
-        });
+            onStep: async () => routeFunction(workflowContext),
+            onCleanup: async (result) => {
+              await triggerWorkflowDelete(workflowContext, result, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+            },
+            debug,
+          });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
@@ -236,7 +234,7 @@ export const serveBase = <
     }
   };
 
-  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(workflowId, telemetry)
+  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(workflowId, telemetry);
 
   return { handler: safeHandler, invokeWorkflow, workflowId };
 };
@@ -271,5 +269,3 @@ export const serve = <
     options
   );
 };
-
-

@@ -35,7 +35,7 @@ const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
 describe("serve", () => {
   test("should send create workflow request in initial request", async () => {
-    const { handler: endpoint, serveFunction } = serve(
+    const { handler: endpoint } = serve(
       async (context) => {
         const _input = context.requestPayload;
         await context.sleep("sleep 1", 1);
@@ -68,7 +68,7 @@ describe("serve", () => {
         body: initialPayload,
         headers: {
           [WORKFLOW_INIT_HEADER]: "true",
-          [WORKFLOW_PROTOCOL_VERSION_HEADER]: null,
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: "1",
           [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: "1",
           "upstash-failure-callback-retries": "1",
           "upstash-retries": "1",
@@ -143,6 +143,7 @@ describe("serve", () => {
             token,
             body: initialPayload,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-retries": "3",
@@ -168,6 +169,7 @@ describe("serve", () => {
                 body: JSON.stringify(steps[0]),
                 destination: WORKFLOW_ENDPOINT,
                 headers: {
+                  "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
                   "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -196,6 +198,7 @@ describe("serve", () => {
               {
                 destination: WORKFLOW_ENDPOINT,
                 headers: {
+                  "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
                   "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -320,9 +323,9 @@ describe("serve", () => {
     test("should return without doing anything when the last step is duplicate", async () => {
       // prettier-ignore
       const stepsWithDuplicate: Step[] = [
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1},
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1},
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1}, // duplicate
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 },
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 },
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 }, // duplicate
       ]
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", stepsWithDuplicate);
       let called = false;
@@ -346,9 +349,9 @@ describe("serve", () => {
     test("should remove duplicate middle step and continue executing", async () => {
       // prettier-ignore
       const stepsWithDuplicate: Step[] = [
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1},
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1}, // duplicate
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1}, 
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 },
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 }, // duplicate
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 },
       ]
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", stepsWithDuplicate);
       let called = false;
@@ -372,6 +375,7 @@ describe("serve", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -383,7 +387,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
               },
               body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
@@ -421,6 +425,7 @@ describe("serve", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
@@ -433,7 +438,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -467,6 +472,7 @@ describe("serve", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
@@ -481,7 +487,7 @@ describe("serve", () => {
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -517,6 +523,7 @@ describe("serve", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
@@ -531,7 +538,7 @@ describe("serve", () => {
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -720,6 +727,7 @@ describe("serve", () => {
           },
           timeout: "10d",
           timeoutHeaders: {
+            "Upstash-Workflow-Sdk-Version": ["1"],
             "Content-Type": ["application/json"],
             "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
@@ -732,7 +740,7 @@ describe("serve", () => {
             "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
             "Upstash-Telemetry-Framework": ["unknown"],
             "Upstash-Telemetry-Runtime": ["unknown"],
-            "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.3"],
+            "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
           },
           timeoutUrl: WORKFLOW_ENDPOINT,
           url: WORKFLOW_ENDPOINT,
@@ -995,6 +1003,7 @@ describe("serve", () => {
           {
             destination: WORKFLOW_ENDPOINT,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-delay": "1s",
@@ -1010,7 +1019,7 @@ describe("serve", () => {
               "upstash-forward-test-header": headerValue,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
+              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
             },
             body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
           },
