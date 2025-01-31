@@ -1,36 +1,28 @@
-import { serveMany, WorkflowContext } from '@upstash/workflow'
-import { serve } from '@upstash/workflow/nextjs'
-import { z } from 'zod'
+import { WorkflowContext } from '@upstash/workflow'
+import { serve, serveMany } from '@upstash/workflow/nextjs'
 
-const routeOne = serve(async (context: WorkflowContext<string>) => {
-  // console.log("one", context.workflowRunId, context.headers, context.steps);
-  
-  const input = context.requestPayload
-
+const workflowOne = serve(async (context: WorkflowContext<string>) => {
   await context.run("asd", () => console.log("route one says hi"))
-
-  console.log("one ends?");
+  await context.sleep("sleeing", 5)
+  console.log("route one says bye")
   return 123 as const
-  
 }, {
   workflowId: "my-id"
 })
 
-const routeTwo = serve<string>(async (context) => {
-  // console.log("two", context.workflowRunId, context.steps);
+const workflowTwo = serve<string>(async (context) => {
   await context.run("asd", () => console.log("route two says hi"))
-
   const { body } = await context.invoke("invoking", {
-    invokeFunction: routeOne.workflow,
+    workflow: workflowOne,
     body: "23"
   })
-  console.log(body);
   await context.run("asd", () => console.log("route two says bye"))
-  console.log("two ends?");
 
 })
 
-export const { POST } = serveMany([
-  routeOne,
-  routeTwo
-])
+export const { POST } = serveMany({
+  routes: [
+    workflowOne,
+    workflowTwo
+  ]
+})
