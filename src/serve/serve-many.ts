@@ -1,4 +1,3 @@
-import { serveBase } from ".";
 import { UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
 import { WorkflowError } from "../error";
 import { InvokeWorkflowRequest, ServeFunction, Telemetry } from "../types";
@@ -9,11 +8,14 @@ export const serveManyBase = <THandlerParams extends unknown[]>({
   defaultRoute,
   getHeader,
 }: {
-  routes: Record<string, {
-    handler: (...params: THandlerParams) => Promise<Response>,
-    workflowId?: string
-  }>;
-  defaultRoute: { handler: (...params: THandlerParams) => Promise<Response> },
+  routes: Record<
+    string,
+    {
+      handler: (...params: THandlerParams) => Promise<Response>;
+      workflowId?: string;
+    }
+  >;
+  defaultRoute: { handler: (...params: THandlerParams) => Promise<Response> };
   getHeader: (header: string, params: THandlerParams) => string | null;
 }) => {
   // let defaultRoute: undefined | ((...params: THandlerParams) => Promise<Response>);
@@ -21,8 +23,8 @@ export const serveManyBase = <THandlerParams extends unknown[]>({
 
   const routeMap: Record<string, (...params: THandlerParams) => Promise<Response>> =
     Object.fromEntries(
-      Object.entries(routes).map(route => {
-        const routeId = route[0]
+      Object.entries(routes).map((route) => {
+        const routeId = route[0];
 
         if (routeIds.includes(routeId)) {
           throw new WorkflowError(
@@ -30,9 +32,9 @@ export const serveManyBase = <THandlerParams extends unknown[]>({
           );
         }
 
-        route[1].workflowId = routeId
+        route[1].workflowId = routeId;
 
-        return [routeId, route[1].handler]
+        return [routeId, route[1].handler];
       })
     );
 

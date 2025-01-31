@@ -23,7 +23,7 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   const {
     handler: serveHandler,
     workflowId,
-    telemetry
+    telemetry,
   } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
     {
@@ -89,19 +89,16 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
   return {
     handler,
     telemetry,
-    workflowId: options?.workflowId
+    workflowId: options?.workflowId,
   };
 };
 
 export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes, defaultRoute }) => {
   const newRoutes = Object.fromEntries(
-    Object.entries(routes)
-      .map((route) => {
-        return [
-          route[0], { ...route[1], handler: route[1].POST }
-        ];
-      })
-  )
+    Object.entries(routes).map((route) => {
+      return [route[0], { ...route[1], handler: route[1].POST }];
+    })
+  );
   const res = {
     POST: serveManyBase<[Request]>({
       routes: newRoutes,
@@ -109,13 +106,13 @@ export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes, defaultRout
         const [request] = params;
         return request.headers.get(header);
       },
-      defaultRoute: { ...defaultRoute, handler: defaultRoute.POST }
+      defaultRoute: { ...defaultRoute, handler: defaultRoute.POST },
     }).handler,
   };
 
   for (const route in routes) {
-    routes[route].workflowId = newRoutes[route].workflowId
+    routes[route].workflowId = newRoutes[route].workflowId;
   }
 
-  return res
+  return res;
 };

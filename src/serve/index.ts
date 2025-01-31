@@ -6,7 +6,6 @@ import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
   RouteFunction,
-  ServeFunction,
   Telemetry,
   WorkflowServeOptions,
 } from "../types";
@@ -21,7 +20,6 @@ import {
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
 import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
-import { createInvokeCallback } from "./serve-many";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -47,7 +45,7 @@ export const serveBase = <
   options?: WorkflowServeOptions<TResponse, TInitialPayload, TWorkflowId>
 ): {
   handler: (request: TRequest) => Promise<TResponse>;
-  telemetry?: Telemetry
+  telemetry?: Telemetry;
   workflowId?: string;
 } => {
   // Prepares options with defaults if they are not provided.
@@ -196,15 +194,15 @@ export const serveBase = <
       const result = isFirstInvocation
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
-          onStep: async () => routeFunction(workflowContext),
-          onCleanup: async (result) => {
-            await triggerWorkflowDelete(workflowContext, result, debug);
-          },
-          onCancel: async () => {
-            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-          },
-          debug,
-        });
+            onStep: async () => routeFunction(workflowContext),
+            onCleanup: async (result) => {
+              await triggerWorkflowDelete(workflowContext, result, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+            },
+            debug,
+          });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
