@@ -6,8 +6,6 @@ const workflowOne = serve(async (context: WorkflowContext<string>) => {
   await context.sleep("sleeing", 5)
   console.log("route one says bye")
   return 123 as const
-}, {
-  workflowId: "my-id"
 })
 
 const workflowTwo = serve<string>(async (context) => {
@@ -20,9 +18,14 @@ const workflowTwo = serve<string>(async (context) => {
 
 })
 
-export const { POST } = serveMany({
-  routes: [
-    workflowOne,
-    workflowTwo
-  ]
+const { POST: manyPost } = serveMany({
+  routes: {
+    workflowOne
+  },
+  defaultRoute: workflowTwo
 })
+
+export const POST = async (req: Request) => {
+  const what = await manyPost(req)
+  return what
+}

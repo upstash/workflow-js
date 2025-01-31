@@ -267,7 +267,7 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
   workflow: Pick<
     ReturnType<typeof serveBase<TInitiaPayload, Request, Response, TResult>>,
-    "invokeWorkflow"
+    "workflowId" | "telemetry"
   >;
   body: TInitiaPayload;
   headers?: Record<string, string>;

@@ -1,3 +1,4 @@
+import { serveBase } from ".";
 import { UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
 import { WorkflowError } from "../error";
 import { InvokeWorkflowRequest, ServeFunction, Telemetry } from "../types";
@@ -5,33 +6,36 @@ import { getHeaders } from "../workflow-requests";
 
 export const serveManyBase = <THandlerParams extends unknown[]>({
   routes,
+  defaultRoute,
   getHeader,
 }: {
-  routes: {
-    handler: (...params: THandlerParams) => Promise<Response>;
-    workflowId: string | undefined;
-  }[];
+  routes: Record<string, {
+    handler: (...params: THandlerParams) => Promise<Response>,
+    workflowId?: string
+  }>;
+  defaultRoute: { handler: (...params: THandlerParams) => Promise<Response> },
   getHeader: (header: string, params: THandlerParams) => string | null;
 }) => {
-  let defaultRoute: undefined | ((...params: THandlerParams) => Promise<Response>);
+  // let defaultRoute: undefined | ((...params: THandlerParams) => Promise<Response>);
   const routeIds: (string | undefined)[] = [];
+
   const routeMap: Record<string, (...params: THandlerParams) => Promise<Response>> =
     Object.fromEntries(
-      routes.map((route) => {
-        const { workflowId, handler } = route;
+      Object.entries(routes).map(route => {
+        const routeId = route[0]
 
-        if (routeIds.includes(workflowId)) {
+        if (routeIds.includes(routeId)) {
           throw new WorkflowError(
-            `Duplicate workflowId found: ${workflowId}. Please set different workflowIds in serveMany.`
+            `Duplicate workflowId found: ${routeId}. Please set different route names in serveMany.`
           );
         }
 
-        if (workflowId === undefined) {
-          defaultRoute = handler;
-        }
-        return [workflowId, handler];
+        route[1].workflowId = routeId
+
+        return [routeId, route[1].handler]
       })
     );
+
   return {
     handler: async (...params: THandlerParams) => {
       const routeChoice = getHeader(UPSTASH_WORKFLOW_ROUTE_HEADER, params);
@@ -41,7 +45,7 @@ export const serveManyBase = <THandlerParams extends unknown[]>({
             `Unexpected route in serveMany: '${routeChoice}'. Please set a default route or pass ${UPSTASH_WORKFLOW_ROUTE_HEADER}`
           );
         }
-        return await defaultRoute(...params);
+        return await defaultRoute.handler(...params);
       }
       const route = routeMap[routeChoice];
       if (!route) {
@@ -62,7 +66,7 @@ export const createInvokeCallback = <TInitialPayload, TResult>(
     context
   ) => {
     if (!workflowId) {
-      throw new WorkflowError("You can only invoke workflow which have workflowRunId");
+      throw new WorkflowError("You can only invoke workflow which have workflowId");
     }
 
     const { headers } = getHeaders({
