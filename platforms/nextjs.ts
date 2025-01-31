@@ -94,16 +94,17 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
 };
 
 export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes, defaultRoute }) => {
+  const newRoutes = Object.fromEntries(
+    Object.entries(routes)
+      .map((route) => {
+        return [
+          route[0], { ...route[1], handler: route[1].POST }
+        ];
+      })
+  )
   const res = {
     POST: serveManyBase<[Request]>({
-      routes: Object.fromEntries(
-        Object.entries(routes)
-          .map((route) => {
-            return [
-              route[0], { ...route[1], handler: route[1].POST }
-            ];
-          })
-      ),
+      routes: newRoutes,
       getHeader(header, params) {
         const [request] = params;
         return request.headers.get(header);
@@ -111,5 +112,10 @@ export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes, defaultRout
       defaultRoute: { ...defaultRoute, handler: defaultRoute.POST }
     }).handler,
   };
+
+  for (const route in routes) {
+    routes[route].workflowId = newRoutes[route].workflowId
+  }
+
   return res
 };

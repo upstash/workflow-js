@@ -385,7 +385,7 @@ export class AutoExecutor {
       const lazyInvokeStep = lazySteps[0];
 
       if (!lazyInvokeStep.params.workflow.workflowId) {
-        throw new WorkflowError("You can only invoke workflow which have workflowId");
+        throw new WorkflowError("The workflow you invoke should be served under the same serveMany.");
       }
 
       const { headers } = getHeaders({
