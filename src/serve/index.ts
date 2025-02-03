@@ -38,15 +38,12 @@ export const serveBase = <
   TRequest extends Request = Request,
   TResponse extends Response = Response,
   TResult = unknown,
-  TWorkflowId extends string = string,
 >(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   telemetry?: Telemetry,
-  options?: WorkflowServeOptions<TResponse, TInitialPayload, TWorkflowId>
+  options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): {
   handler: (request: TRequest) => Promise<TResponse>;
-  telemetry?: Telemetry;
-  workflowId?: string;
 } => {
   // Prepares options with defaults if they are not provided.
 
@@ -64,7 +61,6 @@ export const serveBase = <
     retries,
     useJSONContent,
     disableTelemetry,
-    workflowId,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -232,7 +228,7 @@ export const serveBase = <
     }
   };
 
-  return { handler: safeHandler, telemetry, workflowId };
+  return { handler: safeHandler };
 };
 
 /**

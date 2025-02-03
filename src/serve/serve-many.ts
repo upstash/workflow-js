@@ -1,102 +1,103 @@
-import { UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
 import { WorkflowError } from "../error";
-import { InvokeWorkflowRequest, ServeFunction, Telemetry } from "../types";
+import { InvokableWorkflow, InvokeCallback, InvokeWorkflowRequest, Telemetry } from "../types";
+import { getWorkflowRunId } from "../utils";
 import { getHeaders } from "../workflow-requests";
 
-export const serveManyBase = <THandlerParams extends unknown[]>({
-  routes,
-  defaultRoute,
-  getHeader,
+export const serveManyBase = <
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  TServe extends (...params: any[]) => any,
+  THandlerParams extends Parameters<TServe> = Parameters<TServe>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  TInvokableWorkflow extends InvokableWorkflow<any, any, THandlerParams> = InvokableWorkflow<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any,
+    THandlerParams
+  >,
+>({
+  workflows,
+  getWorkflowId,
 }: {
-  routes: Record<
-    string,
-    {
-      handler: (...params: THandlerParams) => Promise<Response>;
-      workflowId?: string;
-    }
-  >;
-  defaultRoute: { handler: (...params: THandlerParams) => Promise<Response> };
-  getHeader: (header: string, params: THandlerParams) => string | null;
+  workflows: Record<string, TInvokableWorkflow>;
+  getWorkflowId: (...params: THandlerParams) => string;
 }) => {
-  // let defaultRoute: undefined | ((...params: THandlerParams) => Promise<Response>);
-  const routeIds: (string | undefined)[] = [];
+  const workflowIds: (string | undefined)[] = [];
 
-  const routeMap: Record<string, (...params: THandlerParams) => Promise<Response>> =
-    Object.fromEntries(
-      Object.entries(routes).map((route) => {
-        const routeId = route[0];
+  const workflowMap: Record<string, TInvokableWorkflow["handler"]> = Object.fromEntries(
+    Object.entries(workflows).map((workflow) => {
+      const workflowId = workflow[0];
 
-        if (routeIds.includes(routeId)) {
-          throw new WorkflowError(
-            `Duplicate workflowId found: ${routeId}. Please set different route names in serveMany.`
-          );
-        }
+      if (workflowIds.includes(workflowId)) {
+        throw new WorkflowError(
+          `Duplicate workflow name found: ${workflowId}. Please set different workflow names in serveMany.`
+        );
+      }
 
-        route[1].workflowId = routeId;
+      workflow[1].workflowId = workflowId;
 
-        return [routeId, route[1].handler];
-      })
-    );
+      return [workflowId, workflow[1].handler];
+    })
+  );
 
   return {
     handler: async (...params: THandlerParams) => {
-      const routeChoice = getHeader(UPSTASH_WORKFLOW_ROUTE_HEADER, params);
-      if (!routeChoice) {
-        if (!defaultRoute) {
-          throw new WorkflowError(
-            `Unexpected route in serveMany: '${routeChoice}'. Please set a default route or pass ${UPSTASH_WORKFLOW_ROUTE_HEADER}`
-          );
-        }
-        return await defaultRoute.handler(...params);
+      const pickedWorkflowId = getWorkflowId(...params);
+      if (!pickedWorkflowId) {
+        throw new WorkflowError(`Unexpected workflow in serveMany. workflowId not set.`);
       }
-      const route = routeMap[routeChoice];
-      if (!route) {
-        throw new WorkflowError(`No routes in serveMany found for '${routeChoice}'`);
+      const workflow = workflowMap[pickedWorkflowId];
+      if (!workflow) {
+        throw new WorkflowError(`No workflows in serveMany found for '${pickedWorkflowId}'`);
       }
-      return await route(...params);
+      return await workflow(...params);
     },
   };
 };
 
 export const createInvokeCallback = <TInitialPayload, TResult>(
-  workflowId: string | undefined,
   telemetry: Telemetry | undefined
 ) => {
-  const invokeWorkflow: ServeFunction<TResult, TInitialPayload> = async (
+  const invokeCallback: InvokeCallback<TInitialPayload, TResult> = async (
     settings,
     invokeStep,
     context
   ) => {
+    const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId() } = settings;
+    const { workflowId } = workflow;
+
     if (!workflowId) {
-      throw new WorkflowError("You can only invoke workflow which have workflowId");
+      throw new WorkflowError("You can only invoke workflow which has a workflowId");
     }
 
-    const { headers } = getHeaders({
+    const { headers: invokerHeaders } = getHeaders({
       initHeaderValue: "false",
       workflowRunId: context.workflowRunId,
       workflowUrl: context.url,
       userHeaders: context.headers,
       failureUrl: context.failureUrl,
       retries: context.retries,
-      telemetry: telemetry,
+      telemetry,
     });
+    invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
-    headers["Upstash-Workflow-Runid"] = context.workflowRunId;
+    const newUrl = context.url.replace(/[^/]+$/, workflowId);
 
     const { headers: triggerHeaders } = getHeaders({
       initHeaderValue: "true",
-      workflowRunId: settings.workflowRunId,
-      workflowUrl: context.url,
-      userHeaders: new Headers(settings.headers) as Headers,
+      workflowRunId,
+      workflowUrl: newUrl,
+      userHeaders: new Headers(headers) as Headers,
       telemetry,
     });
-    triggerHeaders[`Upstash-Forward-${UPSTASH_WORKFLOW_ROUTE_HEADER}`] = workflowId;
     triggerHeaders["Upstash-Workflow-Invoke"] = "true";
 
     const request: InvokeWorkflowRequest = {
-      body: typeof settings.body === "string" ? settings.body : JSON.stringify(settings.body),
-      headers: Object.fromEntries(Object.entries(headers).map((pairs) => [pairs[0], [pairs[1]]])),
-      workflowRunId: settings.workflowRunId,
+      body: JSON.stringify(body),
+      headers: Object.fromEntries(
+        Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
+      ),
+      workflowRunId,
       workflowUrl: context.url,
       step: invokeStep,
     };
@@ -105,11 +106,11 @@ export const createInvokeCallback = <TInitialPayload, TResult>(
       headers: triggerHeaders,
       method: "POST",
       body: JSON.stringify(request),
-      url: context.url,
+      url: newUrl,
     });
 
     return undefined as TResult;
   };
 
-  return invokeWorkflow;
+  return invokeCallback;
 };

@@ -137,7 +137,6 @@ export type FinishCondition =
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
-  TWorkflowId extends string = string,
 > = ValidationOptions<TInitialPayload> & {
   /**
    * QStash client
@@ -233,10 +232,6 @@ export type WorkflowServeOptions<
    * Set `disableTelemetry` to disable this behavior.
    */
   disableTelemetry?: boolean;
-  /**
-   *
-   */
-  workflowId?: TWorkflowId;
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -460,11 +455,23 @@ export type InvokeStepResponse<TBody> = {
   isCanceled?: boolean;
   isFailed?: boolean;
 };
-export type ServeFunction<TResult, TBody> = (
-  settings: Required<LazyInvokeStepParams<TBody, TResult>>,
+export type InvokeCallback<TInitiaPayload, TResult> = (
+  settings: LazyInvokeStepParams<TInitiaPayload, TResult>,
   invokeStep: Step,
   context: WorkflowContext
 ) => Promise<TResult>;
+
+export type InvokableWorkflow<TInitialPayload, TResult, THandlerParams extends unknown[]> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (...args: THandlerParams) => any;
+  callback: InvokeCallback<TInitialPayload, TResult>;
+  workflowId?: string;
+};
+
+export type CreateWorkflowFactory<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  TServe extends (...args: any) => any,
+> = (...params: Parameters<TServe>) => InvokableWorkflow<unknown, unknown, Parameters<TServe>>;
 
 export type ServeMany<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -473,8 +480,6 @@ export type ServeMany<
   TReturn = Pick<ReturnType<TServe>, TPick>,
 > = ({
   routes,
-  defaultRoute,
 }: {
   routes: Record<string, Pick<ReturnType<TServe>, TPick | "workflowId">>;
-  defaultRoute: Pick<ReturnType<TServe>, TPick>;
 }) => TReturn;

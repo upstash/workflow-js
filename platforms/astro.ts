@@ -3,7 +3,6 @@ import type { APIContext, APIRoute } from "astro";
 import { PublicServeOptions, Telemetry, WorkflowContext } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback } from "../src/serve/serve-many";
 
 export function serve<TInitialPayload = unknown, TResult = unknown>(
   routeFunction: (
@@ -29,10 +28,7 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
     return handler(apiContext.request);
   };
 
-  const workflowId = options?.workflowId;
-  const invokeCallback = createInvokeCallback(workflowId, telemetry);
-
-  return { POST, workflowId, invokeCallback };
+  return { POST };
 }
 
 // export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes }) => {

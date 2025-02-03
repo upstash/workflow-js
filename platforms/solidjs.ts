@@ -3,7 +3,6 @@ import type { APIEvent } from "@solidjs/start/server";
 import type { PublicServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback } from "../src/serve/serve-many";
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -15,7 +14,7 @@ import { createInvokeCallback } from "../src/serve/serve-many";
  * @returns
  */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
-  routeFunction: RouteFunction<TInitialPayload, unknown>,
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
 ) => {
   const telemetry: Telemetry = {
@@ -41,9 +40,5 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 
     return await serveHandler(event.request);
   };
-  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(
-    options?.workflowId,
-    telemetry
-  );
-  return { POST: handler, workflowId: options?.workflowId, invokeWorkflow };
+  return { POST: handler };
 };

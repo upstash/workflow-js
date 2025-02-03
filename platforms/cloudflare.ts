@@ -1,7 +1,6 @@
 import type { PublicServeOptions, RouteFunction, Telemetry } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
-import { createInvokeCallback } from "../src/serve/serve-many";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -63,8 +62,6 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   options?: PublicServeOptions<TInitialPayload>
 ): {
   fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>;
-  invokeWorkflow: ReturnType<typeof createInvokeCallback<TInitialPayload, TResult>>;
-  workflowId: string | undefined;
 } => {
   const telemetry: Telemetry = {
     sdk: SDK_TELEMETRY,
@@ -79,11 +76,7 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
     return await serveHandler(request);
   };
 
-  const invokeWorkflow = createInvokeCallback<TInitialPayload, TResult>(
-    options?.workflowId,
-    telemetry
-  );
-  return { fetch, invokeWorkflow, workflowId: options?.workflowId };
+  return { fetch };
 };
 
 // export const serveMany: ServeMany<typeof serve, "fetch"> = ({ routes }) => {

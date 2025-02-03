@@ -2,10 +2,24 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-import type { RouteFunction, PublicServeOptions, ServeMany, Telemetry } from "../src";
+import type { RouteFunction, PublicServeOptions, Telemetry, InvokableWorkflow } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
-import { serveManyBase } from "../src/serve/serve-many";
+import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+
+const appTelemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "nextjs",
+  runtime: `node@${process.version}`,
+};
+
+const pagesTelemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "nextjs-pages",
+  runtime: process.versions.bun
+    ? `bun@${process.versions.bun}/node@${process.version}`
+    : `node@${process.version}`,
+};
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -20,17 +34,9 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
 ) => {
-  const {
-    handler: serveHandler,
-    workflowId,
-    telemetry,
-  } = serveBase<TInitialPayload, Request, Response, TResult>(
+  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
-    {
-      sdk: SDK_TELEMETRY,
-      framework: "nextjs",
-      runtime: `node@${process.version}`,
-    },
+    appTelemetry,
     options
   );
 
@@ -38,8 +44,6 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
     POST: async (request: Request) => {
       return await serveHandler(request);
     },
-    telemetry,
-    workflowId,
   };
 };
 
@@ -48,17 +52,8 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
   options?: PublicServeOptions<TInitialPayload>
 ): {
   handler: NextApiHandler;
-  workflowId: string | undefined;
-  telemetry?: Telemetry;
 } => {
-  const telemetry: Telemetry = {
-    sdk: SDK_TELEMETRY,
-    framework: "nextjs-pages",
-    runtime: process.versions.bun
-      ? `bun@${process.versions.bun}/node@${process.version}`
-      : `node@${process.version}`,
-  };
-  const { handler: serveHandler } = serveBase(routeFunction, telemetry, options);
+  const { handler: serveHandler } = serveBase(routeFunction, pagesTelemetry, options);
 
   const handler = async (request_: NextApiRequest, res: NextApiResponse) => {
     if (request_.method?.toUpperCase() !== "POST") {
@@ -88,31 +83,32 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
 
   return {
     handler,
-    telemetry,
-    workflowId: options?.workflowId,
   };
 };
 
-export const serveMany: ServeMany<typeof serve, "POST"> = ({ routes, defaultRoute }) => {
-  const newRoutes = Object.fromEntries(
-    Object.entries(routes).map((route) => {
-      return [route[0], { ...route[1], handler: route[1].POST }];
-    })
-  );
-  const res = {
-    POST: serveManyBase<[Request]>({
-      routes: newRoutes,
-      getHeader(header, params) {
-        const [request] = params;
-        return request.headers.get(header);
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+): InvokableWorkflow<
+  TInitialPayload,
+  TResult,
+  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>["POST"]>
+> => {
+  const { POST } = serve(...params);
+  return {
+    callback: createInvokeCallback<TInitialPayload, TResult>(appTelemetry),
+    handler: POST,
+    workflowId: undefined,
+  };
+};
+
+export const serveMany = (params: Pick<Parameters<typeof serveManyBase>[0], "workflows">) => {
+  return {
+    POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
+      workflows: params.workflows,
+      getWorkflowId(params) {
+        const components = params.url.split("/");
+        return components[components.length - 1];
       },
-      defaultRoute: { ...defaultRoute, handler: defaultRoute.POST },
     }).handler,
   };
-
-  for (const route in routes) {
-    routes[route].workflowId = newRoutes[route].workflowId;
-  }
-
-  return res;
 };

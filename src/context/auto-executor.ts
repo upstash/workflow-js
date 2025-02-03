@@ -1,17 +1,10 @@
 import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type {
-  StepFunction,
-  ParallelCallState,
-  Step,
-  WaitRequest,
-  Telemetry,
-  InvokeWorkflowRequest,
-} from "../types";
+import type { StepFunction, ParallelCallState, Step, WaitRequest, Telemetry } from "../types";
 import { LazyCallStep, LazyInvokeStep, type BaseLazyStep } from "./steps";
 import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
-import { NO_CONCURRENCY, UPSTASH_WORKFLOW_ROUTE_HEADER } from "../constants";
+import { NO_CONCURRENCY } from "../constants";
 import { QstashError } from "@upstash/qstash";
 
 export class AutoExecutor {
@@ -391,52 +384,16 @@ export class AutoExecutor {
       const invokeStep = steps[0];
       const lazyInvokeStep = lazySteps[0];
 
-      if (!lazyInvokeStep.params.workflow.workflowId) {
-        throw new WorkflowError(
-          "The workflow you invoke should be served under the same serveMany."
-        );
-      }
-
-      const { headers } = getHeaders({
-        initHeaderValue: "false",
-        workflowRunId: this.context.workflowRunId,
-        workflowUrl: this.context.url,
-        userHeaders: this.context.headers,
-        failureUrl: this.context.failureUrl,
-        retries: this.context.retries,
-        telemetry: lazyInvokeStep.params.workflow.telemetry,
-      });
-
-      headers["Upstash-Workflow-Runid"] = this.context.workflowRunId;
-
-      const { headers: triggerHeaders } = getHeaders({
-        initHeaderValue: "true",
-        workflowRunId: lazyInvokeStep.params.workflowRunId,
-        workflowUrl: this.context.url,
-        userHeaders: new Headers(lazyInvokeStep.params.headers) as Headers,
-        telemetry: lazyInvokeStep.params.workflow.telemetry,
-      });
-      triggerHeaders[`Upstash-Forward-${UPSTASH_WORKFLOW_ROUTE_HEADER}`] =
-        lazyInvokeStep.params.workflow.workflowId;
-      triggerHeaders["Upstash-Workflow-Invoke"] = "true";
-
-      const request: InvokeWorkflowRequest = {
-        body:
-          typeof lazyInvokeStep.params.body === "string"
-            ? lazyInvokeStep.params.body
-            : JSON.stringify(lazyInvokeStep.params.body),
-        headers: Object.fromEntries(Object.entries(headers).map((pairs) => [pairs[0], [pairs[1]]])),
-        workflowRunId: lazyInvokeStep.params.workflowRunId,
-        workflowUrl: this.context.url,
-        step: invokeStep,
-      };
-
-      await this.context.qstashClient.publish({
-        headers: triggerHeaders,
-        method: "POST",
-        body: JSON.stringify(request),
-        url: this.context.url,
-      });
+      await lazyInvokeStep.params.workflow.callback(
+        {
+          body: lazyInvokeStep.params.body,
+          headers: lazyInvokeStep.params.headers,
+          workflowRunId: lazyInvokeStep.params.workflowRunId,
+          workflow: lazyInvokeStep.params.workflow,
+        },
+        invokeStep,
+        this.context
+      );
 
       throw new WorkflowAbort(invokeStep.stepName, invokeStep);
     }
