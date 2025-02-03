@@ -1,4 +1,4 @@
-import type { WorkflowServeOptions, RouteFunction } from "../src";
+import { type WorkflowServeOptions, type RouteFunction } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import {
@@ -7,6 +7,10 @@ import {
   Router,
   RequestHandler,
 } from "express";
+
+export const isEmptyRequest = (req: ExpressRequest) => {
+  return req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
+}
 
 export function serve<TInitialPayload = unknown>(
   routeFunction: RouteFunction<TInitialPayload>,
@@ -22,7 +26,9 @@ export function serve<TInitialPayload = unknown>(
     }
 
     let requestBody: string;
-    if (request_.headers["content-type"]?.includes("text/plain")) {
+    if (isEmptyRequest(request_)) {
+      requestBody = ""
+    } else if (request_.headers["content-type"]?.includes("text/plain")) {
       requestBody = request_.body;
     } else if (request_.headers["content-type"]?.includes("application/json")) {
       requestBody = JSON.stringify(request_.body);
