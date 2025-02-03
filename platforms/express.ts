@@ -8,7 +8,7 @@ import {
   RequestHandler,
 } from "express";
 
-export const isEmptyRequest = (req: ExpressRequest) => {
+const isEmptyRequest = (req: ExpressRequest) => {
   return req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
 }
 
