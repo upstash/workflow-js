@@ -451,7 +451,7 @@ export type InvokeWorkflowRequest = {
   body: string;
 };
 export type InvokeStepResponse<TBody> = {
-  body?: TBody;
+  body: TBody;
   isCanceled?: boolean;
   isFailed?: boolean;
 };
@@ -467,19 +467,3 @@ export type InvokableWorkflow<TInitialPayload, TResult, THandlerParams extends u
   callback: InvokeCallback<TInitialPayload, TResult>;
   workflowId?: string;
 };
-
-export type CreateWorkflowFactory<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TServe extends (...args: any) => any,
-> = (...params: Parameters<TServe>) => InvokableWorkflow<unknown, unknown, Parameters<TServe>>;
-
-export type ServeMany<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TServe extends (...args: any) => any,
-  TPick extends keyof ReturnType<TServe>,
-  TReturn = Pick<ReturnType<TServe>, TPick>,
-> = ({
-  routes,
-}: {
-  routes: Record<string, Pick<ReturnType<TServe>, TPick | "workflowId">>;
-}) => TReturn;

@@ -1,17 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { WorkflowError } from "../error";
 import { InvokableWorkflow, InvokeCallback, InvokeWorkflowRequest, Telemetry } from "../types";
 import { getWorkflowRunId } from "../utils";
 import { getHeaders } from "../workflow-requests";
 
 export const serveManyBase = <
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   TServe extends (...params: any[]) => any,
   THandlerParams extends Parameters<TServe> = Parameters<TServe>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   TInvokableWorkflow extends InvokableWorkflow<any, any, THandlerParams> = InvokableWorkflow<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     any,
     THandlerParams
   >,

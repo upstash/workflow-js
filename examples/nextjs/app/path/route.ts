@@ -1,31 +1,19 @@
-import { WorkflowContext } from '@upstash/workflow'
-import { serve, serveMany } from '@upstash/workflow/nextjs'
+import { serve } from '@upstash/workflow/nextjs'
 
-const workflowOne = serve(async (context: WorkflowContext<string>) => {
-  await context.run("asd", () => console.log("route one says hi"))
-  await context.sleep("sleeing", 5)
-  console.log("route one says bye")
-  return 123 as const
-})
-
-const workflowTwo = serve<string>(async (context) => {
-  await context.run("asd", () => console.log("route two says hi"))
-  const { body } = await context.invoke("invoking", {
-    workflow: workflowOne,
-    body: "23"
-  })
-  await context.run("asd", () => console.log("route two says bye"))
-
-})
-
-const { POST: manyPost } = serveMany({
-  routes: {
-    workflowOne
-  },
-  defaultRoute: workflowTwo
-})
-
-export const POST = async (req: Request) => {
-  const what = await manyPost(req)
-  return what
+const someWork = (input: string) => {
+  return `processed '${JSON.stringify(input)}'`
 }
+
+export const { POST } = serve<string>(async (context) => {
+  const input = context.requestPayload
+  const result1 = await context.run('step1', async () => {
+    const output = someWork(input)
+    console.log('step 1 input', input, 'output', output)
+    return output
+  })
+
+  await context.run('step2', async () => {
+    const output = someWork(result1)
+    console.log('step 2 input', result1, 'output', output)
+  })
+})
