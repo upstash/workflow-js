@@ -4,6 +4,7 @@ import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
+import { WorkflowRunLogs, WorkflowRunResponse } from "./types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -23,12 +24,12 @@ export class Client {
     if (!clientConfig.token) {
       console.error(
         "QStash token is required for Upstash Workflow!\n\n" +
-          "To fix this:\n" +
-          "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
-          "2. Initialize the workflow client with:\n\n" +
-          "   const client = new Client({\n" +
-          "     token: '<YOUR_QSTASH_TOKEN>'\n" +
-          "   });"
+        "To fix this:\n" +
+        "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
+        "2. Initialize the workflow client with:\n\n" +
+        "   const client = new Client({\n" +
+        "     token: '<YOUR_QSTASH_TOKEN>'\n" +
+        "   });"
       );
     }
     this.client = new QStashClient(clientConfig);
@@ -225,5 +226,32 @@ export class Client {
     } else {
       throw result.error;
     }
+  }
+
+  public async logs(params: { workflowRunId: string }): Promise<WorkflowRunLogs>
+  public async logs(params?: { cursor?: string }): Promise<WorkflowRunResponse>
+  public async logs(params?: {
+    workflowRunId?: string;
+    cursor?: string;
+  }): Promise<WorkflowRunLogs | WorkflowRunResponse> {
+
+    const { workflowRunId, cursor } = params ?? {};
+
+    const urlParams = new URLSearchParams({ "groupBy": "workflowRunId" });
+    if (workflowRunId) {
+      urlParams.append("workflowRunId", workflowRunId);
+    }
+    if (cursor) {
+      urlParams.append("cursor", cursor);
+    }
+
+    const result = await this.client.http.request<WorkflowRunResponse>({
+      path: ["v2", "workflows", `events?${urlParams.toString()}`],
+    })
+
+    if (workflowRunId) {
+      return result.runs[0];
+    }
+    return result
   }
 }
