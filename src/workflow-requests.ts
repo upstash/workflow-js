@@ -51,6 +51,12 @@ export const triggerFirstInvocation = async <TInitialPayload>({
     telemetry,
   });
 
+  // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
+  // so we need to pass it in the headers
+  if (workflowContext.headers.get("content-type")) {
+    headers["content-type"] = workflowContext.headers.get("content-type")!;
+  }
+
   if (useJSONContent) {
     headers["content-type"] = "application/json";
   }
@@ -251,9 +257,9 @@ export const handleThirdPartyCallResult = async ({
         if (!failingStep)
           throw new WorkflowError(
             "Failed to submit the context.call. " +
-              (steps.length === 0
-                ? "No steps found."
-                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
+            (steps.length === 0
+              ? "No steps found."
+              : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
           );
 
         callbackPayload = atob(failingStep.body);
@@ -280,8 +286,8 @@ export const handleThirdPartyCallResult = async ({
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-            ` Error Message:\n${atob(callbackMessage.body ?? "")}`
+          ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
+          ` Error Message:\n${atob(callbackMessage.body ?? "")}`
         );
         return ok("call-will-retry");
       }
@@ -498,11 +504,11 @@ export const getHeaders = ({
         // to include telemetry headers:
         ...(telemetry
           ? Object.fromEntries(
-              Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
-                header,
-                [value],
-              ])
-            )
+            Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+              header,
+              [value],
+            ])
+          )
           : {}),
         // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
         "Upstash-Workflow-Runid": [workflowRunId],
@@ -540,8 +546,8 @@ export const verifyRequest = async (
   } catch (error) {
     throw new WorkflowError(
       `Failed to verify that the Workflow request comes from QStash: ${error}\n\n` +
-        "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
-        "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
+      "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
+      "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
     );
   }
 };
