@@ -4,7 +4,7 @@ import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
-import { WorkflowRunLogs, WorkflowRunResponse } from "./types";
+import { WorkflowRunLog, WorkflowRunResponse } from "./types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -228,21 +228,50 @@ export class Client {
     }
   }
 
-  public async logs(params: { workflowRunId: string }): Promise<WorkflowRunLogs>
-  public async logs(params?: { cursor?: string }): Promise<WorkflowRunResponse>
+  /**
+    * Fetches logs for workflow runs.
+    *
+    * @param workflowRunId - The ID of the workflow run to fetch logs for.
+    * @param cursor - The cursor for pagination. Not used if workflowRunId is passed.
+    * @param count - Number of runs to fetch. Not used if workflowRunId is passed.
+    * @returns A promise that resolves to either a `WorkflowRunLog` or a `WorkflowRunResponse`.
+    *
+    * @example
+    * Fetch logs for a specific workflow run:
+    * ```typescript
+    * const logs = await client.logs({ workflowRunId: '12345' });
+    * const steps = logs.steps; // access steps
+    * ```
+    *
+    * @example
+    * Fetch logs with pagination:
+    * ```typescript
+    * const { runs, cursor } = await client.logs();
+    * const steps = runs[0].steps // access steps
+    * 
+    * const { runs: nextRuns, cursor: nextCursor } = await client.logs({ cursor, count: 2 });
+    * ```
+    */
+  public async logs(params: { workflowRunId: string }): Promise<WorkflowRunLog>
+  public async logs(params?: { count?: number, cursor?: string }): Promise<WorkflowRunResponse>
   public async logs(params?: {
     workflowRunId?: string;
     cursor?: string;
-  }): Promise<WorkflowRunLogs | WorkflowRunResponse> {
+    count?: number
+  }): Promise<WorkflowRunLog | WorkflowRunResponse> {
 
-    const { workflowRunId, cursor } = params ?? {};
+    const { workflowRunId, cursor, count } = params ?? {};
 
     const urlParams = new URLSearchParams({ "groupBy": "workflowRunId" });
     if (workflowRunId) {
       urlParams.append("workflowRunId", workflowRunId);
-    }
-    if (cursor) {
-      urlParams.append("cursor", cursor);
+    } else {
+      if (cursor) {
+        urlParams.append("cursor", cursor);
+      }
+      if (count) {
+        urlParams.append("count", count.toString());
+      }
     }
 
     const result = await this.client.http.request<WorkflowRunResponse>({
