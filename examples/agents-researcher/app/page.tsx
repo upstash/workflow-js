@@ -282,7 +282,7 @@ const Page = () => {
                 <div className="flex gap-4 w-full">
                   <AgentBlock
                     name="Wikipedia"
-                    state={agentStates['Wikipedia']}
+                    agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
                   >
                     <Img
@@ -290,11 +290,12 @@ const Page = () => {
                       width={68}
                       height={68}
                       alt="Wikipedia"
+                      className={agentStates['Wikipedia'] === false ? 'opacity-60' : 'opacity-100'}
                     />
                   </AgentBlock>
                   <AgentBlock
                     name="WolframAlpha"
-                    state={agentStates['WolframAlpha']}
+                    agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
                   >
                     <Img
@@ -302,11 +303,12 @@ const Page = () => {
                       width={72}
                       height={72}
                       alt="WolframAlpha"
+                      className={agentStates['WolframAlpha'] === false ? 'opacity-60' : 'opacity-100'}
                     />
                   </AgentBlock>
                   <AgentBlock
                     name="DuckDuckGo"
-                    state={agentStates['DuckDuckGo']}
+                    agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
                   >
                     <Img
@@ -314,6 +316,7 @@ const Page = () => {
                       width={62}
                       height={62}
                       alt="DuckDuckGo"
+                      className={agentStates['DuckDuckGo'] === false ? 'opacity-60' : 'opacity-100'}
                     />
                   </AgentBlock>
                 </div>
