@@ -21,7 +21,7 @@ export class Client {
   private client: QStashClient;
 
   constructor(clientConfig: ClientConfig) {
-    if (!clientConfig.token) {
+    if (!clientConfig?.token) {
       console.error(
         "QStash token is required for Upstash Workflow!\n\n" +
         "To fix this:\n" +
