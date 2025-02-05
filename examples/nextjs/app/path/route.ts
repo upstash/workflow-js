@@ -12,8 +12,15 @@ export const { POST } = serve<string>(async (context) => {
     return output
   })
 
+  throw new Error('some error')
+
   await context.run('step2', async () => {
     const output = someWork(result1)
     console.log('step 2 input', result1, 'output', output)
   })
+}, {
+  retries: 0,
+  failureFunction(failureData) {
+    console.log("failure runs")
+  },
 })

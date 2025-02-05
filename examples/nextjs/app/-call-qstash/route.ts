@@ -27,8 +27,10 @@ export const POST = async (request: NextRequest) => {
         "test": "value"
       }
     })
+    await new Promise(r => setTimeout(r, 10000));
+    const logs = await client.logs({ workflowRunId })
 
-    return new Response(JSON.stringify({ workflowRunId }), { status: 200 })
+    return new Response(JSON.stringify({ workflowRunId, logs }), { status: 200 })
   } catch (error) {
     return new Response(
       JSON.stringify({ error: `Error when publishing to QStash: ${error}` }),
