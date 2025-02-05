@@ -350,6 +350,7 @@ export class AutoExecutor {
         failureUrl: this.context.failureUrl,
         retries: this.context.retries,
         telemetry: this.telemetry,
+        flowControl: this.context.flowControl
       });
 
       // call wait
@@ -393,6 +394,8 @@ export class AutoExecutor {
           callRetries: lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined,
           callTimeout: lazyStep instanceof LazyCallStep ? lazyStep.timeout : undefined,
           telemetry: this.telemetry,
+          flowControl: this.context.flowControl,
+          callFlowControl: lazyStep instanceof LazyCallStep ? lazyStep.flowControl : undefined,
         });
 
         // if the step is a single step execution or a plan step, we can add sleep headers
@@ -412,7 +415,6 @@ export class AutoExecutor {
             method: singleStep.callMethod,
             body: singleStep.callBody,
             url: singleStep.callUrl,
-            flowControl: lazyStep.flowControl,
           }
           : // if the step is not a third party call, we use workflow
           // endpoint (context.url) as URL when calling QStash. QStash
@@ -424,7 +426,6 @@ export class AutoExecutor {
             url: this.context.url,
             notBefore: willWait ? singleStep.sleepUntil : undefined,
             delay: willWait ? singleStep.sleepFor : undefined,
-            flowControl: this.context.flowControl,
           };
       })
     );

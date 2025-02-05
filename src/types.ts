@@ -413,6 +413,11 @@ export type HeaderParams = {
    * Only needed/used when the step is a waitForEvent step
    */
   telemetry?: Telemetry;
+  /**
+   * Settings for controlling the number of active requests
+   * and number of requests per second with the same key.
+   */
+  flowControl?: FlowControl;
 } & (
     | {
       /**
@@ -427,6 +432,11 @@ export type HeaderParams = {
        * timeout duration in context.call
        */
       callTimeout?: number | Duration;
+      /**
+       * Settings for controlling the number of active requests
+       * and number of requests per second with the same key.
+       */
+      callFlowControl?: FlowControl;
     }
     | {
       /**
@@ -446,5 +456,10 @@ export type HeaderParams = {
        * set to never because this is not a context.call step
        */
       callTimeout?: never;
+      /**
+       * Settings for controlling the number of active requests
+       * and number of requests per second with the same key.
+       */
+      callFlowControl?: never;
     }
   );

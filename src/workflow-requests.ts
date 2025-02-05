@@ -49,6 +49,7 @@ export const triggerFirstInvocation = async <TInitialPayload>({
     failureUrl: workflowContext.failureUrl,
     retries: workflowContext.retries,
     telemetry,
+    flowControl: workflowContext.flowControl
   });
 
   if (useJSONContent) {
@@ -65,7 +66,6 @@ export const triggerFirstInvocation = async <TInitialPayload>({
       method: "POST",
       body,
       url: workflowContext.url,
-      flowControl: workflowContext.flowControl
     });
 
     if (result.deduplicated) {
@@ -327,6 +327,7 @@ export const handleThirdPartyCallResult = async ({
         failureUrl,
         retries,
         telemetry,
+        flowControl
       });
 
       const callResponse: CallResponse = {
@@ -353,7 +354,6 @@ export const handleThirdPartyCallResult = async ({
         method: "POST",
         body: callResultStep,
         url: workflowUrl,
-        flowControl
       });
 
       await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
@@ -403,6 +403,8 @@ export const getHeaders = ({
   callRetries,
   callTimeout,
   telemetry,
+  flowControl,
+  callFlowControl
 }: HeaderParams): HeadersResponse => {
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
@@ -421,6 +423,13 @@ export const getHeaders = ({
 
   if (failureUrl) {
     baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
+
+    if (flowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl)
+      baseHeaders["Upstash-Failure-Callback-Flow-Control-Key"] = flowControlKey
+      baseHeaders["Upstash-Failure-Callback-Flow-Control-Value"] = flowControlValue
+    }
+
     if (!step?.callUrl) {
       baseHeaders["Upstash-Failure-Callback"] = failureUrl;
     }
@@ -437,9 +446,33 @@ export const getHeaders = ({
       baseHeaders["Upstash-Callback-Retries"] = retries.toString();
       baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
     }
-  } else if (retries !== undefined) {
-    baseHeaders["Upstash-Retries"] = retries.toString();
-    baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
+
+    if (callFlowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(callFlowControl)
+
+      baseHeaders["Upstash-Flow-Control-Key"] = flowControlKey
+      baseHeaders["Upstash-Flow-Control-Value"] = flowControlValue
+    }
+
+    if (flowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl)
+
+      baseHeaders["Upstash-Callback-Flow-Control-Key"] = flowControlKey
+      baseHeaders["Upstash-Callback-Flow-Control-Value"] = flowControlValue
+    }
+
+  } else {
+    if (flowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl)
+
+      baseHeaders["Upstash-Flow-Control-Key"] = flowControlKey
+      baseHeaders["Upstash-Flow-Control-Value"] = flowControlValue
+    }
+
+    if (retries !== undefined) {
+      baseHeaders["Upstash-Retries"] = retries.toString();
+      baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
+    }
   }
 
   if (userHeaders) {
@@ -549,3 +582,22 @@ export const verifyRequest = async (
     );
   }
 };
+
+const prepareFlowControl = (flowControl: FlowControl) => {
+  const parallelism = flowControl.parallelism?.toString();
+  const rate = flowControl.ratePerSecond?.toString();
+
+  const controlValue = [
+    parallelism ? `parallelism=${parallelism}` : undefined,
+    rate ? `rate=${rate}` : undefined,
+  ].filter(Boolean);
+
+  if (controlValue.length === 0) {
+    throw new QstashError("Provide at least one of parallelism or ratePerSecond for flowControl");
+  }
+
+  return {
+    flowControlKey: flowControl.key,
+    flowControlValue: controlValue.join(", "),
+  }
+}

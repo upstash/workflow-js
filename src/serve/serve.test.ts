@@ -81,8 +81,13 @@ describe("serve", () => {
   });
 
   test("path endpoint", async () => {
+    const flowControl = {
+      key: "my-key",
+      ratePerSecond: 3
+    }
     const { handler: endpoint } = serve<string>(
       async (context) => {
+        expect(context.flowControl).toEqual(flowControl)
         const input = context.requestPayload;
 
         const result1 = await context.run("step1", async () => {
@@ -99,10 +104,7 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         disableTelemetry: true,
-        flowControl: {
-          key: "my-key",
-          ratePerSecond: 3
-        }
+        flowControl
       }
     );
 
