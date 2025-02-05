@@ -118,9 +118,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-              body: JSON.stringify(initialPayload),
-              method: "POST",
-            })
+            body: JSON.stringify(initialPayload),
+            method: "POST",
+          })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         const response = await endpoint(request);
@@ -317,9 +317,9 @@ describe("serve", () => {
     test("should return without doing anything when the last step is duplicate", async () => {
       // prettier-ignore
       const stepsWithDuplicate: Step[] = [
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1},
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1},
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1}, // duplicate
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 },
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 },
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 }, // duplicate
       ]
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", stepsWithDuplicate);
       let called = false;
@@ -343,9 +343,9 @@ describe("serve", () => {
     test("should remove duplicate middle step and continue executing", async () => {
       // prettier-ignore
       const stepsWithDuplicate: Step[] = [
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1},
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1}, // duplicate
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1}, 
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 },
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 }, // duplicate
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 },
       ]
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", stepsWithDuplicate);
       let called = false;
@@ -476,6 +476,11 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback": myFailureEndpoint,
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+                "upstash-failure-callback-workflow-calltype": "failureCall",
+                "upstash-failure-callback-workflow-init": "false",
+                "upstash-failure-callback-workflow-runid": "wfr-bar",
+                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
                 "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
@@ -526,6 +531,11 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+                "upstash-failure-callback-workflow-calltype": "failureCall",
+                "upstash-failure-callback-workflow-init": "false",
+                "upstash-failure-callback-workflow-runid": "wfr-bar",
+                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
                 "upstash-telemetry-sdk": "@upstash/workflow@v0.2.3",
@@ -999,6 +1009,11 @@ describe("serve", () => {
               "upstash-method": "POST",
               "upstash-retries": "3",
               "upstash-failure-callback-retries": "3",
+              "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+              "upstash-failure-callback-workflow-calltype": "failureCall",
+              "upstash-failure-callback-workflow-init": "false",
+              "upstash-failure-callback-workflow-runid": "wfr-bar",
+              "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-bar",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
