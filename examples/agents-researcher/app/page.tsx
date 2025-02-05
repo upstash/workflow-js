@@ -1,20 +1,21 @@
-"use client";
+'use client';
 
-import Img from "next/image";
-import { FormEvent, Suspense, useState } from "react";
+import Img from 'next/image';
+import { FormEvent, Suspense, useState } from 'react';
 import {
   Step,
   StepItem,
   StepNumber,
   StepTitle,
   StepContent,
-  StepDesc,
-} from "./components/step-list";
-import { AgentInfo } from "./components/agent-info";
-import { WorkflowIcon } from "./icons/workflow-icon";
-import { CODES } from "./constants/codes";
-import type { AgentName } from "./types";
-import { AgentBlock } from "./components/agent-block";
+  StepDesc
+} from './components/step-list';
+import { AgentInfo } from './components/agent-info';
+import { WorkflowIcon } from './icons/workflow-icon';
+import { CODES } from './constants/codes';
+import type { AgentName, StepRecord } from './types';
+import { AgentBlock } from './components/agent-block';
+import { IconLoader } from './icons/loader';
 
 export default function HomePage() {
   return (
@@ -24,85 +25,111 @@ export default function HomePage() {
   );
 }
 const Page = () => {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [agentStates, setAgentStates] = useState<{
-    Wikipedia: false | "loading" | string;
-    WolframAlpha: false | "loading" | string;
-    DuckDuckGo: false | "loading" | string;
-    "Cross Reference": false | "loading" | string;
+    Wikipedia: false | 'loading' | StepRecord[];
+    WolframAlpha: false | 'loading' | StepRecord[];
+    DuckDuckGo: false | 'loading' | StepRecord[];
+    'Cross Reference': false | 'loading' | StepRecord[];
   }>({
     Wikipedia: false,
     WolframAlpha: false,
     DuckDuckGo: false,
-    "Cross Reference": false,
+    'Cross Reference': false
   });
 
-  const [agentInfoDisplay, setAgentInfoDisplay] = useState<false | AgentName>(
-    false
-  );
+  const [agentInfoDisplay, setAgentInfoDisplay] =
+    useState<AgentName>('Wikipedia');
 
   // form submit handler
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    let scrolledIntermediate = false;
 
     try {
       setLoading(true);
+      setProgress(null);
       setAgentStates({
         Wikipedia: false,
         WolframAlpha: false,
         DuckDuckGo: false,
-        "Cross Reference": false,
+        'Cross Reference': false
       });
-      const response = await fetch("/api/research", {
+      const response = await fetch('/api/research', {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
-        method: "POST",
-        body: query,
+        method: 'POST',
+        body: query
       });
-      console.log(response);
       const workflowRunId = (await response.json()).workflowRunId;
 
       const startTime = Date.now();
-      const START_DELAY = 5000;
-      const TIMEOUT_DURATION = 90000;
-      const POLLING_INTERVAL = 3000;
-
-      await new Promise((resolve) => setTimeout(resolve, START_DELAY));
+      const TIMEOUT_DURATION = 60000;
+      const POLLING_INTERVAL = 2000;
 
       const pollStatus = async () => {
         try {
-          const statusResponse = await fetch("/api/poll-outputs", {
-            method: "POST",
+          const statusResponse = await fetch('/api/poll-outputs', {
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              workflowRunId,
-            }),
+              workflowRunId
+            })
           });
 
           if (!statusResponse.ok) {
-            throw new Error("Status check failed");
+            throw new Error('Status check failed');
           }
 
           const result = await statusResponse.json();
 
-          console.log("Polling result:", result);
+          if (result.progress) {
+            setLoading(false);
+          }
 
+          setProgress(result.progress);
           setAgentStates((prevStates) => ({
             ...prevStates,
             Wikipedia: result.wikipediaOutput || prevStates.Wikipedia,
             WolframAlpha: result.wolframAlphaOutput || prevStates.WolframAlpha,
             DuckDuckGo: result.searchOutput || prevStates.DuckDuckGo,
-            "Cross Reference":
-              result.crossReferenceOutput || prevStates["Cross Reference"],
+            'Cross Reference':
+              result.crossReferenceOutput || prevStates['Cross Reference']
           }));
+
+          if (
+            (result.wikipediaOutput ||
+              result.wolframAlphaOutput ||
+              result.searchOutput) &&
+            !scrolledIntermediate
+          ) {
+            if (result.wikipediaOutput) {
+              setAgentInfoDisplay('Wikipedia');
+            } else if (result.wolframAlphaOutput) {
+              setAgentInfoDisplay('WolframAlpha');
+            } else if (result.searchOutput) {
+              setAgentInfoDisplay('DuckDuckGo');
+            }
+            document
+              .getElementById('intermediate-output')
+              ?.scrollIntoView({ behavior: 'smooth' });
+            scrolledIntermediate = true;
+          }
+
+          if (result.crossReferenceOutput) {
+            document
+              .getElementById('cross-reference-output')
+              ?.scrollIntoView({ behavior: 'smooth' });
+          }
 
           return result.crossReferenceOutput;
         } catch (error) {
-          console.error("Polling error:", error);
+          console.error('Polling error:', error);
           throw error;
         }
       };
@@ -111,16 +138,16 @@ const Page = () => {
         const interval = setInterval(async () => {
           if (Date.now() - startTime > TIMEOUT_DURATION) {
             clearInterval(interval);
-            resolve("Timeout reached");
+            resolve('Timeout reached');
             return;
           }
 
           try {
             const isComplete = await pollStatus();
             if (isComplete) {
-              setLoading(false);
+              setProgress(null);
               clearInterval(interval);
-              resolve("All agents complete");
+              resolve('All agents complete');
             }
           } catch (error) {
             clearInterval(interval);
@@ -129,13 +156,18 @@ const Page = () => {
         }, POLLING_INTERVAL);
       });
     } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
+      console.error('Error:', error);
     }
   };
 
   return (
     <main className="h-screen">
+      {progress && (
+        <div className="fixed bottom-5 right-5 bg-purple-500/10 text-purple-500 border-purple-500 border-2 px-4 py-2 rounded-md font-semibold flex flex-row gap-2">
+          <div>{progress}</div>
+          <IconLoader className="animate-spin" />
+        </div>
+      )}
       <div className="max-w-screen-sm px-8 pt-16 mx-auto pb-44">
         {/* header */}
         <header>
@@ -226,10 +258,10 @@ const Page = () => {
                 <button
                   disabled={loading}
                   className={`h-8 rounded-md bg-purple-500 px-4 text-white ${
-                    loading ? "opacity-30" : ""
+                    loading ? 'opacity-30' : ''
                   }`}
                 >
-                  {loading ? "Searching..." : "Search"}
+                  {loading ? 'Starting...' : 'Start'}
                 </button>
               </form>
             </StepContent>
@@ -250,48 +282,46 @@ const Page = () => {
                 <div className="flex gap-4 w-full">
                   <AgentBlock
                     name="Wikipedia"
-                    state={agentStates["Wikipedia"]}
+                    state={agentStates['Wikipedia']}
                     setAgentInfoDisplay={setAgentInfoDisplay}
                   >
                     <Img
                       src="/icons/wikipedia.png"
-                      width={64}
-                      height={64}
+                      width={68}
+                      height={68}
                       alt="Wikipedia"
                     />
                   </AgentBlock>
                   <AgentBlock
                     name="WolframAlpha"
-                    state={agentStates["WolframAlpha"]}
+                    state={agentStates['WolframAlpha']}
                     setAgentInfoDisplay={setAgentInfoDisplay}
                   >
                     <Img
                       src="/icons/wolfram-alpha.png"
-                      width={64}
-                      height={64}
+                      width={72}
+                      height={72}
                       alt="WolframAlpha"
                     />
                   </AgentBlock>
                   <AgentBlock
                     name="DuckDuckGo"
-                    state={agentStates["DuckDuckGo"]}
+                    state={agentStates['DuckDuckGo']}
                     setAgentInfoDisplay={setAgentInfoDisplay}
                   >
                     <Img
                       src="/icons/duckduckgo.png"
-                      width={64}
-                      height={64}
+                      width={62}
+                      height={62}
                       alt="DuckDuckGo"
                     />
                   </AgentBlock>
                 </div>
-                {agentInfoDisplay && (
-                  <AgentInfo
-                    name={agentInfoDisplay}
-                    code={CODES[agentInfoDisplay]}
-                    state={agentStates[agentInfoDisplay]}
-                  />
-                )}
+                <AgentInfo
+                  name={agentInfoDisplay}
+                  code={CODES[agentInfoDisplay]}
+                  state={agentStates[agentInfoDisplay]}
+                />
               </div>
             </StepContent>
           </StepItem>
@@ -309,8 +339,8 @@ const Page = () => {
             <StepContent>
               <AgentInfo
                 name="Cross Reference"
-                code={CODES["Cross Reference"]}
-                state={agentStates["Cross Reference"]}
+                code={CODES['Cross Reference']}
+                state={agentStates['Cross Reference']}
               />
             </StepContent>
           </StepItem>
