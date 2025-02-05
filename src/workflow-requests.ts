@@ -27,7 +27,7 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
-import { QstashError } from "@upstash/qstash";
+import { FlowControl, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 
 export const triggerFirstInvocation = async <TInitialPayload>({
@@ -65,6 +65,7 @@ export const triggerFirstInvocation = async <TInitialPayload>({
       method: "POST",
       body,
       url: workflowContext.url,
+      flowControl: workflowContext.flowControl
     });
 
     if (result.deduplicated) {
@@ -210,6 +211,7 @@ export const handleThirdPartyCallResult = async ({
   failureUrl,
   retries,
   telemetry,
+  flowControl,
   debug,
 }: {
   request: Request;
@@ -219,6 +221,7 @@ export const handleThirdPartyCallResult = async ({
   failureUrl: WorkflowServeOptions["failureUrl"];
   retries: number;
   telemetry?: Telemetry;
+  flowControl?: FlowControl;
   debug?: WorkflowLogger;
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
@@ -251,9 +254,9 @@ export const handleThirdPartyCallResult = async ({
         if (!failingStep)
           throw new WorkflowError(
             "Failed to submit the context.call. " +
-              (steps.length === 0
-                ? "No steps found."
-                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
+            (steps.length === 0
+              ? "No steps found."
+              : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
           );
 
         callbackPayload = atob(failingStep.body);
@@ -280,8 +283,8 @@ export const handleThirdPartyCallResult = async ({
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-            ` Error Message:\n${atob(callbackMessage.body ?? "")}`
+          ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
+          ` Error Message:\n${atob(callbackMessage.body ?? "")}`
         );
         return ok("call-will-retry");
       }
@@ -350,6 +353,7 @@ export const handleThirdPartyCallResult = async ({
         method: "POST",
         body: callResultStep,
         url: workflowUrl,
+        flowControl
       });
 
       await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
@@ -498,11 +502,11 @@ export const getHeaders = ({
         // to include telemetry headers:
         ...(telemetry
           ? Object.fromEntries(
-              Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
-                header,
-                [value],
-              ])
-            )
+            Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+              header,
+              [value],
+            ])
+          )
           : {}),
         // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
         "Upstash-Workflow-Runid": [workflowRunId],
@@ -540,8 +544,8 @@ export const verifyRequest = async (
   } catch (error) {
     throw new WorkflowError(
       `Failed to verify that the Workflow request comes from QStash: ${error}\n\n` +
-        "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
-        "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
+      "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
+      "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
     );
   }
 };

@@ -44,6 +44,10 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         retries: 1,
+        flowControl: {
+          key: "my-key",
+          parallelism: 1
+        }
       }
     );
 
@@ -69,6 +73,8 @@ describe("serve", () => {
           [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: "1",
           "upstash-failure-callback-retries": "1",
           "upstash-retries": "1",
+          "Upstash-Flow-Control-Key": "my-key",
+          "Upstash-Flow-Control-Value": "parallelism=1",
         },
       },
     });
@@ -93,6 +99,10 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         disableTelemetry: true,
+        flowControl: {
+          key: "my-key",
+          ratePerSecond: 3
+        }
       }
     );
 
@@ -118,9 +128,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-              body: JSON.stringify(initialPayload),
-              method: "POST",
-            })
+            body: JSON.stringify(initialPayload),
+            method: "POST",
+          })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         const response = await endpoint(request);
@@ -147,6 +157,8 @@ describe("serve", () => {
               "upstash-method": "POST",
               "upstash-workflow-init": "true",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              "upstash-flow-control-key": "my-key",
+              "upstash-flow-control-value": "rate=3",
             },
           },
         },
@@ -174,6 +186,8 @@ describe("serve", () => {
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                  "upstash-flow-control-key": "my-key",
+                  "upstash-flow-control-value": "rate=3",
                 },
               },
             ],
@@ -202,6 +216,8 @@ describe("serve", () => {
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                  "upstash-flow-control-key": "my-key",
+                  "upstash-flow-control-value": "rate=3",
                 },
                 body: JSON.stringify(steps[1]),
               },
@@ -317,9 +333,9 @@ describe("serve", () => {
     test("should return without doing anything when the last step is duplicate", async () => {
       // prettier-ignore
       const stepsWithDuplicate: Step[] = [
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1},
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1},
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1}, // duplicate
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 },
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 },
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 }, // duplicate
       ]
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", stepsWithDuplicate);
       let called = false;
@@ -343,9 +359,9 @@ describe("serve", () => {
     test("should remove duplicate middle step and continue executing", async () => {
       // prettier-ignore
       const stepsWithDuplicate: Step[] = [
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1},
-        {stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1}, // duplicate
-        {stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1}, 
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 },
+        { stepId: 1, stepName: "step 1", stepType: "Run", out: "result 1", concurrent: 1 }, // duplicate
+        { stepId: 2, stepName: "step 2", stepType: "Run", out: "result 2", concurrent: 1 },
       ]
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", stepsWithDuplicate);
       let called = false;
