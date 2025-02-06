@@ -230,7 +230,7 @@ import { ref } from 'vue';
 const requestBody = ref('{"date":123,"email":"my@mail.com","amount":10}');
 const loading = ref(false);
 const route = ref('path');
-const routes = ['path', 'sleep', 'sleepWithoutAwait', 'northStarSimple', 'northStar', 'call'];
+const routes = ['path', 'sleep', 'sleepWithoutAwait', 'northStarSimple', 'northStar', 'call', 'serve-many/workflowOne', 'serve-many/workflowTwo'];
 
 const handleSend = async () => {
   loading.value = true;
