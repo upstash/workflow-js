@@ -25,8 +25,6 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
     console.log("workflow two says hi")
   })
 
-  throw new Error("oops")
-
   await context.run("step 2", async () => {
     console.log("workflow two says bye")
   })
@@ -36,9 +34,9 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   retries: 0
 })
 
-export const { POST } = serveMany({
-  workflows: {
+export const { POST } = serveMany(
+  {
     workflowOne,
     workflowTwo,
   }
-})
+)
