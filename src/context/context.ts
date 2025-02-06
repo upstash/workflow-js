@@ -454,7 +454,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     return {
       ...result,
       body: result.body ? JSON.parse(result.body as string) : undefined,
-    }
+    };
   }
 
   /**

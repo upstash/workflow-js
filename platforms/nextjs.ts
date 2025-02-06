@@ -101,10 +101,10 @@ export const createWorkflow = <TInitialPayload, TResult>(
   };
 };
 
-export const serveMany = (params: Pick<Parameters<typeof serveManyBase>[0], "workflows">) => {
+export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
   return {
     POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
-      workflows: params.workflows,
+      workflows: workflows,
       getWorkflowId(params) {
         const components = params.url.split("/");
         return components[components.length - 1];
