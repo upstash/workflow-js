@@ -5,7 +5,7 @@ import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 
 /**
- * Serve method to serve a Upstash Workflow in a Nextjs project
+ * Serve method to serve a Upstash Workflow in a SolidJS project
  *
  * See for options https://upstash.com/docs/qstash/workflows/basics/serve
  *

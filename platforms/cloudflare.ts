@@ -55,7 +55,7 @@ const telemetry: Telemetry = {
 };
 
 /**
- * Serve method to serve a Upstash Workflow in a Nextjs project
+ * Serve method to serve a Upstash Workflow in a Cloudflare project
  *
  * See for options https://upstash.com/docs/qstash/workflows/basics/serve
  *
@@ -81,8 +81,6 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   return { fetch };
 };
 
-
-
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
 ): InvokableWorkflow<
@@ -103,11 +101,10 @@ export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workfl
     fetch: serveManyBase<ReturnType<typeof serve>["fetch"]>({
       workflows: workflows,
       getWorkflowId(...params) {
-        const { request } = getArgs(params)
+        const { request } = getArgs(params);
         const components = request.url.split("/");
         return components[components.length - 1];
       },
-    }).handler
+    }).handler,
   };
 };
-

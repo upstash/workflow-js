@@ -19,7 +19,7 @@ const telemetry: Telemetry = {
 };
 
 /**
- * Serve method to serve a Upstash Workflow in a Nextjs project
+ * Serve method to serve a Upstash Workflow in a Hono project
  *
  * See for options https://upstash.com/docs/qstash/workflows/basics/serve
  *

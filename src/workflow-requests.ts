@@ -408,12 +408,17 @@ export const getHeaders = ({
   callTimeout,
   telemetry,
 }: HeaderParams): HeadersResponse => {
+
+  const contentType =
+    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
+
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
     [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
     [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+    "content-type": contentType,
     ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
   };
 
@@ -464,8 +469,6 @@ export const getHeaders = ({
     }
   }
 
-  const contentType =
-    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
 
   if (step?.callHeaders) {
     const forwardedHeaders = Object.fromEntries(
