@@ -1,8 +1,10 @@
 import type { Client, HTTPMethods } from "@upstash/qstash";
 import type {
+  CallSettings,
   InvokableWorkflow,
   InvokeStepResponse,
   NotifyStepResponse,
+  RequiredExceptFields,
   Step,
   StepFunction,
   StepType,
@@ -267,17 +269,17 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
   workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult, unknown[]>, "callback" | "workflowId">;
   body: TInitiaPayload; // TODO make optional
-  headers?: Record<string, string>;
   workflowRunId?: string;
-};
+} & Pick<CallSettings, "retries" | "headers">;
+
 export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazyStep<
   InvokeStepResponse<TResult>
 > {
   stepType: StepType = "Invoke";
-  params: Required<LazyInvokeStepParams<TBody, TResult>>;
+  params: RequiredExceptFields<LazyInvokeStepParams<TBody, TResult>, "retries">;
   constructor(
     stepName: string,
-    { workflow, body, headers = {}, workflowRunId }: LazyInvokeStepParams<TBody, TResult>
+    { workflow, body, headers = {}, workflowRunId, retries }: LazyInvokeStepParams<TBody, TResult>
   ) {
     super(stepName);
     this.params = {
@@ -285,6 +287,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       body,
       headers,
       workflowRunId: getWorkflowRunId(workflowRunId),
+      retries,
     };
   }
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {

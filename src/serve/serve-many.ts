@@ -60,7 +60,7 @@ export const createInvokeCallback = <TInitialPayload, TResult>(
     invokeStep,
     context
   ) => {
-    const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId() } = settings;
+    const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries } = settings;
     const { workflowId } = workflow;
 
     if (!workflowId) {
@@ -85,6 +85,7 @@ export const createInvokeCallback = <TInitialPayload, TResult>(
       workflowRunId,
       workflowUrl: newUrl,
       userHeaders: new Headers(headers) as Headers,
+      retries: retries,
       telemetry,
     });
     triggerHeaders["Upstash-Workflow-Invoke"] = "true";

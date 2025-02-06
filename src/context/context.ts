@@ -450,7 +450,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
     const result = await this.addStep(new LazyInvokeStep(stepName, settings));
-    return result;
+
+    return {
+      ...result,
+      body: result.body ? JSON.parse(result.body as string) : undefined,
+    }
   }
 
   /**
