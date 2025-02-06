@@ -47,6 +47,33 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   };
 };
 
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+): InvokableWorkflow<
+  TInitialPayload,
+  TResult,
+  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>["POST"]>
+> => {
+  const { POST } = serve(...params);
+  return {
+    callback: createInvokeCallback<TInitialPayload, TResult>(appTelemetry),
+    handler: POST,
+    workflowId: undefined,
+  };
+};
+
+export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
+  return {
+    POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
+      workflows: workflows,
+      getWorkflowId(params) {
+        const components = params.url.split("/");
+        return components[components.length - 1];
+      },
+    }).handler,
+  };
+};
+
 export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
@@ -86,29 +113,35 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
   };
 };
 
-export const createWorkflow = <TInitialPayload, TResult>(
-  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+export const createWorkflowPagesRouter = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof servePagesRouter<TInitialPayload, TResult>>
 ): InvokableWorkflow<
   TInitialPayload,
   TResult,
-  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>["POST"]>
+  Parameters<ReturnType<typeof servePagesRouter<TInitialPayload, TResult>>["handler"]>
 > => {
-  const { POST } = serve(...params);
+  const { handler } = servePagesRouter(...params);
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(appTelemetry),
-    handler: POST,
+    callback: createInvokeCallback<TInitialPayload, TResult>(pagesTelemetry),
+    handler,
     workflowId: undefined,
   };
 };
 
-export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
-  return {
-    POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
-      workflows: workflows,
-      getWorkflowId(params) {
-        const components = params.url.split("/");
-        return components[components.length - 1];
-      },
-    }).handler,
-  };
+export const serveManyPagesRouter = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
+  return serveManyBase<ReturnType<typeof servePagesRouter>["handler"]>({
+    workflows: workflows,
+    getWorkflowId(request_) {
+
+
+      const protocol = request_.headers["x-forwarded-proto"];
+      const host = request_.headers.host
+      const baseUrl = `${protocol}://${host}`;
+
+      const url = `${baseUrl}${request_.url}`
+
+      const components = url.split("/");
+      return components[components.length - 1];
+    },
+  })
 };
