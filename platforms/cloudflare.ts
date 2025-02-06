@@ -1,6 +1,7 @@
-import type { PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
+import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -48,6 +49,11 @@ const getArgs = (
   throw new Error("Could not derive handler arguments from input. Please check how serve is used.");
 };
 
+const telemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "cloudflare",
+};
+
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
  *
@@ -63,10 +69,6 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 ): {
   fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>;
 } => {
-  const telemetry: Telemetry = {
-    sdk: SDK_TELEMETRY,
-    framework: "cloudflare",
-  };
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);
     const { handler: serveHandler } = serveBase(routeFunction, telemetry, {
@@ -79,19 +81,33 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   return { fetch };
 };
 
-// export const serveMany: ServeMany<typeof serve, "fetch"> = ({ routes }) => {
-//   return {
-//     fetch: serveManyBase<PagesHandlerArgs | WorkersHandlerArgs>({
-//       routes: routes.map((route) => {
-//         return {
-//           ...route,
-//           handler: route.fetch,
-//         };
-//       }),
-//       getHeader(header, params) {
-//         const request: Request = params[0] instanceof Request ? params[0] : params[0].request;
-//         return request.headers.get(header);
-//       },
-//     }).handler,
-//   };
-// };
+
+
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+): InvokableWorkflow<
+  TInitialPayload,
+  TResult,
+  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>["fetch"]>
+> => {
+  const { fetch: handler } = serve(...params);
+  return {
+    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
+    handler,
+    workflowId: undefined,
+  };
+};
+
+export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
+  return {
+    fetch: serveManyBase<ReturnType<typeof serve>["fetch"]>({
+      workflows: workflows,
+      getWorkflowId(...params) {
+        const { request } = getArgs(params)
+        const components = request.url.split("/");
+        return components[components.length - 1];
+      },
+    }).handler
+  };
+};
+
