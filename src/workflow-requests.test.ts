@@ -455,6 +455,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        "content-type": "application/json",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -482,6 +483,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        "content-type": "application/json",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -533,6 +535,7 @@ describe("Workflow Requests", () => {
         "Upstash-Callback-Workflow-Url": WORKFLOW_ENDPOINT,
         "Upstash-Forward-my-custom-header": "my-custom-header-value",
         "Upstash-Workflow-CallType": "toCallback",
+        "content-type": "application/json",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -555,6 +558,7 @@ describe("Workflow Requests", () => {
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
         "Upstash-Failure-Callback": failureUrl,
+        "content-type": "application/json",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -581,6 +585,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
+        "content-type": "application/json",
       });
       expect(timeoutHeaders).toEqual({
         "Upstash-Workflow-Init": ["false"],
@@ -591,7 +596,7 @@ describe("Workflow Requests", () => {
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
         "Upstash-Workflow-Runid": [workflowRunId],
         "Upstash-Workflow-CallType": ["step"],
-        "Content-Type": ["application/json"],
+        "content-type": ["application/json"],
       });
     });
   });
@@ -870,6 +875,7 @@ describe("Workflow Requests", () => {
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
             "Upstash-Retries": "0",
             "Upstash-Failure-Callback-Retries": "0",
+            "content-type": "application/json",
           },
           requestPayload: undefined,
           url: WORKFLOW_ENDPOINT,

@@ -190,7 +190,7 @@ describe("context tests", () => {
             },
             timeout: "7d", // default timeout
             timeoutHeaders: {
-              "Content-Type": ["application/json"],
+              "content-type": ["application/json"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
               [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],

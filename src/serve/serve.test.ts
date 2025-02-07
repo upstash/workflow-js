@@ -121,9 +121,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-              body: JSON.stringify(initialPayload),
-              method: "POST",
-            })
+            body: JSON.stringify(initialPayload),
+            method: "POST",
+          })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         const response = await endpoint(request);
@@ -728,7 +728,7 @@ describe("serve", () => {
           timeout: "10d",
           timeoutHeaders: {
             "Upstash-Workflow-Sdk-Version": ["1"],
-            "Content-Type": ["application/json"],
+            "content-type": ["application/json"],
             "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
             "Upstash-Retries": ["3"],

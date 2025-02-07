@@ -525,7 +525,6 @@ export const getHeaders = ({
         [WORKFLOW_INIT_HEADER]: ["false"],
         [WORKFLOW_URL_HEADER]: [workflowUrl],
         "Upstash-Workflow-CallType": ["step"],
-        "Content-Type": [contentType],
       },
     };
   }
