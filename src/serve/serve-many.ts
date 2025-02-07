@@ -27,9 +27,16 @@ export const serveManyBase = <
 
       if (workflowIds.includes(workflowId)) {
         throw new WorkflowError(
-          `Duplicate workflow name found: ${workflowId}. Please set different workflow names in serveMany.`
+          `Duplicate workflow name found: '${workflowId}'. Please set different workflow names in serveMany.`
         );
       }
+
+      if (workflowId.includes("/")) {
+        throw new WorkflowError(
+          `Invalid workflow name found: '${workflowId}'. Workflow name cannot contain '/'.`)
+      }
+
+      workflowIds.push(workflowId);
 
       workflow[1].workflowId = workflowId;
 
@@ -41,11 +48,11 @@ export const serveManyBase = <
     handler: async (...params: THandlerParams) => {
       const pickedWorkflowId = getWorkflowId(...params);
       if (!pickedWorkflowId) {
-        throw new WorkflowError(`Unexpected workflow in serveMany. workflowId not set.`);
+        throw new WorkflowError(`Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`);
       }
       const workflow = workflowMap[pickedWorkflowId];
       if (!workflow) {
-        throw new WorkflowError(`No workflows in serveMany found for '${pickedWorkflowId}'`);
+        throw new WorkflowError(`No workflows in serveMany found for '${pickedWorkflowId}'. Please update the URL of your request.`);
       }
       return await workflow(...params);
     },
