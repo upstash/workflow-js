@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * this file contains adapters which convert tools and models
  * to workflow tools and models.
@@ -8,6 +9,7 @@ import { WorkflowContext } from "../context";
 import { tool } from "ai";
 import { AISDKTool, LangchainTool } from "./types";
 import { AGENT_NAME_HEADER } from "./constants";
+import { z, ZodType } from "zod";
 
 /**
  * creates an AI SDK openai client with a custom
@@ -89,15 +91,17 @@ export const wrapTools = ({
   tools,
 }: {
   context: WorkflowContext;
-  tools: Record<string, AISDKTool | LangchainTool>;
+  tools: Record<string, AISDKTool | LangchainTool | WorkflowTool>;
 }): Record<string, AISDKTool> => {
   return Object.fromEntries(
     Object.entries(tools).map((toolInfo) => {
       const [toolName, tool] = toolInfo;
+
+      const wrap = "wrap" in tool ? tool.wrap : true;
       const aiSDKTool: AISDKTool = convertToAISDKTool(tool);
 
       const execute = aiSDKTool.execute;
-      if (execute) {
+      if (execute && wrap) {
         const wrappedExecute = (...params: Parameters<typeof execute>) => {
           return context.run(`Run tool ${toolName}`, () => execute(...params));
         };
@@ -133,3 +137,43 @@ const convertLangchainTool = (langchainTool: LangchainTool): AISDKTool => {
     execute: async (...param: unknown[]) => langchainTool.invoke(...param),
   });
 };
+
+export class WorkflowTool<TSchema extends ZodType = ZodType> implements LangchainTool {
+  public readonly description: string;
+  public readonly schema: TSchema;
+  public readonly invoke: (params: z.infer<TSchema>) => any;
+  public readonly wrap: boolean;
+
+  /**
+   * 
+   * @param description description of the tool
+   * @param schema schema of the tool
+   * @param invoke function to invoke the tool
+   * @param wrap whether to wrap the tool with context.run. True by default
+   */
+  constructor(params: {
+    /**
+     * description of the tool
+     */
+    description: string;
+    /**
+     * schema of the tool
+     */
+    schema: TSchema;
+    /**
+     * invoke function to invoke the tool
+     */
+    invoke: (params: z.infer<TSchema>) => any;
+    /**
+     * whether the invoke method is to be wrapped with context.run
+     * 
+     * @default true
+     */
+    wrap?: boolean;
+  }) {
+    this.description = params.description;
+    this.schema = params.schema;
+    this.invoke = params.invoke;
+    this.wrap = params.wrap ?? true;
+  }
+}
