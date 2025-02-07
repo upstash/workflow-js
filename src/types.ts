@@ -435,6 +435,8 @@ export type HeaderParams = {
       /**
        * Settings for controlling the number of active requests
        * and number of requests per second with the same key.
+       * 
+       * will be passed in context.call.
        */
       callFlowControl?: FlowControl;
     }
@@ -459,6 +461,8 @@ export type HeaderParams = {
       /**
        * Settings for controlling the number of active requests
        * and number of requests per second with the same key.
+       * 
+       * will be passed in context.call.
        */
       callFlowControl?: never;
     }
