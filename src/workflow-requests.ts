@@ -29,6 +29,7 @@ import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
 import { QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
+import { decodeBase64 } from "./utils";
 
 export const triggerFirstInvocation = async <TInitialPayload>({
   workflowContext,
@@ -281,7 +282,7 @@ export const handleThirdPartyCallResult = async ({
       ) {
         await debug?.log("WARN", "SUBMIT_THIRD_PARTY_RESULT", {
           status: callbackMessage.status,
-          body: atob(callbackMessage.body ?? ""),
+          body: decodeBase64(callbackMessage.body ?? ""),
         });
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
@@ -332,6 +333,12 @@ export const handleThirdPartyCallResult = async ({
         telemetry,
       });
 
+      const callBody = (callbackMessage.body ?? "").slice(0, 32)
+      console.log("a", callBody);
+      const atobRes = atob(callBody)
+      console.log("b", decodeBase64(callBody));
+      console.log("c", atobRes.split(""));
+
       const callResponse: CallResponse = {
         status: callbackMessage.status,
         body: atob(callbackMessage.body ?? ""),
@@ -344,6 +351,12 @@ export const handleThirdPartyCallResult = async ({
         out: JSON.stringify(callResponse),
         concurrent: Number(concurrentString),
       };
+
+      console.log(callResponse.body.split("").map((char) => char.charCodeAt(0)));
+      console.log(JSON.stringify(callResultStep.out.split("").map((char) => char.charCodeAt(0))));
+      console.log(JSON.stringify(JSON.stringify(callResultStep.out).split("").map((char) => char.charCodeAt(0))));
+      console.log(callResultStep.out);
+
 
       await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
         step: callResultStep,

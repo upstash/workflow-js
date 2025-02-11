@@ -70,6 +70,11 @@ const processRawSteps = (rawSteps: RawStep[]) => {
 
   // decode & parse other steps:
   const otherSteps = stepsToDecode.map((rawStep) => {
+    console.log("START");
+    console.log(JSON.stringify(atob(rawStep.body).split("").map((c) => c.charCodeAt(0))));
+    console.log(atob(rawStep.body))
+    console.log("END");
+
     const step = JSON.parse(decodeBase64(rawStep.body)) as Step;
     try {
       step.out = JSON.parse(step.out as string);
@@ -190,7 +195,7 @@ export const validateRequest = (
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
     throw new WorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
-        ` got ${versionHeader} from the request.`
+      ` got ${versionHeader} from the request.`
     );
   }
 
@@ -226,17 +231,17 @@ export const parseRequest = async (
   debug?: WorkflowLogger
 ): Promise<
   | {
-      rawInitialPayload: string;
-      steps: Step[];
-      isLastDuplicate: boolean;
-      workflowRunEnded: false;
-    }
+    rawInitialPayload: string;
+    steps: Step[];
+    isLastDuplicate: boolean;
+    workflowRunEnded: false;
+  }
   | {
-      rawInitialPayload: undefined;
-      steps: undefined;
-      isLastDuplicate: undefined;
-      workflowRunEnded: true;
-    }
+    rawInitialPayload: undefined;
+    steps: undefined;
+    isLastDuplicate: undefined;
+    workflowRunEnded: true;
+  }
 > => {
   if (isFirstInvocation) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
@@ -318,8 +323,8 @@ export const handleFailure = async <TInitialPayload>(
     return err(
       new WorkflowError(
         "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
+        " but a failureFunction is not provided in serve options." +
+        " Either provide a failureUrl or a failureFunction."
       )
     );
   }

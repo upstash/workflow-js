@@ -36,7 +36,7 @@ export function decodeBase64(base64: string) {
     // this error should never happen essentially. It's only a failsafe
     console.warn(
       `Upstash Qstash: Failed while decoding base64 "${base64}".` +
-        ` Decoding with atob and returning it instead. ${error}`
+      ` Decoding with atob and returning it instead. ${error}`
     );
     return atob(base64);
   }
