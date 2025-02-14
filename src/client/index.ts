@@ -20,15 +20,15 @@ export class Client {
   private client: QStashClient;
 
   constructor(clientConfig: ClientConfig) {
-    if (!clientConfig.token) {
+    if (!clientConfig?.token) {
       console.error(
         "QStash token is required for Upstash Workflow!\n\n" +
-          "To fix this:\n" +
-          "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
-          "2. Initialize the workflow client with:\n\n" +
-          "   const client = new Client({\n" +
-          "     token: '<YOUR_QSTASH_TOKEN>'\n" +
-          "   });"
+        "To fix this:\n" +
+        "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
+        "2. Initialize the workflow client with:\n\n" +
+        "   const client = new Client({\n" +
+        "     token: '<YOUR_QSTASH_TOKEN>'\n" +
+        "   });"
       );
     }
     this.client = new QStashClient(clientConfig);
