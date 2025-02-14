@@ -4,7 +4,7 @@ import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
-import { WorkflowRunLog, WorkflowRunResponse } from "./types";
+import { WorkflowRunLog, WorkflowRunLogs } from "./types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -252,35 +252,41 @@ export class Client {
     * const { runs: nextRuns, cursor: nextCursor } = await client.logs({ cursor, count: 2 });
     * ```
     */
-  public async logs(params: { workflowRunId: string }): Promise<WorkflowRunLog>
-  public async logs(params?: { count?: number, cursor?: string }): Promise<WorkflowRunResponse>
   public async logs(params?: {
-    workflowRunId?: string;
+    workflowRunId?: WorkflowRunLog["workflowRunId"];
     cursor?: string;
-    count?: number
-  }): Promise<WorkflowRunLog | WorkflowRunResponse> {
+    count?: number;
+    state?: WorkflowRunLog["workflowState"];
+    workflowUrl?: WorkflowRunLog["workflowUrl"];
+    workflowCreatedAt?: WorkflowRunLog["workflowRunCreatedAt"];
+  }): Promise<WorkflowRunLogs> {
 
-    const { workflowRunId, cursor, count } = params ?? {};
+    const { workflowRunId, cursor, count, state, workflowUrl, workflowCreatedAt } = params ?? {};
 
     const urlParams = new URLSearchParams({ "groupBy": "workflowRunId" });
     if (workflowRunId) {
       urlParams.append("workflowRunId", workflowRunId);
-    } else {
-      if (cursor) {
-        urlParams.append("cursor", cursor);
-      }
-      if (count) {
-        urlParams.append("count", count.toString());
-      }
+    }
+    if (cursor) {
+      urlParams.append("cursor", cursor);
+    }
+    if (count) {
+      urlParams.append("count", count.toString());
+    }
+    if (state) {
+      urlParams.append("state", state);
+    }
+    if (workflowUrl) {
+      urlParams.append("workflowUrl", workflowUrl);
+    }
+    if (workflowCreatedAt) {
+      urlParams.append("workflowCreatedAt", workflowCreatedAt.toString());
     }
 
-    const result = await this.client.http.request<WorkflowRunResponse>({
+    const result = await this.client.http.request<WorkflowRunLogs>({
       path: ["v2", "workflows", `events?${urlParams.toString()}`],
     })
 
-    if (workflowRunId) {
-      return result.runs[0];
-    }
     return result
   }
 }

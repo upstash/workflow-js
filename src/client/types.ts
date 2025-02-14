@@ -45,6 +45,10 @@ type BaseStepLog = {
    * time when the step was created
    */
   createdAt: number
+  /**
+   * headers
+   */
+  headers: Record<string, string[]>
 }
 
 type CallUrlGroup = {
@@ -205,13 +209,17 @@ export type WorkflowRunLog = {
    * - RUN_SUCCESS: Workflow run has completed successfully
    * - RUN_FAILED: Workflow run has failed
    */
-  workflowState: "RUN_STARTED" | "RUN_SUCCESS" | "RUN_FAILED"
+  workflowState: "RUN_STARTED" | "RUN_SUCCESS" | "RUN_FAILED" | "RUN_CANCELED"
   /**
    * Time when the workflow run was created
+   * 
+   * in unix milliseconds format
    */
   workflowRunCreatedAt: number,
   /**
    * Time when the workflow run was completed
+   * 
+   * in unix milliseconds format
    */
   workflowRunCompletedAt?: number,
   /**
@@ -225,7 +233,7 @@ export type WorkflowRunLog = {
   steps: StepLogGroup[]
 }
 
-export type WorkflowRunResponse = {
+export type WorkflowRunLogs = {
   cursor: string,
   runs: WorkflowRunLog[]
 }
