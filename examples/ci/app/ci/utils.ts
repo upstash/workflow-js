@@ -56,10 +56,9 @@ export const getTestConfig = async (route: string) => {
   if (response.status !== 200) {
     throw new Error(`Failed to get the error config: ${response.statusText}`)
   }
-  
 
   const testConfig = await response.json() as Parameters<typeof testServe>[1]
-  
+
   return testConfig
 }
 

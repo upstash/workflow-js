@@ -7,7 +7,7 @@
   let loading = writable(false);
   let route = writable('path');
 
-  const routes = ['path', 'sleep', 'sleepWithoutAwait', 'northStarSimple', 'northStar', 'call'];
+  const routes = ['path', 'sleep', 'sleepWithoutAwait', 'northStarSimple', 'northStar', 'call', 'serve-many/workflowOne', 'serve-many/workflowTwo'];
 
   const handleSend = async () => {
     loading.set(true);

@@ -6,7 +6,7 @@
   "dependencies": {
     "@upstash/qstash": "latest",
     "@upstash/workflow": "latest",
-    "hono": "^4.5.8"
+    "hono": "^4.6.20"
   },
   "devDependencies": {
     "@types/bun": "latest"

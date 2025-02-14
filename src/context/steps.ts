@@ -1,8 +1,19 @@
 import type { Client, HTTPMethods } from "@upstash/qstash";
-import type { NotifyStepResponse, Step, StepFunction, StepType, WaitStepResponse } from "../types";
+import type {
+  CallSettings,
+  InvokableWorkflow,
+  InvokeStepResponse,
+  NotifyStepResponse,
+  RequiredExceptFields,
+  Step,
+  StepFunction,
+  StepType,
+  WaitStepResponse,
+} from "../types";
 import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
 import { WorkflowError } from "../error";
+import { getWorkflowRunId } from "../utils";
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -251,6 +262,56 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
         eventData,
         notifyResponse,
       };
+    });
+  }
+}
+
+export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
+  workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult, unknown[]>, "callback" | "workflowId">;
+  body: TInitiaPayload; // TODO make optional
+  workflowRunId?: string;
+} & Pick<CallSettings, "retries" | "headers">;
+
+export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazyStep<
+  InvokeStepResponse<TResult>
+> {
+  stepType: StepType = "Invoke";
+  params: RequiredExceptFields<LazyInvokeStepParams<TBody, TResult>, "retries">;
+  constructor(
+    stepName: string,
+    { workflow, body, headers = {}, workflowRunId, retries }: LazyInvokeStepParams<TBody, TResult>
+  ) {
+    super(stepName);
+    this.params = {
+      workflow,
+      body,
+      headers,
+      workflowRunId: getWorkflowRunId(workflowRunId),
+      retries,
+    };
+  }
+  public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
+    return {
+      stepId: 0,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
+      targetStep,
+    };
+  }
+  /**
+   * won't be used as it's the server who will add the result step
+   * in Invoke step.
+   */
+  public getResultStep(
+    concurrent: number,
+    stepId: number
+  ): Promise<Step<InvokeStepResponse<TResult>>> {
+    return Promise.resolve({
+      stepId,
+      stepName: this.stepName,
+      stepType: this.stepType,
+      concurrent,
     });
   }
 }

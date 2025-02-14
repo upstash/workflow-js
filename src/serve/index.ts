@@ -37,11 +37,14 @@ export const serveBase = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
+  TResult = unknown,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   telemetry?: Telemetry,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
-): { handler: (request: TRequest) => Promise<TResponse> } => {
+): {
+  handler: (request: TRequest) => Promise<TResponse>;
+} => {
   // Prepares options with defaults if they are not provided.
 
   const {
@@ -188,8 +191,8 @@ export const serveBase = <
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
             onStep: async () => routeFunction(workflowContext),
-            onCleanup: async () => {
-              await triggerWorkflowDelete(workflowContext, debug);
+            onCleanup: async (result) => {
+              await triggerWorkflowDelete(workflowContext, result, debug);
             },
             onCancel: async () => {
               await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
@@ -240,14 +243,15 @@ export const serve = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
+  TResult = unknown,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: Omit<
     WorkflowServeOptions<TResponse, TInitialPayload>,
     "useJSONContent" | "schema" | "initialPayloadParser"
   > &
     ExclusiveValidationOptions<TInitialPayload>
-): { handler: (request: TRequest) => Promise<TResponse> } => {
+): ReturnType<typeof serveBase<TInitialPayload, TRequest, TResponse, TResult>> => {
   return serveBase(
     routeFunction,
     {

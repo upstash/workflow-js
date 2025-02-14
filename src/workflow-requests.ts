@@ -103,8 +103,8 @@ export const triggerRouteFunction = async ({
   onCancel,
   debug,
 }: {
-  onStep: () => Promise<void>;
-  onCleanup: () => Promise<void>;
+  onStep: () => Promise<unknown>;
+  onCleanup: (result: unknown) => Promise<void>;
   onCancel: () => Promise<void>;
   debug?: WorkflowLogger;
 }): Promise<
@@ -114,8 +114,8 @@ export const triggerRouteFunction = async ({
     // When onStep completes successfully, it throws an exception named `WorkflowAbort`,
     // indicating that the step has been successfully executed.
     // This ensures that onCleanup is only called when no exception is thrown.
-    await onStep();
-    await onCleanup();
+    const result = await onStep();
+    await onCleanup(result);
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
@@ -139,6 +139,7 @@ export const triggerRouteFunction = async ({
 
 export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
+  result: unknown,
   debug?: WorkflowLogger,
   cancel = false
 ): Promise<void> => {
@@ -149,6 +150,7 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
     method: "DELETE",
     parseResponseAsJson: false,
+    body: JSON.stringify(result),
   });
   await debug?.log(
     "SUBMIT",
@@ -406,11 +408,17 @@ export const getHeaders = ({
   callTimeout,
   telemetry,
 }: HeaderParams): HeadersResponse => {
+
+  const contentType =
+    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
+
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,
     [WORKFLOW_ID_HEADER]: workflowRunId,
     [WORKFLOW_URL_HEADER]: workflowUrl,
     [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+    [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+    "content-type": contentType,
     ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
   };
 
@@ -426,6 +434,10 @@ export const getHeaders = ({
     if (!step?.callUrl) {
       baseHeaders["Upstash-Failure-Callback"] = failureUrl;
     }
+  }
+
+  if (step?.stepType === "Invoke") {
+    baseHeaders["upstash-workflow-invoke"] = "true";
   }
 
   // if retries is set or if call url is passed, set a retry
@@ -457,8 +469,6 @@ export const getHeaders = ({
     }
   }
 
-  const contentType =
-    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
 
   if (step?.callHeaders) {
     const forwardedHeaders = Object.fromEntries(
@@ -515,7 +525,6 @@ export const getHeaders = ({
         [WORKFLOW_INIT_HEADER]: ["false"],
         [WORKFLOW_URL_HEADER]: [workflowUrl],
         "Upstash-Workflow-CallType": ["step"],
-        "Content-Type": [contentType],
       },
     };
   }

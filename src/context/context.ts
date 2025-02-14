@@ -9,10 +9,11 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep } from "./steps";
+import type { BaseLazyStep, LazyInvokeStepParams } from "./steps";
 import {
   LazyCallStep,
   LazyFunctionStep,
+  LazyInvokeStep,
   LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
@@ -442,6 +443,18 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result;
     }
+  }
+
+  public async invoke<TInitialPayload, TResult>(
+    stepName: string,
+    settings: LazyInvokeStepParams<TInitialPayload, TResult>
+  ) {
+    const result = await this.addStep(new LazyInvokeStep(stepName, settings));
+
+    return {
+      ...result,
+      body: result.body ? JSON.parse(result.body as string) : undefined,
+    };
   }
 
   /**

@@ -4,6 +4,7 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
+import { LazyInvokeStepParams } from "./context/steps";
 
 /**
  * Interface for Client with required methods
@@ -33,6 +34,7 @@ export const StepTypes = [
   "Call",
   "Wait",
   "Notify",
+  "Invoke",
 ] as const;
 export type StepType = (typeof StepTypes)[number];
 
@@ -120,9 +122,9 @@ export type StepFunction<TResult> = AsyncStepFunction<TResult> | SyncStepFunctio
 
 export type ParallelCallState = "first" | "partial" | "discard" | "last";
 
-export type RouteFunction<TInitialPayload> = (
+export type RouteFunction<TInitialPayload, TResult = unknown> = (
   context: WorkflowContext<TInitialPayload>
-) => Promise<void>;
+) => Promise<TResult>;
 
 export type FinishCondition =
   | "success"
@@ -440,3 +442,28 @@ export type HeaderParams = {
       callTimeout?: never;
     }
 );
+
+export type InvokeWorkflowRequest = {
+  workflowUrl: string;
+  workflowRunId: string;
+  headers: Record<string, string[]>;
+  step: Step;
+  body: string;
+};
+export type InvokeStepResponse<TBody> = {
+  body: TBody;
+  isCanceled?: boolean;
+  isFailed?: boolean;
+};
+export type InvokeCallback<TInitiaPayload, TResult> = (
+  settings: LazyInvokeStepParams<TInitiaPayload, TResult>,
+  invokeStep: Step,
+  context: WorkflowContext
+) => Promise<TResult>;
+
+export type InvokableWorkflow<TInitialPayload, TResult, THandlerParams extends unknown[]> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: (...args: THandlerParams) => any;
+  callback: InvokeCallback<TInitialPayload, TResult>;
+  workflowId?: string;
+};

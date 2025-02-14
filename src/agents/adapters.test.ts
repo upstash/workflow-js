@@ -80,6 +80,7 @@ describe("wrapTools", () => {
             body: '{"stepId":1,"stepName":"Run tool aiSDKTool","stepType":"Run","out":"\\"hello\\"","concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "LazyFetch,InitialBody",
@@ -130,6 +131,7 @@ describe("wrapTools", () => {
             body: '{"stepId":1,"stepName":"Run tool langChainTool","stepType":"Run","out":"\\"hello\\"","concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "LazyFetch,InitialBody",

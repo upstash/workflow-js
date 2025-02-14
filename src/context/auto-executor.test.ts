@@ -120,6 +120,7 @@ describe("auto-executor", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -214,6 +215,7 @@ describe("auto-executor", () => {
               body: '{"stepId":0,"stepName":"sleep for 123s","stepType":"SleepFor","sleepFor":123,"concurrent":4,"targetStep":1}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "123s",
@@ -230,6 +232,7 @@ describe("auto-executor", () => {
               body: '{"stepId":0,"stepName":"sleep for 10m","stepType":"SleepFor","sleepFor":"10m","concurrent":4,"targetStep":2}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "10m",
@@ -246,6 +249,7 @@ describe("auto-executor", () => {
               body: '{"stepId":0,"stepName":"sleep until next day","stepType":"SleepUntil","sleepUntil":123123,"concurrent":4,"targetStep":3}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -262,6 +266,7 @@ describe("auto-executor", () => {
               body: '{"stepId":0,"stepName":"waitEvent","stepType":"Wait","waitEventId":"my-event","timeout":"5m","concurrent":4,"targetStep":4}',
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -321,6 +326,7 @@ describe("auto-executor", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -375,6 +381,7 @@ describe("auto-executor", () => {
             {
               destination: WORKFLOW_ENDPOINT,
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
