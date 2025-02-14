@@ -232,15 +232,18 @@ export class Client {
     * Fetches logs for workflow runs.
     *
     * @param workflowRunId - The ID of the workflow run to fetch logs for.
-    * @param cursor - The cursor for pagination. Not used if workflowRunId is passed.
-    * @param count - Number of runs to fetch. Not used if workflowRunId is passed.
+    * @param cursor - The cursor for pagination.
+    * @param count - Number of runs to fetch. Default value is 10.
+    * @param state - The state of the workflow run.
+    * @param workflowUrl - The URL of the workflow. Should be an exact match.
+    * @param workflowCreatedAt - The creation time of the workflow. If you have two workflow runs with the same URL, you can use this to filter them.
     * @returns A promise that resolves to either a `WorkflowRunLog` or a `WorkflowRunResponse`.
     *
     * @example
     * Fetch logs for a specific workflow run:
     * ```typescript
-    * const logs = await client.logs({ workflowRunId: '12345' });
-    * const steps = logs.steps; // access steps
+    * const { runs } = await client.logs({ workflowRunId: '12345' });
+    * const steps = runs[0].steps; // access steps
     * ```
     *
     * @example
