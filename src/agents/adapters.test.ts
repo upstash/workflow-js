@@ -43,7 +43,7 @@ describe("wrapTools", () => {
     description: workflowToolDescription,
     schema: parameters,
     invoke: execute,
-    wrap: true
+    executeAsStep: true
   })
 
   test("should wrap AI SDK tool with execute", async () => {
@@ -169,7 +169,7 @@ describe("wrapTools", () => {
       invoke: async ({ expression }) => {
         await context.sleep(`step ${expression}`, 1000)
       },
-      wrap: false
+      executeAsStep: false
     })
 
     const wrappedTools = wrapTools({ context, tools: { nonwrappedWorkflowTool } });

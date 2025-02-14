@@ -97,11 +97,11 @@ export const wrapTools = ({
     Object.entries(tools).map((toolInfo) => {
       const [toolName, tool] = toolInfo;
 
-      const wrap = "wrap" in tool ? tool.wrap : true;
+      const executeAsStep = "executeAsStep" in tool ? tool.executeAsStep : true;
       const aiSDKTool: AISDKTool = convertToAISDKTool(tool);
 
       const execute = aiSDKTool.execute;
-      if (execute && wrap) {
+      if (execute && executeAsStep) {
         const wrappedExecute = (...params: Parameters<typeof execute>) => {
           return context.run(`Run tool ${toolName}`, () => execute(...params));
         };
@@ -139,17 +139,29 @@ const convertLangchainTool = (langchainTool: LangchainTool): AISDKTool => {
 };
 
 export class WorkflowTool<TSchema extends ZodType = ZodType> implements LangchainTool {
+  /**
+   * description of the tool
+   */
   public readonly description: string;
+  /**
+   * schema of the tool
+   */
   public readonly schema: TSchema;
+  /**
+   * function to invoke the tool
+   */
   public readonly invoke: (params: z.infer<TSchema>) => any;
-  public readonly wrap: boolean;
+  /**
+   * whether the invoke method of the tool is to be wrapped with `context.run`
+   */
+  public readonly executeAsStep: boolean;
 
   /**
    * 
    * @param description description of the tool
    * @param schema schema of the tool
    * @param invoke function to invoke the tool
-   * @param wrap whether to wrap the tool with context.run. True by default
+   * @param executeAsStep whether the invoke method of the tool is to be wrapped with `context.run`
    */
   constructor(params: {
     /**
@@ -178,11 +190,11 @@ export class WorkflowTool<TSchema extends ZodType = ZodType> implements Langchai
      * 
      * @default true
      */
-    wrap?: boolean;
+    executeAsStep?: boolean;
   }) {
     this.description = params.description;
     this.schema = params.schema;
     this.invoke = params.invoke;
-    this.wrap = params.wrap ?? true;
+    this.executeAsStep = params.executeAsStep ?? true;
   }
 }
