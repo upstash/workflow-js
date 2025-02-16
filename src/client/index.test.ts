@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT, eventually } from "../test-utils";
 import { Client } from ".";
 import { Client as QStashClient } from "@upstash/qstash"
 import { getWorkflowRunId, nanoid } from "../utils";
@@ -268,7 +268,7 @@ describe("workflow client", () => {
     })
 
     // skipping the live test because it takes too long and is still flaky
-    test.skip("should get logs - live", async () => {
+    test("should get logs - live", async () => {
       const qstashClient = new QStashClient({
         baseUrl: process.env.QSTASH_URL,
         token: process.env.QSTASH_TOKEN!,
@@ -293,83 +293,88 @@ describe("workflow client", () => {
       })
       expect(result.isOk()).toBe(true)
 
-      await new Promise(r => setTimeout(r, 30000));
+      await eventually(
+        async () => {
+          const logs = await liveClient.logs({
+            workflowRunId
+          })
 
-      const logs = await liveClient.logs({
-        workflowRunId
-      })
+          expect(logs.cursor).toBe("")
+          expect(logs.runs.length).toBe(1)
+          expect(logs.runs[0]).toEqual({
+            workflowRunId,
+            workflowUrl: "https://httpstat.us/200",
+            workflowState: "RUN_STARTED",
+            workflowRunCreatedAt: expect.any(Number),
+            steps: [
+              {
+                steps: [
+                  {
+                    callType: "step",
+                    concurrent: 1,
+                    createdAt: expect.any(Number),
+                    headers: {
+                      "Upstash-Workflow-Sdk-Version": [
+                        "1"
+                      ],
+                    },
+                    messageId: expect.any(String),
+                    out: "some-body",
+                    state: "STEP_SUCCESS",
+                    stepName: "init",
+                    stepType: "Initial",
+                  }
+                ],
+                type: "sequential",
+              }
+            ],
+          })
+        },
+        { timeout: 30_000, interval: 100 }
+      );
 
       await liveClient.cancel({ ids: workflowRunId })
 
-      await new Promise(r => setTimeout(r, 20000));
-
-      const postCancelLogs = await liveClient.logs({
-        workflowRunId
-      })
-
-      expect(logs.cursor).toBe("")
-      expect(logs.runs.length).toBe(1)
-      expect(logs.runs[0]).toEqual({
-        workflowRunId,
-        workflowUrl: "https://httpstat.us/200",
-        workflowState: "RUN_STARTED",
-        workflowRunCreatedAt: expect.any(Number),
-        steps: [
-          {
+      await eventually(
+        async () => {
+          const postCancelLogs = await liveClient.logs({
+            workflowRunId
+          })
+    
+          expect(postCancelLogs.cursor).toBe("")
+          expect(postCancelLogs.runs.length).toBe(1)
+          expect(postCancelLogs.runs[0]).toEqual({
+            workflowRunId,
+            workflowUrl: "https://httpstat.us/200",
+            workflowState: "RUN_CANCELED",
+            workflowRunCreatedAt: expect.any(Number),
+            workflowRunCompletedAt: expect.any(Number),
             steps: [
               {
-                callType: "step",
-                concurrent: 1,
-                createdAt: expect.any(Number),
-                headers: {
-                  "Upstash-Workflow-Sdk-Version": [
-                    "1"
-                  ],
-                },
-                messageId: expect.any(String),
-                out: "some-body",
-                state: "STEP_SUCCESS",
-                stepName: "init",
-                stepType: "Initial",
+                steps: [
+                  {
+                    callType: "step",
+                    concurrent: 1,
+                    createdAt: expect.any(Number),
+                    headers: {
+                      "Upstash-Workflow-Sdk-Version": [
+                        "1"
+                      ],
+                    },
+                    messageId: expect.any(String),
+                    out: "some-body",
+                    state: "STEP_SUCCESS",
+                    stepName: "init",
+                    stepType: "Initial",
+                  }
+                ],
+                type: "sequential",
               }
             ],
-            type: "sequential",
-          }
-        ],
-      })
-
-      expect(postCancelLogs.cursor).toBe("")
-      expect(postCancelLogs.runs.length).toBe(1)
-      expect(postCancelLogs.runs[0]).toEqual({
-        workflowRunId,
-        workflowUrl: "https://httpstat.us/200",
-        workflowState: "RUN_CANCELED",
-        workflowRunCreatedAt: expect.any(Number),
-        workflowRunCompletedAt: expect.any(Number),
-        steps: [
-          {
-            steps: [
-              {
-                callType: "step",
-                concurrent: 1,
-                createdAt: expect.any(Number),
-                headers: {
-                  "Upstash-Workflow-Sdk-Version": [
-                    "1"
-                  ],
-                },
-                messageId: expect.any(String),
-                out: "some-body",
-                state: "STEP_SUCCESS",
-                stepName: "init",
-                stepType: "Initial",
-              }
-            ],
-            type: "sequential",
-          }
-        ],
-      })
-
+          })
+        },
+        { timeout: 30_000, interval: 100 }
+      );
     }, {
       timeout: 60000
     })
