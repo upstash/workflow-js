@@ -16,6 +16,7 @@ export class AutoExecutor {
   private readonly nonPlanStepCount: number;
   private readonly steps: Step[];
   private indexInCurrentList = 0;
+  private invokeCount: number;
   private telemetry?: Telemetry;
 
   public stepCount = 0;
@@ -27,11 +28,13 @@ export class AutoExecutor {
     context: WorkflowContext,
     steps: Step[],
     telemetry?: Telemetry,
+    invokeCount?: number,
     debug?: WorkflowLogger
   ) {
     this.context = context;
     this.steps = steps;
     this.telemetry = telemetry;
+    this.invokeCount = invokeCount ?? 0
     this.debug = debug;
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
@@ -58,7 +61,7 @@ export class AutoExecutor {
     if (this.executingStep) {
       throw new WorkflowError(
         "A step can not be run inside another step." +
-          ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
+        ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
       );
     }
 
@@ -171,7 +174,7 @@ export class AutoExecutor {
       // user has added/removed a parallel step
       throw new WorkflowError(
         `Incompatible number of parallel steps when call state was '${parallelCallState}'.` +
-          ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
+        ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
       );
     }
 
@@ -206,7 +209,7 @@ export class AutoExecutor {
         if (!planStep || planStep.targetStep === undefined) {
           throw new WorkflowError(
             `There must be a last step and it should have targetStep larger than 0.` +
-              `Received: ${JSON.stringify(planStep)}`
+            `Received: ${JSON.stringify(planStep)}`
           );
         }
         const stepIndex = planStep.targetStep - initialStepCount;
@@ -393,7 +396,8 @@ export class AutoExecutor {
           retries: lazyInvokeStep.params.retries,
         },
         invokeStep,
-        this.context
+        this.context,
+        this.invokeCount
       );
 
       throw new WorkflowAbort(invokeStep.stepName, invokeStep);
@@ -422,28 +426,28 @@ export class AutoExecutor {
 
         return singleStep.callUrl
           ? // if the step is a third party call, we call the third party
-            // url (singleStep.callUrl) and pass information about the workflow
-            // in the headers (handled in getHeaders). QStash makes the request
-            // to callUrl and returns the result to Workflow endpoint.
-            // handleThirdPartyCallResult method sends the result of the third
-            // party call to QStash.
-            {
-              headers,
-              method: singleStep.callMethod,
-              body: singleStep.callBody,
-              url: singleStep.callUrl,
-            }
+          // url (singleStep.callUrl) and pass information about the workflow
+          // in the headers (handled in getHeaders). QStash makes the request
+          // to callUrl and returns the result to Workflow endpoint.
+          // handleThirdPartyCallResult method sends the result of the third
+          // party call to QStash.
+          {
+            headers,
+            method: singleStep.callMethod,
+            body: singleStep.callBody,
+            url: singleStep.callUrl,
+          }
           : // if the step is not a third party call, we use workflow
-            // endpoint (context.url) as URL when calling QStash. QStash
-            // calls us back with the updated steps list.
-            {
-              headers,
-              method: "POST",
-              body: singleStep,
-              url: this.context.url,
-              notBefore: willWait ? singleStep.sleepUntil : undefined,
-              delay: willWait ? singleStep.sleepFor : undefined,
-            };
+          // endpoint (context.url) as URL when calling QStash. QStash
+          // calls us back with the updated steps list.
+          {
+            headers,
+            method: "POST",
+            body: singleStep,
+            url: this.context.url,
+            notBefore: willWait ? singleStep.sleepUntil : undefined,
+            delay: willWait ? singleStep.sleepFor : undefined,
+          };
       })
     );
 
@@ -516,14 +520,14 @@ const validateStep = (lazyStep: BaseLazyStep, stepFromRequest: Step): void => {
   if (lazyStep.stepName !== stepFromRequest.stepName) {
     throw new WorkflowError(
       `Incompatible step name. Expected '${lazyStep.stepName}',` +
-        ` got '${stepFromRequest.stepName}' from the request`
+      ` got '${stepFromRequest.stepName}' from the request`
     );
   }
   // check type name
   if (lazyStep.stepType !== stepFromRequest.stepType) {
     throw new WorkflowError(
       `Incompatible step type. Expected '${lazyStep.stepType}',` +
-        ` got '${stepFromRequest.stepType}' from the request`
+      ` got '${stepFromRequest.stepType}' from the request`
     );
   }
 };
@@ -551,10 +555,10 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
       const requestStepTypes = stepsFromRequest.map((step) => step.stepType);
       throw new WorkflowError(
         `Incompatible steps detected in parallel execution: ${error.message}` +
-          `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
-          `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +
-          `\n  > Step Names expected: ${JSON.stringify(lazyStepNames)}` +
-          `\n    Step Types expected: ${JSON.stringify(lazyStepTypes)}`
+        `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
+        `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +
+        `\n  > Step Names expected: ${JSON.stringify(lazyStepNames)}` +
+        `\n    Step Types expected: ${JSON.stringify(lazyStepTypes)}`
       );
     }
     throw error;

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowError } from "../error";
 import { InvokableWorkflow, InvokeCallback, InvokeWorkflowRequest, Telemetry } from "../types";
 import { getWorkflowRunId } from "../utils";
@@ -65,7 +66,8 @@ export const createInvokeCallback = <TInitialPayload, TResult>(
   const invokeCallback: InvokeCallback<TInitialPayload, TResult> = async (
     settings,
     invokeStep,
-    context
+    context,
+    invokeCount
   ) => {
     const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries } = settings;
     const { workflowId } = workflow;
@@ -96,6 +98,7 @@ export const createInvokeCallback = <TInitialPayload, TResult>(
       telemetry,
     });
     triggerHeaders["Upstash-Workflow-Invoke"] = "true";
+    triggerHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = (invokeCount + 1).toString();
 
     const request: InvokeWorkflowRequest = {
       body: JSON.stringify(body),
