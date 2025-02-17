@@ -52,7 +52,7 @@ export const AgentInfo = ({
   state: false | 'loading' | StepRecord[];
 }) => {
   const [displayCode, setDisplayCode] = useState(false);
-  const [displayOutput, setDisplayOutput] = useState(true);
+  const [displayOutput, setDisplayOutput] = useState(false);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 w-full">

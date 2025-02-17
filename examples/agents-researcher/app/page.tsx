@@ -41,14 +41,17 @@ const Page = () => {
   });
 
   const [agentInfoDisplay, setAgentInfoDisplay] =
-    useState<AgentName>('Wikipedia');
+    useState<AgentName | false>(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
   // form submit handler
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     let scrolledIntermediate = false;
+    let intermediateLogged = false;
 
     try {
+      setCurrentStep(1);
       setLoading(true);
       setProgress(null);
       setAgentStates({
@@ -90,6 +93,11 @@ const Page = () => {
 
           if (result.progress) {
             setLoading(false);
+            if (result.progress === 'Call Agent Manager LLM') {
+              setCurrentStep(intermediateLogged ? 3 : 2);
+            } else {
+              intermediateLogged = true;
+            }
           }
 
           setProgress(result.progress);
@@ -122,6 +130,7 @@ const Page = () => {
           }
 
           if (result.crossReferenceOutput) {
+            setCurrentStep(5);
             document
               .getElementById('cross-reference-output')
               ?.scrollIntoView({ behavior: 'smooth' });
@@ -160,6 +169,14 @@ const Page = () => {
     }
   };
 
+  const resolveStepStatus = (stepNumber: number) => {
+    return (currentStep === stepNumber ? "loading" : currentStep > stepNumber ? "done" : "init");
+  }
+
+  const displayUsedResources = [...Object.entries(agentStates)]
+  .filter(([key, value]) => value && key !== "Cross Reference")
+  .map(([key]) => key)
+
   return (
     <main className="h-screen">
       {progress && (
@@ -171,17 +188,18 @@ const Page = () => {
       <div className="max-w-screen-sm px-8 pt-16 mx-auto pb-44">
         {/* header */}
         <header>
-          <div className="mb-8">
-            <WorkflowIcon size={40} />
-          </div>
-
-          <h1 className="text-2xl font-semibold text-balance">
+          <h1 className="text-2xl font-semibold text-balance mb-8">
             Cross Reference Agent
           </h1>
-          <h2 className="text-lg text-balance opacity-60">
-            This is a simple example to demonstrate how to use Upstash Workflow
-            Agents to cross-reference information from different sources.
-          </h2>
+          <div className="text-lg text-balance flex flex-row flex-wrap items-center gap-2">
+            <span className="text-zinc-500">
+              This is a simple example to demonstrate how to use
+              <div className="inline-block mx-1 align-text-bottom">
+                <WorkflowIcon size={22} />
+              </div>
+              Upstash Workflow Agents to cross-reference information from different sources.
+            </span>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2 mt-4">
             <a
@@ -233,8 +251,8 @@ const Page = () => {
         {/* step-by-step */}
         <Step className="mt-16 md:mt-16">
           {/* step-1 */}
-          <StepItem>
-            <StepNumber order={1} />
+          <StepItem status={resolveStepStatus(1)}>
+            <StepNumber order={1} status={resolveStepStatus(1)} />
 
             <StepTitle>Ask a Question</StepTitle>
             <StepDesc>
@@ -268,8 +286,8 @@ const Page = () => {
           </StepItem>
 
           {/* step-2 */}
-          <StepItem>
-            <StepNumber order={2} />
+          <StepItem status={resolveStepStatus(2)}>
+            <StepNumber order={2} status={resolveStepStatus(2)} />
 
             <StepTitle>View Answers From Various Resources</StepTitle>
             <StepDesc>
@@ -277,18 +295,27 @@ const Page = () => {
               answers from different resources.
             </StepDesc>
 
+            {currentStep > 1 && (
             <StepContent>
               <div className="flex flex-col gap-4">
+                {displayUsedResources.length > 0 &&
+                <span className='opacity-60'>
+                  Your agent chose to use {
+                    displayUsedResources
+                    .join(', ')} to answer your question.
+                </span>
+}
                 <div className="flex gap-4 w-full">
                   <AgentBlock
                     name="Wikipedia"
                     agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
+                    isDisabled={agentStates['Wikipedia'] === false}
                   >
                     <Img
                       src="/icons/wikipedia.png"
-                      width={68}
-                      height={68}
+                      width={44}
+                      height={44}
                       alt="Wikipedia"
                       className={agentStates['Wikipedia'] === false ? 'opacity-60' : 'opacity-100'}
                     />
@@ -297,11 +324,12 @@ const Page = () => {
                     name="WolframAlpha"
                     agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
+                    isDisabled={agentStates['WolframAlpha'] === false}
                   >
                     <Img
                       src="/icons/wolfram-alpha.png"
-                      width={72}
-                      height={72}
+                      width={48}
+                      height={48}
                       alt="WolframAlpha"
                       className={agentStates['WolframAlpha'] === false ? 'opacity-60' : 'opacity-100'}
                     />
@@ -310,28 +338,32 @@ const Page = () => {
                     name="DuckDuckGo"
                     agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
+                    isDisabled={agentStates['DuckDuckGo'] === false}
                   >
                     <Img
                       src="/icons/duckduckgo.png"
-                      width={62}
-                      height={62}
+                      width={40}
+                      height={40}
                       alt="DuckDuckGo"
                       className={agentStates['DuckDuckGo'] === false ? 'opacity-60' : 'opacity-100'}
                     />
                   </AgentBlock>
                 </div>
+                {agentInfoDisplay &&
                 <AgentInfo
                   name={agentInfoDisplay}
                   code={CODES[agentInfoDisplay]}
                   state={agentStates[agentInfoDisplay]}
                 />
+}
               </div>
             </StepContent>
+)}
           </StepItem>
 
           {/* step-3 */}
-          <StepItem>
-            <StepNumber order={3} />
+          <StepItem status={resolveStepStatus(3)}>
+            <StepNumber order={3} status={resolveStepStatus(3)} />
 
             <StepTitle>See Final Summary with References</StepTitle>
             <StepDesc>
@@ -339,6 +371,7 @@ const Page = () => {
               references.
             </StepDesc>
 
+            {currentStep > 2 && (
             <StepContent>
               <AgentInfo
                 name="Cross Reference"
@@ -346,11 +379,12 @@ const Page = () => {
                 state={agentStates['Cross Reference']}
               />
             </StepContent>
+)}
           </StepItem>
 
           {/* step-4 */}
-          <StepItem>
-            <StepNumber order={4} />
+          <StepItem status={resolveStepStatus(4)}>
+            <StepNumber order={4} status={resolveStepStatus(4)} />
 
             <StepTitle>See Logs in Upstash Console</StepTitle>
             <StepDesc>
@@ -358,9 +392,10 @@ const Page = () => {
               the related logs.
             </StepDesc>
 
+            {currentStep > 3 && (
             <StepContent>
               <a
-                className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-purple-100"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-purple-500 text-white hover:bg-purple-400"
                 href="https://console.upstash.com/qstash?tab=workflow"
               >
                 <svg
@@ -390,6 +425,7 @@ const Page = () => {
                 alt="s"
               />
             </StepContent>
+)}
           </StepItem>
         </Step>
       </div>
