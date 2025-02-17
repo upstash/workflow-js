@@ -85,18 +85,21 @@ export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
 ): InvokableWorkflow<
   TInitialPayload,
-  TResult,
-  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>["fetch"]>
+  TResult
 > => {
-  const { fetch: handler } = serve(...params);
+  const [routeFunction, options = {}] = params;
   return {
     callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
-    handler,
     workflowId: undefined,
+    routeFunction,
+    options
   };
 };
 
-export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
   return {
     fetch: serveManyBase<ReturnType<typeof serve>["fetch"]>({
       workflows: workflows,
@@ -105,6 +108,8 @@ export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workfl
         const components = request.url.split("/");
         return components[components.length - 1];
       },
+      options,
+      serveMethod: (...params: Parameters<typeof serve>) => serve(...params).fetch,
     }).handler,
   };
 };

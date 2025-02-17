@@ -386,7 +386,6 @@ export class AutoExecutor {
     if (steps.length === 1 && lazySteps[0] instanceof LazyInvokeStep) {
       const invokeStep = steps[0];
       const lazyInvokeStep = lazySteps[0];
-
       await lazyInvokeStep.params.workflow.callback(
         {
           body: lazyInvokeStep.params.body,

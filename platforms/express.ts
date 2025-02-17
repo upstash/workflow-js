@@ -89,18 +89,21 @@ export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
 ): InvokableWorkflow<
   TInitialPayload,
-  TResult,
-  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>>
+  TResult
 > => {
-  const handler = createExpressHandler(params)
+  const [routeFunction, options = {}] = params;
   return {
     callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
-    handler,
+    routeFunction,
+    options,
     workflowId: undefined,
   };
 };
 
-export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options: Parameters<typeof serveManyBase>[0]["options"],
+) => {
   const router = Router();
 
   const { handler } = serveManyBase<ReturnType<typeof createExpressHandler>>({
@@ -109,6 +112,8 @@ export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workfl
       const components = params[0].url.split("/");
       return components[components.length - 1];
     },
+    serveMethod: (...params: Parameters<typeof serve>) => createExpressHandler(params),
+    options
   })
 
   router.all("*", handler);

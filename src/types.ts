@@ -462,9 +462,9 @@ export type InvokeCallback<TInitiaPayload, TResult> = (
   invokeCount: number
 ) => Promise<TResult>;
 
-export type InvokableWorkflow<TInitialPayload, TResult, THandlerParams extends unknown[]> = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handler: (...args: THandlerParams) => any;
+export type InvokableWorkflow<TInitialPayload, TResult> = {
+  routeFunction: RouteFunction<TInitialPayload, TResult>;
+  options: WorkflowServeOptions<Response, TInitialPayload>;
   callback: InvokeCallback<TInitialPayload, TResult>;
   workflowId?: string;
 };

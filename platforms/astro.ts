@@ -38,18 +38,25 @@ export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
 ): InvokableWorkflow<
   TInitialPayload,
-  TResult,
-  Parameters<ReturnType<typeof serve<TInitialPayload, TResult>>["POST"]>
+  TResult
 > => {
-  const { POST: handler } = serve(...params);
+  const [routeFunction, options = {}] = params;
   return {
     callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
-    handler,
     workflowId: undefined,
+    // @ts-expect-error because astro route function has another parameeter,
+    // the RouteFunction type can't cover this. We need to make RouteFunction
+    // accept more variables than simply the context. Until then, ignoring the
+    // error here. Tested the usage in astro project and it's fine. TODO.
+    routeFunction,
+    options,
   };
 };
 
-export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workflows"]) => {
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
   return {
     POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
       workflows: workflows,
@@ -57,6 +64,8 @@ export const serveMany = (workflows: Parameters<typeof serveManyBase>[0]["workfl
         const components = params[0].request.url.split("/");
         return components[components.length - 1];
       },
+      serveMethod: (...params: Parameters<typeof serve>) => serve(...params).POST,
+      options
     }).handler,
   };
 };

@@ -49,7 +49,8 @@ describe("serveMany", () => {
             body: "some-body",
             workflow: {
               workflowId,
-              callback
+              callback,
+              options: {}
             },
             headers: { "custom": "custom-header-value" },
             retries: 6,
@@ -118,9 +119,6 @@ describe("serveMany", () => {
     const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
       const a = context.requestPayload + 2
       return `result ${a}`
-    }, {
-      qstashClient,
-      receiver: undefined
     })
 
     const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
@@ -131,14 +129,14 @@ describe("serveMany", () => {
           body: 2,
         }
       )
-    }, {
-      qstashClient,
-      receiver: undefined
     })
 
     const { POST: handler } = serveMany({
       "workflow-one": workflowOne,
       "workflow-two": workflowTwo,
+    }, {
+      qstashClient,
+      receiver: undefined
     })
 
     test("first invoke", async () => {

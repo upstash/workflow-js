@@ -267,7 +267,7 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
 }
 
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult, unknown[]>, "callback" | "workflowId">;
+  workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult>, "callback" | "workflowId" | "options">;
   body: TInitiaPayload; // TODO make optional
   workflowRunId?: string;
 } & Pick<CallSettings, "retries" | "headers">;
