@@ -102,7 +102,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
 
 export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
-  options: Parameters<typeof serveManyBase>[0]["options"],
+  options?: Parameters<typeof serveManyBase>[0]["options"],
 ) => {
   const router = Router();
 
