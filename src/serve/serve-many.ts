@@ -58,11 +58,15 @@ export const serveManyBase = <
     handler: async (...params: Parameters<THandler>) => {
       const pickedWorkflowId = getWorkflowId(...params);
       if (!pickedWorkflowId) {
-        throw new WorkflowError(`Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`);
+        return new Response(`Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`, {
+          status: 404
+        });
       }
       const workflow = workflowMap[pickedWorkflowId];
       if (!workflow) {
-        throw new WorkflowError(`No workflows in serveMany found for '${pickedWorkflowId}'. Please update the URL of your request.`);
+        return new Response(`No workflows in serveMany found for '${pickedWorkflowId}'. Please update the URL of your request.`, {
+          status: 404
+        });
       }
       return await workflow(...params);
     },
