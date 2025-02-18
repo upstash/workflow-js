@@ -186,3 +186,32 @@ export const getRequest = (
     },
   });
 };
+
+export const eventually = async function(
+  fn: () => Promise<void> | void,
+  options: {
+    timeout?: number;
+    interval?: number;
+  } = {}
+): Promise<void> {
+  const {
+    timeout = 5000,
+    interval = 100,
+  } = options;
+
+  const startTime = Date.now();
+  
+  while (true) {
+    try {
+      await fn();
+      // Success case - all assertions passed
+      return; 
+    } catch (error) {
+      const lastError = error as Error;
+      if (Date.now() - startTime >= timeout) {
+        throw new Error(`Assertions not satisfied within timeout: ${lastError.message}`);
+      }
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+  }
+}

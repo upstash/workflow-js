@@ -557,6 +557,11 @@ describe("Workflow Requests", () => {
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
+        "Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback": "true",
+        "Upstash-Failure-Callback-Workflow-Calltype": "failureCall",
+        "Upstash-Failure-Callback-Workflow-Init": "false",
+        "Upstash-Failure-Callback-Workflow-Runid": workflowRunId,
+        "Upstash-Failure-Callback-Workflow-Url": "https://requestcatcher.com/api",
         "Upstash-Failure-Callback": failureUrl,
         "content-type": "application/json",
       });

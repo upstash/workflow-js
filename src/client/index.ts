@@ -4,6 +4,7 @@ import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
+import { WorkflowRunLog, WorkflowRunLogs } from "./types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -23,12 +24,12 @@ export class Client {
     if (!clientConfig?.token) {
       console.error(
         "QStash token is required for Upstash Workflow!\n\n" +
-          "To fix this:\n" +
-          "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
-          "2. Initialize the workflow client with:\n\n" +
-          "   const client = new Client({\n" +
-          "     token: '<YOUR_QSTASH_TOKEN>'\n" +
-          "   });"
+        "To fix this:\n" +
+        "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
+        "2. Initialize the workflow client with:\n\n" +
+        "   const client = new Client({\n" +
+        "     token: '<YOUR_QSTASH_TOKEN>'\n" +
+        "   });"
       );
     }
     this.client = new QStashClient(clientConfig);
@@ -225,5 +226,70 @@ export class Client {
     } else {
       throw result.error;
     }
+  }
+
+  /**
+    * Fetches logs for workflow runs.
+    *
+    * @param workflowRunId - The ID of the workflow run to fetch logs for.
+    * @param cursor - The cursor for pagination.
+    * @param count - Number of runs to fetch. Default value is 10.
+    * @param state - The state of the workflow run.
+    * @param workflowUrl - The URL of the workflow. Should be an exact match.
+    * @param workflowCreatedAt - The creation time of the workflow. If you have two workflow runs with the same URL, you can use this to filter them.
+    * @returns A promise that resolves to either a `WorkflowRunLog` or a `WorkflowRunResponse`.
+    *
+    * @example
+    * Fetch logs for a specific workflow run:
+    * ```typescript
+    * const { runs } = await client.logs({ workflowRunId: '12345' });
+    * const steps = runs[0].steps; // access steps
+    * ```
+    *
+    * @example
+    * Fetch logs with pagination:
+    * ```typescript
+    * const { runs, cursor } = await client.logs();
+    * const steps = runs[0].steps // access steps
+    * 
+    * const { runs: nextRuns, cursor: nextCursor } = await client.logs({ cursor, count: 2 });
+    * ```
+    */
+  public async logs(params?: {
+    workflowRunId?: WorkflowRunLog["workflowRunId"];
+    cursor?: string;
+    count?: number;
+    state?: WorkflowRunLog["workflowState"];
+    workflowUrl?: WorkflowRunLog["workflowUrl"];
+    workflowCreatedAt?: WorkflowRunLog["workflowRunCreatedAt"];
+  }): Promise<WorkflowRunLogs> {
+
+    const { workflowRunId, cursor, count, state, workflowUrl, workflowCreatedAt } = params ?? {};
+
+    const urlParams = new URLSearchParams({ "groupBy": "workflowRunId" });
+    if (workflowRunId) {
+      urlParams.append("workflowRunId", workflowRunId);
+    }
+    if (cursor) {
+      urlParams.append("cursor", cursor);
+    }
+    if (count) {
+      urlParams.append("count", count.toString());
+    }
+    if (state) {
+      urlParams.append("state", state);
+    }
+    if (workflowUrl) {
+      urlParams.append("workflowUrl", workflowUrl);
+    }
+    if (workflowCreatedAt) {
+      urlParams.append("workflowCreatedAt", workflowCreatedAt.toString());
+    }
+
+    const result = await this.client.http.request<WorkflowRunLogs>({
+      path: ["v2", "workflows", `events?${urlParams.toString()}`],
+    })
+
+    return result
   }
 }

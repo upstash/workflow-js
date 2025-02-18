@@ -431,6 +431,15 @@ export const getHeaders = ({
 
   if (failureUrl) {
     baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
+    baseHeaders[`Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback`] = "true";
+    baseHeaders['Upstash-Failure-Callback-Workflow-Runid'] = workflowRunId
+    baseHeaders['Upstash-Failure-Callback-Workflow-Init'] = "false"
+    baseHeaders['Upstash-Failure-Callback-Workflow-Url'] = workflowUrl
+    baseHeaders['Upstash-Failure-Callback-Workflow-Calltype'] = "failureCall"
+    if (retries !== undefined) {
+      baseHeaders['Upstash-Failure-Callback-Retries'] = retries.toString()
+    }
+
     if (!step?.callUrl) {
       baseHeaders["Upstash-Failure-Callback"] = failureUrl;
     }
