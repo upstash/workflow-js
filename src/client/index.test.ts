@@ -314,6 +314,9 @@ describe("workflow client", () => {
                     concurrent: 1,
                     createdAt: expect.any(Number),
                     headers: {
+                      "Content-Type": [
+                        "application/json"
+                      ],
                       "Upstash-Workflow-Sdk-Version": [
                         "1"
                       ],
@@ -340,7 +343,7 @@ describe("workflow client", () => {
           const postCancelLogs = await liveClient.logs({
             workflowRunId
           })
-    
+
           expect(postCancelLogs.cursor).toBe("")
           expect(postCancelLogs.runs.length).toBe(1)
           expect(postCancelLogs.runs[0]).toEqual({
@@ -357,6 +360,9 @@ describe("workflow client", () => {
                     concurrent: 1,
                     createdAt: expect.any(Number),
                     headers: {
+                      "Content-Type": [
+                        "application/json"
+                      ],
                       "Upstash-Workflow-Sdk-Version": [
                         "1"
                       ],
