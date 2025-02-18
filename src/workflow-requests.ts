@@ -52,6 +52,12 @@ export const triggerFirstInvocation = async <TInitialPayload>({
     flowControl: workflowContext.flowControl
   });
 
+  // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
+  // so we need to pass it in the headers
+  if (workflowContext.headers.get("content-type")) {
+    headers["content-type"] = workflowContext.headers.get("content-type")!;
+  }
+
   if (useJSONContent) {
     headers["content-type"] = "application/json";
   }
@@ -423,6 +429,15 @@ export const getHeaders = ({
 
   if (failureUrl) {
     baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
+    baseHeaders[`Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback`] = "true";
+    baseHeaders['Upstash-Failure-Callback-Workflow-Runid'] = workflowRunId
+    baseHeaders['Upstash-Failure-Callback-Workflow-Init'] = "false"
+    baseHeaders['Upstash-Failure-Callback-Workflow-Url'] = workflowUrl
+    baseHeaders['Upstash-Failure-Callback-Workflow-Calltype'] = "failureCall"
+    if (retries !== undefined) {
+      baseHeaders['Upstash-Failure-Callback-Retries'] = retries.toString()
+    }
+
 
     if (flowControl) {
       const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl)

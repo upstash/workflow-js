@@ -1,6 +1,6 @@
 import type { CoreTool, generateText } from "ai";
 import { Agent } from "./agent";
-import { createWorkflowOpenAI } from "./adapters";
+import { createWorkflowOpenAI, WorkflowTool } from "./adapters";
 
 export type AISDKTool = CoreTool;
 export type LangchainTool = {
@@ -14,7 +14,7 @@ type GenerateTextParams = Parameters<typeof generateText>[0];
 
 export type Model = GenerateTextParams["model"];
 
-export type AgentParameters<TTool extends AISDKTool | LangchainTool = AISDKTool> = {
+export type AgentParameters<TTool extends AISDKTool | LangchainTool | WorkflowTool = AISDKTool> = {
   /**
    * number of times the agent can call the LLM at most. If
    * the agent abruptly stops execution after calling tools, you may need
