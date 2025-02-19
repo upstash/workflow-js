@@ -192,7 +192,7 @@ export const serveBase = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
+        ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug, invokeCount })
         : await triggerRouteFunction({
           onStep: async () => routeFunction(workflowContext),
           onCleanup: async (result) => {

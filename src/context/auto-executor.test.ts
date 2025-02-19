@@ -124,6 +124,7 @@ describe("auto-executor", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -220,6 +221,7 @@ describe("auto-executor", () => {
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "123s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -237,6 +239,7 @@ describe("auto-executor", () => {
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "10m",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -253,6 +256,7 @@ describe("auto-executor", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -270,6 +274,7 @@ describe("auto-executor", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -330,6 +335,7 @@ describe("auto-executor", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -385,6 +391,7 @@ describe("auto-executor", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -572,10 +579,10 @@ describe("auto-executor", () => {
         expect(throws).rejects.toThrowError(
           new WorkflowError(
             "Incompatible steps detected in parallel execution: Incompatible step name. Expected 'wrongName', got 'sleep for some time' from the request\n" +
-              '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
-              '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
-              '  > Step Names expected: ["wrongName","sleep until next day"]\n' +
-              '    Step Types expected: ["SleepFor","SleepUntil"]'
+            '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
+            '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
+            '  > Step Names expected: ["wrongName","sleep until next day"]\n' +
+            '    Step Types expected: ["SleepFor","SleepUntil"]'
           )
         );
       });
@@ -590,10 +597,10 @@ describe("auto-executor", () => {
         expect(throws).rejects.toThrowError(
           new WorkflowError(
             "Incompatible steps detected in parallel execution: Incompatible step type. Expected 'SleepUntil', got 'SleepFor' from the request\n" +
-              '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
-              '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
-              '  > Step Names expected: ["sleep for some time","sleep until next day"]\n' +
-              '    Step Types expected: ["SleepUntil","SleepUntil"]'
+            '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
+            '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
+            '  > Step Names expected: ["sleep for some time","sleep until next day"]\n' +
+            '    Step Types expected: ["SleepUntil","SleepUntil"]'
           )
         );
       });

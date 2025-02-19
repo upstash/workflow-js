@@ -36,11 +36,13 @@ export const triggerFirstInvocation = async <TInitialPayload>({
   useJSONContent,
   telemetry,
   debug,
+  invokeCount
 }: {
   workflowContext: WorkflowContext<TInitialPayload>;
   useJSONContent?: boolean;
   telemetry?: Telemetry;
   debug?: WorkflowLogger;
+  invokeCount?: number
 }): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders({
     initHeaderValue: "true",
@@ -50,6 +52,7 @@ export const triggerFirstInvocation = async <TInitialPayload>({
     failureUrl: workflowContext.failureUrl,
     retries: workflowContext.retries,
     telemetry,
+    invokeCount
   });
 
   // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
@@ -427,7 +430,7 @@ export const getHeaders = ({
     ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
   };
 
-  if (invokeCount && !step?.callUrl) {
+  if (invokeCount !== undefined && !step?.callUrl) {
     baseHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount.toString();
   }
 

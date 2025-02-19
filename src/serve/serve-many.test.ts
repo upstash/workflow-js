@@ -65,6 +65,7 @@ describe("serveMany", () => {
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_original_workflow"],
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/original_workflow"],
+              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Workflow-Sdk-Version": ["1"],
               "content-type": ["application/json"],
@@ -167,45 +168,20 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Failure-Callback-Retries": [
-                "3"
-              ],
-              "Upstash-Feature-Set": [
-                "LazyFetch,InitialBody"
-              ],
-              "Upstash-Forward-Upstash-Workflow-Sdk-Version": [
-                "1"
-              ],
-              "Upstash-Retries": [
-                "3"
-              ],
-              "Upstash-Telemetry-Framework": [
-                "nextjs"
-              ],
-              "Upstash-Telemetry-Runtime": [
-                "node@v22.6.0"
-              ],
-              "Upstash-Telemetry-Sdk": [
-                "@upstash/workflow@v0.2.7"
-              ],
-              "Upstash-Workflow-Init": [
-                "false"
-              ],
-              "Upstash-Workflow-RunId": [
-                "wfr_id"
-              ],
-              "Upstash-Workflow-Runid": [
-                "wfr_id"
-              ],
-              "Upstash-Workflow-Sdk-Version": [
-                "1"
-              ],
-              "Upstash-Workflow-Url": [
-                "https://requestcatcher.com/api/workflow-two"
-              ],
-              "content-type": [
-                "application/json"
-              ],
+              "Upstash-Failure-Callback-Retries": ["3"],
+              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Retries": ["3"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
+              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-two"],
+              "content-type": ["application/json"],
             },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflow-two",
@@ -249,6 +225,9 @@ describe("serveMany", () => {
               ],
               "Upstash-Feature-Set": [
                 "LazyFetch,InitialBody"
+              ],
+              "Upstash-Forward-Upstash-Workflow-Invoke-Count": [
+                "1"
               ],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": [
                 "1"

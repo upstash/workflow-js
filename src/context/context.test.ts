@@ -116,6 +116,7 @@ describe("context tests", () => {
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
       retries: 2,
+      invokeCount: 5
     });
 
     await mockQStashServer({
@@ -143,6 +144,7 @@ describe("context tests", () => {
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-forward-upstash-workflow-invoke-count": "5",
               "upstash-method": "POST",
               "upstash-retries": "2",
               "upstash-failure-callback-retries": "2",
@@ -165,6 +167,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        invokeCount: 5
       });
 
       const eventId = "my-event-id";
@@ -201,6 +204,9 @@ describe("context tests", () => {
               [WORKFLOW_ID_HEADER]: ["wfr-id"],
               "Upstash-Workflow-Runid": ["wfr-id"],
               [WORKFLOW_URL_HEADER]: [WORKFLOW_ENDPOINT],
+              "Upstash-Forward-Upstash-Workflow-Invoke-Count": [
+                "5"
+              ],
             },
             timeoutUrl: WORKFLOW_ENDPOINT,
             url: WORKFLOW_ENDPOINT,
@@ -217,6 +223,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        invokeCount: 1
       });
 
       const eventId = "my-event-id";
@@ -246,6 +253,7 @@ describe("context tests", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -263,6 +271,7 @@ describe("context tests", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -289,6 +298,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        invokeCount: 7
       });
       await mockQStashServer({
         execute: () => {
@@ -323,6 +333,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "7",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "my-step",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
@@ -388,6 +399,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "my-step",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
@@ -554,6 +566,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
@@ -637,6 +650,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
@@ -717,6 +731,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
@@ -807,6 +822,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",

@@ -93,6 +93,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
@@ -159,6 +160,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "2",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
@@ -223,6 +225,7 @@ describe("agents", () => {
               "upstash-callback-forward-upstash-workflow-stepid": "3",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent manager llm",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
+              "upstash-callback-forward-upstash-workflow-invoke-count": "0",
               "upstash-callback-retries": "3",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
@@ -286,5 +289,5 @@ describe("agents", () => {
       });
     });
   });
-  test("disabled context with empty or object prompt should throw abort", async () => {});
+  test("disabled context with empty or object prompt should throw abort", async () => { });
 });

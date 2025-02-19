@@ -513,6 +513,7 @@ describe("Workflow Requests", () => {
           callHeaders,
           callBody,
         },
+        invokeCount: 3
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
@@ -520,6 +521,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete,InitialBody",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+        "Upstash-Callback-Forward-Upstash-Workflow-Invoke-Count": "3",
         "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,

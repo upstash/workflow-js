@@ -16,6 +16,7 @@ import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from 
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
+  WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
@@ -126,6 +127,8 @@ describe("serve", () => {
           })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
+        request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2")
+
         const response = await endpoint(request);
         expect(response.status).toBe(200);
       },
@@ -146,6 +149,7 @@ describe("serve", () => {
               "upstash-workflow-sdk-version": "1",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-forward-upstash-workflow-invoke-count": "2",
               "upstash-retries": "3",
               "upstash-failure-callback-retries": "3",
               "upstash-method": "POST",
@@ -173,6 +177,7 @@ describe("serve", () => {
                   "content-type": "application/json",
                   "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-retries": "3",
                   "upstash-failure-callback-retries": "3",
                   "upstash-method": "POST",
@@ -202,6 +207,7 @@ describe("serve", () => {
                   "content-type": "application/json",
                   "upstash-feature-set": "LazyFetch,InitialBody",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
                   "upstash-retries": "3",
                   "upstash-failure-callback-retries": "3",
@@ -379,6 +385,7 @@ describe("serve", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -430,6 +437,7 @@ describe("serve", () => {
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -484,6 +492,7 @@ describe("serve", () => {
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-failure-callback": myFailureEndpoint,
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
                 "upstash-failure-callback-workflow-calltype": "failureCall",
@@ -546,6 +555,7 @@ describe("serve", () => {
                 "upstash-failure-callback-workflow-init": "false",
                 "upstash-failure-callback-workflow-runid": "wfr-bar",
                 "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
                 "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
@@ -741,6 +751,7 @@ describe("serve", () => {
             "content-type": ["application/json"],
             "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+            "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
             "Upstash-Retries": ["3"],
             "Upstash-Failure-Callback-Retries": ["3"],
             "Upstash-Workflow-CallType": ["step"],
@@ -1026,6 +1037,7 @@ describe("serve", () => {
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": "wfr-bar",
               "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
+              "upstash-forward-upstash-workflow-invoke-count": "0",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-bar",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
