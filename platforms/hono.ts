@@ -53,10 +53,7 @@ export const serve = <
 
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, WorkflowBindings, Variables, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     routeFunction,
@@ -76,6 +73,6 @@ export const serveMany = (
       return components[components.length - 1];
     },
     serveMethod: (...params: Parameters<typeof serve>) => serve(...params),
-    options
+    options,
   }).handler;
 };

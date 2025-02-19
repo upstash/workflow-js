@@ -167,7 +167,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env,
     retries,
     telemetry,
-    invokeCount
+    invokeCount,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -180,7 +180,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env?: Record<string, string | undefined>;
     retries?: number;
     telemetry?: Telemetry;
-    invokeCount?: number
+    invokeCount?: number;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;

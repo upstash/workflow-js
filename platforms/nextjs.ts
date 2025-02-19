@@ -49,10 +49,7 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     routeFunction,
@@ -63,7 +60,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
 
 export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
-  options?: Parameters<typeof serveManyBase>[0]["options"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
 ) => {
   return {
     POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
@@ -73,7 +70,7 @@ export const serveMany = (
         return components[components.length - 1];
       },
       serveMethod: (...params: Parameters<typeof serve>) => serve(...params).POST,
-      options
+      options,
     }).handler,
   };
 };
@@ -119,10 +116,7 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
 
 export const createWorkflowPagesRouter = <TInitialPayload, TResult>(
   ...params: Parameters<typeof servePagesRouter<TInitialPayload, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     routeFunction,
@@ -133,21 +127,22 @@ export const createWorkflowPagesRouter = <TInitialPayload, TResult>(
 
 export const serveManyPagesRouter = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
-  options?: Parameters<typeof serveManyBase>[0]["options"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
 ) => {
   return serveManyBase<ReturnType<typeof servePagesRouter>["handler"]>({
     workflows: workflows,
     getWorkflowId(request_) {
       const protocol = request_.headers["x-forwarded-proto"];
-      const host = request_.headers.host
+      const host = request_.headers.host;
       const baseUrl = `${protocol}://${host}`;
 
-      const url = `${baseUrl}${request_.url}`
+      const url = `${baseUrl}${request_.url}`;
 
       const components = url.split("/");
       return components[components.length - 1];
     },
-    serveMethod: (...params: Parameters<typeof servePagesRouter>) => servePagesRouter(...params).handler,
-    options
-  })
+    serveMethod: (...params: Parameters<typeof servePagesRouter>) =>
+      servePagesRouter(...params).handler,
+    options,
+  });
 };

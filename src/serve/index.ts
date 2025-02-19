@@ -149,9 +149,8 @@ export const serveBase = <
       env,
       retries,
       telemetry,
-      invokeCount
+      invokeCount,
     });
-
 
     // attempt running routeFunction until the first step
     const authCheck = await DisabledWorkflowContext.tryAuthentication(
@@ -192,17 +191,23 @@ export const serveBase = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug, invokeCount })
+        ? await triggerFirstInvocation({
+            workflowContext,
+            useJSONContent,
+            telemetry,
+            debug,
+            invokeCount,
+          })
         : await triggerRouteFunction({
-          onStep: async () => routeFunction(workflowContext),
-          onCleanup: async (result) => {
-            await triggerWorkflowDelete(workflowContext, result, debug);
-          },
-          onCancel: async () => {
-            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-          },
-          debug,
-        });
+            onStep: async () => routeFunction(workflowContext),
+            onCleanup: async (result) => {
+              await triggerWorkflowDelete(workflowContext, result, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+            },
+            debug,
+          });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up

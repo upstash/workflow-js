@@ -83,15 +83,12 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     workflowId: undefined,
     routeFunction,
-    options
+    options,
   };
 };
 

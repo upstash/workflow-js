@@ -10,8 +10,10 @@ import {
 import { serveManyBase } from "../src/serve/serve-many";
 
 const isEmptyRequest = (req: ExpressRequest) => {
-  return req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
-}
+  return (
+    req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
+  );
+};
 
 const telemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -19,12 +21,11 @@ const telemetry: Telemetry = {
   runtime: process.versions.bun
     ? `bun@${process.versions.bun}/node@${process.version}`
     : `node@${process.version}`,
-}
+};
 
-function createExpressHandler<
-  TInitialPayload = unknown,
-  TResult = unknown
->(params: Parameters<typeof serve<TInitialPayload, TResult>>): RequestHandler {
+function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
+  params: Parameters<typeof serve<TInitialPayload, TResult>>
+): RequestHandler {
   const [routeFunction, options] = params;
   return async (request_: ExpressRequest, res: ExpressResponse) => {
     // only allow POST requests
@@ -35,7 +36,7 @@ function createExpressHandler<
 
     let requestBody: string;
     if (isEmptyRequest(request_)) {
-      requestBody = ""
+      requestBody = "";
     } else if (request_.headers["content-type"]?.includes("text/plain")) {
       requestBody = request_.body;
     } else if (request_.headers["content-type"]?.includes("application/json")) {
@@ -57,14 +58,10 @@ function createExpressHandler<
     });
 
     // create handler
-    const { handler: serveHandler } = serveBase<TInitialPayload>(
-      routeFunction,
-      telemetry,
-      {
-        ...options,
-        useJSONContent: true,
-      }
-    );
+    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, {
+      ...options,
+      useJSONContent: true,
+    });
 
     const response = await serveHandler(webRequest);
 
@@ -87,10 +84,7 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
 
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     routeFunction,
@@ -101,7 +95,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
 
 export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
-  options?: Parameters<typeof serveManyBase>[0]["options"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
 ) => {
   const router = Router();
 
@@ -112,9 +106,9 @@ export const serveMany = (
       return components[components.length - 1];
     },
     serveMethod: (...params: Parameters<typeof serve>) => createExpressHandler(params),
-    options
-  })
+    options,
+  });
 
   router.all("*", handler);
-  return router
+  return router;
 };

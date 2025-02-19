@@ -122,12 +122,12 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-            body: JSON.stringify(initialPayload),
-            method: "POST",
-          })
+              body: JSON.stringify(initialPayload),
+              method: "POST",
+            })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
-        request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2")
+        request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");
 
         const response = await endpoint(request);
         expect(response.status).toBe(200);

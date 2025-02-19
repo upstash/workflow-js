@@ -1,26 +1,41 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { WorkflowContext } from "../context";
 import { WorkflowError } from "../error";
-import { InvokableWorkflow, InvokeWorkflowRequest, LazyInvokeStepParams, PublicServeOptions, RouteFunction, Step, Telemetry } from "../types";
+import {
+  InvokableWorkflow,
+  InvokeWorkflowRequest,
+  LazyInvokeStepParams,
+  PublicServeOptions,
+  RouteFunction,
+  Step,
+  Telemetry,
+} from "../types";
 import { getWorkflowRunId } from "../utils";
 import { getHeaders } from "../workflow-requests";
 
-export type OmitOptionsInServeMany<TOptions> = Omit<TOptions, "env" | "url" | "schema" | "initialPayloadParser">
+export type OmitOptionsInServeMany<TOptions> = Omit<
+  TOptions,
+  "env" | "url" | "schema" | "initialPayloadParser"
+>;
 
 export const serveManyBase = <
   THandler extends (...params: any[]) => any,
-  TOptions extends OmitOptionsInServeMany<PublicServeOptions> = OmitOptionsInServeMany<PublicServeOptions>,
-  TServeParams extends [routeFunction: RouteFunction<any, any>, options: TOptions] = [routeFunction: RouteFunction<any, any>, options: TOptions]
+  TOptions extends
+    OmitOptionsInServeMany<PublicServeOptions> = OmitOptionsInServeMany<PublicServeOptions>,
+  TServeParams extends [routeFunction: RouteFunction<any, any>, options: TOptions] = [
+    routeFunction: RouteFunction<any, any>,
+    options: TOptions,
+  ],
 >({
   workflows,
   getWorkflowId,
   serveMethod,
-  options
+  options,
 }: {
   workflows: Record<string, InvokableWorkflow<any, any>>;
   getWorkflowId: (...params: Parameters<THandler>) => string;
-  serveMethod: (...params: TServeParams) => THandler,
-  options?: TOptions
+  serveMethod: (...params: TServeParams) => THandler;
+  options?: TOptions;
 }) => {
   const workflowIds: (string | undefined)[] = [];
 
@@ -36,7 +51,8 @@ export const serveManyBase = <
 
       if (workflowId.includes("/")) {
         throw new WorkflowError(
-          `Invalid workflow name found: '${workflowId}'. Workflow name cannot contain '/'.`)
+          `Invalid workflow name found: '${workflowId}'. Workflow name cannot contain '/'.`
+        );
       }
 
       workflowIds.push(workflowId);
@@ -48,7 +64,7 @@ export const serveManyBase = <
       };
 
       const params = [workflow[1].routeFunction, workflow[1].options] as TServeParams;
-      const handler = serveMethod(...params)
+      const handler = serveMethod(...params);
 
       return [workflowId, handler];
     })
@@ -58,15 +74,21 @@ export const serveManyBase = <
     handler: async (...params: Parameters<THandler>) => {
       const pickedWorkflowId = getWorkflowId(...params);
       if (!pickedWorkflowId) {
-        return new Response(`Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`, {
-          status: 404
-        });
+        return new Response(
+          `Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`,
+          {
+            status: 404,
+          }
+        );
       }
       const workflow = workflowMap[pickedWorkflowId];
       if (!workflow) {
-        return new Response(`No workflows in serveMany found for '${pickedWorkflowId}'. Please update the URL of your request.`, {
-          status: 404
-        });
+        return new Response(
+          `No workflows in serveMany found for '${pickedWorkflowId}'. Please update the URL of your request.`,
+          {
+            status: 404,
+          }
+        );
       }
       return await workflow(...params);
     },
@@ -78,18 +100,23 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
   invokeStep,
   context,
   invokeCount,
-  telemetry
+  telemetry,
 }: {
-  settings: LazyInvokeStepParams<TInitialPayload, TResult>,
-  invokeStep: Step,
-  context: WorkflowContext,
-  invokeCount: number,
-  telemetry?: Telemetry
+  settings: LazyInvokeStepParams<TInitialPayload, TResult>;
+  invokeStep: Step;
+  context: WorkflowContext;
+  invokeCount: number;
+  telemetry?: Telemetry;
 }) => {
   const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries } = settings;
   const { workflowId } = workflow;
 
-  const { retries: workflowRetries, failureFunction, failureUrl, useJSONContent } = workflow.options;
+  const {
+    retries: workflowRetries,
+    failureFunction,
+    failureUrl,
+    useJSONContent,
+  } = workflow.options;
 
   if (!workflowId) {
     throw new WorkflowError("You can only invoke workflow which has a workflowId");
@@ -103,7 +130,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     failureUrl: context.failureUrl,
     retries: context.retries,
     telemetry,
-    invokeCount
+    invokeCount,
   });
   invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
@@ -117,7 +144,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     retries: retries ?? workflowRetries,
     telemetry,
     failureUrl: failureFunction ? newUrl : failureUrl,
-    invokeCount: invokeCount + 1
+    invokeCount: invokeCount + 1,
   });
   triggerHeaders["Upstash-Workflow-Invoke"] = "true";
   if (useJSONContent) {
@@ -140,4 +167,4 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     body: JSON.stringify(request),
     url: newUrl,
   });
-}
+};

@@ -1,7 +1,12 @@
 import { describe, test, expect } from "bun:test";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT, eventually } from "../test-utils";
+import {
+  MOCK_QSTASH_SERVER_URL,
+  mockQStashServer,
+  WORKFLOW_ENDPOINT,
+  eventually,
+} from "../test-utils";
 import { Client } from ".";
-import { Client as QStashClient } from "@upstash/qstash"
+import { Client as QStashClient } from "@upstash/qstash";
 import { getWorkflowRunId, nanoid } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -228,7 +233,6 @@ describe("workflow client", () => {
     });
   });
   describe("logs", () => {
-
     test("should send logs request", async () => {
       const count = 10;
       const cursor = "cursor";
@@ -254,7 +258,8 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "GET",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
+          url:
+            `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
             `&workflowRunId=${workflowRunId}` +
             `&cursor=${cursor}` +
             `&count=${count}` +
@@ -265,124 +270,120 @@ describe("workflow client", () => {
           body: "",
         },
       });
-    })
+    });
 
     // skipping the live test because it takes too long and is still flaky
-    test("should get logs - live", async () => {
-      const qstashClient = new QStashClient({
-        baseUrl: process.env.QSTASH_URL,
-        token: process.env.QSTASH_TOKEN!,
-      });
-      const liveClient = new Client({
-        baseUrl: process.env.QSTASH_URL,
-        token: process.env.QSTASH_TOKEN!,
-      })
+    test(
+      "should get logs - live",
+      async () => {
+        const qstashClient = new QStashClient({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
 
-      const body = "some-body"
-      const workflowRunId = "wfr_some-workflow-run-id-" + nanoid()
+        const body = "some-body";
+        const workflowRunId = "wfr_some-workflow-run-id-" + nanoid();
 
-      const result = await triggerFirstInvocation({
-        workflowContext: new WorkflowContext({
-          qstashClient,
-          headers: new Headers({}) as Headers,
-          initialPayload: body,
-          workflowRunId,
-          steps: [],
-          url: "https://httpstat.us/200",
-        })
-      })
-      expect(result.isOk()).toBe(true)
-
-      await eventually(
-        async () => {
-          const logs = await liveClient.logs({
-            workflowRunId
-          })
-
-          expect(logs.cursor).toBe("")
-          expect(logs.runs.length).toBe(1)
-          expect(logs.runs[0]).toEqual({
+        const result = await triggerFirstInvocation({
+          workflowContext: new WorkflowContext({
+            qstashClient,
+            headers: new Headers({}) as Headers,
+            initialPayload: body,
             workflowRunId,
-            workflowUrl: "https://httpstat.us/200",
-            workflowState: "RUN_STARTED",
-            workflowRunCreatedAt: expect.any(Number),
-            steps: [
-              {
-                steps: [
-                  {
-                    callType: "step",
-                    concurrent: 1,
-                    createdAt: expect.any(Number),
-                    headers: {
-                      "Content-Type": [
-                        "application/json"
-                      ],
-                      "Upstash-Workflow-Sdk-Version": [
-                        "1"
-                      ],
+            steps: [],
+            url: "https://httpstat.us/200",
+          }),
+        });
+        expect(result.isOk()).toBe(true);
+
+        await eventually(
+          async () => {
+            const logs = await liveClient.logs({
+              workflowRunId,
+            });
+
+            expect(logs.cursor).toBe("");
+            expect(logs.runs.length).toBe(1);
+            expect(logs.runs[0]).toEqual({
+              workflowRunId,
+              workflowUrl: "https://httpstat.us/200",
+              workflowState: "RUN_STARTED",
+              workflowRunCreatedAt: expect.any(Number),
+              steps: [
+                {
+                  steps: [
+                    {
+                      callType: "step",
+                      concurrent: 1,
+                      createdAt: expect.any(Number),
+                      headers: {
+                        "Content-Type": ["application/json"],
+                        "Upstash-Workflow-Sdk-Version": ["1"],
+                      },
+                      messageId: expect.any(String),
+                      out: "some-body",
+                      state: "STEP_SUCCESS",
+                      stepName: "init",
+                      stepType: "Initial",
                     },
-                    messageId: expect.any(String),
-                    out: "some-body",
-                    state: "STEP_SUCCESS",
-                    stepName: "init",
-                    stepType: "Initial",
-                  }
-                ],
-                type: "sequential",
-              }
-            ],
-          })
-        },
-        { timeout: 30_000, interval: 100 }
-      );
+                  ],
+                  type: "sequential",
+                },
+              ],
+            });
+          },
+          { timeout: 30_000, interval: 100 }
+        );
 
-      await liveClient.cancel({ ids: workflowRunId })
+        await liveClient.cancel({ ids: workflowRunId });
 
-      await eventually(
-        async () => {
-          const postCancelLogs = await liveClient.logs({
-            workflowRunId
-          })
+        await eventually(
+          async () => {
+            const postCancelLogs = await liveClient.logs({
+              workflowRunId,
+            });
 
-          expect(postCancelLogs.cursor).toBe("")
-          expect(postCancelLogs.runs.length).toBe(1)
-          expect(postCancelLogs.runs[0]).toEqual({
-            workflowRunId,
-            workflowUrl: "https://httpstat.us/200",
-            workflowState: "RUN_CANCELED",
-            workflowRunCreatedAt: expect.any(Number),
-            workflowRunCompletedAt: expect.any(Number),
-            steps: [
-              {
-                steps: [
-                  {
-                    callType: "step",
-                    concurrent: 1,
-                    createdAt: expect.any(Number),
-                    headers: {
-                      "Content-Type": [
-                        "application/json"
-                      ],
-                      "Upstash-Workflow-Sdk-Version": [
-                        "1"
-                      ],
+            expect(postCancelLogs.cursor).toBe("");
+            expect(postCancelLogs.runs.length).toBe(1);
+            expect(postCancelLogs.runs[0]).toEqual({
+              workflowRunId,
+              workflowUrl: "https://httpstat.us/200",
+              workflowState: "RUN_CANCELED",
+              workflowRunCreatedAt: expect.any(Number),
+              workflowRunCompletedAt: expect.any(Number),
+              steps: [
+                {
+                  steps: [
+                    {
+                      callType: "step",
+                      concurrent: 1,
+                      createdAt: expect.any(Number),
+                      headers: {
+                        "Content-Type": ["application/json"],
+                        "Upstash-Workflow-Sdk-Version": ["1"],
+                      },
+                      messageId: expect.any(String),
+                      out: "some-body",
+                      state: "STEP_SUCCESS",
+                      stepName: "init",
+                      stepType: "Initial",
                     },
-                    messageId: expect.any(String),
-                    out: "some-body",
-                    state: "STEP_SUCCESS",
-                    stepName: "init",
-                    stepType: "Initial",
-                  }
-                ],
-                type: "sequential",
-              }
-            ],
-          })
-        },
-        { timeout: 30_000, interval: 100 }
-      );
-    }, {
-      timeout: 60000
-    })
-  })
+                  ],
+                  type: "sequential",
+                },
+              ],
+            });
+          },
+          { timeout: 30_000, interval: 100 }
+        );
+      },
+      {
+        timeout: 60000,
+      }
+    );
+  });
 });

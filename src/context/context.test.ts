@@ -116,7 +116,7 @@ describe("context tests", () => {
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
       retries: 2,
-      invokeCount: 5
+      invokeCount: 5,
     });
 
     await mockQStashServer({
@@ -167,7 +167,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        invokeCount: 5
+        invokeCount: 5,
       });
 
       const eventId = "my-event-id";
@@ -204,9 +204,7 @@ describe("context tests", () => {
               [WORKFLOW_ID_HEADER]: ["wfr-id"],
               "Upstash-Workflow-Runid": ["wfr-id"],
               [WORKFLOW_URL_HEADER]: [WORKFLOW_ENDPOINT],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": [
-                "5"
-              ],
+              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["5"],
             },
             timeoutUrl: WORKFLOW_ENDPOINT,
             url: WORKFLOW_ENDPOINT,
@@ -223,7 +221,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        invokeCount: 1
+        invokeCount: 1,
       });
 
       const eventId = "my-event-id";
@@ -298,7 +296,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        invokeCount: 7
+        invokeCount: 7,
       });
       await mockQStashServer({
         execute: () => {

@@ -186,7 +186,16 @@ export type WorkflowServeOptions<
   failureFunction?: (failureData: {
     context: Omit<
       WorkflowContext<TInitialPayload>,
-      "run" | "sleepUntil" | "sleep" | "call" | "waitForEvent" | "notify" | "cancel" | "api" | "invoke" | "agents"
+      | "run"
+      | "sleepUntil"
+      | "sleep"
+      | "call"
+      | "waitForEvent"
+      | "notify"
+      | "cancel"
+      | "api"
+      | "invoke"
+      | "agents"
     >;
     failStatus: number;
     failResponse: string;
@@ -239,13 +248,13 @@ type ValidationOptions<TInitialPayload> = {
 };
 export type ExclusiveValidationOptions<TInitialPayload> =
   | {
-    schema?: ValidationOptions<TInitialPayload>["schema"];
-    initialPayloadParser?: never;
-  }
+      schema?: ValidationOptions<TInitialPayload>["schema"];
+      initialPayloadParser?: never;
+    }
   | {
-    schema?: never;
-    initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
-  };
+      schema?: never;
+      initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
+    };
 
 export type Telemetry = {
   /**
@@ -409,9 +418,9 @@ export type HeaderParams = {
   /**
    * invoke count to include in headers
    */
-  invokeCount?: number
+  invokeCount?: number;
 } & (
-    | {
+  | {
       /**
        * step to generate headers for
        */
@@ -425,7 +434,7 @@ export type HeaderParams = {
        */
       callTimeout?: number | Duration;
     }
-    | {
+  | {
       /**
        * step not passed. Either first invocation or simply getting headers for
        * third party callack.
@@ -444,7 +453,7 @@ export type HeaderParams = {
        */
       callTimeout?: never;
     }
-  );
+);
 
 export type InvokeWorkflowRequest = {
   workflowUrl: string;
@@ -454,9 +463,11 @@ export type InvokeWorkflowRequest = {
   body: string;
 };
 
-
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult>, "routeFunction" | "workflowId" | "options">;
+  workflow: Pick<
+    InvokableWorkflow<TInitiaPayload, TResult>,
+    "routeFunction" | "workflowId" | "options"
+  >;
   body: TInitiaPayload; // TODO make optional
   workflowRunId?: string;
 } & Pick<CallSettings, "retries" | "headers">;

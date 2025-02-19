@@ -12,7 +12,7 @@ const telemetry: Telemetry = {
 
 type RequireEnv<T> = T & {
   env: PublicServeOptions["env"]; // make env required
-}
+};
 
 /**
  * Serve method to serve a Upstash Workflow in a Svelte project
@@ -29,7 +29,6 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 ): {
   POST: RequestHandler;
 } => {
-
   const handler: RequestHandler = async ({ request }) => {
     const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, {
       ...options,
@@ -40,13 +39,9 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   return { POST: handler };
 };
 
-
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     workflowId: undefined,
@@ -59,7 +54,7 @@ export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
   options?: Parameters<typeof serveManyBase>[0]["options"]
 ) => {
-  type Params = Parameters<typeof serve>
+  type Params = Parameters<typeof serve>;
 
   return {
     POST: serveManyBase<

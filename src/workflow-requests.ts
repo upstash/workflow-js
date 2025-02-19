@@ -36,13 +36,13 @@ export const triggerFirstInvocation = async <TInitialPayload>({
   useJSONContent,
   telemetry,
   debug,
-  invokeCount
+  invokeCount,
 }: {
   workflowContext: WorkflowContext<TInitialPayload>;
   useJSONContent?: boolean;
   telemetry?: Telemetry;
   debug?: WorkflowLogger;
-  invokeCount?: number
+  invokeCount?: number;
 }): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders({
     initHeaderValue: "true",
@@ -52,7 +52,7 @@ export const triggerFirstInvocation = async <TInitialPayload>({
     failureUrl: workflowContext.failureUrl,
     retries: workflowContext.retries,
     telemetry,
-    invokeCount
+    invokeCount,
   });
 
   // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
@@ -263,9 +263,9 @@ export const handleThirdPartyCallResult = async ({
         if (!failingStep)
           throw new WorkflowError(
             "Failed to submit the context.call. " +
-            (steps.length === 0
-              ? "No steps found."
-              : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
+              (steps.length === 0
+                ? "No steps found."
+                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
           );
 
         callbackPayload = atob(failingStep.body);
@@ -292,8 +292,8 @@ export const handleThirdPartyCallResult = async ({
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-          ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-          ` Error Message:\n${atob(callbackMessage.body ?? "")}`
+            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
+            ` Error Message:\n${atob(callbackMessage.body ?? "")}`
         );
         return ok("call-will-retry");
       }
@@ -308,12 +308,14 @@ export const handleThirdPartyCallResult = async ({
 
       if (
         !(
-          workflowRunId &&
-          stepIdString &&
-          stepName &&
-          StepTypes.includes(stepType) &&
-          concurrentString &&
-          contentType
+          (
+            workflowRunId &&
+            stepIdString &&
+            stepName &&
+            StepTypes.includes(stepType) &&
+            concurrentString &&
+            contentType
+          )
           // not adding invokeCount to required for backwards compatibility.
         )
       ) {
@@ -414,9 +416,8 @@ export const getHeaders = ({
   callRetries,
   callTimeout,
   telemetry,
-  invokeCount
+  invokeCount,
 }: HeaderParams): HeadersResponse => {
-
   const contentType =
     (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
 
@@ -444,12 +445,12 @@ export const getHeaders = ({
   if (failureUrl) {
     baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
     baseHeaders[`Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback`] = "true";
-    baseHeaders['Upstash-Failure-Callback-Workflow-Runid'] = workflowRunId
-    baseHeaders['Upstash-Failure-Callback-Workflow-Init'] = "false"
-    baseHeaders['Upstash-Failure-Callback-Workflow-Url'] = workflowUrl
-    baseHeaders['Upstash-Failure-Callback-Workflow-Calltype'] = "failureCall"
+    baseHeaders["Upstash-Failure-Callback-Workflow-Runid"] = workflowRunId;
+    baseHeaders["Upstash-Failure-Callback-Workflow-Init"] = "false";
+    baseHeaders["Upstash-Failure-Callback-Workflow-Url"] = workflowUrl;
+    baseHeaders["Upstash-Failure-Callback-Workflow-Calltype"] = "failureCall";
     if (retries !== undefined) {
-      baseHeaders['Upstash-Failure-Callback-Retries'] = retries.toString()
+      baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
     }
 
     if (!step?.callUrl) {
@@ -485,7 +486,6 @@ export const getHeaders = ({
       baseHeaders[`Upstash-Failure-Callback-Forward-${header}`] = userHeaders.get(header)!;
     }
   }
-
 
   if (step?.callHeaders) {
     const forwardedHeaders = Object.fromEntries(
@@ -532,11 +532,11 @@ export const getHeaders = ({
         // to include telemetry headers:
         ...(telemetry
           ? Object.fromEntries(
-            Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
-              header,
-              [value],
-            ])
-          )
+              Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+                header,
+                [value],
+              ])
+            )
           : {}),
         // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
         "Upstash-Workflow-Runid": [workflowRunId],
@@ -573,8 +573,8 @@ export const verifyRequest = async (
   } catch (error) {
     throw new WorkflowError(
       `Failed to verify that the Workflow request comes from QStash: ${error}\n\n` +
-      "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
-      "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
+        "If signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\n" +
+        "If you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
     );
   }
 };

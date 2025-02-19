@@ -157,7 +157,7 @@ export class WorkflowTool<TSchema extends ZodType = ZodType> implements Langchai
   public readonly executeAsStep: boolean;
 
   /**
-   * 
+   *
    * @param description description of the tool
    * @param schema schema of the tool
    * @param invoke function to invoke the tool
@@ -178,16 +178,16 @@ export class WorkflowTool<TSchema extends ZodType = ZodType> implements Langchai
     invoke: (params: z.infer<TSchema>) => any;
     /**
      * whether the invoke method is to be wrapped with `context.run`.
-     * 
+     *
      * When you pass a LangChain, AI SDK tool or a WorkflowTool to your agent,
      * the execute/invoke method of the tool is wrapped with `context.run` by default.
-     * 
+     *
      * This option allows you to disable this behavior.
-     * 
+     *
      * You may want to disable wrapping with context.run if you want to run context.run,
      * context.call or any other workflow step yourself in the execute/invoke method
      * of the tool.
-     * 
+     *
      * @default true
      */
     executeAsStep?: boolean;

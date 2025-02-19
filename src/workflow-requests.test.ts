@@ -513,7 +513,7 @@ describe("Workflow Requests", () => {
           callHeaders,
           callBody,
         },
-        invokeCount: 3
+        invokeCount: 3,
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",

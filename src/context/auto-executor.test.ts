@@ -579,10 +579,10 @@ describe("auto-executor", () => {
         expect(throws).rejects.toThrowError(
           new WorkflowError(
             "Incompatible steps detected in parallel execution: Incompatible step name. Expected 'wrongName', got 'sleep for some time' from the request\n" +
-            '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
-            '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
-            '  > Step Names expected: ["wrongName","sleep until next day"]\n' +
-            '    Step Types expected: ["SleepFor","SleepUntil"]'
+              '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
+              '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
+              '  > Step Names expected: ["wrongName","sleep until next day"]\n' +
+              '    Step Types expected: ["SleepFor","SleepUntil"]'
           )
         );
       });
@@ -597,10 +597,10 @@ describe("auto-executor", () => {
         expect(throws).rejects.toThrowError(
           new WorkflowError(
             "Incompatible steps detected in parallel execution: Incompatible step type. Expected 'SleepUntil', got 'SleepFor' from the request\n" +
-            '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
-            '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
-            '  > Step Names expected: ["sleep for some time","sleep until next day"]\n' +
-            '    Step Types expected: ["SleepUntil","SleepUntil"]'
+              '  > Step Names from the request: ["sleep for some time","sleep until next day"]\n' +
+              '    Step Types from the request: ["SleepFor","SleepUntil"]\n' +
+              '  > Step Names expected: ["sleep for some time","sleep until next day"]\n' +
+              '    Step Types expected: ["SleepUntil","SleepUntil"]'
           )
         );
       });

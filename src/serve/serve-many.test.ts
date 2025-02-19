@@ -2,14 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { createWorkflow, serveMany } from "../../platforms/nextjs";
 import { WorkflowContext } from "../context";
 import { Client } from "@upstash/qstash";
-import { getRequest, MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
+import {
+  getRequest,
+  MOCK_QSTASH_SERVER_URL,
+  mockQStashServer,
+  WORKFLOW_ENDPOINT,
+} from "../test-utils";
 import { nanoid } from "../utils";
 import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { Telemetry } from "../types";
 import { invokeWorkflow } from "./serve-many";
 
 describe("serveMany", () => {
-
   describe("invokeWorkflow", () => {
     test("should call invokeWorkflow", async () => {
       const token = nanoid();
@@ -18,21 +22,20 @@ describe("serveMany", () => {
         sdk: "sdk",
         framework: "framework",
         runtime: "runtime",
-      }
-      const workflowId = "some-workflow-id"
+      };
+      const workflowId = "some-workflow-id";
 
       await mockQStashServer({
         execute: async () => {
-
           await invokeWorkflow({
             settings: {
               body: "some-body",
               workflow: {
-                routeFunction: async () => { },
+                routeFunction: async () => {},
                 workflowId,
-                options: {}
+                options: {},
               },
-              headers: { "custom": "custom-header-value" },
+              headers: { custom: "custom-header-value" },
               retries: 6,
               workflowRunId: "some-run-id",
             },
@@ -44,7 +47,7 @@ describe("serveMany", () => {
               stepType: "Invoke",
             },
             context: new WorkflowContext({
-              headers: new Headers({ "original": "original-headers-value" }) as Headers,
+              headers: new Headers({ original: "original-headers-value" }) as Headers,
               initialPayload: "initial-payload",
               qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
               steps: [],
@@ -52,7 +55,7 @@ describe("serveMany", () => {
               workflowRunId: "wfr_original_workflow",
             }),
             telemetry,
-          })
+          });
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -60,7 +63,7 @@ describe("serveMany", () => {
           url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/${workflowId}`,
           token,
           body: {
-            body: "\"some-body\"",
+            body: '"some-body"',
             headers: {
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_original_workflow"],
@@ -95,58 +98,62 @@ describe("serveMany", () => {
             "Upstash-Forward-original": null,
           },
         },
-      })
-    })
-  })
-
+      });
+    });
+  });
 
   describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
-      const throws = () => serveMany({
-        "workflow/one": createWorkflow(async () => { }),
-      })
-      expect(throws).toThrow("Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'.")
-    })
+      const throws = () =>
+        serveMany({
+          "workflow/one": createWorkflow(async () => {}),
+        });
+      expect(throws).toThrow(
+        "Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'."
+      );
+    });
 
     test("should throw if workflowId doesn't match", async () => {
       const { POST: handler } = serveMany({
-        "workflow-one": createWorkflow(async () => { }),
-      })
+        "workflow-one": createWorkflow(async () => {}),
+      });
 
-      const request = new Request("http://localhost:3001/workflow-two", { method: "POST" })
-      const response = await handler(request)
+      const request = new Request("http://localhost:3001/workflow-two", { method: "POST" });
+      const response = await handler(request);
 
-      expect(response.status).toBe(404)
-      expect(await response.text()).toBe("No workflows in serveMany found for 'workflow-two'. Please update the URL of your request.")
-    })
-  })
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe(
+        "No workflows in serveMany found for 'workflow-two'. Please update the URL of your request."
+      );
+    });
+  });
 
   describe("serve tests", () => {
     const token = nanoid();
-    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token })
+    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
     const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
-      const a = context.requestPayload + 2
-      return `result ${a}`
-    })
+      const a = context.requestPayload + 2;
+      return `result ${a}`;
+    });
 
     const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
-      await context.invoke(
-        "invoke step two",
-        {
-          workflow: workflowOne,
-          body: 2,
-        }
-      )
-    })
+      await context.invoke("invoke step two", {
+        workflow: workflowOne,
+        body: 2,
+      });
+    });
 
-    const { POST: handler } = serveMany({
-      "workflow-one": workflowOne,
-      "workflow-two": workflowTwo,
-    }, {
-      qstashClient,
-      receiver: undefined
-    })
+    const { POST: handler } = serveMany(
+      {
+        "workflow-one": workflowOne,
+        "workflow-two": workflowTwo,
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+      }
+    );
 
     test("first invoke", async () => {
       const request = getRequest(
@@ -154,11 +161,11 @@ describe("serveMany", () => {
         "wfr_id",
         "initial-payload",
         []
-      )
+      );
 
       await mockQStashServer({
         execute: async () => {
-          await handler(request)
+          await handler(request);
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -193,11 +200,11 @@ describe("serveMany", () => {
             },
           },
           headers: {
-            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1"
+            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
           },
         },
-      })
-    })
+      });
+    });
 
     test("should increment invoke count in second invoke", async () => {
       const request = getRequest(
@@ -205,12 +212,12 @@ describe("serveMany", () => {
         "wfr_id",
         "initial-payload",
         []
-      )
-      request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "1")
+      );
+      request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "1");
 
       await mockQStashServer({
         execute: async () => {
-          await handler(request)
+          await handler(request);
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -220,48 +227,20 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Failure-Callback-Retries": [
-                "3"
-              ],
-              "Upstash-Feature-Set": [
-                "LazyFetch,InitialBody"
-              ],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": [
-                "1"
-              ],
-              "Upstash-Forward-Upstash-Workflow-Sdk-Version": [
-                "1"
-              ],
-              "Upstash-Retries": [
-                "3"
-              ],
-              "Upstash-Telemetry-Framework": [
-                "nextjs"
-              ],
-              "Upstash-Telemetry-Runtime": [
-                "node@v22.6.0"
-              ],
-              "Upstash-Telemetry-Sdk": [
-                "@upstash/workflow@v0.2.7"
-              ],
-              "Upstash-Workflow-Init": [
-                "false"
-              ],
-              "Upstash-Workflow-RunId": [
-                "wfr_id"
-              ],
-              "Upstash-Workflow-Runid": [
-                "wfr_id"
-              ],
-              "Upstash-Workflow-Sdk-Version": [
-                "1"
-              ],
-              "Upstash-Workflow-Url": [
-                "https://requestcatcher.com/api/workflow-two"
-              ],
-              "content-type": [
-                "application/json"
-              ],
+              "Upstash-Failure-Callback-Retries": ["3"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Retries": ["3"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
+              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-two"],
+              "content-type": ["application/json"],
             },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflow-two",
@@ -273,10 +252,10 @@ describe("serveMany", () => {
             },
           },
           headers: {
-            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "2"
+            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "2",
           },
         },
-      })
-    })
-  })
-})
+      });
+    });
+  });
+});

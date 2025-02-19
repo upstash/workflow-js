@@ -289,5 +289,5 @@ describe("agents", () => {
       });
     });
   });
-  test("disabled context with empty or object prompt should throw abort", async () => { });
+  test("disabled context with empty or object prompt should throw abort", async () => {});
 });

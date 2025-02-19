@@ -5,7 +5,6 @@ import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
 
-
 const telemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
   framework: "astro",
@@ -36,10 +35,7 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
 
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
-): InvokableWorkflow<
-  TInitialPayload,
-  TResult
-> => {
+): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {
     workflowId: undefined,
@@ -64,7 +60,7 @@ export const serveMany = (
         return components[components.length - 1];
       },
       serveMethod: (...params: Parameters<typeof serve>) => serve(...params).POST,
-      options
+      options,
     }).handler,
   };
 };
