@@ -427,7 +427,7 @@ export const getHeaders = ({
     ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
   };
 
-  if (invokeCount) {
+  if (invokeCount && !step?.callUrl) {
     baseHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount.toString();
   }
 
@@ -452,10 +452,6 @@ export const getHeaders = ({
     if (!step?.callUrl) {
       baseHeaders["Upstash-Failure-Callback"] = failureUrl;
     }
-  }
-
-  if (step?.stepType === "Invoke") {
-    baseHeaders["upstash-workflow-invoke"] = "true";
   }
 
   // if retries is set or if call url is passed, set a retry

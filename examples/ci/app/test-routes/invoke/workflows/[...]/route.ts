@@ -89,11 +89,19 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   const result = await Promise.all([
     context.invoke("invoke branch one", {
       workflow: branchOne,
-      body: 1
+      body: 1,
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      }
     }),
     context.invoke("invoke branch two", {
       workflow: branchTwo,
-      body: 2
+      body: 2,
+      headers: {
+        [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+        [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+      }
     })
   ])
 
@@ -101,8 +109,6 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   expect(result[1].body, "branch-two-result")
 
   return invokeResult
-}, {
-  verbose: true
 })
 
 const workflowThree = createWorkflow(async (context: WorkflowContext<string>) => {
@@ -117,13 +123,13 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
  */
 
 const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/invoke/called-endpoint`
-const notifiedEventId = "notified-event"
+const notifiedEventId = "notifiedEvent"
 
 /**
  * calls waitForEvent and checks invokeCount
  */
 const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
-  const { timeout } = await context.waitForEvent("timeout event", "timeout event", { timeout: "1s" })
+  const { timeout } = await context.waitForEvent("timeoutEvent", "timeoutEvent", { timeout: 1 })
   expect(timeout, true)
 
   // @ts-expect-error accessing private fields for testing purposes.
@@ -145,10 +151,12 @@ const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
  */
 const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
 
-  const { body } = await context.call("call", {
+  const { status } = await context.call("call", {
     url: thirdPartyEndpoint,
     method: "GET",
   })
+
+  expect(status, 200)
 
   // @ts-expect-error accessing private fields for testing purposes.
   // We also check after the first step, because DisabledWorkflowContext
@@ -156,8 +164,11 @@ const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
   const invokeCount = context.executor.invokeCount
   expect(invokeCount, 2)
 
-  while (true) {
+  let counter = 0;
+  while (counter < 10) {
     const { notifyResponse } = await context.notify("notified event", notifiedEventId, "data")
+    counter += 1
+    await context.sleep("wait", 1)
     if (notifyResponse.length) {
       break
     }
@@ -177,7 +188,7 @@ export const { POST, GET } = testServe(
     branchTwo,
   }),
   {
-    expectedCallCount: 10,
+    expectedCallCount: 26,
     expectedResult: "done invoke",
     payload,
     headers: {
