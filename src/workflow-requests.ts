@@ -11,6 +11,7 @@ import {
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
+  WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
@@ -300,6 +301,7 @@ export const handleThirdPartyCallResult = async ({
       const stepType = request.headers.get("Upstash-Workflow-StepType") as StepType;
       const concurrentString = request.headers.get("Upstash-Workflow-Concurrent");
       const contentType = request.headers.get("Upstash-Workflow-ContentType");
+      const invokeCount = request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER);
 
       if (
         !(
@@ -309,6 +311,7 @@ export const handleThirdPartyCallResult = async ({
           StepTypes.includes(stepType) &&
           concurrentString &&
           contentType
+          // not adding invokeCount to required for backwards compatibility.
         )
       ) {
         throw new Error(
@@ -332,6 +335,7 @@ export const handleThirdPartyCallResult = async ({
         failureUrl,
         retries,
         telemetry,
+        invokeCount: Number(invokeCount),
       });
 
       const callResponse: CallResponse = {
@@ -407,6 +411,7 @@ export const getHeaders = ({
   callRetries,
   callTimeout,
   telemetry,
+  invokeCount
 }: HeaderParams): HeadersResponse => {
 
   const contentType =
@@ -421,6 +426,10 @@ export const getHeaders = ({
     "content-type": contentType,
     ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
   };
+
+  if (invokeCount) {
+    baseHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount.toString();
+  }
 
   if (!step?.callUrl) {
     baseHeaders[`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`] = WORKFLOW_PROTOCOL_VERSION;
@@ -504,6 +513,7 @@ export const getHeaders = ({
         "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.stepType,
         "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
         "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType,
+        [`Upstash-Callback-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: (invokeCount ?? 0).toString(),
         "Upstash-Workflow-CallType": "toCallback",
       },
     };

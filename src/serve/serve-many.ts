@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
 import { WorkflowError } from "../error";
 import { InvokableWorkflow, InvokeWorkflowRequest, LazyInvokeStepParams, PublicServeOptions, RouteFunction, Step, Telemetry } from "../types";
@@ -104,6 +103,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     failureUrl: context.failureUrl,
     retries: context.retries,
     telemetry,
+    invokeCount
   });
   invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
@@ -117,9 +117,9 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     retries: retries ?? workflowRetries,
     telemetry,
     failureUrl: failureFunction ? newUrl : failureUrl,
+    invokeCount: invokeCount + 1
   });
   triggerHeaders["Upstash-Workflow-Invoke"] = "true";
-  triggerHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = (invokeCount + 1).toString();
   if (useJSONContent) {
     triggerHeaders["content-type"] = "application/json";
   }

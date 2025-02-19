@@ -406,6 +406,10 @@ export type HeaderParams = {
    * Only needed/used when the step is a waitForEvent step
    */
   telemetry?: Telemetry;
+  /**
+   * invoke count to include in headers
+   */
+  invokeCount?: number
 } & (
     | {
       /**

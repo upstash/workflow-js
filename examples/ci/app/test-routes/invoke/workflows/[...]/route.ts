@@ -1,6 +1,6 @@
 import { WorkflowContext } from "@upstash/workflow";
-import { createWorkflow, serve, serveMany } from "@upstash/workflow/nextjs";
-import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants";
+import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
+import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { saveResult } from "app/ci/upstash/redis";
 import { expect, nanoid, testServe } from "app/ci/utils";
 import { z } from "zod";
@@ -76,11 +76,33 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
     console.log("workflow two says hi")
   })
 
+  // @ts-expect-error accessing private fields for testing purposes.
+  // We also check after the first step, because DisabledWorkflowContext
+  // doesn't have the correct invokeCount
+  const invokeCount = context.executor.invokeCount
+  expect(invokeCount, 1)
+
   await context.run("step 2", async () => {
     console.log("workflow two says bye")
   })
 
+  const result = await Promise.all([
+    context.invoke("invoke branch one", {
+      workflow: branchOne,
+      body: 1
+    }),
+    context.invoke("invoke branch two", {
+      workflow: branchTwo,
+      body: 2
+    })
+  ])
+
+  expect(result[0].body, "branch-one-result")
+  expect(result[1].body, "branch-two-result")
+
   return invokeResult
+}, {
+  verbose: true
 })
 
 const workflowThree = createWorkflow(async (context: WorkflowContext<string>) => {
@@ -90,11 +112,69 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
   retries: 0
 })
 
+/**
+ * wait for event workflows
+ */
+
+const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/invoke/called-endpoint`
+const notifiedEventId = "notified-event"
+
+/**
+ * calls waitForEvent and checks invokeCount
+ */
+const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
+  const { timeout } = await context.waitForEvent("timeout event", "timeout event", { timeout: "1s" })
+  expect(timeout, true)
+
+  // @ts-expect-error accessing private fields for testing purposes.
+  // We also check after the first step, because DisabledWorkflowContext
+  // doesn't have the correct invokeCount
+  const invokeCount = context.executor.invokeCount
+  expect(invokeCount, 2)
+
+  const { timeout: isTimeout } = await context.waitForEvent("notified event", notifiedEventId, { timeout: "10s" })
+  expect(isTimeout, false)
+
+  await context.sleep("check", 1)
+
+  return "branch-one-result"
+})
+
+/**
+ * notifies branhcOne, calls context.call and checks invokeCount
+ */
+const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
+
+  const { body } = await context.call("call", {
+    url: thirdPartyEndpoint,
+    method: "GET",
+  })
+
+  // @ts-expect-error accessing private fields for testing purposes.
+  // We also check after the first step, because DisabledWorkflowContext
+  // doesn't have the correct invokeCount
+  const invokeCount = context.executor.invokeCount
+  expect(invokeCount, 2)
+
+  while (true) {
+    const { notifyResponse } = await context.notify("notified event", notifiedEventId, "data")
+    if (notifyResponse.length) {
+      break
+    }
+  }
+
+  await context.sleep("check", 1)
+
+  return "branch-two-result"
+})
+
 export const { POST, GET } = testServe(
   serveMany({
     workflowOne,
     workflowTwo,
-    workflowThree
+    workflowThree,
+    branchOne,
+    branchTwo,
   }),
   {
     expectedCallCount: 10,

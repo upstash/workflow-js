@@ -354,6 +354,7 @@ export class AutoExecutor {
         failureUrl: this.context.failureUrl,
         retries: this.context.retries,
         telemetry: this.telemetry,
+        invokeCount: this.invokeCount
       });
 
       // call wait
@@ -418,6 +419,7 @@ export class AutoExecutor {
           callRetries: lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined,
           callTimeout: lazyStep instanceof LazyCallStep ? lazyStep.timeout : undefined,
           telemetry: this.telemetry,
+          invokeCount: this.invokeCount
         });
 
         // if the step is a single step execution or a plan step, we can add sleep headers
