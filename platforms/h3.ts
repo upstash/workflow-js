@@ -75,11 +75,7 @@ export const serveMany = (
 ) => {
   return serveManyBase<ReturnType<typeof serve>["handler"]>({
     workflows: workflows,
-    getWorkflowId(event) {
-      const url = getUrl(event);
-      const components = url.split("/");
-      return components[components.length - 1];
-    },
+    getUrl,
     serveMethod: (...params: Parameters<typeof serve>) => serve(...params).handler,
     options,
   });

@@ -63,9 +63,8 @@ export const serveMany = (
       [Params[0], RequireEnv<Params[1]>]
     >({
       workflows: workflows,
-      getWorkflowId(params) {
-        const components = params.url.toString().split("/");
-        return components[components.length - 1];
+      getUrl(params) {
+        return params.url.toString();
       },
       options,
       serveMethod: (...params) => serve(...params).POST,

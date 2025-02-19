@@ -68,9 +68,8 @@ export const serveMany = (
 ) => {
   return serveManyBase<ReturnType<typeof serve>>({
     workflows: workflows,
-    getWorkflowId(params) {
-      const components = params.req.url.split("/");
-      return components[components.length - 1];
+    getUrl(params) {
+      return params.req.url;
     },
     serveMethod: (...params: Parameters<typeof serve>) => serve(...params),
     options,

@@ -65,9 +65,8 @@ export const serveMany = (
   return {
     POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
       workflows: workflows,
-      getWorkflowId(params) {
-        const components = params.url.split("/");
-        return components[components.length - 1];
+      getUrl(params) {
+        return params.url;
       },
       serveMethod: (...params: Parameters<typeof serve>) => serve(...params).POST,
       options,
@@ -131,15 +130,12 @@ export const serveManyPagesRouter = (
 ) => {
   return serveManyBase<ReturnType<typeof servePagesRouter>["handler"]>({
     workflows: workflows,
-    getWorkflowId(request_) {
+    getUrl(request_) {
       const protocol = request_.headers["x-forwarded-proto"];
       const host = request_.headers.host;
       const baseUrl = `${protocol}://${host}`;
 
-      const url = `${baseUrl}${request_.url}`;
-
-      const components = url.split("/");
-      return components[components.length - 1];
+      return `${baseUrl}${request_.url}`;
     },
     serveMethod: (...params: Parameters<typeof servePagesRouter>) =>
       servePagesRouter(...params).handler,

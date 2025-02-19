@@ -101,9 +101,8 @@ export const serveMany = (
 
   const { handler } = serveManyBase<ReturnType<typeof createExpressHandler>>({
     workflows: workflows,
-    getWorkflowId(...params) {
-      const components = params[0].url.split("/");
-      return components[components.length - 1];
+    getUrl(...params) {
+      return params[0].url;
     },
     serveMethod: (...params: Parameters<typeof serve>) => createExpressHandler(params),
     options,

@@ -18,6 +18,12 @@ export type OmitOptionsInServeMany<TOptions> = Omit<
   "env" | "url" | "schema" | "initialPayloadParser"
 >;
 
+const getWorkflowId = (url: string) => {
+  const components = url.split("/");
+  const lastComponent = components[components.length - 1];
+  return lastComponent.split("?")[0];
+};
+
 export const serveManyBase = <
   THandler extends (...params: any[]) => any,
   TOptions extends
@@ -28,12 +34,12 @@ export const serveManyBase = <
   ],
 >({
   workflows,
-  getWorkflowId,
+  getUrl,
   serveMethod,
   options,
 }: {
   workflows: Record<string, InvokableWorkflow<any, any>>;
-  getWorkflowId: (...params: Parameters<THandler>) => string;
+  getUrl: (...params: Parameters<THandler>) => string;
   serveMethod: (...params: TServeParams) => THandler;
   options?: TOptions;
 }) => {
@@ -72,7 +78,8 @@ export const serveManyBase = <
 
   return {
     handler: async (...params: Parameters<THandler>) => {
-      const pickedWorkflowId = getWorkflowId(...params);
+      const url = getUrl(...params);
+      const pickedWorkflowId = getWorkflowId(url);
       if (!pickedWorkflowId) {
         return new Response(
           `Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`,
