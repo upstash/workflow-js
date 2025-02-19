@@ -10,36 +10,41 @@ export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
 
-      const redisKey = `redis-key-${context.headers.get(CI_RANDOM_ID_HEADER)}`
+      const randomId = context.headers.get(CI_RANDOM_ID_HEADER)
+      if (!randomId) {
+        throw new Error("randomId not found")
+      }
+      const redisKey = `redis-key-${randomId}`
       const count = await redis.incr(redisKey)
+
       if (count === 1) {
         // allow in the first encounter
-        await context.run("mock step", () => {})
+        await context.run("mock step", () => { })
       } else if (count === 2) {
         // return after the step, which should return 400
         return
       } else if (count === 3) {
         // coming back for failureFunction. put a mock step to allow it
-        await context.run("mock step", () => {})
+        await context.run("mock step", () => { })
       }
 
       // otherwise fail.
       await fail(context);
     }, {
-      baseUrl: BASE_URL,
-      retries: 0,
-      async failureFunction({ context, failStatus, failResponse }) {
-        expect(failStatus, 400)
-        expect(failResponse, `Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run`)
-        await saveResult(
-          context as WorkflowContext,
-          secret
-        )
-      }
+    baseUrl: BASE_URL,
+    retries: 0,
+    async failureFunction({ context, failStatus, failResponse }) {
+      expect(failStatus, 400)
+      expect(failResponse, `Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run`)
+      await saveResult(
+        context as WorkflowContext,
+        secret
+      )
     }
-  ), {
-    expectedCallCount: 3,
-    expectedResult: secret,
-    payload: undefined,
   }
+  ), {
+  expectedCallCount: 3,
+  expectedResult: secret,
+  payload: undefined,
+}
 )
