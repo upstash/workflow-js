@@ -3,7 +3,7 @@ import type { RequestHandler } from "@sveltejs/kit";
 import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback, OmitOptionsInServeMany, serveManyBase } from "../src/serve/serve-many";
+import { OmitOptionsInServeMany, serveManyBase } from "../src/serve/serve-many";
 
 const telemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -49,7 +49,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
     workflowId: undefined,
     routeFunction,
     options,

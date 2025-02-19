@@ -5,7 +5,7 @@ import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import type { RouteFunction, PublicServeOptions, Telemetry, InvokableWorkflow } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+import { serveManyBase } from "../src/serve/serve-many";
 
 const appTelemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -55,7 +55,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(appTelemetry),
     routeFunction,
     options,
     workflowId: undefined,
@@ -126,7 +125,6 @@ export const createWorkflowPagesRouter = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(pagesTelemetry),
     routeFunction,
     options,
     workflowId: undefined,

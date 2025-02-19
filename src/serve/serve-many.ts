@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
+import { WorkflowContext } from "../context";
 import { WorkflowError } from "../error";
-import { InvokableWorkflow, InvokeCallback, InvokeWorkflowRequest, PublicServeOptions, RouteFunction, Telemetry } from "../types";
+import { InvokableWorkflow, InvokeWorkflowRequest, LazyInvokeStepParams, PublicServeOptions, RouteFunction, Step, Telemetry } from "../types";
 import { getWorkflowRunId } from "../utils";
 import { getHeaders } from "../workflow-requests";
 
@@ -73,71 +74,70 @@ export const serveManyBase = <
   };
 };
 
-export const createInvokeCallback = <TInitialPayload, TResult>(
-  telemetry: Telemetry | undefined
-) => {
-  const invokeCallback: InvokeCallback<TInitialPayload, TResult> = async (
-    settings,
-    invokeStep,
-    context,
-    invokeCount
-  ) => {
-    const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries } = settings;
-    const { workflowId } = workflow;
+export const invokeWorkflow = async <TInitialPayload, TResult>({
+  settings,
+  invokeStep,
+  context,
+  invokeCount,
+  telemetry
+}: {
+  settings: LazyInvokeStepParams<TInitialPayload, TResult>,
+  invokeStep: Step,
+  context: WorkflowContext,
+  invokeCount: number,
+  telemetry?: Telemetry
+}) => {
+  const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries } = settings;
+  const { workflowId } = workflow;
 
-    const { retries: workflowRetries, failureFunction, failureUrl, useJSONContent } = workflow.options;
+  const { retries: workflowRetries, failureFunction, failureUrl, useJSONContent } = workflow.options;
 
-    if (!workflowId) {
-      throw new WorkflowError("You can only invoke workflow which has a workflowId");
-    }
+  if (!workflowId) {
+    throw new WorkflowError("You can only invoke workflow which has a workflowId");
+  }
 
-    const { headers: invokerHeaders } = getHeaders({
-      initHeaderValue: "false",
-      workflowRunId: context.workflowRunId,
-      workflowUrl: context.url,
-      userHeaders: context.headers,
-      failureUrl: context.failureUrl,
-      retries: context.retries,
-      telemetry,
-    });
-    invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
+  const { headers: invokerHeaders } = getHeaders({
+    initHeaderValue: "false",
+    workflowRunId: context.workflowRunId,
+    workflowUrl: context.url,
+    userHeaders: context.headers,
+    failureUrl: context.failureUrl,
+    retries: context.retries,
+    telemetry,
+  });
+  invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
-    const newUrl = context.url.replace(/[^/]+$/, workflowId);
+  const newUrl = context.url.replace(/[^/]+$/, workflowId);
 
-    const { headers: triggerHeaders } = getHeaders({
-      initHeaderValue: "true",
-      workflowRunId,
-      workflowUrl: newUrl,
-      userHeaders: new Headers(headers) as Headers,
-      retries: retries ?? workflowRetries,
-      telemetry,
-      failureUrl: failureFunction ? newUrl : failureUrl,
-    });
-    triggerHeaders["Upstash-Workflow-Invoke"] = "true";
-    triggerHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = (invokeCount + 1).toString();
-    if (useJSONContent) {
-      triggerHeaders["content-type"] = "application/json";
-    }
+  const { headers: triggerHeaders } = getHeaders({
+    initHeaderValue: "true",
+    workflowRunId,
+    workflowUrl: newUrl,
+    userHeaders: new Headers(headers) as Headers,
+    retries: retries ?? workflowRetries,
+    telemetry,
+    failureUrl: failureFunction ? newUrl : failureUrl,
+  });
+  triggerHeaders["Upstash-Workflow-Invoke"] = "true";
+  triggerHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = (invokeCount + 1).toString();
+  if (useJSONContent) {
+    triggerHeaders["content-type"] = "application/json";
+  }
 
-    const request: InvokeWorkflowRequest = {
-      body: JSON.stringify(body),
-      headers: Object.fromEntries(
-        Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
-      ),
-      workflowRunId,
-      workflowUrl: context.url,
-      step: invokeStep,
-    };
-
-    await context.qstashClient.publish({
-      headers: triggerHeaders,
-      method: "POST",
-      body: JSON.stringify(request),
-      url: newUrl,
-    });
-
-    return undefined as TResult;
+  const request: InvokeWorkflowRequest = {
+    body: JSON.stringify(body),
+    headers: Object.fromEntries(
+      Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
+    ),
+    workflowRunId,
+    workflowUrl: context.url,
+    step: invokeStep,
   };
 
-  return invokeCallback;
-};
+  await context.qstashClient.publish({
+    headers: triggerHeaders,
+    method: "POST",
+    body: JSON.stringify(request),
+    url: newUrl,
+  });
+}

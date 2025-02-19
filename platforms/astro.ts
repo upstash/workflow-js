@@ -3,7 +3,7 @@ import type { APIContext, APIRoute } from "astro";
 import { InvokableWorkflow, PublicServeOptions, Telemetry, WorkflowContext } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+import { serveManyBase } from "../src/serve/serve-many";
 
 
 const telemetry: Telemetry = {
@@ -42,7 +42,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
     workflowId: undefined,
     // @ts-expect-error because astro route function has another parameeter,
     // the RouteFunction type can't cover this. We need to make RouteFunction

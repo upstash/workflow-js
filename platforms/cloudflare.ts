@@ -1,7 +1,7 @@
 import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
-import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+import { serveManyBase } from "../src/serve/serve-many";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -89,7 +89,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
     workflowId: undefined,
     routeFunction,
     options

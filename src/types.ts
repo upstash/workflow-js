@@ -4,7 +4,6 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
-import { LazyInvokeStepParams } from "./context/steps";
 
 /**
  * Interface for Client with required methods
@@ -450,21 +449,22 @@ export type InvokeWorkflowRequest = {
   step: Step;
   body: string;
 };
+
+
+export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
+  workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult>, "routeFunction" | "workflowId" | "options">;
+  body: TInitiaPayload; // TODO make optional
+  workflowRunId?: string;
+} & Pick<CallSettings, "retries" | "headers">;
+
 export type InvokeStepResponse<TBody> = {
   body: TBody;
   isCanceled?: boolean;
   isFailed?: boolean;
 };
-export type InvokeCallback<TInitiaPayload, TResult> = (
-  settings: LazyInvokeStepParams<TInitiaPayload, TResult>,
-  invokeStep: Step,
-  context: WorkflowContext,
-  invokeCount: number
-) => Promise<TResult>;
 
 export type InvokableWorkflow<TInitialPayload, TResult> = {
   routeFunction: RouteFunction<TInitialPayload, TResult>;
   options: WorkflowServeOptions<Response, TInitialPayload>;
-  callback: InvokeCallback<TInitialPayload, TResult>;
   workflowId?: string;
 };

@@ -6,6 +6,7 @@ import { getHeaders } from "../workflow-requests";
 import type { WorkflowLogger } from "../logger";
 import { NO_CONCURRENCY } from "../constants";
 import { QstashError } from "@upstash/qstash";
+import { invokeWorkflow } from "../serve/serve-many";
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -386,8 +387,8 @@ export class AutoExecutor {
     if (steps.length === 1 && lazySteps[0] instanceof LazyInvokeStep) {
       const invokeStep = steps[0];
       const lazyInvokeStep = lazySteps[0];
-      await lazyInvokeStep.params.workflow.callback(
-        {
+      await invokeWorkflow({
+        settings: {
           body: lazyInvokeStep.params.body,
           headers: lazyInvokeStep.params.headers,
           workflowRunId: lazyInvokeStep.params.workflowRunId,
@@ -395,9 +396,10 @@ export class AutoExecutor {
           retries: lazyInvokeStep.params.retries,
         },
         invokeStep,
-        this.context,
-        this.invokeCount
-      );
+        context: this.context,
+        invokeCount: this.invokeCount,
+        telemetry: this.telemetry
+      })
 
       throw new WorkflowAbort(invokeStep.stepName, invokeStep);
     }

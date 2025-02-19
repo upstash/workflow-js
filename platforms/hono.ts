@@ -3,7 +3,7 @@ import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } 
 import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+import { serveManyBase } from "../src/serve/serve-many";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -59,7 +59,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
     routeFunction,
     options,
     workflowId: undefined,

@@ -4,7 +4,7 @@ import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } 
 import { serveBase } from "../src/serve";
 import type { IncomingHttpHeaders } from "node:http";
 import { SDK_TELEMETRY } from "../src/constants";
-import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+import { serveManyBase } from "../src/serve/serve-many";
 
 function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
   const formattedHeaders = Object.entries(headers).map(([key, value]) => [
@@ -69,7 +69,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
     routeFunction,
     options,
     workflowId: undefined,

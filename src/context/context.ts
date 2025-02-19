@@ -1,6 +1,7 @@
 import type {
   CallResponse,
   CallSettings,
+  LazyInvokeStepParams,
   NotifyStepResponse,
   Telemetry,
   WaitEventOptions,
@@ -9,7 +10,7 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep, LazyInvokeStepParams } from "./steps";
+import type { BaseLazyStep } from "./steps";
 import {
   LazyCallStep,
   LazyFunctionStep,
@@ -455,7 +456,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
     return {
       ...result,
-      body: result.body ? JSON.parse(result.body as string) : undefined,
+      body: (result.body ? JSON.parse(result.body as string) : undefined) as TResult,
     };
   }
 

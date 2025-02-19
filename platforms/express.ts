@@ -7,7 +7,7 @@ import {
   Router,
   RequestHandler,
 } from "express";
-import { createInvokeCallback, serveManyBase } from "../src/serve/serve-many";
+import { serveManyBase } from "../src/serve/serve-many";
 
 const isEmptyRequest = (req: ExpressRequest) => {
   return req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
@@ -93,7 +93,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
 > => {
   const [routeFunction, options = {}] = params;
   return {
-    callback: createInvokeCallback<TInitialPayload, TResult>(telemetry),
     routeFunction,
     options,
     workflowId: undefined,

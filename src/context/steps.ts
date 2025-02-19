@@ -1,8 +1,7 @@
 import type { Client, HTTPMethods } from "@upstash/qstash";
 import type {
-  CallSettings,
-  InvokableWorkflow,
   InvokeStepResponse,
+  LazyInvokeStepParams,
   NotifyStepResponse,
   RequiredExceptFields,
   Step,
@@ -265,12 +264,6 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
     });
   }
 }
-
-export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  workflow: Pick<InvokableWorkflow<TInitiaPayload, TResult>, "callback" | "workflowId" | "options">;
-  body: TInitiaPayload; // TODO make optional
-  workflowRunId?: string;
-} & Pick<CallSettings, "retries" | "headers">;
 
 export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazyStep<
   InvokeStepResponse<TResult>
