@@ -276,7 +276,14 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
 
   constructor(
     stepName: string,
-    { workflow, body, headers = {}, workflowRunId, retries, flowControl }: LazyInvokeStepParams<TBody, TResult>
+    {
+      workflow,
+      body,
+      headers = {},
+      workflowRunId,
+      retries,
+      flowControl,
+    }: LazyInvokeStepParams<TBody, TResult>
   ) {
     super(stepName);
     this.params = {
@@ -285,7 +292,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       headers,
       workflowRunId: getWorkflowRunId(workflowRunId),
       retries,
-      flowControl
+      flowControl,
     };
   }
 

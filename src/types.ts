@@ -255,13 +255,13 @@ type ValidationOptions<TInitialPayload> = {
 };
 export type ExclusiveValidationOptions<TInitialPayload> =
   | {
-    schema?: ValidationOptions<TInitialPayload>["schema"];
-    initialPayloadParser?: never;
-  }
+      schema?: ValidationOptions<TInitialPayload>["schema"];
+      initialPayloadParser?: never;
+    }
   | {
-    schema?: never;
-    initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
-  };
+      schema?: never;
+      initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
+    };
 
 export type Telemetry = {
   /**
@@ -433,7 +433,7 @@ export type HeaderParams = {
    */
   flowControl?: FlowControl;
 } & (
-    | {
+  | {
       /**
        * step to generate headers for
        */
@@ -454,7 +454,7 @@ export type HeaderParams = {
        */
       callFlowControl?: FlowControl;
     }
-    | {
+  | {
       /**
        * step not passed. Either first invocation or simply getting headers for
        * third party callack.
@@ -480,7 +480,7 @@ export type HeaderParams = {
        */
       callFlowControl?: never;
     }
-  );
+);
 
 export type InvokeWorkflowRequest = {
   workflowUrl: string;
