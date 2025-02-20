@@ -272,10 +272,11 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   InvokeStepResponse<TResult>
 > {
   stepType: StepType = "Invoke";
-  params: RequiredExceptFields<LazyInvokeStepParams<TBody, TResult>, "retries">;
+  params: RequiredExceptFields<LazyInvokeStepParams<TBody, TResult>, "retries" | "flowControl">;
+
   constructor(
     stepName: string,
-    { workflow, body, headers = {}, workflowRunId, retries }: LazyInvokeStepParams<TBody, TResult>
+    { workflow, body, headers = {}, workflowRunId, retries, flowControl }: LazyInvokeStepParams<TBody, TResult>
   ) {
     super(stepName);
     this.params = {
@@ -284,8 +285,10 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       headers,
       workflowRunId: getWorkflowRunId(workflowRunId),
       retries,
+      flowControl
     };
   }
+
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
     return {
       stepId: 0,
@@ -295,6 +298,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       targetStep,
     };
   }
+
   /**
    * won't be used as it's the server who will add the result step
    * in Invoke step.

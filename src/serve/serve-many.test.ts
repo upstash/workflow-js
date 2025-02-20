@@ -31,7 +31,7 @@ describe("serveMany", () => {
             settings: {
               body: "some-body",
               workflow: {
-                routeFunction: async () => {},
+                routeFunction: async () => { },
                 workflowId,
                 options: {},
               },
@@ -106,7 +106,7 @@ describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
       const throws = () =>
         serveMany({
-          "workflow/one": createWorkflow(async () => {}),
+          "workflow/one": createWorkflow(async () => { }),
         });
       expect(throws).toThrow(
         "Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'."
@@ -115,7 +115,7 @@ describe("serveMany", () => {
 
     test("should throw if workflowId doesn't match", async () => {
       const { POST: handler } = serveMany({
-        "workflow-one": createWorkflow(async () => {}),
+        "workflow-one": createWorkflow(async () => { }),
       });
 
       const request = new Request("http://localhost:3001/workflow-two", { method: "POST" });
@@ -135,13 +135,29 @@ describe("serveMany", () => {
     const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
       const a = context.requestPayload + 2;
       return `result ${a}`;
+    }, {
+      flowControl: {
+        key: "workflowOneFlowControl",
+        parallelism: 2,
+        ratePerSecond: 10
+      }
     });
 
     const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
       await context.invoke("invoke step two", {
         workflow: workflowOne,
         body: 2,
+        flowControl: {
+          key: "customFlowControl",
+          parallelism: 4,
+        }
       });
+    }, {
+      flowControl: {
+        key: "workflowTwoFlowControl",
+        parallelism: 4,
+        ratePerSecond: 6
+      }
     });
 
     const { POST: handler } = serveMany(
@@ -178,6 +194,8 @@ describe("serveMany", () => {
               "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
+              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
@@ -201,6 +219,8 @@ describe("serveMany", () => {
           },
           headers: {
             [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
+            "Upstash-Flow-Control-Key": "customFlowControl",
+            "Upstash-Flow-Control-Value": "parallelism=4",
           },
         },
       });

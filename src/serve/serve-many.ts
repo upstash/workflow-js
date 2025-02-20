@@ -27,7 +27,7 @@ const getWorkflowId = (url: string) => {
 export const serveManyBase = <
   THandler extends (...params: any[]) => any,
   TOptions extends
-    OmitOptionsInServeMany<PublicServeOptions> = OmitOptionsInServeMany<PublicServeOptions>,
+  OmitOptionsInServeMany<PublicServeOptions> = OmitOptionsInServeMany<PublicServeOptions>,
   TServeParams extends [routeFunction: RouteFunction<any, any>, options: TOptions] = [
     routeFunction: RouteFunction<any, any>,
     options: TOptions,
@@ -115,7 +115,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
   invokeCount: number;
   telemetry?: Telemetry;
 }) => {
-  const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries } = settings;
+  const { body, workflow, headers = {}, workflowRunId = getWorkflowRunId(), retries, flowControl } = settings;
   const { workflowId } = workflow;
 
   const {
@@ -123,6 +123,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     failureFunction,
     failureUrl,
     useJSONContent,
+    flowControl: workflowFlowControl,
   } = workflow.options;
 
   if (!workflowId) {
@@ -138,6 +139,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     retries: context.retries,
     telemetry,
     invokeCount,
+    flowControl: context.flowControl
   });
   invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
@@ -152,6 +154,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     telemetry,
     failureUrl: failureFunction ? newUrl : failureUrl,
     invokeCount: invokeCount + 1,
+    flowControl: flowControl ?? workflowFlowControl
   });
   triggerHeaders["Upstash-Workflow-Invoke"] = "true";
   if (useJSONContent) {
