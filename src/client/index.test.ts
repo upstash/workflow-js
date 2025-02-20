@@ -445,6 +445,7 @@ describe("workflow client", () => {
                       concurrent: 1,
                       createdAt: expect.any(Number),
                       headers: {
+                        "Content-Type": ["application/json"],
                         "Upstash-Workflow-Sdk-Version": ["1"],
                       },
                       messageId: expect.any(String),
