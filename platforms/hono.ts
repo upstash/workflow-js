@@ -1,8 +1,9 @@
 import type { Context } from "hono";
-import type { PublicServeOptions, RouteFunction } from "../src";
+import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
 import { SDK_TELEMETRY } from "../src/constants";
+import { serveManyBase } from "../src/serve/serve-many";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -12,8 +13,13 @@ export type WorkflowBindings = {
   UPSTASH_WORKFLOW_URL?: string;
 };
 
+const telemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "hono",
+};
+
 /**
- * Serve method to serve a Upstash Workflow in a Nextjs project
+ * Serve method to serve a Upstash Workflow in a Hono project
  *
  * See for options https://upstash.com/docs/qstash/workflows/basics/serve
  *
@@ -25,28 +31,47 @@ export const serve = <
   TInitialPayload = unknown,
   TBindings extends WorkflowBindings = WorkflowBindings,
   TVariables extends Variables = Variables,
+  TResult = unknown,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
     const environment = context.env;
     const request = context.req.raw;
 
-    const { handler: serveHandler } = serveBase(
-      routeFunction,
-      {
-        sdk: SDK_TELEMETRY,
-        framework: "hono",
-      },
-      {
-        // when hono is used without cf workers, it sends a DebugHTTPServer
-        // object in `context.env`. don't pass env if this is the case:
-        env: "QSTASH_TOKEN" in environment ? environment : undefined,
-        ...options,
-      }
-    );
+    const { handler: serveHandler } = serveBase(routeFunction, telemetry, {
+      // when hono is used without cf workers, it sends a DebugHTTPServer
+      // object in `context.env`. don't pass env if this is the case:
+      env: "QSTASH_TOKEN" in environment ? environment : undefined,
+      ...options,
+    });
     return await serveHandler(request);
   };
   return handler;
+};
+
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, WorkflowBindings, Variables, TResult>>
+): InvokableWorkflow<TInitialPayload, TResult> => {
+  const [routeFunction, options = {}] = params;
+  return {
+    routeFunction,
+    options,
+    workflowId: undefined,
+  };
+};
+
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
+  return serveManyBase<ReturnType<typeof serve>>({
+    workflows: workflows,
+    getUrl(params) {
+      return params.req.url;
+    },
+    serveMethod: (...params: Parameters<typeof serve>) => serve(...params),
+    options,
+  }).handler;
 };

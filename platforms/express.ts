@@ -1,4 +1,4 @@
-import { type WorkflowServeOptions, type RouteFunction } from "../src";
+import type { WorkflowServeOptions, RouteFunction, Telemetry, InvokableWorkflow } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import {
@@ -7,18 +7,27 @@ import {
   Router,
   RequestHandler,
 } from "express";
+import { serveManyBase } from "../src/serve/serve-many";
 
 const isEmptyRequest = (req: ExpressRequest) => {
-  return req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
-}
+  return (
+    req.headers["content-type"] === "application/json" && req.headers["content-length"] === "0"
+  );
+};
 
-export function serve<TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
-  options?: Omit<WorkflowServeOptions<globalThis.Response, TInitialPayload>, "onStepFinish">
-): Router {
-  const router = Router();
+const telemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "express",
+  runtime: process.versions.bun
+    ? `bun@${process.versions.bun}/node@${process.version}`
+    : `node@${process.version}`,
+};
 
-  const handler: RequestHandler = async (request_: ExpressRequest, res: ExpressResponse) => {
+function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
+  params: Parameters<typeof serve<TInitialPayload, TResult>>
+): RequestHandler {
+  const [routeFunction, options] = params;
+  return async (request_: ExpressRequest, res: ExpressResponse) => {
     // only allow POST requests
     if (request_.method.toUpperCase() !== "POST") {
       res.status(405).json("Only POST requests are allowed in workflows");
@@ -27,7 +36,7 @@ export function serve<TInitialPayload = unknown>(
 
     let requestBody: string;
     if (isEmptyRequest(request_)) {
-      requestBody = ""
+      requestBody = "";
     } else if (request_.headers["content-type"]?.includes("text/plain")) {
       requestBody = request_.body;
     } else if (request_.headers["content-type"]?.includes("application/json")) {
@@ -49,27 +58,56 @@ export function serve<TInitialPayload = unknown>(
     });
 
     // create handler
-    const { handler: serveHandler } = serveBase<TInitialPayload>(
-      routeFunction,
-      {
-        sdk: SDK_TELEMETRY,
-        framework: "express",
-        runtime: process.versions.bun
-          ? `bun@${process.versions.bun}/node@${process.version}`
-          : `node@${process.version}`,
-      },
-      {
-        ...options,
-        useJSONContent: true,
-      }
-    );
+    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, {
+      ...options,
+      useJSONContent: true,
+    });
 
     const response = await serveHandler(webRequest);
 
     res.status(response.status).json(await response.json());
   };
+}
+
+export function serve<TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
+  options?: Omit<WorkflowServeOptions<globalThis.Response, TInitialPayload>, "onStepFinish">
+): Router {
+  const router = Router();
+
+  const handler: RequestHandler = createExpressHandler([routeFunction, options]);
 
   router.all("*", handler);
 
   return router;
 }
+
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+): InvokableWorkflow<TInitialPayload, TResult> => {
+  const [routeFunction, options = {}] = params;
+  return {
+    routeFunction,
+    options,
+    workflowId: undefined,
+  };
+};
+
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
+  const router = Router();
+
+  const { handler } = serveManyBase<ReturnType<typeof createExpressHandler>>({
+    workflows: workflows,
+    getUrl(...params) {
+      return params[0].url;
+    },
+    serveMethod: (...params: Parameters<typeof serve>) => createExpressHandler(params),
+    options,
+  });
+
+  router.all("*", handler);
+  return router;
+};

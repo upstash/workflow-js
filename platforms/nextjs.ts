@@ -2,9 +2,24 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-import type { RouteFunction, PublicServeOptions } from "../src";
+import type { RouteFunction, PublicServeOptions, Telemetry, InvokableWorkflow } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
+import { serveManyBase } from "../src/serve/serve-many";
+
+const appTelemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "nextjs",
+  runtime: `node@${process.version}`,
+};
+
+const pagesTelemetry: Telemetry = {
+  sdk: SDK_TELEMETRY,
+  framework: "nextjs-pages",
+  runtime: process.versions.bun
+    ? `bun@${process.versions.bun}/node@${process.version}`
+    : `node@${process.version}`,
+};
 
 /**
  * Serve method to serve a Upstash Workflow in a Nextjs project
@@ -15,17 +30,13 @@ import { SDK_TELEMETRY } from "../src/constants";
  * @param options workflow options
  * @returns
  */
-export const serve = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
+export const serve = <TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
-): { POST: (request: Request) => Promise<Response> } => {
-  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response>(
+) => {
+  const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
-    {
-      sdk: SDK_TELEMETRY,
-      framework: "nextjs",
-      runtime: `node@${process.version}`,
-    },
+    appTelemetry,
     options
   );
 
@@ -36,21 +47,40 @@ export const serve = <TInitialPayload = unknown>(
   };
 };
 
-export const servePagesRouter = <TInitialPayload = unknown>(
-  routeFunction: RouteFunction<TInitialPayload>,
-  options?: PublicServeOptions<TInitialPayload>
-): { handler: NextApiHandler } => {
-  const { handler: serveHandler } = serveBase(
+export const createWorkflow = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof serve<TInitialPayload, TResult>>
+): InvokableWorkflow<TInitialPayload, TResult> => {
+  const [routeFunction, options = {}] = params;
+  return {
     routeFunction,
-    {
-      sdk: SDK_TELEMETRY,
-      framework: "nextjs-pages",
-      runtime: process.versions.bun
-        ? `bun@${process.versions.bun}/node@${process.version}`
-        : `node@${process.version}`,
-    },
-    options
-  );
+    options,
+    workflowId: undefined,
+  };
+};
+
+export const serveMany = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
+  return {
+    POST: serveManyBase<ReturnType<typeof serve>["POST"]>({
+      workflows: workflows,
+      getUrl(params) {
+        return params.url;
+      },
+      serveMethod: (...params: Parameters<typeof serve>) => serve(...params).POST,
+      options,
+    }).handler,
+  };
+};
+
+export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
+  options?: PublicServeOptions<TInitialPayload>
+): {
+  handler: NextApiHandler;
+} => {
+  const { handler: serveHandler } = serveBase(routeFunction, pagesTelemetry, options);
 
   const handler = async (request_: NextApiRequest, res: NextApiResponse) => {
     if (request_.method?.toUpperCase() !== "POST") {
@@ -78,5 +108,37 @@ export const servePagesRouter = <TInitialPayload = unknown>(
     res.status(response.status).json(await response.json());
   };
 
-  return { handler };
+  return {
+    handler,
+  };
+};
+
+export const createWorkflowPagesRouter = <TInitialPayload, TResult>(
+  ...params: Parameters<typeof servePagesRouter<TInitialPayload, TResult>>
+): InvokableWorkflow<TInitialPayload, TResult> => {
+  const [routeFunction, options = {}] = params;
+  return {
+    routeFunction,
+    options,
+    workflowId: undefined,
+  };
+};
+
+export const serveManyPagesRouter = (
+  workflows: Parameters<typeof serveManyBase>[0]["workflows"],
+  options?: Parameters<typeof serveManyBase>[0]["options"]
+) => {
+  return serveManyBase<ReturnType<typeof servePagesRouter>["handler"]>({
+    workflows: workflows,
+    getUrl(request_) {
+      const protocol = request_.headers["x-forwarded-proto"];
+      const host = request_.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      return `${baseUrl}${request_.url}`;
+    },
+    serveMethod: (...params: Parameters<typeof servePagesRouter>) =>
+      servePagesRouter(...params).handler,
+    options,
+  });
 };

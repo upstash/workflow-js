@@ -104,7 +104,7 @@ describe("disabled workflow context", () => {
     });
 
     test("should return step-found on step", async () => {
-      const endpoint: RouteFunction<string> = async (context) => {
+      const endpoint: RouteFunction<string, unknown> = async (context) => {
         await context.sleep("sleep-step", 1);
       };
 
@@ -127,7 +127,7 @@ describe("disabled workflow context", () => {
 
     test("should return run-ended on return", async () => {
       // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
-      const endpoint: RouteFunction<string> = async (_context) => {
+      const endpoint: RouteFunction<string, unknown> = async (_context) => {
         return;
       };
 
@@ -150,7 +150,7 @@ describe("disabled workflow context", () => {
 
     test("should get error on error", async () => {
       // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
-      const endpoint: RouteFunction<string> = async (_context) => {
+      const endpoint: RouteFunction<string, unknown> = async (_context) => {
         throw new Error("my-error");
       };
 
@@ -214,6 +214,8 @@ describe("disabled workflow context", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
+                "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
                 "upstash-failure-callback-retries": "0",
@@ -269,6 +271,8 @@ describe("disabled workflow context", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
+                "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",
@@ -325,6 +329,8 @@ describe("disabled workflow context", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-forward-upstash-workflow-invoke-count": "0",
+                "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "3",
                 "upstash-failure-callback-retries": "3",

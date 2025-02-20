@@ -220,10 +220,11 @@ describe("Workflow Requests", () => {
     });
 
     const spy = spyOn(context.qstashClient.http, "request");
-    await triggerWorkflowDelete(context);
+    await triggerWorkflowDelete(context, "hello world");
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenLastCalledWith({
       path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=false`],
+      body: '"hello world"',
       method: "DELETE",
       parseResponseAsJson: false,
     });
@@ -456,7 +457,9 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        "content-type": "application/json",
         "Upstash-Flow-Control-Key": "initial-key",
         "Upstash-Flow-Control-Value": "parallelism=2",
       });
@@ -488,7 +491,9 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        "content-type": "application/json",
         "Upstash-Flow-Control-Key": "step-key",
         "Upstash-Flow-Control-Value": "rate=3",
       });
@@ -520,22 +525,25 @@ describe("Workflow Requests", () => {
           callHeaders,
           callBody,
         },
+        invokeCount: 3,
         flowControl: {
           key: "regular-flow-key",
           ratePerSecond: 3,
-          parallelism: 4
+          parallelism: 4,
         },
         callFlowControl: {
           key: "call-flow-key",
           ratePerSecond: 5,
-          parallelism: 6
-        }
+          parallelism: 6,
+        },
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+        "Upstash-Callback-Forward-Upstash-Workflow-Invoke-Count": "3",
         "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
@@ -551,6 +559,7 @@ describe("Workflow Requests", () => {
         "Upstash-Callback-Workflow-Url": WORKFLOW_ENDPOINT,
         "Upstash-Forward-my-custom-header": "my-custom-header-value",
         "Upstash-Workflow-CallType": "toCallback",
+        "content-type": "application/json",
         "Upstash-Callback-Flow-Control-Key": "regular-flow-key",
         "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3",
         "Upstash-Flow-Control-Key": "call-flow-key",
@@ -577,6 +586,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
         "Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback": "true",
@@ -585,6 +595,7 @@ describe("Workflow Requests", () => {
         "Upstash-Failure-Callback-Workflow-Runid": workflowRunId,
         "Upstash-Failure-Callback-Workflow-Url": "https://requestcatcher.com/api",
         "Upstash-Failure-Callback": failureUrl,
+        "content-type": "application/json",
         "Upstash-Failure-Callback-Flow-Control-Key": "failure-key",
         "Upstash-Failure-Callback-Flow-Control-Value": "parallelism=2",
         "Upstash-Flow-Control-Key": "failure-key",
@@ -609,33 +620,32 @@ describe("Workflow Requests", () => {
         flowControl: {
           key: "wait-key",
           parallelism: 2,
-        }
+        },
       });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
+        "content-type": "application/json",
         "Upstash-Flow-Control-Key": "wait-key",
-        "Upstash-Flow-Control-Value": "parallelism=2"
+        "Upstash-Flow-Control-Value": "parallelism=2",
       });
       expect(timeoutHeaders).toEqual({
         "Upstash-Workflow-Init": ["false"],
         "Upstash-Workflow-RunId": [workflowRunId],
         "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+        [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
         [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody"],
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
         "Upstash-Workflow-Runid": [workflowRunId],
         "Upstash-Workflow-CallType": ["step"],
-        "Content-Type": ["application/json"],
-        "Upstash-Flow-Control-Key": [
-          "wait-key"
-        ],
-        "Upstash-Flow-Control-Value": [
-          "parallelism=2"
-        ],
+        "content-type": ["application/json"],
+        "Upstash-Flow-Control-Key": ["wait-key"],
+        "Upstash-Flow-Control-Value": ["parallelism=2"],
       });
     });
   });
@@ -668,7 +678,7 @@ describe("Workflow Requests", () => {
         const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
         const spy = spyOn(debug, "log");
 
-        const firstDelete = await triggerWorkflowDelete(context, debug);
+        const firstDelete = await triggerWorkflowDelete(context, "hello world", debug);
         expect(firstDelete).toEqual(undefined);
         expect(spy).toHaveBeenCalledTimes(2);
         expect(spy).toHaveBeenLastCalledWith(
@@ -910,9 +920,11 @@ describe("Workflow Requests", () => {
             "Upstash-Workflow-RunId": workflowRunId,
             "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
             "Upstash-Feature-Set": "LazyFetch,InitialBody",
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
             "Upstash-Retries": "0",
             "Upstash-Failure-Callback-Retries": "0",
+            "content-type": "application/json",
           },
           requestPayload: undefined,
           url: WORKFLOW_ENDPOINT,

@@ -83,6 +83,7 @@ describe("agents", () => {
               body: '{"model":"gpt-3.5-turbo","temperature":0.4,"messages":[{"role":"system","content":"an agent"},{"role":"user","content":"my prompt"}],"tools":[{"type":"function","function":{"name":"tool","description":"ai sdk tool","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}],"tool_choice":"auto"}',
               destination: "https://api.openai.com/v1/chat/completions",
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api",
                 "upstash-callback-feature-set": "LazyFetch,InitialBody",
@@ -92,6 +93,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
@@ -148,6 +150,7 @@ describe("agents", () => {
               body: '{"model":"gpt-3.5-turbo","temperature":0.4,"messages":[{"role":"system","content":"an agent"},{"role":"user","content":"hello"}],"tools":[{"type":"function","function":{"name":"tool","description":"ai sdk tool","parameters":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}],"tool_choice":"auto"}',
               destination: "https://api.openai.com/v1/chat/completions",
               headers: {
+                "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api",
                 "upstash-callback-feature-set": "LazyFetch,InitialBody",
@@ -157,6 +160,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "2",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
                 "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
@@ -211,6 +215,7 @@ describe("agents", () => {
             body: '{"model":"gpt-3.5-turbo","temperature":0.1,"messages":[{"role":"system","content":"You are an agent orchestrating other AI Agents.\\n\\nThese other agents have tools available to them.\\n\\nGiven a prompt, utilize these agents to address requests.\\n\\nDon\'t always call all the agents provided to you at the same time. You can call one and use it\'s response to call another.\\n\\nAvoid calling the same agent twice in one turn. Instead, prefer to call it once but provide everything\\nyou need from that agent.\\n"},{"role":"user","content":"my prompt"}],"tools":[{"type":"function","function":{"name":"my agent","description":"An AI Agent with the following background: an agentHas access to the following tools: ai sdk tool","parameters":{"type":"object","properties":{"prompt":{"type":"string"}},"required":["prompt"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}],"tool_choice":"auto"}',
             destination: "https://api.openai.com/v1/chat/completions",
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-callback": "https://requestcatcher.com/api",
               "upstash-callback-feature-set": "LazyFetch,InitialBody",
@@ -220,6 +225,7 @@ describe("agents", () => {
               "upstash-callback-forward-upstash-workflow-stepid": "3",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent manager llm",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
+              "upstash-callback-forward-upstash-workflow-invoke-count": "0",
               "upstash-callback-retries": "3",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",

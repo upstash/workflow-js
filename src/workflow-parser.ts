@@ -190,7 +190,7 @@ export const validateRequest = (
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
     throw new WorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
-      ` got ${versionHeader} from the request.`
+        ` got ${versionHeader} from the request.`
     );
   }
 
@@ -226,17 +226,17 @@ export const parseRequest = async (
   debug?: WorkflowLogger
 ): Promise<
   | {
-    rawInitialPayload: string;
-    steps: Step[];
-    isLastDuplicate: boolean;
-    workflowRunEnded: false;
-  }
+      rawInitialPayload: string;
+      steps: Step[];
+      isLastDuplicate: boolean;
+      workflowRunEnded: false;
+    }
   | {
-    rawInitialPayload: undefined;
-    steps: undefined;
-    isLastDuplicate: undefined;
-    workflowRunEnded: true;
-  }
+      rawInitialPayload: undefined;
+      steps: undefined;
+      isLastDuplicate: undefined;
+      workflowRunEnded: true;
+    }
 > => {
   if (isFirstInvocation) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
@@ -319,16 +319,14 @@ export const handleFailure = async <TInitialPayload>(
     return err(
       new WorkflowError(
         "Workflow endpoint is called to handle a failure," +
-        " but a failureFunction is not provided in serve options." +
-        " Either provide a failureUrl or a failureFunction."
+          " but a failureFunction is not provided in serve options." +
+          " Either provide a failureUrl or a failureFunction."
       )
     );
   }
 
   try {
-    const { status, header, body, url, sourceHeader, sourceBody, workflowRunId } = JSON.parse(
-      requestPayload
-    ) as {
+    const { status, header, body, url, sourceBody, workflowRunId } = JSON.parse(requestPayload) as {
       status: number;
       header: Record<string, string[]>;
       body: string;
@@ -349,7 +347,7 @@ export const handleFailure = async <TInitialPayload>(
       initialPayload: sourceBody
         ? initialPayloadParser(decodeBase64(sourceBody))
         : (undefined as TInitialPayload),
-      headers: recreateUserHeaders(new Headers(sourceHeader) as Headers),
+      headers: recreateUserHeaders(request.headers as Headers),
       steps: [],
       url: url,
       failureUrl: url,

@@ -33,6 +33,7 @@ export const StepTypes = [
   "Call",
   "Wait",
   "Notify",
+  "Invoke",
 ] as const;
 export type StepType = (typeof StepTypes)[number];
 
@@ -120,9 +121,9 @@ export type StepFunction<TResult> = AsyncStepFunction<TResult> | SyncStepFunctio
 
 export type ParallelCallState = "first" | "partial" | "discard" | "last";
 
-export type RouteFunction<TInitialPayload> = (
+export type RouteFunction<TInitialPayload, TResult = unknown> = (
   context: WorkflowContext<TInitialPayload>
-) => Promise<void>;
+) => Promise<TResult>;
 
 export type FinishCondition =
   | "success"
@@ -185,7 +186,16 @@ export type WorkflowServeOptions<
   failureFunction?: (failureData: {
     context: Omit<
       WorkflowContext<TInitialPayload>,
-      "run" | "sleepUntil" | "sleep" | "call" | "waitForEvent" | "notify" | "cancel" | "api"
+      | "run"
+      | "sleepUntil"
+      | "sleep"
+      | "call"
+      | "waitForEvent"
+      | "notify"
+      | "cancel"
+      | "api"
+      | "invoke"
+      | "agents"
     >;
     failStatus: number;
     failResponse: string;
@@ -228,7 +238,7 @@ export type WorkflowServeOptions<
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
    * Set `disableTelemetry` to disable this behavior.
-   * 
+   *
    * @default false
    */
   disableTelemetry?: boolean;
@@ -236,7 +246,7 @@ export type WorkflowServeOptions<
    * Settings for controlling the number of active requests
    * and number of requests per second with the same key.
    */
-  flowControl?: FlowControl
+  flowControl?: FlowControl;
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -245,13 +255,13 @@ type ValidationOptions<TInitialPayload> = {
 };
 export type ExclusiveValidationOptions<TInitialPayload> =
   | {
-    schema?: ValidationOptions<TInitialPayload>["schema"];
-    initialPayloadParser?: never;
-  }
+      schema?: ValidationOptions<TInitialPayload>["schema"];
+      initialPayloadParser?: never;
+    }
   | {
-    schema?: never;
-    initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
-  };
+      schema?: never;
+      initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
+    };
 
 export type Telemetry = {
   /**
@@ -414,12 +424,16 @@ export type HeaderParams = {
    */
   telemetry?: Telemetry;
   /**
+   * invoke count to include in headers
+   */
+  invokeCount?: number;
+  /**
    * Settings for controlling the number of active requests
    * and number of requests per second with the same key.
    */
   flowControl?: FlowControl;
 } & (
-    | {
+  | {
       /**
        * step to generate headers for
        */
@@ -435,12 +449,12 @@ export type HeaderParams = {
       /**
        * Settings for controlling the number of active requests
        * and number of requests per second with the same key.
-       * 
+       *
        * will be passed in context.call.
        */
       callFlowControl?: FlowControl;
     }
-    | {
+  | {
       /**
        * step not passed. Either first invocation or simply getting headers for
        * third party callack.
@@ -461,9 +475,38 @@ export type HeaderParams = {
       /**
        * Settings for controlling the number of active requests
        * and number of requests per second with the same key.
-       * 
+       *
        * will be passed in context.call.
        */
       callFlowControl?: never;
     }
-  );
+);
+
+export type InvokeWorkflowRequest = {
+  workflowUrl: string;
+  workflowRunId: string;
+  headers: Record<string, string[]>;
+  step: Step;
+  body: string;
+};
+
+export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
+  workflow: Pick<
+    InvokableWorkflow<TInitiaPayload, TResult>,
+    "routeFunction" | "workflowId" | "options"
+  >;
+  body: TInitiaPayload; // TODO make optional
+  workflowRunId?: string;
+} & Pick<CallSettings, "retries" | "headers" | "flowControl">;
+
+export type InvokeStepResponse<TBody> = {
+  body: TBody;
+  isCanceled?: boolean;
+  isFailed?: boolean;
+};
+
+export type InvokableWorkflow<TInitialPayload, TResult> = {
+  routeFunction: RouteFunction<TInitialPayload, TResult>;
+  options: WorkflowServeOptions<Response, TInitialPayload>;
+  workflowId?: string;
+};

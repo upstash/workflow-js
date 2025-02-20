@@ -22,7 +22,14 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): RequiredExceptFields<
   WorkflowServeOptions<TResponse, TInitialPayload>,
-  "verbose" | "receiver" | "url" | "failureFunction" | "failureUrl" | "baseUrl" | "schema" | "flowControl"
+  | "verbose"
+  | "receiver"
+  | "url"
+  | "failureFunction"
+  | "failureUrl"
+  | "baseUrl"
+  | "schema"
+  | "flowControl"
 > => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
@@ -75,9 +82,9 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     },
     receiver: receiverEnvironmentVariablesSet
       ? new Receiver({
-        currentSigningKey: environment.QSTASH_CURRENT_SIGNING_KEY!,
-        nextSigningKey: environment.QSTASH_NEXT_SIGNING_KEY!,
-      })
+          currentSigningKey: environment.QSTASH_CURRENT_SIGNING_KEY!,
+          nextSigningKey: environment.QSTASH_NEXT_SIGNING_KEY!,
+        })
       : undefined,
     baseUrl: environment.UPSTASH_WORKFLOW_URL,
     env: environment,
@@ -113,8 +120,8 @@ export const determineUrls = async <TInitialPayload = unknown>(
   const initialWorkflowUrl = url ?? request.url;
   const workflowUrl = baseUrl
     ? initialWorkflowUrl.replace(/^(https?:\/\/[^/]+)(\/.*)?$/, (_, matchedBaseUrl, path) => {
-      return baseUrl + ((path as string) || "");
-    })
+        return baseUrl + ((path as string) || "");
+      })
     : initialWorkflowUrl;
 
   // log workflow url change

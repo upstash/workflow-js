@@ -96,7 +96,11 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
     route: "call/workflow-with-failureUrl",
     waitForSeconds: 5
   },
-  
+  {
+    route: "invoke/workflows/workflowOne",
+    waitForSeconds: 10
+  }
+
   /**
    * TEST LARGE PAYLOAD CASES
    * 

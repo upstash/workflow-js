@@ -12,6 +12,8 @@ import { Suspense, useState } from 'react';
 
 const routes = [
   'path',
+  'serve-many/workflowOne',
+  'serve-many/workflowTwo'
 ]
 
 function Home() {
@@ -21,7 +23,7 @@ function Home() {
   const handleSend = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/path", {
+      const response = await fetch(`/api/${route}`, {
         headers: {
           'Content-Type': 'application/json'
         },

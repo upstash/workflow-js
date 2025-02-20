@@ -43,8 +43,8 @@ describe("wrapTools", () => {
     description: workflowToolDescription,
     schema: parameters,
     invoke: execute,
-    executeAsStep: true
-  })
+    executeAsStep: true,
+  });
 
   test("should wrap AI SDK tool with execute", async () => {
     const context = createContext();
@@ -53,7 +53,7 @@ describe("wrapTools", () => {
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["aiSDKTool"];
     // @ts-expect-error description exists but can't resolve the type
-    expect(wrappedTool.description).toBe(aiSDKToolDescription)
+    expect(wrappedTool.description).toBe(aiSDKToolDescription);
 
     await mockQStashServer({
       execute: () => {
@@ -80,10 +80,12 @@ describe("wrapTools", () => {
             body: '{"stepId":1,"stepName":"Run tool aiSDKTool","stepType":"Run","out":"\\"hello\\"","concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-forward-upstash-workflow-invoke-count": "0",
               "upstash-method": "POST",
               "upstash-retries": "3",
               "upstash-workflow-init": "false",
@@ -103,7 +105,7 @@ describe("wrapTools", () => {
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["langChainTool"];
     // @ts-expect-error description exists but can't resolve the type
-    expect(wrappedTool.description).toBe(langChainToolDescription)
+    expect(wrappedTool.description).toBe(langChainToolDescription);
 
     await mockQStashServer({
       execute: () => {
@@ -130,10 +132,12 @@ describe("wrapTools", () => {
             body: '{"stepId":1,"stepName":"Run tool langChainTool","stepType":"Run","out":"\\"hello\\"","concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
+              "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-forward-upstash-workflow-invoke-count": "0",
               "upstash-method": "POST",
               "upstash-retries": "3",
               "upstash-workflow-init": "false",
@@ -153,11 +157,11 @@ describe("wrapTools", () => {
     expect(Object.entries(wrappedTools).length).toBe(2);
     const wrappedLangChainTool = wrappedTools["langChainTool"];
     // @ts-expect-error description exists but can't resolve the type
-    expect(wrappedLangChainTool.description).toBe(langChainToolDescription)
+    expect(wrappedLangChainTool.description).toBe(langChainToolDescription);
 
     const wrappedAiSDKTool = wrappedTools["aiSDKTool"];
     // @ts-expect-error description exists but can't resolve the type
-    expect(wrappedAiSDKTool.description).toBe(aiSDKToolDescription)
+    expect(wrappedAiSDKTool.description).toBe(aiSDKToolDescription);
   });
 
   test("should skip wrapping when wrap is false", async () => {
@@ -167,10 +171,10 @@ describe("wrapTools", () => {
       description: workflowToolDescription,
       schema: parameters,
       invoke: async ({ expression }) => {
-        await context.sleep(`step ${expression}`, 1000)
+        await context.sleep(`step ${expression}`, 1000);
       },
-      executeAsStep: false
-    })
+      executeAsStep: false,
+    });
 
     const wrappedTools = wrapTools({ context, tools: { nonwrappedWorkflowTool } });
 
@@ -200,7 +204,7 @@ describe("wrapTools", () => {
         token,
         body: [
           {
-            body: "{\"stepId\":1,\"stepName\":\"step hello\",\"stepType\":\"SleepFor\",\"sleepFor\":1000,\"concurrent\":1}",
+            body: '{"stepId":1,"stepName":"step hello","stepType":"SleepFor","sleepFor":1000,"concurrent":1}',
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
@@ -208,17 +212,19 @@ describe("wrapTools", () => {
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-forward-upstash-workflow-invoke-count": "0",
               "upstash-method": "POST",
               "upstash-retries": "3",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
+              "upstash-workflow-sdk-version": "1",
               "upstash-workflow-url": "https://requestcatcher.com/api",
             },
           },
         ],
       },
     });
-  })
+  });
 
   test("should wrap when wrap is true", async () => {
     const context = createContext();
@@ -227,7 +233,7 @@ describe("wrapTools", () => {
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["wrappedWorkflowTool"];
     // @ts-expect-error description exists but can't resolve the type
-    expect(wrappedTool.description).toBe(workflowToolDescription)
+    expect(wrappedTool.description).toBe(workflowToolDescription);
 
     await mockQStashServer({
       execute: () => {
@@ -258,10 +264,12 @@ describe("wrapTools", () => {
               "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-forward-upstash-workflow-invoke-count": "0",
               "upstash-method": "POST",
               "upstash-retries": "3",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
+              "upstash-workflow-sdk-version": "1",
               "upstash-workflow-url": "https://requestcatcher.com/api",
             },
           },

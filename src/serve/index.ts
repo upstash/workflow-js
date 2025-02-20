@@ -1,5 +1,5 @@
 import { makeCancelRequest } from "../client/utils";
-import { SDK_TELEMETRY } from "../constants";
+import { SDK_TELEMETRY, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
@@ -37,11 +37,14 @@ export const serveBase = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
+  TResult = unknown,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   telemetry?: Telemetry,
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
-): { handler: (request: TRequest) => Promise<TResponse> } => {
+): {
+  handler: (request: TRequest) => Promise<TResponse>;
+} => {
   // Prepares options with defaults if they are not provided.
 
   const {
@@ -58,7 +61,7 @@ export const serveBase = <
     retries,
     useJSONContent,
     disableTelemetry,
-    flowControl
+    flowControl,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -133,6 +136,8 @@ export const serveBase = <
       return onStepFinish(workflowRunId, "failure-callback");
     }
 
+    const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
+
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
@@ -146,7 +151,8 @@ export const serveBase = <
       env,
       retries,
       telemetry,
-      flowControl
+      invokeCount,
+      flowControl,
     });
 
     // attempt running routeFunction until the first step
@@ -189,17 +195,23 @@ export const serveBase = <
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
-        ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
+        ? await triggerFirstInvocation({
+            workflowContext,
+            useJSONContent,
+            telemetry,
+            debug,
+            invokeCount,
+          })
         : await triggerRouteFunction({
-          onStep: async () => routeFunction(workflowContext),
-          onCleanup: async () => {
-            await triggerWorkflowDelete(workflowContext, debug);
-          },
-          onCancel: async () => {
-            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-          },
-          debug,
-        });
+            onStep: async () => routeFunction(workflowContext),
+            onCleanup: async (result) => {
+              await triggerWorkflowDelete(workflowContext, result, debug);
+            },
+            onCancel: async () => {
+              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+            },
+            debug,
+          });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
@@ -244,14 +256,15 @@ export const serve = <
   TInitialPayload = unknown,
   TRequest extends Request = Request,
   TResponse extends Response = Response,
+  TResult = unknown,
 >(
-  routeFunction: RouteFunction<TInitialPayload>,
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: Omit<
     WorkflowServeOptions<TResponse, TInitialPayload>,
     "useJSONContent" | "schema" | "initialPayloadParser"
   > &
     ExclusiveValidationOptions<TInitialPayload>
-): { handler: (request: TRequest) => Promise<TResponse> } => {
+): ReturnType<typeof serveBase<TInitialPayload, TRequest, TResponse, TResult>> => {
   return serveBase(
     routeFunction,
     {

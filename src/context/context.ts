@@ -1,6 +1,7 @@
 import type {
   CallResponse,
   CallSettings,
+  LazyInvokeStepParams,
   NotifyStepResponse,
   Telemetry,
   WaitEventOptions,
@@ -13,6 +14,7 @@ import type { BaseLazyStep } from "./steps";
 import {
   LazyCallStep,
   LazyFunctionStep,
+  LazyInvokeStep,
   LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
@@ -157,7 +159,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Settings for controlling the number of active requests
    * and number of requests per second with the same key.
    */
-  public readonly flowControl?: FlowControl
+  public readonly flowControl?: FlowControl;
 
   constructor({
     qstashClient,
@@ -171,7 +173,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env,
     retries,
     telemetry,
-    flowControl
+    invokeCount,
+    flowControl,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -184,7 +187,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env?: Record<string, string | undefined>;
     retries?: number;
     telemetry?: Telemetry;
-    flowControl?: FlowControl
+    invokeCount?: number;
+    flowControl?: FlowControl;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -195,9 +199,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.requestPayload = initialPayload;
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
-    this.flowControl = flowControl
+    this.flowControl = flowControl;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, debug);
+    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
   }
 
   /**
@@ -452,6 +456,18 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } catch {
       return result;
     }
+  }
+
+  public async invoke<TInitialPayload, TResult>(
+    stepName: string,
+    settings: LazyInvokeStepParams<TInitialPayload, TResult>
+  ) {
+    const result = await this.addStep(new LazyInvokeStep(stepName, settings));
+
+    return {
+      ...result,
+      body: (result.body ? JSON.parse(result.body as string) : undefined) as TResult,
+    };
   }
 
   /**
