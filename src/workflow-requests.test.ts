@@ -446,6 +446,10 @@ describe("Workflow Requests", () => {
         initHeaderValue: "true",
         workflowRunId,
         workflowUrl: WORKFLOW_ENDPOINT,
+        flowControl: {
+          key: "initial-key",
+          parallelism: 2,
+        },
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
@@ -453,6 +457,8 @@ describe("Workflow Requests", () => {
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        "Upstash-Flow-Control-Key": "initial-key",
+        "Upstash-Flow-Control-Value": "parallelism=2",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -472,6 +478,10 @@ describe("Workflow Requests", () => {
           stepType: stepType,
           concurrent: 1,
         },
+        flowControl: {
+          key: "step-key",
+          ratePerSecond: 3,
+        },
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
@@ -479,6 +489,8 @@ describe("Workflow Requests", () => {
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        "Upstash-Flow-Control-Key": "step-key",
+        "Upstash-Flow-Control-Value": "rate=3",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -508,6 +520,16 @@ describe("Workflow Requests", () => {
           callHeaders,
           callBody,
         },
+        flowControl: {
+          key: "regular-flow-key",
+          ratePerSecond: 3,
+          parallelism: 4
+        },
+        callFlowControl: {
+          key: "call-flow-key",
+          ratePerSecond: 5,
+          parallelism: 6
+        }
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
@@ -529,6 +551,10 @@ describe("Workflow Requests", () => {
         "Upstash-Callback-Workflow-Url": WORKFLOW_ENDPOINT,
         "Upstash-Forward-my-custom-header": "my-custom-header-value",
         "Upstash-Workflow-CallType": "toCallback",
+        "Upstash-Callback-Flow-Control-Key": "regular-flow-key",
+        "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3",
+        "Upstash-Flow-Control-Key": "call-flow-key",
+        "Upstash-Flow-Control-Value": "parallelism=6, rate=5",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -541,6 +567,10 @@ describe("Workflow Requests", () => {
         workflowUrl: WORKFLOW_ENDPOINT,
         userHeaders: new Headers() as Headers,
         failureUrl,
+        flowControl: {
+          key: "failure-key",
+          parallelism: 2,
+        },
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
@@ -555,6 +585,10 @@ describe("Workflow Requests", () => {
         "Upstash-Failure-Callback-Workflow-Runid": workflowRunId,
         "Upstash-Failure-Callback-Workflow-Url": "https://requestcatcher.com/api",
         "Upstash-Failure-Callback": failureUrl,
+        "Upstash-Failure-Callback-Flow-Control-Key": "failure-key",
+        "Upstash-Failure-Callback-Flow-Control-Value": "parallelism=2",
+        "Upstash-Flow-Control-Key": "failure-key",
+        "Upstash-Flow-Control-Value": "parallelism=2",
       });
       expect(timeoutHeaders).toBeUndefined();
     });
@@ -572,6 +606,10 @@ describe("Workflow Requests", () => {
           waitEventId: "wait event id",
           timeout: "20s",
         },
+        flowControl: {
+          key: "wait-key",
+          parallelism: 2,
+        }
       });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",
@@ -580,6 +618,8 @@ describe("Workflow Requests", () => {
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
+        "Upstash-Flow-Control-Key": "wait-key",
+        "Upstash-Flow-Control-Value": "parallelism=2"
       });
       expect(timeoutHeaders).toEqual({
         "Upstash-Workflow-Init": ["false"],
@@ -590,6 +630,12 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-Runid": [workflowRunId],
         "Upstash-Workflow-CallType": ["step"],
         "Content-Type": ["application/json"],
+        "Upstash-Flow-Control-Key": [
+          "wait-key"
+        ],
+        "Upstash-Flow-Control-Value": [
+          "parallelism=2"
+        ],
       });
     });
   });

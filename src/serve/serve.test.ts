@@ -44,6 +44,10 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         retries: 1,
+        flowControl: {
+          key: "my-key",
+          parallelism: 1
+        }
       }
     );
 
@@ -69,14 +73,21 @@ describe("serve", () => {
           [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: "1",
           "upstash-failure-callback-retries": "1",
           "upstash-retries": "1",
+          "Upstash-Flow-Control-Key": "my-key",
+          "Upstash-Flow-Control-Value": "parallelism=1",
         },
       },
     });
   });
 
   test("path endpoint", async () => {
+    const flowControl = {
+      key: "my-key",
+      ratePerSecond: 3
+    }
     const { handler: endpoint } = serve<string>(
       async (context) => {
+        expect(context.flowControl).toEqual(flowControl)
         const input = context.requestPayload;
 
         const result1 = await context.run("step1", async () => {
@@ -93,6 +104,7 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         disableTelemetry: true,
+        flowControl
       }
     );
 
@@ -147,6 +159,8 @@ describe("serve", () => {
               "upstash-method": "POST",
               "upstash-workflow-init": "true",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              "upstash-flow-control-key": "my-key",
+              "upstash-flow-control-value": "rate=3",
             },
           },
         },
@@ -174,6 +188,8 @@ describe("serve", () => {
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                  "upstash-flow-control-key": "my-key",
+                  "upstash-flow-control-value": "rate=3",
                 },
               },
             ],
@@ -202,6 +218,8 @@ describe("serve", () => {
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                  "upstash-flow-control-key": "my-key",
+                  "upstash-flow-control-value": "rate=3",
                 },
                 body: JSON.stringify(steps[1]),
               },

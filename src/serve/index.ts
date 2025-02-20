@@ -58,6 +58,7 @@ export const serveBase = <
     retries,
     useJSONContent,
     disableTelemetry,
+    flowControl
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -120,6 +121,7 @@ export const serveBase = <
       failureFunction,
       env,
       retries,
+      flowControl,
       debug
     );
     if (failureCheck.isErr()) {
@@ -144,6 +146,7 @@ export const serveBase = <
       env,
       retries,
       telemetry,
+      flowControl
     });
 
     // attempt running routeFunction until the first step
@@ -173,6 +176,7 @@ export const serveBase = <
       workflowUrl,
       failureUrl: workflowFailureUrl,
       retries,
+      flowControl,
       telemetry,
       debug,
     });
@@ -187,15 +191,15 @@ export const serveBase = <
       const result = isFirstInvocation
         ? await triggerFirstInvocation({ workflowContext, useJSONContent, telemetry, debug })
         : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
-            onCleanup: async () => {
-              await triggerWorkflowDelete(workflowContext, debug);
-            },
-            onCancel: async () => {
-              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-            },
-            debug,
-          });
+          onStep: async () => routeFunction(workflowContext),
+          onCleanup: async () => {
+            await triggerWorkflowDelete(workflowContext, debug);
+          },
+          onCancel: async () => {
+            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+          },
+          debug,
+        });
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up

@@ -1,4 +1,4 @@
-import type { Receiver } from "@upstash/qstash";
+import type { FlowControl, Receiver } from "@upstash/qstash";
 import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
@@ -214,7 +214,7 @@ export type WorkflowServeOptions<
   /**
    * Number of retries to use in workflow requests
    *
-   * 3 by default
+   * @default 3
    */
   retries?: number;
   /**
@@ -228,8 +228,15 @@ export type WorkflowServeOptions<
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
    * Set `disableTelemetry` to disable this behavior.
+   * 
+   * @default false
    */
   disableTelemetry?: boolean;
+  /**
+   * Settings for controlling the number of active requests
+   * and number of requests per second with the same key.
+   */
+  flowControl?: FlowControl
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -372,6 +379,7 @@ export type CallSettings<TBody = unknown> = {
   headers?: Record<string, string>;
   retries?: number;
   timeout?: Duration | number;
+  flowControl?: FlowControl;
 };
 
 export type HeaderParams = {
@@ -405,6 +413,11 @@ export type HeaderParams = {
    * Only needed/used when the step is a waitForEvent step
    */
   telemetry?: Telemetry;
+  /**
+   * Settings for controlling the number of active requests
+   * and number of requests per second with the same key.
+   */
+  flowControl?: FlowControl;
 } & (
     | {
       /**
@@ -419,6 +432,13 @@ export type HeaderParams = {
        * timeout duration in context.call
        */
       callTimeout?: number | Duration;
+      /**
+       * Settings for controlling the number of active requests
+       * and number of requests per second with the same key.
+       * 
+       * will be passed in context.call.
+       */
+      callFlowControl?: FlowControl;
     }
     | {
       /**
@@ -438,5 +458,12 @@ export type HeaderParams = {
        * set to never because this is not a context.call step
        */
       callTimeout?: never;
+      /**
+       * Settings for controlling the number of active requests
+       * and number of requests per second with the same key.
+       * 
+       * will be passed in context.call.
+       */
+      callFlowControl?: never;
     }
   );

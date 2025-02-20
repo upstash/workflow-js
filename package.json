@@ -102,7 +102,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.15",
-    "@upstash/qstash": "^2.7.20",
+    "@upstash/qstash": "^2.7.22",
     "ai": "^4.0.30",
     "zod": "^3.24.1"
   },
