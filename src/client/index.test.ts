@@ -272,7 +272,6 @@ describe("workflow client", () => {
       });
     });
 
-    // skipping the live test because it takes too long and is still flaky
     test(
       "should get logs - live",
       async () => {
@@ -385,5 +384,95 @@ describe("workflow client", () => {
         timeout: 60000,
       }
     );
+
+    test("should include failure logs in case of failure", async () => {
+      const qstashClient = new QStashClient({
+        baseUrl: process.env.QSTASH_URL,
+        token: process.env.QSTASH_TOKEN!,
+      });
+      const liveClient = new Client({
+        baseUrl: process.env.QSTASH_URL,
+        token: process.env.QSTASH_TOKEN!,
+      })
+
+      const body = "some-body"
+      const workflowRunId = "wfr_some-workflow-run-id-" + nanoid()
+
+      const result = await triggerFirstInvocation({
+        workflowContext: new WorkflowContext({
+          qstashClient,
+          headers: new Headers({}) as Headers,
+          initialPayload: body,
+          workflowRunId,
+          steps: [],
+          url: "https://httpstat.us/400",
+          failureUrl: "https://httpstat.us/200",
+          retries: 0
+        })
+      })
+      expect(result.isOk()).toBe(true)
+
+      await eventually(
+        async () => {
+          const logs = await liveClient.logs({
+            workflowRunId
+          })
+
+          expect(logs.cursor).toBe("")
+          expect(logs.runs.length).toBe(1)
+          expect(logs.runs[0]).toEqual({
+            workflowRunId,
+            workflowUrl: "https://httpstat.us/400",
+            workflowState: "RUN_FAILED",
+            workflowRunCreatedAt: expect.any(Number),
+            workflowRunCompletedAt: expect.any(Number),
+            failureFunction: {
+              messageId: expect.any(String),
+              dlqId: expect.any(String),
+              failResponse: "400 Bad Request",
+              failStatus: 400,
+              url: "https://httpstat.us/400",
+              state: "DELIVERED",
+              failHeaders: expect.any(Object),
+            },
+            steps: [
+              {
+                steps: [
+                  {
+                    callType: "step",
+                    concurrent: 1,
+                    createdAt: expect.any(Number),
+                    headers: {
+                      "Upstash-Workflow-Sdk-Version": [
+                        "1"
+                      ],
+                    },
+                    messageId: expect.any(String),
+                    out: "some-body",
+                    state: "STEP_SUCCESS",
+                    stepName: "init",
+                    stepType: "Initial",
+                  },
+                ],
+                type: "sequential",
+              },
+              {
+                steps: [
+                  {
+                    state: "STEP_FAILED",
+                    messageId: expect.any(String),
+                  },
+                ],
+                type: "next",
+              },
+            ],
+          })
+        },
+        { timeout: 30_000, interval: 100 }
+      );
+
+    }, {
+      timeout: 60000
+    })
   });
 });

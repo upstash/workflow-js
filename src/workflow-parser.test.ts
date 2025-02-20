@@ -76,7 +76,7 @@ describe("Workflow Parser", () => {
       expect(throws).toThrow(
         new WorkflowError(
           `Incompatible workflow sdk protocol version.` +
-            ` Expected ${WORKFLOW_PROTOCOL_VERSION}, got ${requestProtocol} from the request.`
+          ` Expected ${WORKFLOW_PROTOCOL_VERSION}, got ${requestProtocol} from the request.`
         )
       );
     });
@@ -763,7 +763,8 @@ describe("Workflow Parser", () => {
         routeFunction,
         undefined,
         {},
-        3
+        3,
+        undefined
       );
       expect(result1.isOk()).toBeTrue();
       expect(result1.isOk() && result1.value === "not-failure-callback").toBeTrue();
@@ -777,7 +778,8 @@ describe("Workflow Parser", () => {
         routeFunction,
         failureFunction,
         {},
-        0
+        0,
+        undefined
       );
       expect(result2.isOk()).toBeTrue();
       expect(result2.isOk() && result2.value === "not-failure-callback").toBeTrue();
@@ -806,14 +808,15 @@ describe("Workflow Parser", () => {
         routeFunction,
         undefined,
         {},
-        0
+        0,
+        undefined
       );
       expect(result.isErr()).toBeTrue();
       expect(result.isErr() && result.error.name).toBe(WorkflowError.name);
       expect(result.isErr() && result.error.message).toBe(
         "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
+        " but a failureFunction is not provided in serve options." +
+        " Either provide a failureUrl or a failureFunction."
       );
       expect(called).toBeFalse(); // not called since we threw before auth check
     });
@@ -836,7 +839,8 @@ describe("Workflow Parser", () => {
         routeFunction,
         failureFunction,
         {},
-        3
+        3,
+        undefined
       );
       expect(result.isErr()).toBeTrue();
       expect(result.isErr() && result.error.message).toBe("my-error");
@@ -868,7 +872,8 @@ describe("Workflow Parser", () => {
         routeFunction,
         failureFunction,
         {},
-        0
+        0,
+        undefined
       );
       console.log(result);
 
@@ -882,7 +887,7 @@ describe("Workflow Parser", () => {
       const routeFunctionWithoutSteps = async (context: WorkflowContext) => {
         called = true;
       };
-      const failureFunction = async () => {};
+      const failureFunction = async () => { };
 
       const result = await handleFailure(
         failureRequest,
@@ -892,7 +897,8 @@ describe("Workflow Parser", () => {
         routeFunctionWithoutSteps,
         failureFunction,
         {},
-        3
+        3,
+        undefined
       );
 
       expect(result.isErr());
@@ -912,7 +918,7 @@ describe("schema validation in serve", () => {
     expectedStatus: number,
     expectedError?: string
   ) => {
-    const { POST } = serve(async () => {}, {
+    const { POST } = serve(async () => { }, {
       ...options,
       env: {
         QSTASH_TOKEN: process.env.QSTASH_TOKEN,

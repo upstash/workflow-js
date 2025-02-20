@@ -1,4 +1,4 @@
-import type { Client, HTTPMethods } from "@upstash/qstash";
+import type { Client, FlowControl, HTTPMethods } from "@upstash/qstash";
 import type {
   InvokeStepResponse,
   LazyInvokeStepParams,
@@ -166,6 +166,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   private readonly headers: Record<string, string>;
   public readonly retries: number;
   public readonly timeout?: number | Duration;
+  public readonly flowControl?: FlowControl;
   stepType: StepType = "Call";
 
   constructor(
@@ -175,7 +176,8 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     body: TBody,
     headers: Record<string, string>,
     retries: number,
-    timeout: number | Duration | undefined
+    timeout: number | Duration | undefined,
+    flowControl: FlowControl | undefined
   ) {
     super(stepName);
     this.url = url;
@@ -184,6 +186,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     this.headers = headers;
     this.retries = retries;
     this.timeout = timeout;
+    this.flowControl = flowControl;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {

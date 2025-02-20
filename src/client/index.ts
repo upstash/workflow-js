@@ -1,5 +1,5 @@
 import { NotifyResponse, Waiter } from "../types";
-import { Client as QStashClient } from "@upstash/qstash";
+import { FlowControl, Client as QStashClient } from "@upstash/qstash";
 import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
@@ -198,12 +198,14 @@ export class Client {
     headers,
     workflowRunId,
     retries,
+    flowControl,
   }: {
     url: string;
     body?: unknown;
     headers?: Record<string, string>;
     workflowRunId?: string;
     retries?: number;
+    flowControl?: FlowControl
   }): Promise<{ workflowRunId: string }> {
     const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
     const context = new WorkflowContext({
@@ -216,6 +218,7 @@ export class Client {
       workflowRunId: finalWorkflowRunId,
       retries,
       telemetry: undefined, // can't know workflow telemetry here
+      flowControl,
     });
     const result = await triggerFirstInvocation({
       workflowContext: context,

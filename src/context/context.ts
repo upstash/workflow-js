@@ -26,6 +26,7 @@ import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { WorkflowAgents } from "../agents";
+import { FlowControl } from "@upstash/qstash";
 
 /**
  * Upstash Workflow context
@@ -154,6 +155,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Number of retries
    */
   public readonly retries: number;
+  /**
+   * Settings for controlling the number of active requests
+   * and number of requests per second with the same key.
+   */
+  public readonly flowControl?: FlowControl
 
   constructor({
     qstashClient,
@@ -168,6 +174,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     retries,
     telemetry,
     invokeCount,
+    flowControl
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -181,6 +188,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     retries?: number;
     telemetry?: Telemetry;
     invokeCount?: number;
+    flowControl?: FlowControl
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -191,6 +199,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.requestPayload = initialPayload;
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
+    this.flowControl = flowControl
 
     this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
   }
@@ -307,7 +316,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: CallSettings<TBody>
   ): Promise<CallResponse<TResult>> {
-    const { url, method = "GET", body, headers = {}, retries = 0, timeout } = settings;
+    const { url, method = "GET", body, headers = {}, retries = 0, timeout, flowControl } = settings;
 
     const result = await this.addStep(
       new LazyCallStep<CallResponse<string> | string>(
@@ -317,7 +326,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
         body,
         headers,
         retries,
-        timeout
+        timeout,
+        flowControl
       )
     );
 

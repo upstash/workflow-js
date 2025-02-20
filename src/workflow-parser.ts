@@ -190,7 +190,7 @@ export const validateRequest = (
   if (!isFirstInvocation && versionHeader !== WORKFLOW_PROTOCOL_VERSION) {
     throw new WorkflowError(
       `Incompatible workflow sdk protocol version. Expected ${WORKFLOW_PROTOCOL_VERSION},` +
-        ` got ${versionHeader} from the request.`
+      ` got ${versionHeader} from the request.`
     );
   }
 
@@ -226,17 +226,17 @@ export const parseRequest = async (
   debug?: WorkflowLogger
 ): Promise<
   | {
-      rawInitialPayload: string;
-      steps: Step[];
-      isLastDuplicate: boolean;
-      workflowRunEnded: false;
-    }
+    rawInitialPayload: string;
+    steps: Step[];
+    isLastDuplicate: boolean;
+    workflowRunEnded: false;
+  }
   | {
-      rawInitialPayload: undefined;
-      steps: undefined;
-      isLastDuplicate: undefined;
-      workflowRunEnded: true;
-    }
+    rawInitialPayload: undefined;
+    steps: undefined;
+    isLastDuplicate: undefined;
+    workflowRunEnded: true;
+  }
 > => {
   if (isFirstInvocation) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
@@ -308,6 +308,7 @@ export const handleFailure = async <TInitialPayload>(
   failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
   env: WorkflowServeOptions["env"],
   retries: WorkflowServeOptions["retries"],
+  flowControl: WorkflowServeOptions["flowControl"],
   debug?: WorkflowLogger
 ): Promise<Ok<"is-failure-callback" | "not-failure-callback", never> | Err<never, Error>> => {
   if (request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true") {
@@ -318,8 +319,8 @@ export const handleFailure = async <TInitialPayload>(
     return err(
       new WorkflowError(
         "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
+        " but a failureFunction is not provided in serve options." +
+        " Either provide a failureUrl or a failureFunction."
       )
     );
   }
@@ -353,6 +354,7 @@ export const handleFailure = async <TInitialPayload>(
       debug,
       env,
       retries,
+      flowControl,
       telemetry: undefined, // not going to make requests in authentication check
     });
 
