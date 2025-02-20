@@ -159,7 +159,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Settings for controlling the number of active requests
    * and number of requests per second with the same key.
    */
-  public readonly flowControl?: FlowControl
+  public readonly flowControl?: FlowControl;
 
   constructor({
     qstashClient,
@@ -174,7 +174,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     retries,
     telemetry,
     invokeCount,
-    flowControl
+    flowControl,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -188,7 +188,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     retries?: number;
     telemetry?: Telemetry;
     invokeCount?: number;
-    flowControl?: FlowControl
+    flowControl?: FlowControl;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -199,7 +199,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.requestPayload = initialPayload;
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
-    this.flowControl = flowControl
+    this.flowControl = flowControl;
 
     this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
   }

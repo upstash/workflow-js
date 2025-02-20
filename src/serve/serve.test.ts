@@ -50,8 +50,8 @@ describe("serve", () => {
         schema: z.string(),
         flowControl: {
           key: "my-key",
-          parallelism: 1
-        }
+          parallelism: 1,
+        },
       }
     );
 
@@ -87,11 +87,11 @@ describe("serve", () => {
   test("path endpoint", async () => {
     const flowControl = {
       key: "my-key",
-      ratePerSecond: 3
-    }
+      ratePerSecond: 3,
+    };
     const { handler: endpoint } = serve<string>(
       async (context) => {
-        expect(context.flowControl).toEqual(flowControl)
+        expect(context.flowControl).toEqual(flowControl);
         const input = context.requestPayload;
 
         const result1 = await context.run("step1", async () => {
@@ -108,7 +108,7 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         disableTelemetry: true,
-        flowControl
+        flowControl,
       }
     );
 
@@ -134,9 +134,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-            body: JSON.stringify(initialPayload),
-            method: "POST",
-          })
+              body: JSON.stringify(initialPayload),
+              method: "POST",
+            })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");

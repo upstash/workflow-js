@@ -238,7 +238,7 @@ export type WorkflowServeOptions<
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
    * Set `disableTelemetry` to disable this behavior.
-   * 
+   *
    * @default false
    */
   disableTelemetry?: boolean;
@@ -246,7 +246,7 @@ export type WorkflowServeOptions<
    * Settings for controlling the number of active requests
    * and number of requests per second with the same key.
    */
-  flowControl?: FlowControl
+  flowControl?: FlowControl;
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -255,13 +255,13 @@ type ValidationOptions<TInitialPayload> = {
 };
 export type ExclusiveValidationOptions<TInitialPayload> =
   | {
-    schema?: ValidationOptions<TInitialPayload>["schema"];
-    initialPayloadParser?: never;
-  }
+      schema?: ValidationOptions<TInitialPayload>["schema"];
+      initialPayloadParser?: never;
+    }
   | {
-    schema?: never;
-    initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
-  };
+      schema?: never;
+      initialPayloadParser?: ValidationOptions<TInitialPayload>["initialPayloadParser"];
+    };
 
 export type Telemetry = {
   /**
@@ -433,7 +433,7 @@ export type HeaderParams = {
    */
   flowControl?: FlowControl;
 } & (
-    | {
+  | {
       /**
        * step to generate headers for
        */
@@ -449,12 +449,12 @@ export type HeaderParams = {
       /**
        * Settings for controlling the number of active requests
        * and number of requests per second with the same key.
-       * 
+       *
        * will be passed in context.call.
        */
       callFlowControl?: FlowControl;
     }
-    | {
+  | {
       /**
        * step not passed. Either first invocation or simply getting headers for
        * third party callack.
@@ -475,12 +475,12 @@ export type HeaderParams = {
       /**
        * Settings for controlling the number of active requests
        * and number of requests per second with the same key.
-       * 
+       *
        * will be passed in context.call.
        */
       callFlowControl?: never;
     }
-  );
+);
 
 export type InvokeWorkflowRequest = {
   workflowUrl: string;

@@ -205,7 +205,7 @@ export class Client {
     headers?: Record<string, string>;
     workflowRunId?: string;
     retries?: number;
-    flowControl?: FlowControl
+    flowControl?: FlowControl;
   }): Promise<{ workflowRunId: string }> {
     const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
     const context = new WorkflowContext({

@@ -148,9 +148,18 @@ describe("test steps", () => {
     };
     const flowControl: FlowControl = {
       key: "my-key",
-      parallelism: 3
-    }
-    const step = new LazyCallStep(stepName, callUrl, callMethod, callBody, callHeaders, 14, 30, flowControl);
+      parallelism: 3,
+    };
+    const step = new LazyCallStep(
+      stepName,
+      callUrl,
+      callMethod,
+      callBody,
+      callHeaders,
+      14,
+      30,
+      flowControl
+    );
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -306,7 +315,7 @@ describe("test steps", () => {
     });
 
     test("should throw when step name is empty string ", () => {
-      const throws = () => new LazyFunctionStep("", () => { });
+      const throws = () => new LazyFunctionStep("", () => {});
       expect(throws).toThrow(
         new WorkflowError(
           "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."

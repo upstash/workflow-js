@@ -529,13 +529,13 @@ describe("Workflow Requests", () => {
         flowControl: {
           key: "regular-flow-key",
           ratePerSecond: 3,
-          parallelism: 4
+          parallelism: 4,
         },
         callFlowControl: {
           key: "call-flow-key",
           ratePerSecond: 5,
-          parallelism: 6
-        }
+          parallelism: 6,
+        },
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
@@ -620,7 +620,7 @@ describe("Workflow Requests", () => {
         flowControl: {
           key: "wait-key",
           parallelism: 2,
-        }
+        },
       });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",
@@ -632,7 +632,7 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-CallType": "step",
         "content-type": "application/json",
         "Upstash-Flow-Control-Key": "wait-key",
-        "Upstash-Flow-Control-Value": "parallelism=2"
+        "Upstash-Flow-Control-Value": "parallelism=2",
       });
       expect(timeoutHeaders).toEqual({
         "Upstash-Workflow-Init": ["false"],
