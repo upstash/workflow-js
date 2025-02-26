@@ -224,7 +224,7 @@ jobs:
       - name: Run example
         run: npm run dev &
         working-directory: examples/image-gen-with-workflow
-  
+
   agents-researcher-local-build:
     needs:
       - local-tests

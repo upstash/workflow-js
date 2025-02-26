@@ -135,7 +135,7 @@ export class AutoExecutor {
         step,
         stepCount: this.stepCount,
       });
-      return step.out as TResult;
+      return lazyStep.parseOut(step.out);
     }
 
     const resultStep = await lazyStep.getResultStep(NO_CONCURRENCY, this.stepCount);
@@ -268,7 +268,9 @@ export class AutoExecutor {
 
         validateParallelSteps(parallelSteps, parallelResultSteps);
 
-        return parallelResultSteps.map((step) => step.out) as TResults;
+        return parallelResultSteps.map((step, index) =>
+          parallelSteps[index].parseOut(step.out)
+        ) as TResults;
       }
     }
     const fillValue = undefined;

@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
-import { FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
+import { DELETE_RESULT, FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
 
 const testHeader = `test-header-foo`
 const headerValue = `header-foo`
@@ -38,18 +38,18 @@ export const { POST, GET } = testServe(
       // check payload after first step because we can't check above
       expect(input, payload);
       expect(postStatus, 201)
-      
-      expect(postResult as string, 
+
+      expect(postResult as string,
         "called POST 'third-party-result' 'post-header-value-x' '\"post-payload\"'"
       );
-      
+
       await context.sleep("sleep 1", 2);
-      
+
       const { body: getResult, header: getHeaders, status: getStatus } = await context.call<string>("get call", {
         url: thirdPartyEndpoint,
         headers: getHeader,
       });
-      
+
       expect(getStatus, 200)
       expect(getHeaders[GET_HEADER][0], GET_HEADER_VALUE)
       expect(getResult, "called GET 'third-party-result' 'get-header-value-x'");
@@ -84,7 +84,7 @@ export const { POST, GET } = testServe(
 
       expect(deleteStatus, 400)
       expect(typeof deleteBody, "object");
-      expect(JSON.stringify(deleteBody), '{"foo":"bar","zed":2}');
+      expect(JSON.stringify(deleteBody), JSON.stringify(DELETE_RESULT));
 
       await saveResult(
         context,

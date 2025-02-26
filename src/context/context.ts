@@ -237,7 +237,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   ): Promise<TResult> {
     const wrappedStepFunction = (() =>
       this.executor.wrapStep(stepName, stepFunction)) as StepFunction<TResult>;
-    return this.addStep<TResult>(new LazyFunctionStep(stepName, wrappedStepFunction));
+    return await this.addStep<TResult>(new LazyFunctionStep(stepName, wrappedStepFunction));
   }
 
   /**
@@ -316,51 +316,28 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: CallSettings<TBody>
   ): Promise<CallResponse<TResult>> {
-    const { url, method = "GET", body, headers = {}, retries = 0, timeout, flowControl } = settings;
+    const {
+      url,
+      method = "GET",
+      body: requestBody,
+      headers = {},
+      retries = 0,
+      timeout,
+      flowControl,
+    } = settings;
 
-    const result = await this.addStep(
-      new LazyCallStep<CallResponse<string> | string>(
+    return await this.addStep(
+      new LazyCallStep<TResult>(
         stepName,
         url,
         method,
-        body,
+        requestBody,
         headers,
         retries,
         timeout,
         flowControl
       )
     );
-
-    // <for backwards compatibity>
-    // if you transition to upstash/workflow from upstash/qstash,
-    // the out field in the steps will be the body of the response.
-    // we need to handle them explicitly here
-    if (typeof result === "string") {
-      try {
-        const body = JSON.parse(result);
-        return {
-          status: 200,
-          header: {},
-          body,
-        };
-      } catch {
-        return {
-          status: 200,
-          header: {},
-          body: result as TResult,
-        };
-      }
-    }
-    // </for backwards compatibity>
-
-    try {
-      return {
-        ...result,
-        body: JSON.parse(result.body as string),
-      };
-    } catch {
-      return result as CallResponse<TResult>;
-    }
   }
 
   /**
@@ -406,16 +383,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
     const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
 
-    const result = await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
-
-    try {
-      return {
-        ...result,
-        eventData: JSON.parse(result.eventData as string),
-      };
-    } catch {
-      return result;
-    }
+    return await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
   }
 
   /**
@@ -444,30 +412,16 @@ export class WorkflowContext<TInitialPayload = unknown> {
     eventId: string,
     eventData: unknown
   ): Promise<NotifyStepResponse> {
-    const result = await this.addStep(
+    return await this.addStep(
       new LazyNotifyStep(stepName, eventId, eventData, this.qstashClient.http)
     );
-
-    try {
-      return {
-        ...result,
-        eventData: JSON.parse(result.eventData as string),
-      };
-    } catch {
-      return result;
-    }
   }
 
   public async invoke<TInitialPayload, TResult>(
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
-    const result = await this.addStep(new LazyInvokeStep(stepName, settings));
-
-    return {
-      ...result,
-      body: (result.body ? JSON.parse(result.body as string) : undefined) as TResult,
-    };
+    return await this.addStep(new LazyInvokeStep(stepName, settings));
   }
 
   /**

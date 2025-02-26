@@ -256,6 +256,8 @@ describe("serveMany", () => {
               "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
+              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
+              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
@@ -279,6 +281,8 @@ describe("serveMany", () => {
           },
           headers: {
             [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "2",
+            "Upstash-Flow-Control-Key": "customFlowControl",
+            "Upstash-Flow-Control-Value": "parallelism=4",
           },
         },
       });

@@ -46,7 +46,7 @@ describe("auto-executor", () => {
     stepId: 1,
     stepName: "attemptCharge",
     stepType: "Run",
-    out: { input: initialPayload, success: false },
+    out: JSON.stringify({ input: initialPayload, success: false }),
     concurrent: 1,
   };
 
@@ -134,7 +134,6 @@ describe("auto-executor", () => {
               },
               body: JSON.stringify({
                 ...singleStep,
-                out: JSON.stringify(singleStep.out),
               }),
             },
           ],
