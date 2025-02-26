@@ -1,7 +1,7 @@
 export type AgentName =
   | 'Wikipedia'
   | 'WolframAlpha'
-  | 'DuckDuckGo'
+  | 'Exa'
   | 'Cross Reference';
 
 export type StepRecord = {

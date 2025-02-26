@@ -31,12 +31,12 @@ const Page = () => {
   const [agentStates, setAgentStates] = useState<{
     Wikipedia: false | 'loading' | StepRecord[];
     WolframAlpha: false | 'loading' | StepRecord[];
-    DuckDuckGo: false | 'loading' | StepRecord[];
+    Exa: false | 'loading' | StepRecord[];
     'Cross Reference': false | 'loading' | StepRecord[];
   }>({
     Wikipedia: false,
     WolframAlpha: false,
-    DuckDuckGo: false,
+    Exa: false,
     'Cross Reference': false
   });
 
@@ -57,7 +57,7 @@ const Page = () => {
       setAgentStates({
         Wikipedia: false,
         WolframAlpha: false,
-        DuckDuckGo: false,
+        Exa: false,
         'Cross Reference': false
       });
       const response = await fetch('/api/research', {
@@ -105,7 +105,7 @@ const Page = () => {
             ...prevStates,
             Wikipedia: result.wikipediaOutput || prevStates.Wikipedia,
             WolframAlpha: result.wolframAlphaOutput || prevStates.WolframAlpha,
-            DuckDuckGo: result.searchOutput || prevStates.DuckDuckGo,
+            Exa: result.searchOutput || prevStates.Exa,
             'Cross Reference':
               result.crossReferenceOutput || prevStates['Cross Reference']
           }));
@@ -121,7 +121,7 @@ const Page = () => {
             } else if (result.wolframAlphaOutput) {
               setAgentInfoDisplay('WolframAlpha');
             } else if (result.searchOutput) {
-              setAgentInfoDisplay('DuckDuckGo');
+              setAgentInfoDisplay('Exa');
             }
             document
               .getElementById('intermediate-output')
@@ -335,17 +335,17 @@ const Page = () => {
                     />
                   </AgentBlock>
                   <AgentBlock
-                    name="DuckDuckGo"
+                    name="Exa"
                     agentInfoDisplay={agentInfoDisplay}
                     setAgentInfoDisplay={setAgentInfoDisplay}
-                    isDisabled={agentStates['DuckDuckGo'] === false}
+                    isDisabled={agentStates['Exa'] === false}
                   >
                     <Img
-                      src="/icons/duckduckgo.png"
-                      width={40}
-                      height={40}
-                      alt="DuckDuckGo"
-                      className={agentStates['DuckDuckGo'] === false ? 'opacity-60' : 'opacity-100'}
+                      src="/icons/exa.jpg"
+                      width={38}
+                      height={38}
+                      alt="Exa"
+                      className={agentStates['Exa'] === false ? 'opacity-60 rounded-md' : 'opacity-100 rounded-md'}
                     />
                   </AgentBlock>
                 </div>
@@ -419,7 +419,7 @@ const Page = () => {
 
               <Img
                 className="block mt-4"
-                src="/ss.png"
+                src="/screenshot.png"
                 width={1564}
                 height={476}
                 alt="s"
