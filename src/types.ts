@@ -497,6 +497,7 @@ export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
   >;
   body: TInitiaPayload; // TODO make optional
   workflowRunId?: string;
+  waitForResult?: boolean;
 } & Pick<CallSettings, "retries" | "headers" | "flowControl">;
 
 export type InvokeStepResponse<TBody> = {

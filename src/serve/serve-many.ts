@@ -150,7 +150,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
   });
   invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
-  const newUrl = context.url.replace(/[^/]+$/, workflowId);
+  const newUrl = getNewUrlFromWorkflowId(context.url, workflowId);
 
   const { headers: triggerHeaders } = getHeaders({
     initHeaderValue: "true",
@@ -184,4 +184,8 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     body: JSON.stringify(request),
     url: newUrl,
   });
+};
+
+export const getNewUrlFromWorkflowId = (url: string, workflowId: string) => {
+  return url.replace(/[^/]+$/, workflowId);
 };

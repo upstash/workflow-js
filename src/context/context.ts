@@ -27,6 +27,7 @@ import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { WorkflowAgents } from "../agents";
 import { FlowControl } from "@upstash/qstash";
+import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 
 /**
  * Upstash Workflow context
@@ -462,6 +463,18 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
+    const { waitForResult } = settings;
+    if (!waitForResult) {
+      return await this.call(stepName, {
+        url: getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId!),
+        method: "POST",
+        body: JSON.stringify(settings.body),
+        headers: settings.headers,
+        retries: settings.retries,
+        flowControl: settings.flowControl,
+      });
+    }
+
     const result = await this.addStep(new LazyInvokeStep(stepName, settings));
 
     return {
