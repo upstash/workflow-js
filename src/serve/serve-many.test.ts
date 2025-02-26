@@ -148,7 +148,7 @@ describe("serveMany", () => {
 
     const workflowTwo = createWorkflow(
       async (context: WorkflowContext<string>) => {
-        await context.invoke("invoke step two", {
+        const result = await context.invoke("invoke step two", {
           workflow: workflowOne,
           body: 2,
           flowControl: {
@@ -156,6 +156,29 @@ describe("serveMany", () => {
             parallelism: 4,
           },
         });
+
+        const _body = result.body;
+        const _isCanceled = result.isCanceled;
+        const _isFailed = result.isFailed;
+
+        console.log(_body, _isCanceled, _isFailed);
+
+        // just checking the type. code won't reach here.
+        const secondResult = await context.invoke("invoke step two", {
+          workflow: workflowOne,
+          body: 2,
+          flowControl: {
+            key: "customFlowControl",
+            parallelism: 4,
+          },
+          waitForResult: true,
+        });
+
+        const _secondBody = secondResult.body;
+        const _secondIsCanceled = secondResult.isCanceled;
+        const _secondIsFailed = secondResult.isFailed;
+
+        console.log(_secondBody, _secondIsCanceled, _secondIsFailed);
       },
       {
         flowControl: {
@@ -168,11 +191,17 @@ describe("serveMany", () => {
 
     const workflowThree = createWorkflow(
       async (context: WorkflowContext<string>) => {
-        await context.invoke("invoke step two", {
+        const result = await context.invoke("invoke step two", {
           workflow: workflowOne,
           body: 2,
           waitForResult: false,
         });
+
+        const _body = result.body;
+        const _header = result.header;
+        const _status = result.status;
+
+        console.log(_body, _header, _status);
       },
       {
         flowControl: {

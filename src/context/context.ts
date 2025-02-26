@@ -1,6 +1,7 @@
 import type {
   CallResponse,
   CallSettings,
+  InvokeStepResponse,
   LazyInvokeStepParams,
   NotifyStepResponse,
   Telemetry,
@@ -461,8 +462,16 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
   public async invoke<TInitialPayload, TResult>(
     stepName: string,
+    settings: LazyInvokeStepParams<TInitialPayload, TResult> & { waitForResult: false }
+  ): Promise<CallResponse<TResult>>;
+  public async invoke<TInitialPayload, TResult>(
+    stepName: string,
+    settings: LazyInvokeStepParams<TInitialPayload, TResult> & { waitForResult?: true }
+  ): Promise<InvokeStepResponse<TResult>>;
+  public async invoke<TInitialPayload, TResult>(
+    stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
-  ) {
+  ): Promise<CallResponse<TResult> | InvokeStepResponse<TResult>> {
     const { waitForResult } = settings;
     if (!waitForResult) {
       return await this.call(stepName, {
