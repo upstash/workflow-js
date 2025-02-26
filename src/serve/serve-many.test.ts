@@ -82,7 +82,7 @@ describe("serveMany", () => {
               "Upstash-Failure-Callback-Forward-original": ["original-headers-value"],
               "Upstash-Workflow-Runid": ["wfr_original_workflow"],
             },
-            workflowRunId: "some-run-id",
+            workflowRunId: "wfr_original_workflow",
             workflowUrl: "https://requestcatcher.com/api/original_workflow",
             step: {
               stepId: 4,
