@@ -424,8 +424,13 @@ export const getHeaders = ({
   flowControl,
   callFlowControl,
 }: HeaderParams): HeadersResponse => {
+  const callHeaders = new Headers(step?.callHeaders);
   const contentType =
-    (userHeaders ? userHeaders.get("Content-Type") : undefined) ?? DEFAULT_CONTENT_TYPE;
+    (callHeaders.get("content-type")
+      ? callHeaders.get("content-type")
+      : userHeaders?.get("Content-Type")
+        ? userHeaders.get("Content-Type")
+        : undefined) ?? DEFAULT_CONTENT_TYPE;
 
   const baseHeaders: Record<string, string> = {
     [WORKFLOW_INIT_HEADER]: initHeaderValue,

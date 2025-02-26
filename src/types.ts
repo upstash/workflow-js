@@ -11,6 +11,7 @@ import { z } from "zod";
  * Neeeded to resolve import issues
  */
 export type WorkflowClient = {
+  batch: InstanceType<typeof Client>["batch"];
   batchJSON: InstanceType<typeof Client>["batchJSON"];
   publishJSON: InstanceType<typeof Client>["publishJSON"];
   publish: InstanceType<typeof Client>["publish"];
