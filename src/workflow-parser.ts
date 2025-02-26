@@ -71,11 +71,6 @@ const processRawSteps = (rawSteps: RawStep[]) => {
   // decode & parse other steps:
   const otherSteps = stepsToDecode.map((rawStep) => {
     const step = JSON.parse(decodeBase64(rawStep.body)) as Step;
-    try {
-      step.out = JSON.parse(step.out as string);
-    } catch {
-      /* empty */
-    }
 
     // if event is a wait event, overwrite the out with WaitStepResponse:
     if (step.waitEventId) {
