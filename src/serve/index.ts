@@ -62,6 +62,7 @@ export const serveBase = <
     useJSONContent,
     disableTelemetry,
     flowControl,
+    onError
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -234,7 +235,7 @@ export const serveBase = <
     try {
       return await handler(request);
     } catch (error) {
-      console.error(error);
+      onError?.(error as Error);
       return new Response(JSON.stringify(formatWorkflowError(error)), {
         status: 500,
       }) as TResponse;

@@ -173,6 +173,14 @@ export type WorkflowServeOptions<
    * Url to call if QStash retries are exhausted while executing the workflow
    */
   failureUrl?: string;
+
+  /**
+   * Error handler called when an error occurs in the workflow. This is
+   * different from `failureFunction` in that it is called when an error
+   * occurs in the workflow, while `failureFunction` is called when QStash
+   * retries are exhausted.
+   */
+  onError?: (error: Error) => void;
   /**
    * Failure function called when QStash retries are exhausted while executing
    * the workflow. Will overwrite `failureUrl` parameter with the workflow
