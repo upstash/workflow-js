@@ -1,5 +1,5 @@
 import { expect } from "app/ci/utils";
-import { FAILING_HEADER_VALUE, FAILING_HEADER, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT, CUSTOM_CONTENT_TYPE } from "../constants";
+import { FAILING_HEADER_VALUE, FAILING_HEADER, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT, CUSTOM_CONTENT_TYPE, DELETE_RESULT } from "../constants";
 
 const thirdPartyResult = "third-party-result";
 
@@ -39,7 +39,7 @@ export const PATCH = async () => {
 
 export const DELETE = async () => {
   return new Response(
-    JSON.stringify({ foo: "bar", zed: 2 }),
+    JSON.stringify(DELETE_RESULT),
     {
       status: 400
     }

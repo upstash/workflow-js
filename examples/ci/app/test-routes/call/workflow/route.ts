@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
-import { CUSTOM_CONTENT_TYPE, FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
+import { CUSTOM_CONTENT_TYPE, DELETE_RESULT, FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
 
 const testHeader = `test-header-foo`
 const headerValue = `header-foo`
@@ -85,7 +85,7 @@ export const { POST, GET } = testServe(
 
       expect(deleteStatus, 400)
       expect(typeof deleteBody, "object");
-      expect(JSON.stringify(deleteBody), '{"foo":"bar","zed":2}');
+      expect(JSON.stringify(deleteBody), JSON.stringify(DELETE_RESULT));
 
       await saveResult(
         context,
