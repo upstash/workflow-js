@@ -7,8 +7,18 @@ import { WorkflowAgents } from ".";
 import { tool } from "ai";
 import { z } from "zod";
 import { DisabledWorkflowContext } from "../serve/authorization";
+import { createAnthropic } from "@ai-sdk/anthropic";
 
-export const getAgentsApi = ({ disabledContext }: { disabledContext: boolean }) => {
+export const getAgentsApi = ({
+  disabledContext,
+  getModel,
+}: {
+  disabledContext: boolean;
+  getModel?: (
+    agentsApi: WorkflowAgents,
+    context: WorkflowContext
+  ) => ReturnType<typeof agentsApi.openai>;
+}) => {
   const workflowRunId = getWorkflowRunId();
   const token = nanoid();
 
@@ -39,7 +49,7 @@ export const getAgentsApi = ({ disabledContext }: { disabledContext: boolean }) 
   const maxSteps = 2;
   const name = "my agent";
   const temparature = 0.4;
-  const model = agentsApi.openai("gpt-3.5-turbo");
+  const model = getModel ? getModel(agentsApi, context) : agentsApi.openai("gpt-3.5-turbo");
 
   const agent = agentsApi.agent({
     tools: {
@@ -189,6 +199,79 @@ describe("tasks", () => {
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-url": "https://requestcatcher.com/api",
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  test("anthropic model", async () => {
+    const { agentsApi, agent, token, workflowRunId } = getAgentsApi({
+      disabledContext: false,
+      getModel: (agentsApi, context) =>
+        agentsApi.model({
+          context,
+          provider: createAnthropic,
+          modelName: "claude-3-sonnet-20240229",
+          providerParams: {
+            apiKey: "mock",
+          },
+        }),
+    });
+
+    const task = agentsApi.task({
+      agent,
+      prompt: "hello world!",
+    });
+
+    await mockQStashServer({
+      execute: () => {
+        const throws = () => task.run();
+        expect(throws).toThrowError(`Aborting workflow after executing step 'Call Agent my agent'`);
+      },
+      responseFields: {
+        status: 200,
+        body: "msgId",
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            body: '{"model":"claude-3-sonnet-20240229","max_tokens":4096,"temperature":0.4,"system":[{"type":"text","text":"an agent"}],"messages":[{"role":"user","content":[{"type":"text","text":"hello world!"}]}],"tools":[{"name":"tool","description":"ai sdk tool","input_schema":{"type":"object","properties":{"expression":{"type":"string"}},"required":["expression"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}],"tool_choice":{"type":"auto"}}',
+            destination: "https://api.anthropic.com/v1/messages",
+            headers: {
+              "upstash-workflow-sdk-version": "1",
+              "content-type": "application/json",
+              "upstash-callback": "https://requestcatcher.com/api",
+              "upstash-callback-feature-set": "LazyFetch,InitialBody",
+              "upstash-callback-forward-upstash-workflow-callback": "true",
+              "upstash-callback-forward-upstash-workflow-concurrent": "1",
+              "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+              "upstash-callback-forward-upstash-workflow-stepid": "1",
+              "upstash-callback-forward-upstash-workflow-steptype": "Call",
+              "upstash-callback-forward-upstash-workflow-invoke-count": "0",
+              "upstash-callback-retries": "3",
+              "upstash-callback-workflow-calltype": "fromCallback",
+              "upstash-callback-workflow-init": "false",
+              "upstash-callback-workflow-runid": workflowRunId,
+              "upstash-callback-workflow-url": "https://requestcatcher.com/api",
+              "upstash-failure-callback-retries": "3",
+              "upstash-feature-set": "WF_NoDelete,InitialBody",
+              "upstash-forward-content-type": "application/json",
+              "upstash-forward-upstash-agent-name": "my agent",
+              "upstash-method": "POST",
+              "upstash-retries": "0",
+              "upstash-workflow-calltype": "toCallback",
+              "upstash-workflow-init": "false",
+              "upstash-workflow-runid": workflowRunId,
+              "upstash-workflow-url": "https://requestcatcher.com/api",
+              "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
+              // anthropic specific headers:
+              "upstash-forward-x-api-key": "mock",
+              "upstash-forward-anthropic-version": "2023-06-01",
             },
           },
         ],

@@ -93,3 +93,13 @@ export type ManagerAgentParameters = {
 type ModelParams = Parameters<ReturnType<typeof createWorkflowOpenAI>>;
 type CustomModelSettings = ModelParams["1"] & { baseURL?: string; apiKey?: string };
 export type CustomModelParams = [ModelParams[0], CustomModelSettings?];
+
+type ModelFunction<TModelNames extends string, TModelParams extends object> = (
+  model: TModelNames,
+  settings?: TModelParams
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+) => any;
+
+export type ProviderFunction<TModelNames extends string, TModelParams extends object> = (params: {
+  fetch: typeof fetch;
+}) => ModelFunction<TModelNames, TModelParams>;

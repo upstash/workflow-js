@@ -1,5 +1,6 @@
+import { createOpenAI } from "@ai-sdk/openai";
 import { WorkflowContext } from "../context";
-import { createWorkflowOpenAI, wrapTools } from "./adapters";
+import { createWorkflowModel, wrapTools } from "./adapters";
 import { Agent } from "./agent";
 import { Task } from "./task";
 import {
@@ -95,7 +96,15 @@ export class WorkflowAgents {
   public openai(...params: CustomModelParams) {
     const [model, settings] = params;
     const { baseURL, apiKey, ...otherSettings } = settings ?? {};
-    const openai = createWorkflowOpenAI(this.context, { baseURL, apiKey });
-    return openai(model, otherSettings);
+
+    return this.model({
+      context: this.context,
+      provider: createOpenAI,
+      providerParams: { baseURL, apiKey, compatibility: "strict" },
+      modelName: model,
+      modelParams: otherSettings,
+    });
   }
+
+  public model = createWorkflowModel;
 }
