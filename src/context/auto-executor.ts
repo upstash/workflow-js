@@ -402,7 +402,7 @@ export class AutoExecutor {
       throw new WorkflowAbort(invokeStep.stepName, invokeStep);
     }
 
-    const result = await this.context.qstashClient.batchJSON(
+    const result = await this.context.qstashClient.batch(
       steps.map((singleStep, index) => {
         const lazyStep = lazySteps[index];
         const { headers } = getHeaders({
@@ -436,7 +436,7 @@ export class AutoExecutor {
             {
               headers,
               method: singleStep.callMethod,
-              body: singleStep.callBody,
+              body: JSON.stringify(singleStep.callBody),
               url: singleStep.callUrl,
             }
           : // if the step is not a third party call, we use workflow
@@ -445,7 +445,7 @@ export class AutoExecutor {
             {
               headers,
               method: "POST",
-              body: singleStep,
+              body: JSON.stringify(singleStep),
               url: this.context.url,
               notBefore: willWait ? singleStep.sleepUntil : undefined,
               delay: willWait ? singleStep.sleepFor : undefined,
@@ -453,8 +453,9 @@ export class AutoExecutor {
       })
     );
 
+    const _result = result as { messageId: string }[];
     await this.debug?.log("INFO", "SUBMIT_STEP", {
-      messageIds: result.map((message) => {
+      messageIds: _result.map((message) => {
         return {
           message: message.messageId,
         };

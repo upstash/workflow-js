@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
-import { DELETE_RESULT, FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
+import { CUSTOM_CONTENT_TYPE, DELETE_RESULT, FAILING_HEADER, FAILING_HEADER_VALUE, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT } from "../constants";
 
 const testHeader = `test-header-foo`
 const headerValue = `header-foo`
@@ -11,6 +11,7 @@ const payload = "my-payload"
 const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
 const postHeader = {
   "post-header": "post-header-value-x",
+  "content-type": CUSTOM_CONTENT_TYPE
 };
 const getHeader = {
   "get-header": "get-header-value-x",
@@ -91,15 +92,15 @@ export const { POST, GET } = testServe(
         getResult
       )
     }, {
-      baseUrl: BASE_URL,
-      retries: 0
-    }
-  ), {
-    expectedCallCount: 14,
-    expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
-    payload,
-    headers: {
-      [ testHeader ]: headerValue,
-    }
+    baseUrl: BASE_URL,
+    retries: 0
   }
+  ), {
+  expectedCallCount: 14,
+  expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
+  payload,
+  headers: {
+    [testHeader]: headerValue,
+  }
+}
 ) 

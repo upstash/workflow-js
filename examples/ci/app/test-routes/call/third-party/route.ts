@@ -1,4 +1,5 @@
-import { FAILING_HEADER_VALUE, FAILING_HEADER, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT, DELETE_RESULT } from "../constants";
+import { expect } from "app/ci/utils";
+import { FAILING_HEADER_VALUE, FAILING_HEADER, GET_HEADER, GET_HEADER_VALUE, PATCH_RESULT, CUSTOM_CONTENT_TYPE, DELETE_RESULT } from "../constants";
 
 const thirdPartyResult = "third-party-result";
 
@@ -15,6 +16,8 @@ export const GET = async (request: Request) => {
 }
 
 export const POST = async (request: Request) => {
+
+  expect(request.headers.get("content-type"), CUSTOM_CONTENT_TYPE);
 
   return new Response(
     `called POST '${thirdPartyResult}' '${request.headers.get("post-header")}' '${await request.text()}'`,

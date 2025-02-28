@@ -1,16 +1,14 @@
 import { serve } from '@upstash/workflow/nextjs';
 import { LogLevel, Step, WorkflowLogger } from '@upstash/workflow';
 
-import { tool } from 'ai';
-import { z } from 'zod';
-
 import { Redis } from '@upstash/redis';
 
 import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
 import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
-import { DuckDuckGoSearch } from '@langchain/community/tools/duckduckgo_search';
+import { ExaSearchResults } from "@langchain/exa";
+import Exa from "exa-js";
 
-import * as cheerio from 'cheerio';
+const client = new Exa(process.env.EXASEARCH_API_KEY);
 
 //@ts-expect-error since we had to redeclare the workflowRunId
 class StepLogger extends WorkflowLogger {
@@ -60,8 +58,7 @@ class StepLogger extends WorkflowLogger {
           );
         }
         if (
-          step.stepName === 'Run tool searchWeb' ||
-          step.stepName === 'Run tool browseWeb'
+          step.stepName === 'Run tool searchWeb'
         ) {
           await redis.rpush(
             `${this.workflowRunId}:searchOutput`,
@@ -124,68 +121,19 @@ export const { POST } = serve(
       name: 'searchAgent',
       maxSteps: 7,
       background:
-        'You are an agent that can search the web using DuckDuckGo and scrape content ' +
-        'from a webpage. You must provide the user with a summary of ' +
-        "the answer with references to the sources of information you used. If you can't " +
-        'find the answer, return not found instead. ' +
-        'Include one or more links to the web page(s) you used as a reference if you can.',
+        'You are an agent that can search the web using Exa. You must provide ' +
+        'the user with a summary of the answer with references to the sources ' +
+        "of information you used. If you can't find the answer, return not found " +
+        'instead. Include one or more links to the web page(s) you used as a ' +
+        'reference if you can.',
       tools: {
-        searchWeb: new DuckDuckGoSearch({ maxResults: 3 }),
-        browseWeb: tool({
-          description: 'Get the content of a webpage.',
-          parameters: z.object({
-            url: z
-              .string()
-              .describe(
-                'Valid URL including protocol of the webpage you want to scrape content from.'
-              )
-          }),
-          execute: async ({ url }) => {
-            const html = await fetch(url).then((res) => res.text());
-
-            const $ = cheerio.load(html);
-
-            const selectorsToRemove = [
-              'script',
-              'style',
-              'header',
-              'footer',
-              'nav',
-              'iframe',
-              'noscript',
-              'svg',
-              '[role="banner"]',
-              '[role="navigation"]',
-              '[role="complementary"]',
-              '.ad',
-              '.advertisement',
-              '.social-share',
-              'aside',
-              '.sidebar',
-              '#sidebar',
-              '.comments',
-              '#comments'
-            ];
-
-            selectorsToRemove.forEach((selector) => {
-              $(selector).remove();
-            });
-
-            let $content = $('main, article, [role="main"]');
-
-            if (!$content.length) {
-              $content = $('body');
-            }
-
-            let content = $content.text();
-
-            content = content
-              .replace(/\s+/g, ' ')
-              .replace(/\n\s*/g, '\n')
-              .trim();
-            return content;
-          }
-        })
+        searchWeb: new ExaSearchResults({
+          client,
+          searchArgs: {
+            numResults: 3,
+            type: "keyword",
+          },
+        }),
       }
     });
 

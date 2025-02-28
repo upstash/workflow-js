@@ -173,7 +173,7 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
     headers: Object.fromEntries(
       Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
     ),
-    workflowRunId,
+    workflowRunId: context.workflowRunId,
     workflowUrl: context.url,
     step: invokeStep,
   };
