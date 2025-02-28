@@ -26,6 +26,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   | "receiver"
   | "url"
   | "failureFunction"
+  | "onError"
   | "failureUrl"
   | "baseUrl"
   | "schema"
