@@ -43,7 +43,7 @@ const Page = () => {
   const [agentInfoDisplay, setAgentInfoDisplay] = useState<AgentName | false>(
     false
   );
-  const [currentStep, setCurrentStep] = useState(4);
+  const [currentStep, setCurrentStep] = useState(0);
 
   // form submit handler
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
@@ -193,7 +193,7 @@ const Page = () => {
 
       <div className="pb-24">
         {/* header */}
-        <header className="bg-zinc-50  text-center">
+        <header className="bg-purple-50  text-center">
           <div className="mx-auto max-w-screen-sm px-6 py-12">
             <h1 className="text-2xl font-bold">Cross Reference Agent</h1>
 
