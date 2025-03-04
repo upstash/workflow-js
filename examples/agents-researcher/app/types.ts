@@ -9,4 +9,4 @@ export type StepRecord = {
   stepOut: string;
 };
 
-export type StepStatus = "init" | "loading" | "done"
+export type StepStatus = 'init' | 'loading' | 'done';

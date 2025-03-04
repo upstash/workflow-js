@@ -1,4 +1,4 @@
-const DEFAULT_ICON_SIZE = 32
+const DEFAULT_ICON_SIZE = 32;
 
 export const WorkflowIcon = ({ size = DEFAULT_ICON_SIZE }) => {
   return (
@@ -18,5 +18,5 @@ export const WorkflowIcon = ({ size = DEFAULT_ICON_SIZE }) => {
         strokeLinejoin="round"
       />
     </svg>
-  )
-}
+  );
+};

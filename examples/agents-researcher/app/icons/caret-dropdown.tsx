@@ -1,9 +1,9 @@
-import React from "react";
+import React from 'react';
 
 export const IconCaretDownFilled = ({
-  className,
+  className
 }: {
-  className?: React.HTMLProps<HTMLElement>["className"];
+  className?: React.HTMLProps<HTMLElement>['className'];
 }) => {
   return (
     <svg
