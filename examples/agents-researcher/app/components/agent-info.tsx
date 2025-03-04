@@ -66,10 +66,10 @@ export const AgentInfo = ({
               displayCode && 'rotate-180'
             )}
           />
-          <label className="text-sm font-semibold">{name} Agent Code</label>
+          <label className="">{name} Agent Code</label>
         </button>
         {displayCode && (
-          <CodeBlock className="bg-zinc-800 p-3 rounded-xl language-javascript">
+          <CodeBlock className="bg-zinc-800 p-3 rounded-xl !text-sm language-javascript">
             {code}
           </CodeBlock>
         )}

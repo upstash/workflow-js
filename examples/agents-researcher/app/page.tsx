@@ -43,7 +43,7 @@ const Page = () => {
   const [agentInfoDisplay, setAgentInfoDisplay] = useState<AgentName | false>(
     false
   );
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(4);
 
   // form submit handler
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
@@ -195,9 +195,9 @@ const Page = () => {
         {/* header */}
         <header className="bg-zinc-50  text-center">
           <div className="mx-auto max-w-screen-sm px-6 py-12">
-            <h1 className="text-3xl font-bold">Cross Reference Agent</h1>
+            <h1 className="text-2xl font-bold">Cross Reference Agent</h1>
 
-            <div className="mt-2 text-lg text-zinc-500">
+            <div className="mt-2 text-zinc-500">
               This is a simple example to demonstrate how to use
               <WorkflowIcon size={18} className=" ml-2 inline-flex" /> Upstash
               Workflow Agents to cross-reference information from different
@@ -206,7 +206,7 @@ const Page = () => {
 
             <div className="flex justify-center items-center gap-2 mt-4">
               <a
-                className="inline-flex items-center gap-1 h-9 pl-3 pr-4 bg-black text-white rounded-lg"
+                className="inline-flex items-center gap-1 h-8 pl-3 pr-4 bg-black text-white rounded-lg hover:opacity-80"
                 href="https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs"
                 target="_blank"
               >
@@ -230,7 +230,7 @@ const Page = () => {
                 Docs
               </a>
               <a
-                className="inline-flex items-center gap-1 h-9 pl-3 pr-4 bg-black text-white rounded-lg"
+                className="inline-flex items-center gap-1 h-8 pl-3 pr-4 bg-black text-white rounded-lg hover:opacity-80"
                 href="https://github.com/upstash/workflow-js/tree/main/examples/agents-researcher"
               >
                 <svg
@@ -321,8 +321,8 @@ const Page = () => {
                       >
                         <Img
                           src="/icons/wikipedia.png"
-                          width={44}
-                          height={44}
+                          width={34}
+                          height={34}
                           alt="Wikipedia"
                           className={
                             agentStates['Wikipedia'] === false
@@ -339,8 +339,8 @@ const Page = () => {
                       >
                         <Img
                           src="/icons/wolfram-alpha.png"
-                          width={48}
-                          height={48}
+                          width={40}
+                          height={40}
                           alt="WolframAlpha"
                           className={
                             agentStates['WolframAlpha'] === false
@@ -357,8 +357,8 @@ const Page = () => {
                       >
                         <Img
                           src="/icons/exa.jpg"
-                          width={38}
-                          height={38}
+                          width={30}
+                          height={30}
                           alt="Exa"
                           className={
                             agentStates['Exa'] === false
@@ -414,7 +414,7 @@ const Page = () => {
               {currentStep > 3 && (
                 <StepContent>
                   <a
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-purple-500 text-white hover:bg-purple-400"
+                    className="inline-flex items-center gap-1 h-8 px-4 rounded-md bg-purple-500 text-white hover:bg-purple-400"
                     href="https://console.upstash.com/qstash?tab=workflow"
                   >
                     <svg
@@ -437,7 +437,7 @@ const Page = () => {
                   </a>
 
                   <Img
-                    className="block mt-4"
+                    className="block mt-8"
                     src="/screenshot.png"
                     width={1564}
                     height={476}

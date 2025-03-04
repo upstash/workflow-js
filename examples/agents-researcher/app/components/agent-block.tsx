@@ -17,7 +17,7 @@ export const AgentBlock = ({
   return (
     <button
       className={cx(
-        'aspect-[3] w-1/3 bg-white border-2 flex items-center justify-center text-opacity-60 rounded-xl',
+        ' bg-white border-2 size-14 flex items-center justify-center text-opacity-60 rounded-xl',
         agentInfoDisplay === name ? 'border-purple-400' : 'border-gray-300'
       )}
       onClick={() => setAgentInfoDisplay(name)}
