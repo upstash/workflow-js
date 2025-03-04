@@ -227,7 +227,7 @@ const Page = () => {
             </a>
             <a
               className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-md hover:bg-purple-100"
-              href="https://github.com/upstash/workflow-js/tree/main/examples/nextjs"
+              href="https://github.com/upstash/workflow-js/tree/main/examples/agents-researcher"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

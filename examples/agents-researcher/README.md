@@ -1,4 +1,4 @@
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fworkflow-js%2Ftree%2Fmain%2Fexamples%2Fagents-researcher&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,QSTASH_TOKEN,OPENAI_API_KEY,WOLFRAM_ALPHA_APP_ID&project-name=upstash-workflow-agents-researcher&repository-name=upstash-workflow-agents-researcher&demo-title=Cross%20Reference%20Agent&demo-description=This%20is%20a%20simple%20example%20to%20demonstrate%20how%20to%20use%20Upstash%20Workflow%20Agents%20to%20cross-reference%20information%20from%20different%20sources.&demo-url=https%3A%2F%2Fagents-researcher.vercel.app%2F)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fupstash%2Fworkflow-js%2Ftree%2Fmain%2Fexamples%2Fagents-researcher&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,QSTASH_TOKEN,OPENAI_API_KEY,WOLFRAM_ALPHA_APP_ID,EXASEARCH_API_KEY&project-name=upstash-workflow-agents-researcher&repository-name=upstash-workflow-agents-researcher&demo-title=Cross%20Reference%20Agent&demo-description=This%20is%20a%20simple%20example%20to%20demonstrate%20how%20to%20use%20Upstash%20Workflow%20Agents%20to%20cross-reference%20information%20from%20different%20sources.&demo-url=https%3A%2F%2Fagents-researcher.vercel.app%2F)
 
 ## Deploying the Project at Vercel
 
@@ -27,6 +27,10 @@ You can get your API key from the [OpenAI Platform](https://platform.openai.com/
 4. `WOLFRAM_ALPHA_APP_ID`
 
 You can get your App ID from the [Wolfram Alpha Developer Portal](https://developer.wolframalpha.com).
+
+5. `EXASEARCH_API_KEY`
+
+You can get your API key from the [Exa Dashboard](https://dashboard.exa.ai/api-keys).
 
 ### Deploying the Project
 
