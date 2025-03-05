@@ -1,6 +1,7 @@
 'use client';
 
 import Img from 'next/image';
+import * as React from 'react';
 import { FormEvent, Suspense, useState } from 'react';
 import {
   Step,
@@ -15,8 +16,7 @@ import { WorkflowIcon } from './icons/workflow-icon';
 import { CODES } from './constants/codes';
 import type { AgentName, StepRecord } from './types';
 import { AgentBlock } from './components/agent-block';
-import { IconLoader } from './icons/loader';
-import { IconBrandGithub, IconFile } from '@tabler/icons-react';
+import { IconBrandGithub, IconFile, IconLoader2 } from '@tabler/icons-react';
 
 export default function HomePage() {
   return (
@@ -44,7 +44,7 @@ const Page = () => {
   const [agentInfoDisplay, setAgentInfoDisplay] = useState<AgentName | false>(
     false
   );
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(4);
 
   // form submit handler
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
@@ -188,7 +188,7 @@ const Page = () => {
       {progress && (
         <div className="fixed bottom-5 right-5 bg-purple-500/10 text-purple-500 border-purple-500 border-2 px-4 py-2 rounded-md font-semibold flex flex-row gap-2">
           <div>{progress}</div>
-          <IconLoader className="animate-spin" />
+          <IconLoader2 className="animate-spin" size={28} />
         </div>
       )}
 
@@ -198,7 +198,7 @@ const Page = () => {
           <div className="mx-auto max-w-screen-sm px-8 py-12">
             <h1 className="text-3xl font-bold">Cross Reference Agent</h1>
 
-            <div className="mt-2 text-lg text-purple-950/80">
+            <div className="mt-2 text-lg opacity-60">
               This is a simple example to demonstrate how to use
               <WorkflowIcon size={18} className="ml-2 inline-flex" /> Upstash
               Workflow Agents to cross-reference information from different
