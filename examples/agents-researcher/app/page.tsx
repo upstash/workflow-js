@@ -44,7 +44,7 @@ const Page = () => {
   const [agentInfoDisplay, setAgentInfoDisplay] = useState<AgentName | false>(
     false
   );
-  const [currentStep, setCurrentStep] = useState(4);
+  const [currentStep, setCurrentStep] = useState(0);
 
   // form submit handler
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
