@@ -26,7 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cx('scroll-smooth', defaultFont.variable)}>
-      <body className="antialiased text-sm sm:text-base">{children}</body>
+      <body className="antialiased text-sm sm:text-base text-purple-950">
+        {children}
+      </body>
     </html>
   );
 }

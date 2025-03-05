@@ -3,6 +3,7 @@ import cx from '../utils/cx';
 import CodeBlock from './code-block';
 import { IconCaretDownFilled } from '../icons/caret-dropdown';
 import { AgentName, StepRecord } from '../types';
+import Markdown from 'markdown-to-jsx';
 
 const CollapsibleText = ({
   title,
@@ -22,7 +23,21 @@ const CollapsibleText = ({
         <label className="text-base font-semibold text-purple-500">
           {title}
         </label>
-        <div className="whitespace-pre-wrap mt-2">{text}</div>
+        <Markdown
+          className="whitespace-pre-wrap mt-2 *:mb-2 text-sm"
+          options={{
+            overrides: {
+              ol: ({ children }) => (
+                <ol className="list-decimal list-inside">{children}</ol>
+              ),
+              ul: ({ children }) => (
+                <ol className="list-disc list-inside">{children}</ol>
+              )
+            }
+          }}
+        >
+          {text}
+        </Markdown>
       </div>
     );
 
@@ -31,7 +46,21 @@ const CollapsibleText = ({
   return (
     <div className="border-gray-300 border-2 p-3 rounded-xl text-md font-mono break-words">
       <label className="text-base font-semibold text-purple-500">{title}</label>
-      <div className="whitespace-pre-wrap mt-2">{displayText}</div>
+      <Markdown
+        className="whitespace-pre-wrap mt-2 *:mb-2 text-sm"
+        options={{
+          overrides: {
+            ol: ({ children }) => (
+              <ol className="list-decimal list-inside">{children}</ol>
+            ),
+            ul: ({ children }) => (
+              <ol className="list-disc list-inside">{children}</ol>
+            )
+          }
+        }}
+      >
+        {displayText}
+      </Markdown>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="text-purple-500 hover:text-purple-600 font-medium text-sm font-mono mt-2"
@@ -69,9 +98,7 @@ export const AgentInfo = ({
           <label className="">{name} Agent Code</label>
         </button>
         {displayCode && (
-          <CodeBlock className="bg-zinc-800 p-3 rounded-xl !text-sm language-javascript">
-            {code}
-          </CodeBlock>
+          <CodeBlock className="language-javascript">{code}</CodeBlock>
         )}
       </div>
       <div className="flex flex-col gap-4 w-full">
@@ -97,7 +124,7 @@ export const AgentInfo = ({
               displayOutput && 'rotate-180'
             )}
           />
-          <label className={'text-sm font-semibold'}>{name} Agent Output</label>
+          <label className={''}>{name} Agent Output</label>
         </button>
         {displayOutput &&
           state &&

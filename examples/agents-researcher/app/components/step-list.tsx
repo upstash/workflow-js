@@ -21,10 +21,10 @@ const StepItem = ({ status, className, ...props }: StepItemProps) => {
       className={cx(
         'relative border-l-2 border-l-zinc-200 pb-16 pl-6 last:pb-0 sm:ml-4 sm:pl-8 dark:border-l-zinc-900',
         status === 'init'
-          ? 'border-l-zinc-200'
+          ? 'border-l-purple-100'
           : status === 'loading'
             ? 'border-l-purple-500'
-            : 'border-l-emerald-500',
+            : 'border-l-purple-500',
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ const StepNumber = ({
             'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
             'flex size-8 items-center justify-center sm:size-10',
             'text-center rounded-full border-4 border-white',
-            status === 'init' ? 'bg-zinc-100' : 'bg-emerald-500',
+            status === 'init' ? 'bg-purple-100' : 'bg-purple-500',
             className
           )}
           {...props}
@@ -97,7 +97,7 @@ StepTitle.displayName = 'StepTitle';
 export interface StepDescProps extends React.ComponentPropsWithoutRef<'h3'> {}
 
 const StepDesc = ({ className, ...props }: StepDescProps) => {
-  return <div className={cx('opacity-60', className)} {...props} />;
+  return <div className={cx('text-purple-950/60', className)} {...props} />;
 };
 StepDesc.displayName = 'StepDesc';
 
@@ -105,7 +105,7 @@ export interface StepContentProps
   extends React.ComponentPropsWithoutRef<'div'> {}
 
 const StepContent = ({ className, ...props }: StepContentProps) => {
-  return <div className={cx('mt-6', className)} {...props} />;
+  return <div className={cx('mt-4', className)} {...props} />;
 };
 StepContent.displayName = 'StepContent';
 

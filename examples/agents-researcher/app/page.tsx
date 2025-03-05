@@ -16,6 +16,7 @@ import { CODES } from './constants/codes';
 import type { AgentName, StepRecord } from './types';
 import { AgentBlock } from './components/agent-block';
 import { IconLoader } from './icons/loader';
+import { IconBrandGithub, IconFile } from '@tabler/icons-react';
 
 export default function HomePage() {
   return (
@@ -194,59 +195,31 @@ const Page = () => {
       <div className="pb-24">
         {/* header */}
         <header className="bg-purple-50  text-center">
-          <div className="mx-auto max-w-screen-sm px-6 py-12">
-            <h1 className="text-2xl font-bold">Cross Reference Agent</h1>
+          <div className="mx-auto max-w-screen-sm px-8 py-12">
+            <h1 className="text-3xl font-bold">Cross Reference Agent</h1>
 
-            <div className="mt-2 text-zinc-500">
+            <div className="mt-2 text-lg text-purple-950/80">
               This is a simple example to demonstrate how to use
-              <WorkflowIcon size={18} className=" ml-2 inline-flex" /> Upstash
+              <WorkflowIcon size={18} className="ml-2 inline-flex" /> Upstash
               Workflow Agents to cross-reference information from different
               sources.
             </div>
 
-            <div className="flex justify-center items-center gap-2 mt-4">
+            <div className="flex justify-center items-center gap-6 mt-4">
               <a
-                className="inline-flex items-center gap-1 h-8 pl-3 pr-4 bg-black text-white rounded-lg hover:opacity-80"
+                className="inline-flex items-center font-medium gap-0.5 underline"
                 href="https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs"
                 target="_blank"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                  <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                  <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                  <path d="M10 13l-1 2l1 2" />
-                  <path d="M14 13l1 2l-1 2" />
-                </svg>
+                <IconFile size={18} />
                 Docs
               </a>
               <a
-                className="inline-flex items-center gap-1 h-8 pl-3 pr-4 bg-black text-white rounded-lg hover:opacity-80"
+                className="inline-flex items-center gap-0.5 font-medium underline"
                 href="https://github.com/upstash/workflow-js/tree/main/examples/agents-researcher"
+                target="_blank"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                  <path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5" />
-                </svg>
+                <IconBrandGithub size={18} />
                 Repository
               </a>
             </div>
@@ -254,7 +227,7 @@ const Page = () => {
         </header>
 
         {/* step-by-step */}
-        <section className="px-6 mx-auto max-w-screen-sm">
+        <section className="px-8 mx-auto max-w-screen-sm">
           <Step className="mt-16 md:mt-16">
             {/* step-1 */}
             <StepItem status={resolveStepStatus(1)}>
@@ -277,12 +250,12 @@ const Page = () => {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     disabled={loading}
-                    className="block w-full h-8 px-2 bg-white border border-gray-300 rounded-md"
+                    className="block w-full h-9 px-4 bg-white border border-gray-300 rounded-md"
                   />
 
                   <button
                     disabled={loading}
-                    className={`h-8 rounded-md bg-purple-500 px-4 text-white ${
+                    className={`h-9 rounded-md bg-purple-500 px-4 text-white ${
                       loading ? 'opacity-30' : ''
                     }`}
                   >
@@ -312,7 +285,7 @@ const Page = () => {
                         question.
                       </span>
                     )}
-                    <div className="flex gap-4 w-full">
+                    <div className="flex gap-2 w-full">
                       <AgentBlock
                         name="Wikipedia"
                         agentInfoDisplay={agentInfoDisplay}
