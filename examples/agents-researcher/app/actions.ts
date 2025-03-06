@@ -6,39 +6,37 @@ import { Redis } from "@upstash/redis";
 const redis = Redis.fromEnv();
 
 export async function pollOutputs(workflowRunId: string): Promise<PollResult> {
-  const progress = (await redis.get(`${workflowRunId}:progress`)) as
-    | string
-    | null;
-  const query = (await redis.get(`${workflowRunId}:query`)) as string | null;
-  const wikipediaOutput = (await redis.lrange(
+  const progress = await redis.get<string | null>(`${workflowRunId}:progress`);
+  const query = await redis.get<string | null>(`${workflowRunId}:query`);
+  const wikipediaOutput = await redis.lrange<StepRecord>(
     `${workflowRunId}:wikipediaOutput`,
     0,
     -1
-  )) as StepRecord[];
-  const wolframAlphaOutput = (await redis.lrange(
+  );
+  const wolframAlphaOutput = await redis.lrange<StepRecord>(
     `${workflowRunId}:wolframAlphaOutput`,
     0,
     -1
-  )) as StepRecord[];
+  );
   const searchOutput = (
-    await redis.lrange(`${workflowRunId}:searchOutput`, 0, -1)
+    await redis.lrange<StepRecord>(`${workflowRunId}:searchOutput`, 0, -1)
   ).map((j) => {
-    const { stepName, stepOut } = j as unknown as StepRecord;
+    const { stepName, stepOut } = j;
     return {
       stepName,
       stepOut:
         typeof stepOut === "string"
           ? stepOut
           : stepOut === null
-          ? null
+          ? ""
           : JSON.stringify(stepOut),
     };
-  }) as StepRecord[];
-  const crossReferenceOutput = (await redis.lrange(
+  });
+  const crossReferenceOutput = await redis.lrange<StepRecord>(
     `${workflowRunId}:crossReferenceOutput`,
     0,
     -1
-  )) as StepRecord[];
+  );
 
   const result: PollResult = {
     query,
