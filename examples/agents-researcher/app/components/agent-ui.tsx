@@ -23,6 +23,7 @@ export const AgentUI = ({ session }: { session?: string }) => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(!!session);
   const [agentStates, setAgentStates] = useState<{
     Wikipedia: false | "loading" | StepRecord[];
     WolframAlpha: false | "loading" | StepRecord[];
@@ -42,13 +43,21 @@ export const AgentUI = ({ session }: { session?: string }) => {
 
   useEffect(() => {
     if (session) {
+      setSessionLoading(true);
+
+      // Set a timeout to ensure we don't show the loading state indefinitely
+      const timeoutId = setTimeout(() => {
+        setSessionLoading(false);
+      }, 10000); // 10 seconds timeout
+
       pollSessionStatus(session);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [session]);
 
   const pollSessionStatus = async (workflowRunId: string) => {
     const scrolledIntermediate = false;
-    let intermediateLogged = false;
 
     try {
       setCurrentStep(1);
@@ -59,6 +68,7 @@ export const AgentUI = ({ session }: { session?: string }) => {
         Exa: false,
         "Cross Reference": false,
       });
+      setAgentInfoDisplay(false);
 
       try {
         const initialResult = await pollOutputs(workflowRunId);
@@ -68,11 +78,10 @@ export const AgentUI = ({ session }: { session?: string }) => {
             setQuery(initialResult.query);
           }
 
-          updateUIFromResult(
-            initialResult,
-            scrolledIntermediate,
-            intermediateLogged
-          );
+          updateUIFromResult(initialResult, scrolledIntermediate);
+
+          // Set session loading to false as soon as we have the initial state
+          setSessionLoading(false);
 
           if (initialResult.crossReferenceOutput) {
             setCurrentStep(5);
@@ -80,6 +89,8 @@ export const AgentUI = ({ session }: { session?: string }) => {
           }
         }
       } catch (error) {
+        // Set session loading to false if there's an error
+        setSessionLoading(false);
         console.error("Error getting initial status:", error);
       }
 
@@ -95,12 +106,7 @@ export const AgentUI = ({ session }: { session?: string }) => {
             return false;
           }
 
-          const { updatedIntermediateLogged } = updateUIFromResult(
-            result,
-            scrolledIntermediate,
-            intermediateLogged
-          );
-          intermediateLogged = updatedIntermediateLogged;
+          updateUIFromResult(result, scrolledIntermediate);
 
           return result.crossReferenceOutput;
         } catch (error) {
@@ -137,16 +143,11 @@ export const AgentUI = ({ session }: { session?: string }) => {
 
   const updateUIFromResult = (
     result: PollResult,
-    scrolledIntermediate: boolean,
-    intermediateLogged: boolean
-  ): { updatedIntermediateLogged: boolean } => {
-    if (result.progress) {
-      if (result.progress === "Call Agent Manager LLM") {
-        setCurrentStep(intermediateLogged ? 3 : 2);
-      } else {
-        intermediateLogged = true;
-      }
-    }
+    scrolledIntermediate: boolean
+  ) => {
+    setLoading(true);
+
+    setCurrentStep(2);
 
     setProgress(result.progress || null);
 
@@ -159,12 +160,16 @@ export const AgentUI = ({ session }: { session?: string }) => {
         result.crossReferenceOutput || prevStates["Cross Reference"],
     }));
 
-    if (
-      (result.wikipediaOutput ||
-        result.wolframAlphaOutput ||
-        result.searchOutput) &&
-      !scrolledIntermediate
-    ) {
+    const intermediateResult =
+      result.wikipediaOutput ||
+      result.wolframAlphaOutput ||
+      result.searchOutput;
+
+    if (intermediateResult) {
+      setCurrentStep(3);
+    }
+
+    if (intermediateResult && !scrolledIntermediate) {
       if (result.wikipediaOutput) {
         setAgentInfoDisplay("Wikipedia");
       } else if (result.wolframAlphaOutput) {
@@ -180,12 +185,13 @@ export const AgentUI = ({ session }: { session?: string }) => {
 
     if (result.crossReferenceOutput) {
       setCurrentStep(5);
+      setLoading(false);
       document
         .getElementById("cross-reference-output")
         ?.scrollIntoView({ behavior: "smooth" });
     }
 
-    return { updatedIntermediateLogged: intermediateLogged };
+    return;
   };
 
   const handleSend = async (e: FormEvent<HTMLFormElement>) => {
@@ -210,8 +216,6 @@ export const AgentUI = ({ session }: { session?: string }) => {
         body: query,
       });
 
-      setLoading(false);
-
       const workflowRunId = (await response.json()).workflowRunId;
 
       window.history.replaceState({}, "", `/${workflowRunId}`);
@@ -235,6 +239,58 @@ export const AgentUI = ({ session }: { session?: string }) => {
     .filter(([key, value]) => value && key !== "Cross Reference")
     .map(([key]) => key);
 
+  // Skeleton UI component for loading state
+  const SkeletonUI = () => (
+    <div className="animate-pulse">
+      <div className="px-8 mx-auto max-w-screen-sm">
+        <div className="mt-16 md:mt-16">
+          {[1, 2, 3, 4].map((step) => (
+            <div key={step} className="mb-1">
+              {step !== 1 ? (
+                <div className="flex items-start gap-4">
+                  <div className="flex flex-col gap-2 items-center">
+                    <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+                    <div className="h-16 bg-gray-200 rounded w-1"></div>
+                  </div>
+                  <div className="mt-1 w-full">
+                    <div className="h-5 bg-gray-200 rounded w-48 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-4">
+                  <div className="flex flex-col gap-2 items-center">
+                    <div className="h-8 w-8 rounded-full bg-gray-200"></div>
+                    <div className="h-32 bg-gray-200 rounded w-1"></div>
+                  </div>
+                  <div className="w-full mt-1">
+                    <div className="h-5 bg-gray-200 rounded w-48 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+                    <div className="flex flex-row gap-2 items-center w-full">
+                      <div className="h-9 bg-gray-200 rounded w-full"></div>
+                      <div className="h-9 bg-gray-200 rounded w-24"></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (sessionLoading) {
+    return (
+      <main>
+        <div className="pb-24">
+          <Header />
+          <SkeletonUI />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main>
       {progress && (
@@ -246,37 +302,7 @@ export const AgentUI = ({ session }: { session?: string }) => {
 
       <div className="pb-24">
         {/* header */}
-        <header className="bg-purple-50  text-center">
-          <div className="mx-auto max-w-screen-sm px-8 py-12">
-            <h1 className="text-3xl font-bold">Cross Reference Agent</h1>
-
-            <div className="mt-2 text-lg opacity-60">
-              This is a simple example to demonstrate how to use
-              <WorkflowIcon size={18} className="ml-2 inline-flex" /> Upstash
-              Workflow Agents to cross-reference information from different
-              sources.
-            </div>
-
-            <div className="flex justify-center items-center gap-6 mt-4">
-              <a
-                className="inline-flex items-center font-medium gap-0.5 underline"
-                href="https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs"
-                target="_blank"
-              >
-                <IconFile size={18} />
-                Docs
-              </a>
-              <a
-                className="inline-flex items-center gap-0.5 font-medium underline"
-                href="https://github.com/upstash/workflow-js/tree/main/examples/agents-researcher"
-                target="_blank"
-              >
-                <IconBrandGithub size={18} />
-                Repository
-              </a>
-            </div>
-          </div>
-        </header>
+        <Header />
 
         {/* step-by-step */}
         <section className="px-8 mx-auto max-w-screen-sm">
@@ -311,7 +337,7 @@ export const AgentUI = ({ session }: { session?: string }) => {
                       loading ? "opacity-30" : ""
                     }`}
                   >
-                    {loading ? "Starting..." : "Start"}
+                    {loading ? "Searching..." : "Search"}
                   </button>
                 </form>
               </StepContent>
@@ -475,5 +501,40 @@ export const AgentUI = ({ session }: { session?: string }) => {
         </section>
       </div>
     </main>
+  );
+};
+
+const Header = () => {
+  return (
+    <header className="bg-purple-50  text-center">
+      <div className="mx-auto max-w-screen-sm px-8 py-12">
+        <h1 className="text-3xl font-bold">Cross Reference Agent</h1>
+
+        <div className="mt-2 text-lg opacity-60">
+          This is a simple example to demonstrate how to use
+          <WorkflowIcon size={18} className="ml-2 inline-flex" /> Upstash
+          Workflow Agents to cross-reference information from different sources.
+        </div>
+
+        <div className="flex justify-center items-center gap-6 mt-4">
+          <a
+            className="inline-flex items-center font-medium gap-0.5 underline"
+            href="https://upstash.com/docs/qstash/workflow/quickstarts/vercel-nextjs"
+            target="_blank"
+          >
+            <IconFile size={18} />
+            Docs
+          </a>
+          <a
+            className="inline-flex items-center gap-0.5 font-medium underline"
+            href="https://github.com/upstash/workflow-js/tree/main/examples/agents-researcher"
+            target="_blank"
+          >
+            <IconBrandGithub size={18} />
+            Repository
+          </a>
+        </div>
+      </div>
+    </header>
   );
 };
