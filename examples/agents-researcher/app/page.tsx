@@ -1,8 +1,9 @@
 'use client';
 
 import Img from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
-import { FormEvent, Suspense, useState } from 'react';
+import { FormEvent, Suspense, useState, useEffect } from 'react';
 import {
   Step,
   StepContent,
@@ -14,9 +15,10 @@ import {
 import { AgentInfo } from './components/agent-info';
 import { WorkflowIcon } from './icons/workflow-icon';
 import { CODES } from './constants/codes';
-import type { AgentName, StepRecord } from './types';
+import type { AgentName, StepRecord, PollResult } from './types';
 import { AgentBlock } from './components/agent-block';
 import { IconBrandGithub, IconFile, IconLoader2 } from '@tabler/icons-react';
+import { pollOutputs } from './actions';
 
 export default function HomePage() {
   return (
@@ -26,6 +28,9 @@ export default function HomePage() {
   );
 }
 const Page = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const session = searchParams.get('session');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
@@ -46,15 +51,18 @@ const Page = () => {
   );
   const [currentStep, setCurrentStep] = useState(0);
 
-  // form submit handler
-  const handleSend = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    let scrolledIntermediate = false;
-    let intermediateLogged = false;
+  useEffect(() => {
+    if (session) {
+      pollSessionStatus(session);
+    }
+  }, [session]);
 
+  const pollSessionStatus = async (workflowRunId: string) => {
+    const scrolledIntermediate = false;
+    let intermediateLogged = false;
+    
     try {
       setCurrentStep(1);
-      setLoading(true);
       setProgress(null);
       setAgentStates({
         Wikipedia: false,
@@ -62,14 +70,25 @@ const Page = () => {
         Exa: false,
         'Cross Reference': false
       });
-      const response = await fetch('/api/research', {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        method: 'POST',
-        body: query
-      });
-      const workflowRunId = (await response.json()).workflowRunId;
+
+      try {
+        const initialResult = await pollOutputs(workflowRunId);
+        
+        if (initialResult) {
+          if (initialResult.query) {
+            setQuery(initialResult.query);
+          }
+          
+          updateUIFromResult(initialResult, scrolledIntermediate, intermediateLogged);
+          
+          if (initialResult.crossReferenceOutput) {
+            setCurrentStep(5);
+            return 'All agents complete';
+          }
+        }
+      } catch (error) {
+        console.error('Error getting initial status:', error);
+      }
 
       const startTime = Date.now();
       const TIMEOUT_DURATION = 60000;
@@ -77,66 +96,14 @@ const Page = () => {
 
       const pollStatus = async () => {
         try {
-          const statusResponse = await fetch('/api/poll-outputs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              workflowRunId
-            })
-          });
-
-          if (!statusResponse.ok) {
-            throw new Error('Status check failed');
+          const result = await pollOutputs(workflowRunId);
+          
+          if (!result) {
+            return false;
           }
 
-          const result = await statusResponse.json();
-
-          if (result.progress) {
-            setLoading(false);
-            if (result.progress === 'Call Agent Manager LLM') {
-              setCurrentStep(intermediateLogged ? 3 : 2);
-            } else {
-              intermediateLogged = true;
-            }
-          }
-
-          setProgress(result.progress);
-          setAgentStates((prevStates) => ({
-            ...prevStates,
-            Wikipedia: result.wikipediaOutput || prevStates.Wikipedia,
-            WolframAlpha: result.wolframAlphaOutput || prevStates.WolframAlpha,
-            Exa: result.searchOutput || prevStates.Exa,
-            'Cross Reference':
-              result.crossReferenceOutput || prevStates['Cross Reference']
-          }));
-
-          if (
-            (result.wikipediaOutput ||
-              result.wolframAlphaOutput ||
-              result.searchOutput) &&
-            !scrolledIntermediate
-          ) {
-            if (result.wikipediaOutput) {
-              setAgentInfoDisplay('Wikipedia');
-            } else if (result.wolframAlphaOutput) {
-              setAgentInfoDisplay('WolframAlpha');
-            } else if (result.searchOutput) {
-              setAgentInfoDisplay('Exa');
-            }
-            document
-              .getElementById('intermediate-output')
-              ?.scrollIntoView({ behavior: 'smooth' });
-            scrolledIntermediate = true;
-          }
-
-          if (result.crossReferenceOutput) {
-            setCurrentStep(5);
-            document
-              .getElementById('cross-reference-output')
-              ?.scrollIntoView({ behavior: 'smooth' });
-          }
+          const { updatedIntermediateLogged } = updateUIFromResult(result, scrolledIntermediate, intermediateLogged);
+          intermediateLogged = updatedIntermediateLogged;
 
           return result.crossReferenceOutput;
         } catch (error) {
@@ -168,6 +135,93 @@ const Page = () => {
       });
     } catch (error) {
       console.error('Error:', error);
+    }
+  };
+
+  const updateUIFromResult = (
+    result: PollResult, 
+    scrolledIntermediate: boolean, 
+    intermediateLogged: boolean
+  ): { updatedIntermediateLogged: boolean } => {
+    if (result.progress) {
+      if (result.progress === 'Call Agent Manager LLM') {
+        setCurrentStep(intermediateLogged ? 3 : 2);
+      } else {
+        intermediateLogged = true;
+      }
+    }
+
+    setProgress(result.progress || null);
+    
+    setAgentStates((prevStates) => ({
+      ...prevStates,
+      Wikipedia: result.wikipediaOutput || prevStates.Wikipedia,
+      WolframAlpha: result.wolframAlphaOutput || prevStates.WolframAlpha,
+      Exa: result.searchOutput || prevStates.Exa,
+      'Cross Reference': result.crossReferenceOutput || prevStates['Cross Reference']
+    }));
+
+    if (
+      (result.wikipediaOutput ||
+        result.wolframAlphaOutput ||
+        result.searchOutput) &&
+      !scrolledIntermediate
+    ) {
+      if (result.wikipediaOutput) {
+        setAgentInfoDisplay('Wikipedia');
+      } else if (result.wolframAlphaOutput) {
+        setAgentInfoDisplay('WolframAlpha');
+      } else if (result.searchOutput) {
+        setAgentInfoDisplay('Exa');
+      }
+      document
+        .getElementById('intermediate-output')
+        ?.scrollIntoView({ behavior: 'smooth' });
+      scrolledIntermediate = true;
+    }
+
+    if (result.crossReferenceOutput) {
+      setCurrentStep(5);
+      document
+        .getElementById('cross-reference-output')
+        ?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    return { updatedIntermediateLogged: intermediateLogged };
+  };
+
+  const handleSend = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    try {
+      setCurrentStep(1);
+      setLoading(true);
+      setProgress(null);
+      setAgentStates({
+        Wikipedia: false,
+        WolframAlpha: false,
+        Exa: false,
+        'Cross Reference': false
+      });
+      
+      const response = await fetch('/api/research', {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        method: 'POST',
+        body: query
+      });
+      
+      setLoading(false);
+      
+      const workflowRunId = (await response.json()).workflowRunId;
+      
+      router.push(`/?session=${workflowRunId}`);
+      
+      return pollSessionStatus(workflowRunId);
+    } catch (error) {
+      console.error('Error:', error);
+      setLoading(false);
     }
   };
 

@@ -83,6 +83,15 @@ export const { POST } = serve(
     const model = context.agents.openai('gpt-4o-mini');
     const input = context.requestPayload;
 
+    await context.run('Save Query', async () => {
+      if (typeof input !== 'string') {
+        throw new Error('Input must be a string');
+      }
+      const redis = Redis.fromEnv();
+      await redis.set(`${context.workflowRunId}:query`, input);
+      return input;
+    });
+
     const wikipediaAgent = context.agents.agent({
       model,
       name: 'wikipediaAgent',
