@@ -17,8 +17,10 @@ export const AgentBlock = ({
   return (
     <button
       className={cx(
-        ' bg-white border-2 size-14 flex items-center justify-center text-opacity-60 rounded-xl',
-        agentInfoDisplay === name ? 'border-purple-400' : 'border-gray-300'
+        ' bg-white border-2 size-16 flex items-center justify-center text-opacity-60 rounded-xl',
+        agentInfoDisplay === name
+          ? 'border-purple-500 bg-purple-100'
+          : 'border-gray-200'
       )}
       onClick={() => setAgentInfoDisplay(name)}
       disabled={isDisabled}

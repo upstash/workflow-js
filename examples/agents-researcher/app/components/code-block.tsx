@@ -2,9 +2,12 @@
 
 import React, { useEffect } from 'react';
 import Prism from 'prismjs';
+import 'prismjs/themes/prism-twilight.css';
+import cx from '@/app/utils/cx';
 
 export default function CodeBlock({
   children,
+  className,
   ...props
 }: React.ComponentProps<'pre'>) {
   const ref = React.useRef<HTMLPreElement>(null);
@@ -16,7 +19,7 @@ export default function CodeBlock({
 
   return (
     <pre
-      className="!m-0 border-t border-t-zinc-800 !bg-transparent !p-4 !text-sm"
+      className={cx('!p-4 !rounded-xl !border-0 !text-sm !m-0', className)}
       {...props}
     >
       <code ref={ref}>{children}</code>

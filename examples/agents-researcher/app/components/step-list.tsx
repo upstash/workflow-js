@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import * as React from 'react';
 import cx from '../utils/cx';
-import type {StepStatus} from '../types';
-import {IconLoader} from '../icons/loader';
+import type { StepStatus } from '../types';
+import { IconLoader2 } from '@tabler/icons-react';
 
 export interface StepProps extends React.ComponentPropsWithoutRef<'div'> {}
 
@@ -21,10 +21,10 @@ const StepItem = ({ status, className, ...props }: StepItemProps) => {
       className={cx(
         'relative border-l-2 border-l-zinc-200 pb-16 pl-6 last:pb-0 sm:ml-4 sm:pl-8 dark:border-l-zinc-900',
         status === 'init'
-          ? 'border-l-zinc-200'
+          ? 'border-l-purple-100'
           : status === 'loading'
-            ? 'border-l-purple-500'
-            : 'border-l-emerald-500',
+            ? 'border-l-zinc-300'
+            : 'border-l-black',
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ const StepNumber = ({
             'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
             'flex size-8 items-center justify-center sm:size-10',
             'text-center rounded-full border-4 border-white',
-            status === 'init' ? 'bg-zinc-100' : 'bg-emerald-500',
+            status === 'init' ? 'bg-zinc-100' : 'bg-black',
             className
           )}
           {...props}
@@ -75,8 +75,8 @@ const StepNumber = ({
             'text-center rounded-full border-4 border-white'
           )}
         >
-          <span className="bg-white">
-            <IconLoader className="animate-spin size-8 text-purple-500" />
+          <span className="bg-white size-8 flex items-center justify-center">
+            <IconLoader2 className="animate-spin text-zinc-500" size={28} />
           </span>
         </span>
       )}
@@ -105,7 +105,7 @@ export interface StepContentProps
   extends React.ComponentPropsWithoutRef<'div'> {}
 
 const StepContent = ({ className, ...props }: StepContentProps) => {
-  return <div className={cx('mt-6', className)} {...props} />;
+  return <div className={cx('mt-4', className)} {...props} />;
 };
 StepContent.displayName = 'StepContent';
 
