@@ -82,27 +82,20 @@ export const createWorkflowOpenAI = (
 };
 
 export const createWorkflowModel = <
-  TModelNames extends string,
-  TModelParams extends object,
-  TProvider extends ProviderFunction<TModelNames, TModelParams>,
+  TProvider extends ProviderFunction,
 >({
   context,
   provider,
   providerParams,
-  modelName,
-  modelParams,
 }: {
   context: WorkflowContext;
   provider: TProvider;
   providerParams?: Omit<Required<Parameters<TProvider>>[0], "fetch">;
-  modelName: TProvider extends ProviderFunction<infer U, any> ? U : never;
-  modelParams?: TProvider extends ProviderFunction<any, infer U> ? U : never;
-}) => {
-  const model = provider({
+}): ReturnType<TProvider> => {
+  return provider({
     fetch: (...params) => fetchWithContextCall(context, ...params),
     ...providerParams,
   });
-  return model(modelName, modelParams);
 };
 
 /**

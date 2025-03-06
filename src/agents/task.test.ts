@@ -8,6 +8,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { DisabledWorkflowContext } from "../serve/authorization";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
 
 export const getAgentsApi = ({
   disabledContext,
@@ -72,6 +73,7 @@ export const getAgentsApi = ({
     workflowRunId,
     context,
     agentsApi,
+    model,
   };
 };
 
@@ -141,13 +143,28 @@ describe("tasks", () => {
   });
 
   test("multi agent with baseURL", async () => {
-    const { agentsApi, agent, token, workflowRunId } = getAgentsApi({ disabledContext: false });
-
-    const customURL = "https://api.deepseek.com/v1";
     const customApiKey = nanoid();
+    const { agentsApi, agent, token, workflowRunId, model } = getAgentsApi({
+      disabledContext: false,
+      getModel(agentsApi, context) {
+        const model = agentsApi.model({
+          context,
+          provider: createOpenAI,
+          providerParams: {
+            baseURL: "https://api.deepseek.com/v1",
+            apiKey: customApiKey,
+          },
+        });
+
+        return model("gpt-4o", {
+          reasoningEffort: "low",
+        });
+      },
+    });
+
     const task = agentsApi.task({
       agents: [agent],
-      model: agentsApi.openai("gpt-3.5-turbo", { baseURL: customURL, apiKey: customApiKey }),
+      model: model,
       maxSteps: 2,
       prompt: "hello world!",
     });
@@ -169,7 +186,7 @@ describe("tasks", () => {
         token,
         body: [
           {
-            body: '{"model":"gpt-3.5-turbo","temperature":0.1,"messages":[{"role":"system","content":"You are an agent orchestrating other AI Agents.\\n\\nThese other agents have tools available to them.\\n\\nGiven a prompt, utilize these agents to address requests.\\n\\nDon\'t always call all the agents provided to you at the same time. You can call one and use it\'s response to call another.\\n\\nAvoid calling the same agent twice in one turn. Instead, prefer to call it once but provide everything\\nyou need from that agent.\\n"},{"role":"user","content":"hello world!"}],"tools":[{"type":"function","function":{"name":"my agent","description":"An AI Agent with the following background: an agentHas access to the following tools: ai sdk tool","parameters":{"type":"object","properties":{"prompt":{"type":"string"}},"required":["prompt"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}],"tool_choice":"auto"}',
+            body: '{"model":"gpt-4o","temperature":0.1,"reasoning_effort":"low","messages":[{"role":"system","content":"You are an agent orchestrating other AI Agents.\\n\\nThese other agents have tools available to them.\\n\\nGiven a prompt, utilize these agents to address requests.\\n\\nDon\'t always call all the agents provided to you at the same time. You can call one and use it\'s response to call another.\\n\\nAvoid calling the same agent twice in one turn. Instead, prefer to call it once but provide everything\\nyou need from that agent.\\n"},{"role":"user","content":"hello world!"}],"tools":[{"type":"function","function":{"name":"my agent","description":"An AI Agent with the following background: an agentHas access to the following tools: ai sdk tool","parameters":{"type":"object","properties":{"prompt":{"type":"string"}},"required":["prompt"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}}}],"tool_choice":"auto"}',
             destination: "https://api.deepseek.com/v1/chat/completions",
             headers: {
               "upstash-workflow-sdk-version": "1",
@@ -209,15 +226,17 @@ describe("tasks", () => {
   test("anthropic model", async () => {
     const { agentsApi, agent, token, workflowRunId } = getAgentsApi({
       disabledContext: false,
-      getModel: (agentsApi, context) =>
-        agentsApi.model({
+      getModel: (agentsApi, context) => {
+        const model = agentsApi.model({
           context,
           provider: createAnthropic,
-          modelName: "claude-3-sonnet-20240229",
           providerParams: {
-            apiKey: "mock",
+            apiKey: "antrhopic-key",
           },
-        }),
+        });
+
+        return model("claude-3-sonnet-20240229");
+      },
     });
 
     const task = agentsApi.task({
@@ -270,7 +289,7 @@ describe("tasks", () => {
               "upstash-workflow-url": "https://requestcatcher.com/api",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
               // anthropic specific headers:
-              "upstash-forward-x-api-key": "mock",
+              "upstash-forward-x-api-key": "antrhopic-key",
               "upstash-forward-anthropic-version": "2023-06-01",
             },
           },
