@@ -3,9 +3,9 @@
 import { PollResult, StepRecord } from "./types";
 import { Redis } from "@upstash/redis";
 
-export async function pollOutputs(workflowRunId: string): Promise<PollResult> {
-  const redis = Redis.fromEnv();
+const redis = Redis.fromEnv();
 
+export async function pollOutputs(workflowRunId: string): Promise<PollResult> {
   const progress = (await redis.get(`${workflowRunId}:progress`)) as
     | string
     | null;
