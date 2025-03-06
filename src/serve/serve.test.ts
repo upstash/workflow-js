@@ -253,6 +253,7 @@ describe("serve", () => {
   });
 
   test("should return 500 on error during step execution", async () => {
+    let onErrorCalled = false;
     const { handler: endpoint } = serve(
       async (context) => {
         await context.run("wrong step", async () => {
@@ -262,6 +263,11 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
+        onError(error) {
+          expect(error).toBeInstanceOf(Error);
+          expect(error.message).toBe("some-error");
+          onErrorCalled = true;
+        },
       }
     );
 
@@ -284,6 +290,7 @@ describe("serve", () => {
       receivesRequest: false,
     });
     expect(called).toBeTrue();
+    expect(onErrorCalled).toBeTrue();
   });
 
   test("should call onFinish with auth-fail if authentication fails", async () => {

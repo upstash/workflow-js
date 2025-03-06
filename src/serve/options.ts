@@ -26,7 +26,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   | "receiver"
   | "url"
   | "failureFunction"
-  | "onError"
   | "failureUrl"
   | "baseUrl"
   | "schema"
@@ -92,6 +91,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     retries: DEFAULT_RETRIES,
     useJSONContent: false,
     disableTelemetry: false,
+    onError: console.error,
     ...options,
   };
 };
