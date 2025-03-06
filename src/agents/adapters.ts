@@ -81,9 +81,7 @@ export const createWorkflowOpenAI = (
   });
 };
 
-export const createWorkflowModel = <
-  TProvider extends ProviderFunction,
->({
+export const createWorkflowModel = <TProvider extends ProviderFunction>({
   context,
   provider,
   providerParams,

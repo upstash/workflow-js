@@ -97,17 +97,14 @@ export class WorkflowAgents {
     const [model, settings] = params;
     const { baseURL, apiKey, ...otherSettings } = settings ?? {};
 
-    const openaiModel = this.model({
+    const openaiModel = this.AISDKModel({
       context: this.context,
       provider: createOpenAI,
       providerParams: { baseURL, apiKey, compatibility: "strict" },
     });
 
-    return openaiModel(
-      model,
-      otherSettings
-    )
+    return openaiModel(model, otherSettings);
   }
 
-  public model = createWorkflowModel;
+  public AISDKModel = createWorkflowModel;
 }

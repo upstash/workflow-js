@@ -147,7 +147,7 @@ describe("tasks", () => {
     const { agentsApi, agent, token, workflowRunId, model } = getAgentsApi({
       disabledContext: false,
       getModel(agentsApi, context) {
-        const model = agentsApi.model({
+        const model = agentsApi.AISDKModel({
           context,
           provider: createOpenAI,
           providerParams: {
@@ -227,7 +227,7 @@ describe("tasks", () => {
     const { agentsApi, agent, token, workflowRunId } = getAgentsApi({
       disabledContext: false,
       getModel: (agentsApi, context) => {
-        const model = agentsApi.model({
+        const model = agentsApi.AISDKModel({
           context,
           provider: createAnthropic,
           providerParams: {

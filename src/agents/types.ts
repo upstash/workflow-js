@@ -96,4 +96,5 @@ export type CustomModelParams = [ModelParams[0], CustomModelSettings?];
 
 export type ProviderFunction = (params: {
   fetch: typeof fetch;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }) => any;
