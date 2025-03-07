@@ -7,9 +7,59 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { HTTPMethods } from "@upstash/qstash";
 import { WorkflowContext } from "../context";
 import { tool } from "ai";
-import { AISDKTool, LangchainTool } from "./types";
+import { AISDKTool, LangchainTool, ProviderFunction } from "./types";
 import { AGENT_NAME_HEADER } from "./constants";
 import { z, ZodType } from "zod";
+
+export const fetchWithContextCall = async (
+  context: WorkflowContext,
+  ...params: Parameters<typeof fetch>
+) => {
+  const [input, init] = params;
+  try {
+    // Prepare headers from init.headers
+    const headers = init?.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {};
+
+    // Prepare body from init.body
+    const body = init?.body ? JSON.parse(init.body as string) : undefined;
+
+    // create step name
+    const agentName = headers[AGENT_NAME_HEADER] as string | undefined;
+    const stepName = agentName ? `Call Agent ${agentName}` : "Call Agent";
+
+    // Make network call
+    const responseInfo = await context.call(stepName, {
+      url: input.toString(),
+      method: init?.method as HTTPMethods,
+      headers,
+      body,
+    });
+
+    // Construct headers for the response
+    const responseHeaders = new Headers(
+      Object.entries(responseInfo.header).reduce(
+        (acc, [key, values]) => {
+          acc[key] = values.join(", ");
+          return acc;
+        },
+        {} as Record<string, string>
+      )
+    );
+
+    // Return the constructed response
+    return new Response(JSON.stringify(responseInfo.body), {
+      status: responseInfo.status,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "WorkflowAbort") {
+      throw error;
+    } else {
+      console.error("Error in fetch implementation:", error);
+      throw error; // Rethrow error for further handling
+    }
+  }
+};
 
 /**
  * creates an AI SDK openai client with a custom
@@ -27,53 +77,22 @@ export const createWorkflowOpenAI = (
     baseURL,
     apiKey,
     compatibility: "strict",
-    fetch: async (input, init) => {
-      try {
-        // Prepare headers from init.headers
-        const headers = init?.headers
-          ? Object.fromEntries(new Headers(init.headers).entries())
-          : {};
+    fetch: async (...params) => fetchWithContextCall(context, ...params),
+  });
+};
 
-        // Prepare body from init.body
-        const body = init?.body ? JSON.parse(init.body as string) : undefined;
-
-        // create step name
-        const agentName = headers[AGENT_NAME_HEADER] as string | undefined;
-        const stepName = agentName ? `Call Agent ${agentName}` : "Call Agent";
-
-        // Make network call
-        const responseInfo = await context.call(stepName, {
-          url: input.toString(),
-          method: init?.method as HTTPMethods,
-          headers,
-          body,
-        });
-
-        // Construct headers for the response
-        const responseHeaders = new Headers(
-          Object.entries(responseInfo.header).reduce(
-            (acc, [key, values]) => {
-              acc[key] = values.join(", ");
-              return acc;
-            },
-            {} as Record<string, string>
-          )
-        );
-
-        // Return the constructed response
-        return new Response(JSON.stringify(responseInfo.body), {
-          status: responseInfo.status,
-          headers: responseHeaders,
-        });
-      } catch (error) {
-        if (error instanceof Error && error.name === "WorkflowAbort") {
-          throw error;
-        } else {
-          console.error("Error in fetch implementation:", error);
-          throw error; // Rethrow error for further handling
-        }
-      }
-    },
+export const createWorkflowModel = <TProvider extends ProviderFunction>({
+  context,
+  provider,
+  providerParams,
+}: {
+  context: WorkflowContext;
+  provider: TProvider;
+  providerParams?: Omit<Required<Parameters<TProvider>>[0], "fetch">;
+}): ReturnType<TProvider> => {
+  return provider({
+    fetch: (...params) => fetchWithContextCall(context, ...params),
+    ...providerParams,
   });
 };
 
