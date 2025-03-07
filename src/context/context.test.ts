@@ -304,7 +304,10 @@ describe("context tests", () => {
             context.call("my-step", {
               url,
               body,
-              headers: { "my-header": "my-value" },
+              headers: {
+                "my-header": "my-value",
+                "content-type": "application/x-www-form-urlencoded",
+              },
               method: "PATCH",
               retries: retries,
               timeout: 30,
@@ -325,12 +328,14 @@ describe("context tests", () => {
               destination: url,
               headers: {
                 "upstash-workflow-sdk-version": "1",
-                "content-type": "application/json",
+                "content-type": "application/x-www-form-urlencoded",
+                "upstash-forward-content-type": "application/x-www-form-urlencoded",
                 "upstash-callback": WORKFLOW_ENDPOINT,
                 "upstash-callback-feature-set": "LazyFetch,InitialBody",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
-                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-contenttype":
+                  "application/x-www-form-urlencoded",
                 "upstash-callback-forward-upstash-workflow-invoke-count": "7",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "my-step",

@@ -51,8 +51,13 @@ export const serve = <
   return handler;
 };
 
-export const createWorkflow = <TInitialPayload, TResult>(
-  ...params: Parameters<typeof serve<TInitialPayload, WorkflowBindings, Variables, TResult>>
+export const createWorkflow = <
+  TInitialPayload = unknown,
+  TResult = unknown,
+  TBindings extends WorkflowBindings = WorkflowBindings,
+  TVariables extends Variables = Variables,
+>(
+  ...params: Parameters<typeof serve<TInitialPayload, TBindings, TVariables, TResult>>
 ): InvokableWorkflow<TInitialPayload, TResult> => {
   const [routeFunction, options = {}] = params;
   return {

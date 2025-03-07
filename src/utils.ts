@@ -27,8 +27,8 @@ export function getWorkflowRunId(id?: string): string {
  * @param base64 encoded string
  */
 export function decodeBase64(base64: string) {
+  const binString = atob(base64);
   try {
-    const binString = atob(base64);
     // @ts-expect-error m will always be defined
     const intArray = Uint8Array.from(binString, (m) => m.codePointAt(0));
     return new TextDecoder().decode(intArray);
@@ -38,6 +38,6 @@ export function decodeBase64(base64: string) {
       `Upstash Qstash: Failed while decoding base64 "${base64}".` +
         ` Decoding with atob and returning it instead. ${error}`
     );
-    return atob(base64);
+    return binString;
   }
 }

@@ -1,6 +1,6 @@
-const DEFAULT_ICON_SIZE = 32
+const DEFAULT_ICON_SIZE = 32;
 
-export const WorkflowIcon = ({ size = DEFAULT_ICON_SIZE }) => {
+export const WorkflowIcon = ({ size = DEFAULT_ICON_SIZE, ...props }) => {
   return (
     <svg
       width={size}
@@ -8,6 +8,7 @@ export const WorkflowIcon = ({ size = DEFAULT_ICON_SIZE }) => {
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      {...props}
     >
       <rect width="32" height="32" rx="7" fill="#9333EA" />
       <path
@@ -18,5 +19,5 @@ export const WorkflowIcon = ({ size = DEFAULT_ICON_SIZE }) => {
         strokeLinejoin="round"
       />
     </svg>
-  )
-}
+  );
+};

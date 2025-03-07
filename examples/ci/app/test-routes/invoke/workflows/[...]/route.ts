@@ -1,6 +1,6 @@
 import { WorkflowContext } from "@upstash/workflow";
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
-import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { fail, saveResult } from "app/ci/upstash/redis";
 import { expect, nanoid, testServe } from "app/ci/utils";
 import { z } from "zod";
@@ -12,6 +12,9 @@ const payload = 123
 
 const invokePayload = "invoke-payload"
 const invokeResult = "invoke-result"
+
+const BRANCH_ONE_RESULT = { "branch-one": "result" }
+const BRANCH_TWO_RESULT = "branch-two-result"
 
 const invokeHeader = "invoke-header"
 const invokeHeaderValue = "invoke-header-value"
@@ -75,7 +78,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
     "done invoke"
   )
 }, {
-  schema: z.number()
+  // schema: z.number(), # TODO add back after fromCallback is removed
 })
 
 const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
@@ -116,8 +119,9 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
     })
   ])
 
-  expect(result[0].body, "branch-one-result")
-  expect(result[1].body, "branch-two-result")
+  expect(typeof result[0].body, "object")
+  expect(JSON.stringify(result[0].body), JSON.stringify(BRANCH_ONE_RESULT))
+  expect(result[1].body, BRANCH_TWO_RESULT)
 
   return invokeResult
 })
@@ -164,7 +168,7 @@ const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
 
   await context.sleep("check", 1)
 
-  return "branch-one-result"
+  return BRANCH_ONE_RESULT
 })
 
 /**
@@ -197,7 +201,7 @@ const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
 
   await context.sleep("check", 1)
 
-  return "branch-two-result"
+  return BRANCH_TWO_RESULT
 })
 
 export const { POST, GET } = testServe(
@@ -208,6 +212,8 @@ export const { POST, GET } = testServe(
     workflowFour,
     branchOne,
     branchTwo,
+  }, {
+    baseUrl: BASE_URL
   }),
   {
     expectedCallCount: 30,

@@ -31,6 +31,11 @@ export const { POST, GET } = testServe(
       });
 
       expect(result2, "processed 'processed '“unicode-quotes”''");
+
+      const result3 = await context.run("step 3", () => true)
+      expect(result3, true)
+      expect(typeof result3, "boolean")
+      
       await saveResult(
         context,
         result2
@@ -40,7 +45,7 @@ export const { POST, GET } = testServe(
       retries: 0
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 5,
     expectedResult: "processed 'processed '“unicode-quotes”''",
     payload,
     headers: {

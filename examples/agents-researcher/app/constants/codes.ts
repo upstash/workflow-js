@@ -50,7 +50,7 @@ export const CODES = {
         }),
       }
     });`,
-  "Cross Reference": `const crossReferenceTask = context.agents.task({
+  'Cross Reference': `const crossReferenceTask = context.agents.task({
   model,
   prompt:
     "You are an agent that takes input from other agents with access to different " +
@@ -62,5 +62,5 @@ export const CODES = {
 });
 
 const { text } = await crossReferenceTask.run();
-`,
+`
 };

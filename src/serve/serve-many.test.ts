@@ -82,7 +82,7 @@ describe("serveMany", () => {
               "Upstash-Failure-Callback-Forward-original": ["original-headers-value"],
               "Upstash-Workflow-Runid": ["wfr_original_workflow"],
             },
-            workflowRunId: "some-run-id",
+            workflowRunId: "wfr_original_workflow",
             workflowUrl: "https://requestcatcher.com/api/original_workflow",
             step: {
               stepId: 4,
@@ -203,7 +203,7 @@ describe("serveMany", () => {
       },
       {
         flowControl: {
-          key: "workflowTwoFlowControl",
+          key: "workflowThreeFlowControl",
           parallelism: 4,
           ratePerSecond: 6,
         },
@@ -303,6 +303,8 @@ describe("serveMany", () => {
               "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
+              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
+              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
@@ -326,6 +328,8 @@ describe("serveMany", () => {
           },
           headers: {
             [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "2",
+            "Upstash-Flow-Control-Key": "customFlowControl",
+            "Upstash-Flow-Control-Value": "parallelism=4",
           },
         },
       });
@@ -352,20 +356,22 @@ describe("serveMany", () => {
           token,
           body: [
             {
-              body: '"2"',
+              body: "2",
               destination: "https://requestcatcher.com/api/workflow-one",
               headers: {
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api/workflow-three",
                 "upstash-callback-feature-set": "LazyFetch,InitialBody",
-                "upstash-callback-flow-control-key": "workflowTwoFlowControl",
+                "upstash-callback-flow-control-key": "workflowThreeFlowControl",
                 "upstash-callback-flow-control-value": "parallelism=4, rate=6",
+                "upstash-flow-control-key": "workflowOneFlowControl",
+                "upstash-flow-control-value": "parallelism=2, rate=10",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
                 "upstash-callback-forward-upstash-workflow-invoke-count": "1",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
-                "upstash-callback-forward-upstash-workflow-stepname": "invoke step two",
+                "upstash-callback-forward-upstash-workflow-stepname": "call other workflow",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",

@@ -5,8 +5,8 @@ import { Redis } from '@upstash/redis';
 
 import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
 import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
-import { ExaSearchResults } from "@langchain/exa";
-import Exa from "exa-js";
+import { ExaSearchResults } from '@langchain/exa';
+import Exa from 'exa-js';
 
 const client = new Exa(process.env.EXASEARCH_API_KEY);
 
@@ -14,9 +14,11 @@ const client = new Exa(process.env.EXASEARCH_API_KEY);
 class StepLogger extends WorkflowLogger {
   //@ts-expect-error since we had to redeclare the workflowRunId
   protected workflowRunId: string;
+
   constructor() {
     super({ logLevel: 'SUBMIT', logOutput: 'console' });
   }
+
   async log(
     level: LogLevel,
     eventType:
@@ -57,9 +59,7 @@ class StepLogger extends WorkflowLogger {
             })
           );
         }
-        if (
-          step.stepName === 'Run tool searchWeb'
-        ) {
+        if (step.stepName === 'Run tool searchWeb') {
           await redis.rpush(
             `${this.workflowRunId}:searchOutput`,
             JSON.stringify({
@@ -131,9 +131,9 @@ export const { POST } = serve(
           client,
           searchArgs: {
             numResults: 3,
-            type: "keyword",
-          },
-        }),
+            type: 'keyword'
+          }
+        })
       }
     });
 

@@ -233,6 +233,32 @@ export type WorkflowRunLog = {
    *
    */
   steps: StepLogGroup[];
+  /**
+   * If the workflow returned a response, the stringified state of this
+   * response will be available in the workflowRunResponse field.
+   *
+   * To restore it to its original format, use JSON.parse.
+   */
+  workflowRunResponse?: string;
+  /**
+   * Information on the invoker workflow run, if any
+   */
+  invoker?: {
+    /**
+     * run id of the invoker workflow
+     */
+    workflowRunId: string;
+    /**
+     * URL of the invoker workflow
+     */
+    workflowUrl: string;
+    /**
+     * Time when the invoker workflow run was created
+     *
+     * in unix milliseconds format
+     */
+    workflowRunCreatedAt: number;
+  };
 };
 
 export type WorkflowRunLogs = {

@@ -1,7 +1,6 @@
 import type {
   CallResponse,
   CallSettings,
-  InvokeStepResponse,
   LazyInvokeStepParams,
   NotifyStepResponse,
   Telemetry,
@@ -239,7 +238,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   ): Promise<TResult> {
     const wrappedStepFunction = (() =>
       this.executor.wrapStep(stepName, stepFunction)) as StepFunction<TResult>;
-    return this.addStep<TResult>(new LazyFunctionStep(stepName, wrappedStepFunction));
+    return await this.addStep<TResult>(new LazyFunctionStep(stepName, wrappedStepFunction));
   }
 
   /**
@@ -318,19 +317,22 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: CallSettings<TBody>
   ): Promise<CallResponse<TResult>>;
-  public async call<TResult = unknown, TBody = unknown>(
+  public async call<
+    TResult extends { workflowRunId: string } = { workflowRunId: string },
+    TBody = unknown,
+  >(
     stepName: string,
-    settings: LazyInvokeStepParams<TBody, TResult>
-  ): Promise<CallResponse<{ workflowRunId: string }>>;
+    settings: LazyInvokeStepParams<TBody, unknown>
+  ): Promise<CallResponse<TResult>>;
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
     settings: CallSettings<TBody> | LazyInvokeStepParams<TBody, TResult>
-  ): Promise<CallResponse<TResult>> {
-    let callStep: LazyCallStep<CallResponse<string> | string>;
+  ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
+    let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
     if ("workflow" in settings) {
       const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId!);
 
-      callStep = new LazyCallStep<CallResponse<string> | string>(
+      callStep = new LazyCallStep<{ workflowRunId: string }>(
         stepName,
         url,
         "POST",
@@ -351,7 +353,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         flowControl,
       } = settings;
 
-      callStep = new LazyCallStep<CallResponse<string> | string>(
+      callStep = new LazyCallStep<TResult>(
         stepName,
         url,
         method,
@@ -363,38 +365,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       );
     }
 
-    const result = await this.addStep(callStep);
-
-    // <for backwards compatibity>
-    // if you transition to upstash/workflow from upstash/qstash,
-    // the out field in the steps will be the body of the response.
-    // we need to handle them explicitly here
-    if (typeof result === "string") {
-      try {
-        const body = JSON.parse(result);
-        return {
-          status: 200,
-          header: {},
-          body,
-        };
-      } catch {
-        return {
-          status: 200,
-          header: {},
-          body: result as TResult,
-        };
-      }
-    }
-    // </for backwards compatibity>
-
-    try {
-      return {
-        ...result,
-        body: JSON.parse(result.body as string),
-      };
-    } catch {
-      return result as CallResponse<TResult>;
-    }
+    return await this.addStep(callStep);
   }
 
   /**
@@ -440,16 +411,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
     const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
 
-    const result = await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
-
-    try {
-      return {
-        ...result,
-        eventData: JSON.parse(result.eventData as string),
-      };
-    } catch {
-      return result;
-    }
+    return await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
   }
 
   /**
@@ -478,30 +440,16 @@ export class WorkflowContext<TInitialPayload = unknown> {
     eventId: string,
     eventData: unknown
   ): Promise<NotifyStepResponse> {
-    const result = await this.addStep(
+    return await this.addStep(
       new LazyNotifyStep(stepName, eventId, eventData, this.qstashClient.http)
     );
-
-    try {
-      return {
-        ...result,
-        eventData: JSON.parse(result.eventData as string),
-      };
-    } catch {
-      return result;
-    }
   }
 
   public async invoke<TInitialPayload, TResult>(
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
-  ): Promise<InvokeStepResponse<TResult>> {
-    const result = await this.addStep(new LazyInvokeStep(stepName, settings));
-
-    return {
-      ...result,
-      body: (result.body ? JSON.parse(result.body as string) : undefined) as TResult,
-    };
+  ) {
+    return await this.addStep(new LazyInvokeStep(stepName, settings));
   }
 
   /**
