@@ -18,6 +18,7 @@ import type { AgentName, StepRecord, PollResult } from "../types";
 import { AgentBlock } from "./agent-block";
 import { IconBrandGithub, IconFile, IconLoader2 } from "@tabler/icons-react";
 import { pollOutputs } from "../actions";
+import DeployButton from "./deploy-button";
 
 export const AgentUI = ({ session }: { session?: string }) => {
   const [query, setQuery] = useState("");
@@ -573,6 +574,9 @@ const Header = () => {
             <IconBrandGithub size={18} />
             Repository
           </a>
+          <div className="h-8 w-[103px]">
+            <DeployButton />
+          </div>
         </div>
       </div>
     </header>
