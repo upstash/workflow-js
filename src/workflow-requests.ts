@@ -547,6 +547,9 @@ export const getHeaders = ({
         "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
 
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
+        // not a must now, will be needed on newer versions of the protocol so that
+        // skipping fromCallback step on the qstash-server will work correctly.
+        [`Upstash-Callback-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
         "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.stepName,
         "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.stepType,

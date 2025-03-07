@@ -7,6 +7,7 @@ import { WorkflowAgents } from ".";
 import { tool } from "ai";
 import { z } from "zod";
 import { DisabledWorkflowContext } from "../serve/authorization";
+import { WORKFLOW_PROTOCOL_VERSION } from "../constants";
 
 export const getAgentsApi = ({ disabledContext }: { disabledContext: boolean }) => {
   const workflowRunId = getWorkflowRunId();
@@ -107,6 +108,7 @@ describe("tasks", () => {
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
               "upstash-callback-forward-upstash-workflow-invoke-count": "0",
+              "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
               "upstash-callback-retries": "3",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
@@ -173,6 +175,7 @@ describe("tasks", () => {
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent Manager LLM",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
               "upstash-callback-forward-upstash-workflow-invoke-count": "0",
+              "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
               "upstash-callback-retries": "3",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
