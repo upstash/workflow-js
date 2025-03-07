@@ -56,6 +56,8 @@ export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
       }
     : {
         error: "Error",
-        message: "An error occured while executing workflow.",
+        message:
+          "An error occured while executing workflow: " +
+          `'${typeof error === "string" ? error : JSON.stringify(error)}'`,
       };
 };

@@ -62,6 +62,7 @@ export const serveBase = <
     useJSONContent,
     disableTelemetry,
     flowControl,
+    onError,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -234,8 +235,21 @@ export const serveBase = <
     try {
       return await handler(request);
     } catch (error) {
-      console.error(error);
-      return new Response(JSON.stringify(formatWorkflowError(error)), {
+      const formattedError = formatWorkflowError(error);
+      try {
+        onError?.(error as Error);
+      } catch (onErrorError) {
+        const formattedOnErrorError = formatWorkflowError(onErrorError);
+        const errorMessage =
+          `Error while running onError callback: '${formattedOnErrorError.message}'.` +
+          `\nOriginal error: '${formattedError.message}'`;
+
+        console.error(errorMessage);
+        return new Response(errorMessage, {
+          status: 500,
+        }) as TResponse;
+      }
+      return new Response(JSON.stringify(formattedError), {
         status: 500,
       }) as TResponse;
     }
