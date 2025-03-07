@@ -293,7 +293,6 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       workflowRunId: getWorkflowRunId(workflowRunId),
       retries,
       flowControl,
-      waitForResult: false,
     };
   }
 

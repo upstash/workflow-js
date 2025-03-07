@@ -171,7 +171,6 @@ describe("serveMany", () => {
             key: "customFlowControl",
             parallelism: 4,
           },
-          waitForResult: true,
         });
 
         const _secondBody = secondResult.body;
@@ -191,10 +190,9 @@ describe("serveMany", () => {
 
     const workflowThree = createWorkflow(
       async (context: WorkflowContext<string>) => {
-        const result = await context.invoke("invoke step two", {
+        const result = await context.call("call other workflow", {
           workflow: workflowOne,
           body: 2,
-          waitForResult: false,
         });
 
         const _body = result.body;
@@ -333,7 +331,7 @@ describe("serveMany", () => {
       });
     });
 
-    test("should make context.call request if waitForResult: false", async () => {
+    test("should make context.call request with workflow", async () => {
       const request = getRequest(
         `${WORKFLOW_ENDPOINT}/workflow-three`,
         "wfr_id",

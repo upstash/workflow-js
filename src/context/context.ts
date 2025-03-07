@@ -317,11 +317,41 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
     settings: CallSettings<TBody>
+  ): Promise<CallResponse<TResult>>;
+  public async call<TResult = unknown, TBody = unknown>(
+    stepName: string,
+    settings: LazyInvokeStepParams<TBody, TResult>
+  ): Promise<CallResponse<{ workflowRunId: string }>>;
+  public async call<TResult = unknown, TBody = unknown>(
+    stepName: string,
+    settings: CallSettings<TBody> | LazyInvokeStepParams<TBody, TResult>
   ): Promise<CallResponse<TResult>> {
-    const { url, method = "GET", body, headers = {}, retries = 0, timeout, flowControl } = settings;
+    let callStep: LazyCallStep<CallResponse<string> | string>;
+    if ("workflow" in settings) {
+      const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId!);
 
-    const result = await this.addStep(
-      new LazyCallStep<CallResponse<string> | string>(
+      callStep = new LazyCallStep<CallResponse<string> | string>(
+        stepName,
+        url,
+        "POST",
+        settings.body,
+        settings.headers || {},
+        settings.retries || 0,
+        undefined,
+        settings.flowControl ?? settings.workflow.options.flowControl
+      );
+    } else {
+      const {
+        url,
+        method = "GET",
+        body,
+        headers = {},
+        retries = 0,
+        timeout,
+        flowControl,
+      } = settings;
+
+      callStep = new LazyCallStep<CallResponse<string> | string>(
         stepName,
         url,
         method,
@@ -330,8 +360,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
         retries,
         timeout,
         flowControl
-      )
-    );
+      );
+    }
+
+    const result = await this.addStep(callStep);
 
     // <for backwards compatibity>
     // if you transition to upstash/workflow from upstash/qstash,
@@ -462,28 +494,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
   public async invoke<TInitialPayload, TResult>(
     stepName: string,
-    settings: LazyInvokeStepParams<TInitialPayload, TResult> & { waitForResult: false }
-  ): Promise<CallResponse<TResult>>;
-  public async invoke<TInitialPayload, TResult>(
-    stepName: string,
-    settings: LazyInvokeStepParams<TInitialPayload, TResult> & { waitForResult?: true }
-  ): Promise<InvokeStepResponse<TResult>>;
-  public async invoke<TInitialPayload, TResult>(
-    stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
-  ): Promise<CallResponse<TResult> | InvokeStepResponse<TResult>> {
-    const { waitForResult } = settings;
-    if (!waitForResult) {
-      return await this.call(stepName, {
-        url: getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId!),
-        method: "POST",
-        body: JSON.stringify(settings.body),
-        headers: settings.headers,
-        retries: settings.retries,
-        flowControl: settings.flowControl,
-      });
-    }
-
+  ): Promise<InvokeStepResponse<TResult>> {
     const result = await this.addStep(new LazyInvokeStep(stepName, settings));
 
     return {
