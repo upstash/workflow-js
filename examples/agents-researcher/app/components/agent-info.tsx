@@ -16,6 +16,9 @@ const CollapsibleText = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Ensure text starts on a new line by adding a newline if it doesn't already have one
+  const formattedText = text && !text.startsWith('\n') ? `\n${text}` : text;
+
   if (!text || text.length <= maxLength)
     return (
       <div className="border-gray-300 border-2 p-3 rounded-xl text-md font-mono break-words">
@@ -36,12 +39,12 @@ const CollapsibleText = ({
             },
           }}
         >
-          {text}
+          {formattedText}
         </Markdown>
       </div>
     );
 
-  const displayText = isExpanded ? text : text.slice(0, maxLength) + "...";
+  const displayText = isExpanded ? formattedText : formattedText.slice(0, maxLength) + "...";
 
   return (
     <div className="border-gray-300 border-2 p-3 rounded-xl text-md font-mono break-words">
