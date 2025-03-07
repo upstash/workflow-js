@@ -553,6 +553,7 @@ describe("Workflow Requests", () => {
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": stepId.toString(),
         "Upstash-Callback-Forward-Upstash-Workflow-StepName": stepName,
         "Upstash-Callback-Forward-Upstash-Workflow-StepType": "Call",
+        "Upstash-Callback-Forward-Upstash-Workflow-Sdk-Version": WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Workflow-CallType": "fromCallback",
         "Upstash-Callback-Workflow-RunId": workflowRunId,
         "Upstash-Callback-Workflow-Init": "false",
