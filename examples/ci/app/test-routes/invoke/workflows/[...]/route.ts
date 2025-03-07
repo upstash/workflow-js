@@ -1,7 +1,7 @@
 import { WorkflowContext } from "@upstash/workflow";
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { saveResult } from "app/ci/upstash/redis";
+import { fail, saveResult } from "app/ci/upstash/redis";
 import { expect, nanoid, testServe } from "app/ci/utils";
 import { z } from "zod";
 
@@ -43,6 +43,17 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
   expect(isCanceled, false)
   expect(isFailed, false)
 
+  const result = await context.call("call workflow", {
+    workflow: workflowFour,
+    body: invokePayload,
+    headers: {
+      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
+      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
+    },
+  })
+
+  expect(typeof result.body.workflowRunId, "string")
+
   const { body: failingBody, isCanceled: failingIsCanceled, isFailed: failingIsFailed } = await context.invoke("invoke failing", {
     workflow: workflowThree,
     body: invokePayload,
@@ -67,7 +78,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
     "done invoke"
   )
 }, {
-  schema: z.number(),
+  // schema: z.number(), # TODO add back after fromCallback is removed
 })
 
 const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
@@ -116,8 +127,18 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
 })
 
 const workflowThree = createWorkflow(async (context: WorkflowContext<string>) => {
-  expect(context.requestPayload, invokePayload)
+  try {
+    expect(context.requestPayload, invokePayload)
+  } catch {
+    fail(context)
+  }
   throw new Error("what")
+}, {
+  retries: 0
+})
+
+const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
+  await context.sleep("mock", 1)
 }, {
   retries: 0
 })
@@ -188,13 +209,14 @@ export const { POST, GET } = testServe(
     workflowOne,
     workflowTwo,
     workflowThree,
+    workflowFour,
     branchOne,
     branchTwo,
   }, {
     baseUrl: BASE_URL
   }),
   {
-    expectedCallCount: 26,
+    expectedCallCount: 30,
     expectedResult: "done invoke",
     payload,
     headers: {
