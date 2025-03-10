@@ -271,6 +271,7 @@ describe("tasks", () => {
               "upstash-callback-feature-set": "LazyFetch,InitialBody",
               "upstash-callback-forward-upstash-workflow-callback": "true",
               "upstash-callback-forward-upstash-workflow-concurrent": "1",
+              "upstash-callback-forward-upstash-workflow-sdk-version": "1",
               "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
               "upstash-callback-forward-upstash-workflow-stepid": "1",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
