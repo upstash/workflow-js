@@ -133,6 +133,8 @@ export type StepLog = BaseStepLog &
   AsOptional<CallUrlGroup> &
   AsOptional<CallResponseStatusGroup> &
   AsOptional<InvokedWorkflowGroup> &
+  AsOptional<{ sleepFor: number }> &
+  AsOptional<{ sleepUntil: number }> &
   AsOptional<WaitEventGroup>;
 
 type StepLogGroup =
@@ -160,7 +162,10 @@ type StepLogGroup =
       /**
        * Log which belongs to the next step
        */
-      steps: { messageId: string; state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" }[];
+      steps: {
+        messageId: string;
+        state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
+      }[];
       /**
        * Log which belongs to the next step
        */
