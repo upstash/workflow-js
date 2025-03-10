@@ -1,19 +1,31 @@
 import type { Client, FlowControl, HTTPMethods } from "@upstash/qstash";
 import type {
   CallResponse,
+  HeaderParams,
   InvokeStepResponse,
+  InvokeWorkflowRequest,
   LazyInvokeStepParams,
   NotifyStepResponse,
   RequiredExceptFields,
   Step,
   StepFunction,
   StepType,
+  WaitRequest,
   WaitStepResponse,
 } from "../types";
 import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
 import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
+import { WorkflowContext } from "./context";
+import { getHeaders, HeadersResponse } from "../workflow-requests";
+
+type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
+  Required<Pick<HeaderParams, "step" | "invokeCount">>;
+type GetHeaderParams = StepParams;
+type GetBodyParams = StepParams & HeadersResponse;
+type SubmitStepParams = StepParams &
+  Pick<HeadersResponse, "headers"> & { body: string; isParallel: boolean };
 
 /**
  * Base class outlining steps. Basically, each step kind (run/sleep/sleepUntil)
@@ -109,6 +121,37 @@ export abstract class BaseLazyStep<TResult = unknown> {
       return stepOut;
     }
   }
+
+  getBody({ step }: GetBodyParams): string {
+    step.out = JSON.stringify(step.out);
+    return JSON.stringify(step);
+  }
+
+  getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+    return getHeaders({
+      initHeaderValue: "false",
+      workflowRunId: context.workflowRunId,
+      workflowUrl: context.url,
+      userHeaders: context.headers,
+      failureUrl: context.failureUrl,
+      retries: context.retries,
+      telemetry,
+      invokeCount,
+      flowControl: context.flowControl,
+      step,
+    });
+  }
+
+  async submitStep({ context, body, headers }: SubmitStepParams) {
+    await context.qstashClient.batch([
+      {
+        body,
+        headers,
+        method: "POST",
+        url: context.url,
+      },
+    ]);
+  }
 }
 
 /**
@@ -183,6 +226,18 @@ export class LazySleepStep extends BaseLazyStep {
       concurrent,
     });
   }
+
+  async submitStep({ context, body, headers, isParallel }: SubmitStepParams) {
+    await context.qstashClient.batch([
+      {
+        body,
+        headers,
+        method: "POST",
+        url: context.url,
+        delay: isParallel ? undefined : this.sleep,
+      },
+    ]);
+  }
 }
 
 /**
@@ -221,6 +276,18 @@ export class LazySleepUntilStep extends BaseLazyStep {
 
   protected safeParseOut() {
     return undefined;
+  }
+
+  async submitStep({ context, body, headers, isParallel }: SubmitStepParams) {
+    await context.qstashClient.batch([
+      {
+        body,
+        headers,
+        method: "POST",
+        url: context.url,
+        notBefore: isParallel ? undefined : this.sleepUntil,
+      },
+    ]);
   }
 }
 
@@ -333,6 +400,43 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     }
     return false;
   };
+
+  public getBody({ step }: GetBodyParams): string {
+    if (!step.callUrl) {
+      throw new WorkflowError("Incompatible step received in LazyCallStep.getBody");
+    }
+
+    return JSON.stringify(step.callBody);
+  }
+
+  getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+    return getHeaders({
+      initHeaderValue: "false",
+      workflowRunId: context.workflowRunId,
+      workflowUrl: context.url,
+      userHeaders: context.headers,
+      failureUrl: context.failureUrl,
+      retries: context.retries,
+      telemetry,
+      invokeCount,
+      flowControl: context.flowControl,
+      step,
+      callRetries: this.retries,
+      callTimeout: this.timeout,
+      callFlowControl: this.flowControl,
+    });
+  }
+
+  async submitStep({ context, headers }: SubmitStepParams) {
+    await context.qstashClient.batch([
+      {
+        headers,
+        body: JSON.stringify(this.body),
+        method: this.method,
+        url: this.url,
+      },
+    ]);
+  }
 }
 
 export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
@@ -381,6 +485,39 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
       eventData: BaseLazyStep.tryParsing(result.eventData),
     };
   }
+
+  public getBody({ context, step, timeoutHeaders }: GetBodyParams): string {
+    if (!step.waitEventId) {
+      throw new WorkflowError("Incompatible step received in LazyWaitForEventStep.getBody");
+    }
+
+    const waitBody: WaitRequest = {
+      url: context.url,
+      timeout: step.timeout,
+      timeoutBody: undefined,
+      timeoutUrl: context.url,
+      timeoutHeaders,
+      step: {
+        stepId: step.stepId,
+        stepType: "Wait",
+        stepName: step.stepName,
+        concurrent: step.concurrent,
+        targetStep: step.targetStep,
+      },
+    };
+
+    return JSON.stringify(waitBody);
+  }
+
+  async submitStep({ context, body, headers }: SubmitStepParams) {
+    await context.qstashClient.http.request({
+      path: ["v2", "wait", this.eventId],
+      body: body,
+      headers,
+      method: "POST",
+      parseResponseAsJson: false,
+    });
+  }
 }
 
 export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
@@ -413,6 +550,10 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   stepType: StepType = "Invoke";
   params: RequiredExceptFields<LazyInvokeStepParams<TBody, TResult>, "retries" | "flowControl">;
   protected allowUndefinedOut = false;
+  /**
+   * workflow id of the invoked workflow
+   */
+  private workflowId: string;
 
   constructor(
     stepName: string,
@@ -434,6 +575,12 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       retries,
       flowControl,
     };
+
+    const { workflowId } = workflow;
+    if (!workflowId) {
+      throw new WorkflowError("You can only invoke workflow which has a workflowId");
+    }
+    this.workflowId = workflowId;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
@@ -468,5 +615,79 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       ...result,
       body: BaseLazyStep.tryParsing(result.body),
     };
+  }
+
+  public getBody({ context, step, telemetry, invokeCount }: GetBodyParams): string {
+    const { headers: invokerHeaders } = getHeaders({
+      initHeaderValue: "false",
+      workflowRunId: context.workflowRunId,
+      workflowUrl: context.url,
+      userHeaders: context.headers,
+      failureUrl: context.failureUrl,
+      retries: context.retries,
+      telemetry,
+      invokeCount,
+      flowControl: context.flowControl,
+    });
+    invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
+
+    const request: InvokeWorkflowRequest = {
+      body: JSON.stringify(this.params.body),
+      headers: Object.fromEntries(
+        Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
+      ),
+      workflowRunId: context.workflowRunId,
+      workflowUrl: context.url,
+      step,
+    };
+
+    return JSON.stringify(request);
+  }
+
+  getHeaders({ context, telemetry, invokeCount }: GetHeaderParams): HeadersResponse {
+    const {
+      workflow,
+      headers = {},
+      workflowRunId = getWorkflowRunId(),
+      retries,
+      flowControl,
+    } = this.params;
+    const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
+
+    const {
+      retries: workflowRetries,
+      failureFunction,
+      failureUrl,
+      useJSONContent,
+      flowControl: workflowFlowControl,
+    } = workflow.options;
+
+    const { headers: triggerHeaders } = getHeaders({
+      initHeaderValue: "true",
+      workflowRunId: workflowRunId,
+      workflowUrl: newUrl,
+      userHeaders: new Headers(headers) as Headers,
+      retries: retries ?? workflowRetries,
+      telemetry,
+      failureUrl: failureFunction ? newUrl : failureUrl,
+      invokeCount: invokeCount + 1,
+      flowControl: flowControl ?? workflowFlowControl,
+    });
+    triggerHeaders["Upstash-Workflow-Invoke"] = "true";
+    if (useJSONContent) {
+      triggerHeaders["content-type"] = "application/json";
+    }
+
+    return { headers: triggerHeaders };
+  }
+
+  async submitStep({ context, body, headers }: SubmitStepParams) {
+    const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
+    await context.qstashClient.publish({
+      headers,
+      method: "POST",
+      body,
+      url: newUrl,
+    });
   }
 }

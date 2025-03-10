@@ -305,6 +305,7 @@ describe("Workflow Requests", () => {
           },
           headers: {
             "upstash-retries": "2",
+            "upstash-failure-callback": WORKFLOW_ENDPOINT,
           },
         },
       });

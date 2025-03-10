@@ -93,7 +93,6 @@ export class Agent {
    */
   public asTool(): AISDKTool {
     const toolDescriptions = Object.values(this.tools)
-      // @ts-expect-error description exists but can't be resolved
       .map((tool) => tool.description)
       .join("\n");
     return tool({

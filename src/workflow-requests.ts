@@ -417,11 +417,11 @@ export const getHeaders = ({
   failureUrl,
   retries,
   step,
-  callRetries,
-  callTimeout,
   telemetry,
   invokeCount,
   flowControl,
+  callTimeout,
+  callRetries,
   callFlowControl,
 }: HeaderParams): HeadersResponse => {
   const callHeaders = new Headers(step?.callHeaders);
