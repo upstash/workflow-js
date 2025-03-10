@@ -122,7 +122,6 @@ describe("agents", () => {
     test("should convert agent to tool", async () => {
       const agentTool = agent.asTool();
 
-      // @ts-expect-error description exists but isn't accessible
       expect(agentTool.description).toBe(
         "An AI Agent with the following background: an agentHas access to the following tools: ai sdk tool"
       );
