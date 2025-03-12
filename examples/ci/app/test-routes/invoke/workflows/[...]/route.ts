@@ -189,15 +189,9 @@ const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
   const invokeCount = context.executor.invokeCount
   expect(invokeCount, 2)
 
-  let counter = 0;
-  while (counter < 10) {
-    const { notifyResponse } = await context.notify("notified event", notifiedEventId, "data")
-    counter += 1
-    await context.sleep("wait", 1)
-    if (notifyResponse.length) {
-      break
-    }
-  }
+  await context.sleep("wait", 10)
+  const { notifyResponse } = await context.notify("notified event", notifiedEventId, "data")
+  expect(notifyResponse.length > 0, true)
 
   await context.sleep("check", 1)
 
@@ -216,7 +210,7 @@ export const { POST, GET } = testServe(
     baseUrl: BASE_URL
   }),
   {
-    expectedCallCount: 30,
+    expectedCallCount: 28,
     expectedResult: "done invoke",
     payload,
     headers: {
