@@ -4,7 +4,7 @@ import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types"
 import { type BaseLazyStep } from "./steps";
 import type { WorkflowLogger } from "../logger";
 import { QstashError } from "@upstash/qstash";
-import { submitParallelSteps, submitSingleStep } from "./qstash";
+import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
 
 export class AutoExecutor {
   private context: WorkflowContext;

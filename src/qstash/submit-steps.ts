@@ -3,8 +3,8 @@ import { WorkflowAbort } from "../error";
 import { WorkflowLogger } from "../logger";
 import { Telemetry } from "../types";
 import { getHeaders } from "../workflow-requests";
-import { WorkflowContext } from "./context";
-import { BaseLazyStep } from "./steps";
+import { WorkflowContext } from "../context";
+import { BaseLazyStep } from "../context/steps";
 
 export const submitParallelSteps = async ({
   context,
