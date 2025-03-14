@@ -18,12 +18,14 @@ import type { Duration } from "../types";
 import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
 import { WorkflowContext } from "./context";
-import { getHeaders, HeadersResponse } from "../workflow-requests";
+import { getHeaders } from "../qstash/headers";
+import { WORKFLOW_FEATURE_HEADER, WORKFLOW_INIT_HEADER, WORKFLOW_URL_HEADER } from "../constants";
+import { getTelemetryHeaders, HeadersResponse, prepareFlowControl } from "../workflow-requests";
 
 type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
   Required<Pick<HeaderParams, "step" | "invokeCount">>;
 type GetHeaderParams = StepParams;
-type GetBodyParams = StepParams & HeadersResponse;
+type GetBodyParams = StepParams & Omit<HeadersResponse, "contentType">;
 type SubmitStepParams = StepParams &
   Pick<HeadersResponse, "headers"> & { body: string; isParallel: boolean };
 
@@ -130,15 +132,21 @@ export abstract class BaseLazyStep<TResult = unknown> {
   getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
     return getHeaders({
       initHeaderValue: "false",
-      workflowRunId: context.workflowRunId,
-      workflowUrl: context.url,
+      workflowConfig: {
+        workflowRunId: context.workflowRunId,
+        workflowUrl: context.url,
+        failureUrl: context.failureUrl,
+        retries: context.retries,
+        useJSONContent: false,
+        telemetry,
+        flowControl: context.flowControl,
+      },
       userHeaders: context.headers,
-      failureUrl: context.failureUrl,
-      retries: context.retries,
-      telemetry,
       invokeCount,
-      flowControl: context.flowControl,
-      step,
+      stepInfo: {
+        step,
+        lazyStep: this,
+      },
     });
   }
 
@@ -297,7 +305,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   private readonly url: string;
   private readonly method: HTTPMethods;
   private readonly body: TBody;
-  private readonly headers: Record<string, string>;
+  public readonly headers: Record<string, string>;
   public readonly retries: number;
   public readonly timeout?: number | Duration;
   public readonly flowControl?: FlowControl;
@@ -410,21 +418,48 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   }
 
   getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
-    return getHeaders({
-      initHeaderValue: "false",
-      workflowRunId: context.workflowRunId,
-      workflowUrl: context.url,
-      userHeaders: context.headers,
-      failureUrl: context.failureUrl,
-      retries: context.retries,
-      telemetry,
-      invokeCount,
-      flowControl: context.flowControl,
-      step,
-      callRetries: this.retries,
-      callTimeout: this.timeout,
-      callFlowControl: this.flowControl,
-    });
+    const { headers, contentType } = super.getHeaders({ context, telemetry, invokeCount, step });
+
+    headers["Upstash-Retries"] = this.retries.toString();
+    headers[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
+
+    if (this.flowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(this.flowControl);
+
+      headers["Upstash-Flow-Control-Key"] = flowControlKey;
+      headers["Upstash-Flow-Control-Value"] = flowControlValue;
+    }
+
+    if (this.timeout) {
+      headers["Upstash-Timeout"] = this.timeout.toString();
+    }
+
+    const forwardedHeaders = Object.fromEntries(
+      Object.entries(this.headers).map(([header, value]) => [`Upstash-Forward-${header}`, value])
+    );
+
+    return {
+      headers: {
+        ...headers,
+        ...forwardedHeaders,
+
+        "Upstash-Callback": context.url,
+        "Upstash-Callback-Workflow-RunId": context.workflowRunId,
+        "Upstash-Callback-Workflow-CallType": "fromCallback",
+        "Upstash-Callback-Workflow-Init": "false",
+        "Upstash-Callback-Workflow-Url": context.url,
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
+
+        "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
+        "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
+        "Upstash-Callback-Forward-Upstash-Workflow-StepName": this.stepName,
+        "Upstash-Callback-Forward-Upstash-Workflow-StepType": this.stepType,
+        "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
+        "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType,
+        "Upstash-Workflow-CallType": "toCallback",
+      },
+      contentType,
+    };
   }
 
   async submitStep({ context, headers }: SubmitStepParams) {
@@ -486,10 +521,36 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
     };
   }
 
-  public getBody({ context, step, timeoutHeaders }: GetBodyParams): string {
+  public getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+    const headers = super.getHeaders({ context, telemetry, invokeCount, step });
+    headers.headers["Upstash-Workflow-CallType"] = "step";
+    return headers;
+  }
+
+  public getBody({ context, step, headers, telemetry }: GetBodyParams): string {
     if (!step.waitEventId) {
       throw new WorkflowError("Incompatible step received in LazyWaitForEventStep.getBody");
     }
+
+    const timeoutHeaders = {
+      // to include user headers:
+      ...Object.fromEntries(Object.entries(headers).map(([header, value]) => [header, [value]])),
+      // to include telemetry headers:
+      ...(telemetry
+        ? Object.fromEntries(
+            Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+              header,
+              [value],
+            ])
+          )
+        : {}),
+
+      // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
+      "Upstash-Workflow-Runid": [context.workflowRunId],
+      [WORKFLOW_INIT_HEADER]: ["false"],
+      [WORKFLOW_URL_HEADER]: [context.url],
+      "Upstash-Workflow-CallType": ["step"],
+    };
 
     const waitBody: WaitRequest = {
       url: context.url,
@@ -620,14 +681,17 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   public getBody({ context, step, telemetry, invokeCount }: GetBodyParams): string {
     const { headers: invokerHeaders } = getHeaders({
       initHeaderValue: "false",
-      workflowRunId: context.workflowRunId,
-      workflowUrl: context.url,
+      workflowConfig: {
+        workflowRunId: context.workflowRunId,
+        workflowUrl: context.url,
+        failureUrl: context.failureUrl,
+        retries: context.retries,
+        telemetry,
+        flowControl: context.flowControl,
+        useJSONContent: false,
+      },
       userHeaders: context.headers,
-      failureUrl: context.failureUrl,
-      retries: context.retries,
-      telemetry,
       invokeCount,
-      flowControl: context.flowControl,
     });
     invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
@@ -662,23 +726,23 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       flowControl: workflowFlowControl,
     } = workflow.options;
 
-    const { headers: triggerHeaders } = getHeaders({
+    const { headers: triggerHeaders, contentType } = getHeaders({
       initHeaderValue: "true",
-      workflowRunId: workflowRunId,
-      workflowUrl: newUrl,
-      userHeaders: new Headers(headers) as Headers,
-      retries: retries ?? workflowRetries,
-      telemetry,
-      failureUrl: failureFunction ? newUrl : failureUrl,
+      workflowConfig: {
+        workflowRunId: workflowRunId,
+        workflowUrl: newUrl,
+        retries: retries ?? workflowRetries,
+        telemetry,
+        failureUrl: failureFunction ? newUrl : failureUrl,
+        flowControl: flowControl ?? workflowFlowControl,
+        useJSONContent: useJSONContent ?? false,
+      },
       invokeCount: invokeCount + 1,
-      flowControl: flowControl ?? workflowFlowControl,
+      userHeaders: new Headers(headers) as Headers,
     });
     triggerHeaders["Upstash-Workflow-Invoke"] = "true";
-    if (useJSONContent) {
-      triggerHeaders["content-type"] = "application/json";
-    }
 
-    return { headers: triggerHeaders };
+    return { headers: triggerHeaders, contentType };
   }
 
   async submitStep({ context, body, headers }: SubmitStepParams) {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { WorkflowContext } from "../context";
 import { WorkflowError } from "../error";
+import { getHeaders } from "../qstash/headers";
 import {
   InvokableWorkflow,
   InvokeWorkflowRequest,
@@ -11,7 +12,6 @@ import {
   Telemetry,
 } from "../types";
 import { getWorkflowRunId } from "../utils";
-import { getHeaders } from "../workflow-requests";
 
 export type OmitOptionsInServeMany<TOptions> = Omit<
   TOptions,
@@ -139,14 +139,17 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
 
   const { headers: invokerHeaders } = getHeaders({
     initHeaderValue: "false",
-    workflowRunId: context.workflowRunId,
-    workflowUrl: context.url,
+    workflowConfig: {
+      workflowRunId: context.workflowRunId,
+      workflowUrl: context.url,
+      failureUrl: context.failureUrl,
+      retries: context.retries,
+      telemetry,
+      flowControl: context.flowControl,
+      useJSONContent,
+    },
     userHeaders: context.headers,
-    failureUrl: context.failureUrl,
-    retries: context.retries,
-    telemetry,
     invokeCount,
-    flowControl: context.flowControl,
   });
   invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
@@ -154,14 +157,17 @@ export const invokeWorkflow = async <TInitialPayload, TResult>({
 
   const { headers: triggerHeaders } = getHeaders({
     initHeaderValue: "true",
-    workflowRunId,
-    workflowUrl: newUrl,
+    workflowConfig: {
+      workflowRunId,
+      workflowUrl: newUrl,
+      retries: retries ?? workflowRetries,
+      telemetry,
+      failureUrl: failureFunction ? newUrl : failureUrl,
+      flowControl: flowControl ?? workflowFlowControl,
+      useJSONContent,
+    },
     userHeaders: new Headers(headers) as Headers,
-    retries: retries ?? workflowRetries,
-    telemetry,
-    failureUrl: failureFunction ? newUrl : failureUrl,
     invokeCount: invokeCount + 1,
-    flowControl: flowControl ?? workflowFlowControl,
   });
   triggerHeaders["Upstash-Workflow-Invoke"] = "true";
   if (useJSONContent) {

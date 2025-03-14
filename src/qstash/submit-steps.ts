@@ -2,9 +2,9 @@ import { NO_CONCURRENCY } from "../constants";
 import { WorkflowAbort } from "../error";
 import { WorkflowLogger } from "../logger";
 import { Telemetry } from "../types";
-import { getHeaders } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
+import { getHeaders } from "./headers";
 
 export const submitParallelSteps = async ({
   context,
@@ -26,14 +26,19 @@ export const submitParallelSteps = async ({
     planSteps.map((planStep) => {
       const { headers } = getHeaders({
         initHeaderValue: "false",
-        workflowRunId: context.workflowRunId,
-        workflowUrl: context.url,
+        workflowConfig: {
+          workflowRunId: context.workflowRunId,
+          workflowUrl: context.url,
+          failureUrl: context.failureUrl,
+          retries: context.retries,
+          flowControl: context.flowControl,
+          telemetry,
+        },
+        // stepInfo: {
+        //   step: planStep,
+        //   lazyStep: steps[index],
+        // },
         userHeaders: context.headers,
-        failureUrl: context.failureUrl,
-        retries: context.retries,
-        flowControl: context.flowControl,
-        step: planStep,
-        telemetry,
         invokeCount,
       });
 

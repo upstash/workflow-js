@@ -3,7 +3,6 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
 import {
-  getHeaders,
   handleThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
@@ -32,6 +31,8 @@ import {
 } from "./test-utils";
 import { WorkflowLogger } from "./logger";
 import { FinishState } from "./integration.test";
+import { getHeaders } from "./qstash/headers";
+import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
 
 describe("Workflow Requests", () => {
   test("should send first invocation request", async () => {
@@ -446,12 +447,16 @@ describe("Workflow Requests", () => {
     test("should create headers without step passed", () => {
       const { headers, timeoutHeaders } = getHeaders({
         initHeaderValue: "true",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        flowControl: {
-          key: "initial-key",
-          parallelism: 2,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          flowControl: {
+            key: "initial-key",
+            parallelism: 2,
+          },
         },
+        invokeCount: 0,
+        userHeaders: new Headers() as Headers,
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
@@ -467,26 +472,29 @@ describe("Workflow Requests", () => {
       expect(timeoutHeaders).toBeUndefined();
     });
 
-    test("should create headers with a result step", () => {
+    test("should create headers with a result step", async () => {
       const stepId = 3;
       const stepName = "some step";
-      const stepType: StepType = "Run";
 
+      const lazyStep = new LazyFunctionStep(stepName, () => {});
       const { headers, timeoutHeaders } = getHeaders({
         initHeaderValue: "false",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        step: {
-          stepId,
-          stepName,
-          stepType: stepType,
-          concurrent: 1,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          flowControl: {
+            key: "step-key",
+            ratePerSecond: 3,
+          },
         },
-        flowControl: {
-          key: "step-key",
-          ratePerSecond: 3,
+        stepInfo: {
+          step: await lazyStep.getResultStep(1, stepId),
+          lazyStep,
         },
+        invokeCount: 0,
+        userHeaders: new Headers() as Headers,
       });
+
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -501,10 +509,9 @@ describe("Workflow Requests", () => {
       expect(timeoutHeaders).toBeUndefined();
     });
 
-    test("should create headers with a call step", () => {
+    test("should create headers with a call step", async () => {
       const stepId = 3;
       const stepName = "some step";
-      const stepType: StepType = "Call";
       const callUrl = "https://www.some-call-endpoint.com/api";
       const callMethod = "GET";
       const callHeaders = {
@@ -512,31 +519,37 @@ describe("Workflow Requests", () => {
       };
       const callBody = undefined;
 
-      const { headers, timeoutHeaders } = getHeaders({
-        initHeaderValue: "false",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        step: {
-          stepId,
-          stepName,
-          stepType: stepType,
-          concurrent: 1,
-          callUrl,
-          callMethod,
-          callHeaders,
-          callBody,
-        },
-        invokeCount: 3,
-        flowControl: {
-          key: "regular-flow-key",
-          ratePerSecond: 3,
-          parallelism: 4,
-        },
-        callFlowControl: {
+      const lazyStep = new LazyCallStep(
+        stepName,
+        callUrl,
+        callMethod,
+        callBody,
+        callHeaders,
+        0,
+        undefined,
+        {
           key: "call-flow-key",
           ratePerSecond: 5,
           parallelism: 6,
+        }
+      );
+      const { headers, timeoutHeaders } = getHeaders({
+        initHeaderValue: "false",
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          flowControl: {
+            key: "regular-flow-key",
+            ratePerSecond: 3,
+            parallelism: 4,
+          },
         },
+        stepInfo: {
+          step: await lazyStep.getResultStep(1, stepId),
+          lazyStep,
+        },
+        invokeCount: 3,
+        userHeaders: new Headers() as Headers,
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
@@ -573,14 +586,17 @@ describe("Workflow Requests", () => {
       const failureUrl = "https://my-failure-endpoint.com";
       const { headers, timeoutHeaders } = getHeaders({
         initHeaderValue: "true",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        userHeaders: new Headers() as Headers,
-        failureUrl,
-        flowControl: {
-          key: "failure-key",
-          parallelism: 2,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          failureUrl,
+          flowControl: {
+            key: "failure-key",
+            parallelism: 2,
+          },
         },
+        userHeaders: new Headers() as Headers,
+        invokeCount: 0,
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
@@ -605,23 +621,24 @@ describe("Workflow Requests", () => {
       expect(timeoutHeaders).toBeUndefined();
     });
 
-    test("should return timeout headers for wait step", () => {
+    test("should return timeout headers for wait step", async () => {
+      const lazyStep = new LazyWaitForEventStep("waiting-step-name", "wait event id", "20s");
       const { headers, timeoutHeaders } = getHeaders({
         initHeaderValue: "false",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        step: {
-          stepId: 1,
-          stepName: "waiting-step-name",
-          stepType: "Wait",
-          concurrent: 1,
-          waitEventId: "wait event id",
-          timeout: "20s",
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          flowControl: {
+            key: "wait-key",
+            parallelism: 2,
+          },
         },
-        flowControl: {
-          key: "wait-key",
-          parallelism: 2,
+        stepInfo: {
+          lazyStep,
+          step: await lazyStep.getResultStep(1, 1),
         },
+        invokeCount: 0,
+        userHeaders: new Headers() as Headers,
       });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",

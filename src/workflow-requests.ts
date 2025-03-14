@@ -3,22 +3,14 @@ import { err, ok } from "neverthrow";
 import { WorkflowAbort, WorkflowError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
-  DEFAULT_CONTENT_TYPE,
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
   TELEMETRY_HEADER_SDK,
-  WORKFLOW_FAILURE_HEADER,
-  WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
-  WORKFLOW_INIT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
-  WORKFLOW_PROTOCOL_VERSION,
-  WORKFLOW_PROTOCOL_VERSION_HEADER,
-  WORKFLOW_URL_HEADER,
 } from "./constants";
 import type {
   CallResponse,
-  HeaderParams,
   Step,
   StepType,
   Telemetry,
@@ -30,6 +22,7 @@ import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
 import { FlowControl, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
+import { getHeaders } from "./qstash/headers";
 
 export const triggerFirstInvocation = async <TInitialPayload>({
   workflowContext,
@@ -46,14 +39,17 @@ export const triggerFirstInvocation = async <TInitialPayload>({
 }): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders({
     initHeaderValue: "true",
-    workflowRunId: workflowContext.workflowRunId,
-    workflowUrl: workflowContext.url,
+    workflowConfig: {
+      workflowRunId: workflowContext.workflowRunId,
+      workflowUrl: workflowContext.url,
+      failureUrl: workflowContext.failureUrl,
+      retries: workflowContext.retries,
+      telemetry,
+      flowControl: workflowContext.flowControl,
+      useJSONContent: useJSONContent ?? false,
+    },
+    invokeCount: invokeCount ?? 0,
     userHeaders: workflowContext.headers,
-    failureUrl: workflowContext.failureUrl,
-    retries: workflowContext.retries,
-    telemetry,
-    invokeCount,
-    flowControl: workflowContext.flowControl,
   });
 
   // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
@@ -337,14 +333,16 @@ export const handleThirdPartyCallResult = async ({
       const userHeaders = recreateUserHeaders(request.headers as Headers);
       const { headers: requestHeaders } = getHeaders({
         initHeaderValue: "false",
-        workflowRunId,
-        workflowUrl,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl,
+          failureUrl,
+          retries,
+          telemetry,
+          flowControl,
+        },
         userHeaders,
-        failureUrl,
-        retries,
-        telemetry,
         invokeCount: Number(invokeCount),
-        flowControl,
       });
 
       const callResponse: CallResponse = {
@@ -392,6 +390,7 @@ export const handleThirdPartyCallResult = async ({
 export type HeadersResponse = {
   headers: Record<string, string>;
   timeoutHeaders?: Record<string, string[]>;
+  contentType: string;
 };
 
 export const getTelemetryHeaders = (telemetry: Telemetry) => {
@@ -400,194 +399,6 @@ export const getTelemetryHeaders = (telemetry: Telemetry) => {
     [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework,
     [TELEMETRY_HEADER_RUNTIME]: telemetry.runtime ?? "unknown",
   };
-};
-
-/**
- * Gets headers for calling QStash
- *
- * See HeaderParams for more details about parameters.
- *
- * @returns headers to submit
- */
-export const getHeaders = ({
-  initHeaderValue,
-  workflowRunId,
-  workflowUrl,
-  userHeaders,
-  failureUrl,
-  retries,
-  step,
-  telemetry,
-  invokeCount,
-  flowControl,
-  callTimeout,
-  callRetries,
-  callFlowControl,
-}: HeaderParams): HeadersResponse => {
-  const callHeaders = new Headers(step?.callHeaders);
-  const contentType =
-    (callHeaders.get("content-type")
-      ? callHeaders.get("content-type")
-      : userHeaders?.get("Content-Type")
-        ? userHeaders.get("Content-Type")
-        : undefined) ?? DEFAULT_CONTENT_TYPE;
-
-  const baseHeaders: Record<string, string> = {
-    [WORKFLOW_INIT_HEADER]: initHeaderValue,
-    [WORKFLOW_ID_HEADER]: workflowRunId,
-    [WORKFLOW_URL_HEADER]: workflowUrl,
-    [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
-    [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-    "content-type": contentType,
-    ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
-  };
-
-  if (invokeCount !== undefined && !step?.callUrl) {
-    baseHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount.toString();
-  }
-
-  if (!step?.callUrl) {
-    baseHeaders[`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`] = WORKFLOW_PROTOCOL_VERSION;
-  }
-  if (callTimeout) {
-    baseHeaders[`Upstash-Timeout`] = callTimeout.toString();
-  }
-
-  if (failureUrl) {
-    baseHeaders[`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
-    baseHeaders[`Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback`] = "true";
-    baseHeaders["Upstash-Failure-Callback-Workflow-Runid"] = workflowRunId;
-    baseHeaders["Upstash-Failure-Callback-Workflow-Init"] = "false";
-    baseHeaders["Upstash-Failure-Callback-Workflow-Url"] = workflowUrl;
-    baseHeaders["Upstash-Failure-Callback-Workflow-Calltype"] = "failureCall";
-    if (retries !== undefined) {
-      baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
-    }
-
-    if (flowControl) {
-      const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl);
-      baseHeaders["Upstash-Failure-Callback-Flow-Control-Key"] = flowControlKey;
-      baseHeaders["Upstash-Failure-Callback-Flow-Control-Value"] = flowControlValue;
-    }
-
-    if (!step?.callUrl) {
-      baseHeaders["Upstash-Failure-Callback"] = failureUrl;
-    }
-  }
-
-  // if retries is set or if call url is passed, set a retry
-  // for call url, retry is 0
-  if (step?.callUrl) {
-    baseHeaders["Upstash-Retries"] = callRetries?.toString() ?? "0";
-    baseHeaders[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
-
-    // if some retries is set, use it in callback and failure callback
-    if (retries !== undefined) {
-      baseHeaders["Upstash-Callback-Retries"] = retries.toString();
-      baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
-    }
-
-    if (callFlowControl) {
-      const { flowControlKey, flowControlValue } = prepareFlowControl(callFlowControl);
-
-      baseHeaders["Upstash-Flow-Control-Key"] = flowControlKey;
-      baseHeaders["Upstash-Flow-Control-Value"] = flowControlValue;
-    }
-
-    if (flowControl) {
-      const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl);
-
-      baseHeaders["Upstash-Callback-Flow-Control-Key"] = flowControlKey;
-      baseHeaders["Upstash-Callback-Flow-Control-Value"] = flowControlValue;
-    }
-  } else {
-    if (flowControl) {
-      const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl);
-
-      baseHeaders["Upstash-Flow-Control-Key"] = flowControlKey;
-      baseHeaders["Upstash-Flow-Control-Value"] = flowControlValue;
-    }
-
-    if (retries !== undefined) {
-      baseHeaders["Upstash-Retries"] = retries.toString();
-      baseHeaders["Upstash-Failure-Callback-Retries"] = retries.toString();
-    }
-  }
-
-  if (userHeaders) {
-    for (const header of userHeaders.keys()) {
-      if (step?.callHeaders) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        baseHeaders[`Upstash-Callback-Forward-${header}`] = userHeaders.get(header)!;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        baseHeaders[`Upstash-Forward-${header}`] = userHeaders.get(header)!;
-      }
-      baseHeaders[`Upstash-Failure-Callback-Forward-${header}`] = userHeaders.get(header)!;
-    }
-  }
-
-  if (step?.callHeaders) {
-    const forwardedHeaders = Object.fromEntries(
-      Object.entries(step.callHeaders).map(([header, value]) => [
-        `Upstash-Forward-${header}`,
-        value,
-      ])
-    );
-
-    return {
-      headers: {
-        ...baseHeaders,
-        ...forwardedHeaders,
-        "Upstash-Callback": workflowUrl,
-        "Upstash-Callback-Workflow-RunId": workflowRunId,
-        "Upstash-Callback-Workflow-CallType": "fromCallback",
-        "Upstash-Callback-Workflow-Init": "false",
-        "Upstash-Callback-Workflow-Url": workflowUrl,
-        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
-
-        "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
-        "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
-        "Upstash-Callback-Forward-Upstash-Workflow-StepName": step.stepName,
-        "Upstash-Callback-Forward-Upstash-Workflow-StepType": step.stepType,
-        "Upstash-Callback-Forward-Upstash-Workflow-Concurrent": step.concurrent.toString(),
-        "Upstash-Callback-Forward-Upstash-Workflow-ContentType": contentType,
-        [`Upstash-Callback-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: (invokeCount ?? 0).toString(),
-        "Upstash-Workflow-CallType": "toCallback",
-      },
-    };
-  }
-
-  if (step?.waitEventId) {
-    return {
-      headers: {
-        ...baseHeaders,
-        "Upstash-Workflow-CallType": "step",
-      },
-      timeoutHeaders: {
-        // to include user headers:
-        ...Object.fromEntries(
-          Object.entries(baseHeaders).map(([header, value]) => [header, [value]])
-        ),
-        // to include telemetry headers:
-        ...(telemetry
-          ? Object.fromEntries(
-              Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
-                header,
-                [value],
-              ])
-            )
-          : {}),
-        // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
-        "Upstash-Workflow-Runid": [workflowRunId],
-        [WORKFLOW_INIT_HEADER]: ["false"],
-        [WORKFLOW_URL_HEADER]: [workflowUrl],
-        "Upstash-Workflow-CallType": ["step"],
-      },
-    };
-  }
-
-  return { headers: baseHeaders };
 };
 
 export const verifyRequest = async (
@@ -619,7 +430,7 @@ export const verifyRequest = async (
   }
 };
 
-const prepareFlowControl = (flowControl: FlowControl) => {
+export const prepareFlowControl = (flowControl: FlowControl) => {
   const parallelism = flowControl.parallelism?.toString();
   const rate = flowControl.ratePerSecond?.toString();
 
