@@ -34,10 +34,6 @@ export const submitParallelSteps = async ({
           flowControl: context.flowControl,
           telemetry,
         },
-        // stepInfo: {
-        //   step: planStep,
-        //   lazyStep: steps[index],
-        // },
         userHeaders: context.headers,
         invokeCount,
       });

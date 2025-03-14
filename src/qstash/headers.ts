@@ -1,8 +1,3 @@
-// class WorkflowHeaders {
-//   private headers: Headers;
-//   constructor({ initHeaderValue, workflowRunId, workflowUrl, userHeaders }) {
-//     const contentType = (this.headers = new Headers() as Headers);
-//   }
 
 import { FlowControl, QstashError } from "@upstash/qstash";
 import {
