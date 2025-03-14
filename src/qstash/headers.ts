@@ -7,6 +7,7 @@
 import { FlowControl, QstashError } from "@upstash/qstash";
 import {
   DEFAULT_CONTENT_TYPE,
+  DEFAULT_RETRIES,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
@@ -60,7 +61,7 @@ type StepInfo = {
 type WorkflowHeaderParams = {
   userHeaders: Headers;
   workflowConfig: WorkflowConfig;
-  invokeCount: number;
+  invokeCount?: number;
   initHeaderValue: "true" | "false";
   stepInfo?: StepInfo;
 };
@@ -68,7 +69,7 @@ type WorkflowHeaderParams = {
 class WorkflowHeaders {
   private userHeaders: Headers;
   private workflowConfig: WorkflowConfig;
-  private invokeCount: number;
+  private invokeCount?: number;
   private initHeaderValue: "true" | "false";
   private stepInfo?: Required<StepInfo>;
   private headers: WorkflowHeaderGroups;
@@ -122,6 +123,9 @@ class WorkflowHeaders {
   }
 
   private addInvokeCount() {
+    if (this.invokeCount === undefined || this.invokeCount === 0) {
+      return;
+    }
     const invokeCount = this.invokeCount.toString();
 
     this.headers.workflowHeaders[`Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount;
@@ -129,21 +133,24 @@ class WorkflowHeaders {
 
     // for context.call:
     if (this.stepInfo?.lazyStep instanceof LazyCallStep) {
-      // this.headers.rawHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount; // TODO
+      this.headers.rawHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount;
     }
   }
 
   private addRetries() {
-    if (!this.workflowConfig.retries) {
+    if (
+      this.workflowConfig.retries === undefined ||
+      this.workflowConfig.retries === DEFAULT_RETRIES
+    ) {
       return;
     }
 
     const retries = this.workflowConfig.retries.toString();
 
     this.headers.workflowHeaders["Retries"] = retries;
-    // if (this.workflowConfig.failureUrl) { // TODO
-    this.headers.failureHeaders["Retries"] = retries;
-    // }
+    if (this.workflowConfig.failureUrl) {
+      this.headers.failureHeaders["Retries"] = retries;
+    }
   }
 
   private addFlowControl() {

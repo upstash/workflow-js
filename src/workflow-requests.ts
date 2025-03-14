@@ -389,7 +389,6 @@ export const handleThirdPartyCallResult = async ({
 
 export type HeadersResponse = {
   headers: Record<string, string>;
-  timeoutHeaders?: Record<string, string[]>;
   contentType: string;
 };
 

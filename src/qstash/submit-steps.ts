@@ -80,7 +80,7 @@ export const submitSingleStep = async ({
     stepCount: stepId,
   });
 
-  const { headers, timeoutHeaders } = lazyStep.getHeaders({
+  const { headers } = lazyStep.getHeaders({
     context,
     step: resultStep,
     invokeCount,
@@ -90,7 +90,6 @@ export const submitSingleStep = async ({
     context,
     step: resultStep,
     headers,
-    timeoutHeaders,
     invokeCount,
     telemetry,
   });
