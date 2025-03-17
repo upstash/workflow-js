@@ -474,7 +474,7 @@ describe("Workflow Requests", () => {
       const stepId = 3;
       const stepName = "some step";
 
-      const lazyStep = new LazyFunctionStep(stepName, () => {});
+      const lazyStep = new LazyFunctionStep(stepName, () => { });
       const { headers } = getHeaders({
         initHeaderValue: "false",
         workflowConfig: {
@@ -599,6 +599,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        "Upstash-Failure-Callback-Feature-Set": "LazyFetch,InitialBody",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",

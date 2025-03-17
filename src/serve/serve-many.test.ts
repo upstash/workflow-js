@@ -31,7 +31,7 @@ describe("serveMany", () => {
             settings: {
               body: "some-body",
               workflow: {
-                routeFunction: async () => {},
+                routeFunction: async () => { },
                 workflowId,
                 options: {},
               },
@@ -71,6 +71,7 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_original_workflow"],
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/original_workflow"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Failure-Callback-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Workflow-Sdk-Version": ["1"],
               "content-type": ["application/json"],
               "Upstash-Telemetry-Sdk": ["sdk"],
@@ -116,7 +117,7 @@ describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
       const throws = () =>
         serveMany({
-          "workflow/one": createWorkflow(async () => {}),
+          "workflow/one": createWorkflow(async () => { }),
         });
       expect(throws).toThrow(
         "Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'."
@@ -125,7 +126,7 @@ describe("serveMany", () => {
 
     test("should throw if workflowId doesn't match", async () => {
       const { POST: handler } = serveMany({
-        "workflow-one": createWorkflow(async () => {}),
+        "workflow-one": createWorkflow(async () => { }),
       });
 
       const request = new Request("http://localhost:3001/workflow-two", { method: "POST" });
