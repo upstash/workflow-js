@@ -133,9 +133,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-              body: JSON.stringify(initialPayload),
-              method: "POST",
-            })
+            body: JSON.stringify(initialPayload),
+            method: "POST",
+          })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");
@@ -567,6 +567,101 @@ describe("serve", () => {
                 "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
+            },
+          ],
+        },
+      });
+      expect(called).toBeTrue();
+    });
+
+    test("should set failure headers in context call", async () => {
+      const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", []);
+      let called = false;
+      const myFailureFunction: WorkflowServeOptions["failureFunction"] = async () => {
+        return;
+      };
+
+
+      const routeFunction: RouteFunction<unknown> = async (context) => {
+        await context.call("call step", {
+          url: "some-url",
+          retries: 4,
+          timeout: 10,
+          headers: {
+            "test": "headers"
+          },
+          body: "body",
+          method: "PATCH"
+        });
+      };
+
+      const { handler: endpoint } = serve(routeFunction, {
+        qstashClient,
+        receiver: undefined,
+        failureUrl: "some-failure-url",
+        retries: 2
+      });
+      await mockQStashServer({
+        execute: async () => {
+          const response = await endpoint(request);
+          expect(response.status).toBe(200);
+          called = true;
+        },
+        responseFields: { body: { messageId: "some-message-id" }, status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: "some-url",
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api",
+                "upstash-callback-failure-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-failure-callback": "some-failure-url",
+                "upstash-callback-failure-callback-forward-upstash-workflow-failure-callback": "true",
+                "upstash-callback-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-callback-failure-callback-retries": "2",
+                "upstash-callback-failure-callback-workflow-calltype": "failureCall",
+                "upstash-callback-failure-callback-workflow-init": "false",
+                "upstash-callback-failure-callback-workflow-runid": "wfr-foo",
+                "upstash-callback-failure-callback-workflow-url": "https://requestcatcher.com/api",
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call step",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "2",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-foo",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api",
+                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-failure-callback-retries": "2",
+                "upstash-failure-callback-workflow-calltype": "failureCall",
+                "upstash-failure-callback-workflow-init": "false",
+                "upstash-failure-callback-workflow-runid": "wfr-foo",
+                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-forward-test": "headers",
+                "upstash-method": "PATCH",
+                "upstash-retries": "4",
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": "unknown",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-timeout": "10",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-foo",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api",
+              },
+              body: '"body"',
             },
           ],
         },

@@ -180,9 +180,7 @@ class WorkflowHeaders {
       return;
     }
 
-    if (this.stepInfo?.lazyStep.stepType !== "Call") {
-      this.headers.rawHeaders["Upstash-Failure-Callback"] = this.workflowConfig.failureUrl;
-    }
+    this.headers.workflowHeaders["Failure-Callback"] = this.workflowConfig.failureUrl;
 
     this.headers.failureHeaders[`Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
     this.headers.failureHeaders[`Forward-Upstash-Workflow-Failure-Callback`] = "true";
@@ -190,6 +188,11 @@ class WorkflowHeaders {
     this.headers.failureHeaders["Workflow-Init"] = "false";
     this.headers.failureHeaders["Workflow-Url"] = this.workflowConfig.workflowUrl;
     this.headers.failureHeaders["Workflow-Calltype"] = "failureCall";
+    this.headers.failureHeaders["Feature-Set"] = "LazyFetch,InitialBody";
+    if (this.workflowConfig.retries !== undefined && this.workflowConfig.retries !== DEFAULT_RETRIES) {
+      this.headers.failureHeaders["Retries"] = this.workflowConfig.retries.toString();
+    }
+
   }
 
   private addContentType() {
@@ -213,14 +216,17 @@ class WorkflowHeaders {
 
   private prefixHeaders(contentType: string): HeadersResponse {
     const { rawHeaders, workflowHeaders, failureHeaders } = this.headers;
+
+    const isCall = this.stepInfo?.lazyStep.stepType === "Call";
     return {
       headers: {
         ...rawHeaders,
         ...addPrefixToHeaders(
           workflowHeaders,
-          this.stepInfo?.lazyStep.stepType === "Call" ? "Upstash-Callback-" : "Upstash-"
+          isCall ? "Upstash-Callback-" : "Upstash-"
         ),
         ...addPrefixToHeaders(failureHeaders, "Upstash-Failure-Callback-"),
+        ...(isCall ? addPrefixToHeaders(failureHeaders, "Upstash-Callback-Failure-Callback-") : {})
       },
       contentType,
     };
