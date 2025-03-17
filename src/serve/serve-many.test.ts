@@ -31,7 +31,7 @@ describe("serveMany", () => {
             settings: {
               body: "some-body",
               workflow: {
-                routeFunction: async () => {},
+                routeFunction: async () => { },
                 workflowId,
                 options: {},
               },
@@ -53,6 +53,8 @@ describe("serveMany", () => {
               steps: [],
               url: `${WORKFLOW_ENDPOINT}/original_workflow`,
               workflowRunId: "wfr_original_workflow",
+              failureUrl: `${WORKFLOW_ENDPOINT}/failure-endpoint`,
+              retries: 0,
             }),
             telemetry,
           });
@@ -68,19 +70,28 @@ describe("serveMany", () => {
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_original_workflow"],
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/original_workflow"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Failure-Callback-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Workflow-Sdk-Version": ["1"],
               "content-type": ["application/json"],
               "Upstash-Telemetry-Sdk": ["sdk"],
               "Upstash-Telemetry-Framework": ["framework"],
               "Upstash-Telemetry-Runtime": ["runtime"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Retries": ["3"],
-              "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Forward-original": ["original-headers-value"],
               "Upstash-Failure-Callback-Forward-original": ["original-headers-value"],
+              "Upstash-Failure-Callback": ["https://requestcatcher.com/api/failure-endpoint"],
+              "Upstash-Failure-Callback-Forward-Upstash-Workflow-Failure-Callback": ["true"],
+              "Upstash-Failure-Callback-Forward-Upstash-Workflow-Is-Failure": ["true"],
+              "Upstash-Failure-Callback-Workflow-Calltype": ["failureCall"],
+              "Upstash-Failure-Callback-Workflow-Init": ["false"],
+              "Upstash-Failure-Callback-Workflow-Runid": ["wfr_original_workflow"],
+              "Upstash-Failure-Callback-Workflow-Url": [
+                "https://requestcatcher.com/api/original_workflow",
+              ],
               "Upstash-Workflow-Runid": ["wfr_original_workflow"],
+              "Upstash-Retries": ["0"],
+              "Upstash-Failure-Callback-Retries": ["0"],
             },
             workflowRunId: "wfr_original_workflow",
             workflowUrl: "https://requestcatcher.com/api/original_workflow",
@@ -106,7 +117,7 @@ describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
       const throws = () =>
         serveMany({
-          "workflow/one": createWorkflow(async () => {}),
+          "workflow/one": createWorkflow(async () => { }),
         });
       expect(throws).toThrow(
         "Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'."
@@ -115,7 +126,7 @@ describe("serveMany", () => {
 
     test("should throw if workflowId doesn't match", async () => {
       const { POST: handler } = serveMany({
-        "workflow-one": createWorkflow(async () => {}),
+        "workflow-one": createWorkflow(async () => { }),
       });
 
       const request = new Request("http://localhost:3001/workflow-two", { method: "POST" });
@@ -187,7 +198,8 @@ describe("serveMany", () => {
 
       await mockQStashServer({
         execute: async () => {
-          await handler(request);
+          const response = await handler(request);
+          expect(response.status).toBe(200);
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -197,13 +209,10 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Failure-Callback-Retries": ["3"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
               "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
               "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
@@ -243,7 +252,8 @@ describe("serveMany", () => {
 
       await mockQStashServer({
         execute: async () => {
-          await handler(request);
+          const response = await handler(request);
+          expect(response.status).toBe(200);
         },
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
@@ -253,13 +263,11 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
               "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
               "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
               "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
