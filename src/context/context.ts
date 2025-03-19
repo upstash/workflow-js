@@ -322,15 +322,17 @@ export class WorkflowContext<TInitialPayload = unknown> {
     TBody = unknown,
   >(
     stepName: string,
-    settings: LazyInvokeStepParams<TBody, unknown>
+    settings: LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">
   ): Promise<CallResponse<TResult>>;
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
-    settings: CallSettings<TBody> | LazyInvokeStepParams<TBody, TResult>
+    settings:
+      | CallSettings<TBody>
+      | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
   ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
     let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
     if ("workflow" in settings) {
-      const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId!);
+      const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
 
       callStep = new LazyCallStep<{ workflowRunId: string }>(
         stepName,
@@ -339,7 +341,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         settings.body,
         settings.headers || {},
         settings.retries || 0,
-        undefined,
+        settings.timeout,
         settings.flowControl ?? settings.workflow.options.flowControl
       );
     } else {
