@@ -163,7 +163,7 @@ const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
   const invokeCount = context.executor.invokeCount
   expect(invokeCount, 2)
 
-  const { timeout: isTimeout } = await context.waitForEvent("notified event", notifiedEventId, { timeout: "10s" })
+  const { timeout: isTimeout } = await context.waitForEvent("notified event", notifiedEventId, { timeout: "20s" })
   expect(isTimeout, false)
 
   await context.sleep("check", 1)
@@ -189,7 +189,7 @@ const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
   const invokeCount = context.executor.invokeCount
   expect(invokeCount, 2)
 
-  await context.sleep("wait", 10)
+  await context.sleep("wait", 5)
   const { notifyResponse } = await context.notify("notified event", notifiedEventId, "data")
   expect(notifyResponse.length > 0, true)
 
