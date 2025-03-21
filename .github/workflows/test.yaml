@@ -652,7 +652,7 @@ jobs:
         working-directory: examples/cloudflare-workers-hono
 
       - name: Deploy
-        run: wrangler publish
+        run: wrangler deploy
         working-directory: examples/cloudflare-workers-hono
         env:
           CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
