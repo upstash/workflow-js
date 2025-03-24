@@ -1,17 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { WorkflowContext } from "../context";
 import { WorkflowError } from "../error";
-import { getHeaders } from "../qstash/headers";
-import {
-  InvokableWorkflow,
-  InvokeWorkflowRequest,
-  LazyInvokeStepParams,
-  PublicServeOptions,
-  RouteFunction,
-  Step,
-  Telemetry,
-} from "../types";
-import { getWorkflowRunId } from "../utils";
+import { InvokableWorkflow, PublicServeOptions, RouteFunction } from "../types";
 
 export type OmitOptionsInServeMany<TOptions> = Omit<
   TOptions,
@@ -100,94 +89,4 @@ export const serveManyBase = <
       return await workflow(...params);
     },
   };
-};
-
-export const invokeWorkflow = async <TInitialPayload, TResult>({
-  settings,
-  invokeStep,
-  context,
-  invokeCount,
-  telemetry,
-}: {
-  settings: LazyInvokeStepParams<TInitialPayload, TResult>;
-  invokeStep: Step;
-  context: WorkflowContext;
-  invokeCount: number;
-  telemetry?: Telemetry;
-}) => {
-  const {
-    body,
-    workflow,
-    headers = {},
-    workflowRunId = getWorkflowRunId(),
-    retries,
-    flowControl,
-  } = settings;
-  const { workflowId } = workflow;
-
-  const {
-    retries: workflowRetries,
-    failureFunction,
-    failureUrl,
-    useJSONContent,
-    flowControl: workflowFlowControl,
-  } = workflow.options;
-
-  if (!workflowId) {
-    throw new WorkflowError("You can only invoke workflow which has a workflowId");
-  }
-
-  const { headers: invokerHeaders } = getHeaders({
-    initHeaderValue: "false",
-    workflowConfig: {
-      workflowRunId: context.workflowRunId,
-      workflowUrl: context.url,
-      failureUrl: context.failureUrl,
-      retries: context.retries,
-      telemetry,
-      flowControl: context.flowControl,
-      useJSONContent,
-    },
-    userHeaders: context.headers,
-    invokeCount,
-  });
-  invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
-
-  const newUrl = context.url.replace(/[^/]+$/, workflowId);
-
-  const { headers: triggerHeaders } = getHeaders({
-    initHeaderValue: "true",
-    workflowConfig: {
-      workflowRunId,
-      workflowUrl: newUrl,
-      retries: retries ?? workflowRetries,
-      telemetry,
-      failureUrl: failureFunction ? newUrl : failureUrl,
-      flowControl: flowControl ?? workflowFlowControl,
-      useJSONContent,
-    },
-    userHeaders: new Headers(headers) as Headers,
-    invokeCount: invokeCount + 1,
-  });
-  triggerHeaders["Upstash-Workflow-Invoke"] = "true";
-  if (useJSONContent) {
-    triggerHeaders["content-type"] = "application/json";
-  }
-
-  const request: InvokeWorkflowRequest = {
-    body: JSON.stringify(body),
-    headers: Object.fromEntries(
-      Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
-    ),
-    workflowRunId: context.workflowRunId,
-    workflowUrl: context.url,
-    step: invokeStep,
-  };
-
-  await context.qstashClient.publish({
-    headers: triggerHeaders,
-    method: "POST",
-    body: JSON.stringify(request),
-    url: newUrl,
-  });
 };
