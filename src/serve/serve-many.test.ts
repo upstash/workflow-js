@@ -10,6 +10,7 @@ import {
 } from "../test-utils";
 import { nanoid } from "../utils";
 import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
+import { getNewUrlFromWorkflowId } from "./serve-many";
 
 describe("serveMany", () => {
   describe("serveMany", () => {
@@ -58,7 +59,7 @@ describe("serveMany", () => {
 
     const workflowTwo = createWorkflow(
       async (context: WorkflowContext<string>) => {
-        await context.invoke("invoke step two", {
+        const result = await context.invoke("invoke step two", {
           workflow: workflowOne,
           body: 2,
           flowControl: {
@@ -66,6 +67,28 @@ describe("serveMany", () => {
             parallelism: 4,
           },
         });
+
+        const _body = result.body;
+        const _isCanceled = result.isCanceled;
+        const _isFailed = result.isFailed;
+
+        console.log(_body, _isCanceled, _isFailed);
+
+        // just checking the type. code won't reach here.
+        const secondResult = await context.invoke("invoke step two", {
+          workflow: workflowOne,
+          body: 2,
+          flowControl: {
+            key: "customFlowControl",
+            parallelism: 4,
+          },
+        });
+
+        const _secondBody = secondResult.body;
+        const _secondIsCanceled = secondResult.isCanceled;
+        const _secondIsFailed = secondResult.isFailed;
+
+        console.log(_secondBody, _secondIsCanceled, _secondIsFailed);
       },
       {
         flowControl: {
@@ -76,10 +99,33 @@ describe("serveMany", () => {
       }
     );
 
+    const workflowThree = createWorkflow(
+      async (context: WorkflowContext<string>) => {
+        const result = await context.call("call other workflow", {
+          workflow: workflowOne,
+          body: 2,
+        });
+
+        const _body = result.body;
+        const _header = result.header;
+        const _status = result.status;
+
+        console.log(_body, _header, _status);
+      },
+      {
+        flowControl: {
+          key: "workflowThreeFlowControl",
+          parallelism: 4,
+          ratePerSecond: 6,
+        },
+      }
+    );
+
     const { POST: handler } = serveMany(
       {
         "workflow-one": workflowOne,
         "workflow-two": workflowTwo,
+        "workflow-three": workflowThree,
       },
       {
         qstashClient,
@@ -193,6 +239,94 @@ describe("serveMany", () => {
           },
         },
       });
+    });
+
+    test("should make context.call request with workflow", async () => {
+      const request = getRequest(
+        `${WORKFLOW_ENDPOINT}/workflow-three`,
+        "wfr_id",
+        "initial-payload",
+        []
+      );
+      request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "1");
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await handler(request);
+          expect(response.status).toBe(200);
+        },
+        responseFields: { body: "msgId", status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: "2",
+              destination: "https://requestcatcher.com/api/workflow-one",
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api/workflow-three",
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-flow-control-key": "workflowThreeFlowControl",
+                "upstash-callback-flow-control-value": "parallelism=4, rate=6",
+                "upstash-flow-control-key": "workflowOneFlowControl",
+                "upstash-flow-control-value": "parallelism=2, rate=10",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "1",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call other workflow",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-retries": "3",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr_id",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflow-three",
+                "upstash-failure-callback-retries": "3",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-telemetry-framework": "nextjs",
+                "upstash-telemetry-runtime": "node@v22.6.0",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr_id",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflow-three",
+              },
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("getNewUrlFromWorkflowId", () => {
+    test("should return new url", () => {
+      const url = "https://requestcatcher.com/api/original_workflow";
+      const workflowId = "workflowId";
+      const newUrl = getNewUrlFromWorkflowId(url, workflowId);
+
+      expect(newUrl).toBe("https://requestcatcher.com/api/workflowId");
+    });
+
+    test("should ignore query parameters", () => {
+      const url = "https://requestcatcher.com/api/original_workflow?query=param";
+      const workflowId = "workflowId";
+      const newUrl = getNewUrlFromWorkflowId(url, workflowId);
+
+      expect(newUrl).toBe("https://requestcatcher.com/api/workflowId");
+    });
+
+    test("shuold ignore hash parameters", () => {
+      const url = "https://requestcatcher.com/api/original_workflow#hash";
+      const workflowId = "workflowId";
+      const newUrl = getNewUrlFromWorkflowId(url, workflowId);
+
+      expect(newUrl).toBe("https://requestcatcher.com/api/workflowId");
     });
   });
 });

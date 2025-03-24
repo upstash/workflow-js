@@ -27,6 +27,7 @@ import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { WorkflowAgents } from "../agents";
 import { FlowControl } from "@upstash/qstash";
+import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 
 /**
  * Upstash Workflow context
@@ -315,29 +316,58 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
     settings: CallSettings<TBody>
-  ): Promise<CallResponse<TResult>> {
-    const {
-      url,
-      method = "GET",
-      body: requestBody,
-      headers = {},
-      retries = 0,
-      timeout,
-      flowControl,
-    } = settings;
+  ): Promise<CallResponse<TResult>>;
+  public async call<
+    TResult extends { workflowRunId: string } = { workflowRunId: string },
+    TBody = unknown,
+  >(
+    stepName: string,
+    settings: LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">
+  ): Promise<CallResponse<TResult>>;
+  public async call<TResult = unknown, TBody = unknown>(
+    stepName: string,
+    settings:
+      | CallSettings<TBody>
+      | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
+  ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
+    let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
+    if ("workflow" in settings) {
+      const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
 
-    return await this.addStep(
-      new LazyCallStep<TResult>(
+      callStep = new LazyCallStep<{ workflowRunId: string }>(
+        stepName,
+        url,
+        "POST",
+        settings.body,
+        settings.headers || {},
+        settings.retries || 0,
+        settings.timeout,
+        settings.flowControl ?? settings.workflow.options.flowControl
+      );
+    } else {
+      const {
+        url,
+        method = "GET",
+        body,
+        headers = {},
+        retries = 0,
+        timeout,
+        flowControl,
+      } = settings;
+
+      callStep = new LazyCallStep<TResult>(
         stepName,
         url,
         method,
-        requestBody,
+        body,
         headers,
         retries,
         timeout,
         flowControl
-      )
-    );
+      );
+    }
+
+    return await this.addStep(callStep);
   }
 
   /**

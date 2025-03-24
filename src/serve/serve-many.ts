@@ -90,3 +90,10 @@ export const serveManyBase = <
     },
   };
 };
+
+export const getNewUrlFromWorkflowId = (url: string, workflowId?: string) => {
+  if (!workflowId) {
+    throw new WorkflowError("You can only call workflow which has a workflowId");
+  }
+  return url.replace(/[^/]+$/, workflowId);
+};
