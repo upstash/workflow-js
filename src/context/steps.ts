@@ -18,9 +18,9 @@ import type { Duration } from "../types";
 import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
 import { WorkflowContext } from "./context";
-import { getHeaders } from "../qstash/headers";
+import { getHeaders, prepareFlowControl } from "../qstash/headers";
 import { WORKFLOW_FEATURE_HEADER, WORKFLOW_INIT_HEADER, WORKFLOW_URL_HEADER } from "../constants";
-import { getTelemetryHeaders, HeadersResponse, prepareFlowControl } from "../workflow-requests";
+import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
 
 type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
   Required<Pick<HeaderParams, "step" | "invokeCount">>;

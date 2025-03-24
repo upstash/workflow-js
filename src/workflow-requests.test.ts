@@ -474,7 +474,7 @@ describe("Workflow Requests", () => {
       const stepId = 3;
       const stepName = "some step";
 
-      const lazyStep = new LazyFunctionStep(stepName, () => { });
+      const lazyStep = new LazyFunctionStep(stepName, () => {});
       const { headers } = getHeaders({
         initHeaderValue: "false",
         workflowConfig: {

@@ -123,7 +123,9 @@ class WorkflowHeaders {
     const invokeCount = this.invokeCount.toString();
 
     this.headers.workflowHeaders[`Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount;
-    // this.headers.failureHeaders.set(`Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`, invokeCount); // TODO
+    if (this.workflowConfig.failureUrl) {
+      this.headers.failureHeaders[`Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`] = invokeCount;
+    }
 
     // for context.call:
     if (this.stepInfo?.lazyStep instanceof LazyCallStep) {
@@ -189,10 +191,12 @@ class WorkflowHeaders {
     this.headers.failureHeaders["Workflow-Url"] = this.workflowConfig.workflowUrl;
     this.headers.failureHeaders["Workflow-Calltype"] = "failureCall";
     this.headers.failureHeaders["Feature-Set"] = "LazyFetch,InitialBody";
-    if (this.workflowConfig.retries !== undefined && this.workflowConfig.retries !== DEFAULT_RETRIES) {
+    if (
+      this.workflowConfig.retries !== undefined &&
+      this.workflowConfig.retries !== DEFAULT_RETRIES
+    ) {
       this.headers.failureHeaders["Retries"] = this.workflowConfig.retries.toString();
     }
-
   }
 
   private addContentType() {
@@ -221,12 +225,9 @@ class WorkflowHeaders {
     return {
       headers: {
         ...rawHeaders,
-        ...addPrefixToHeaders(
-          workflowHeaders,
-          isCall ? "Upstash-Callback-" : "Upstash-"
-        ),
+        ...addPrefixToHeaders(workflowHeaders, isCall ? "Upstash-Callback-" : "Upstash-"),
         ...addPrefixToHeaders(failureHeaders, "Upstash-Failure-Callback-"),
-        ...(isCall ? addPrefixToHeaders(failureHeaders, "Upstash-Callback-Failure-Callback-") : {})
+        ...(isCall ? addPrefixToHeaders(failureHeaders, "Upstash-Callback-Failure-Callback-") : {}),
       },
       contentType,
     };
@@ -241,7 +242,7 @@ function addPrefixToHeaders(headers: Record<string, string>, prefix: string) {
   return prefixedHeaders;
 }
 
-const prepareFlowControl = (flowControl: FlowControl) => {
+export const prepareFlowControl = (flowControl: FlowControl) => {
   const parallelism = flowControl.parallelism?.toString();
   const rate = flowControl.ratePerSecond?.toString();
 

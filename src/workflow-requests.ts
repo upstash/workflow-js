@@ -428,22 +428,3 @@ export const verifyRequest = async (
     );
   }
 };
-
-export const prepareFlowControl = (flowControl: FlowControl) => {
-  const parallelism = flowControl.parallelism?.toString();
-  const rate = flowControl.ratePerSecond?.toString();
-
-  const controlValue = [
-    parallelism ? `parallelism=${parallelism}` : undefined,
-    rate ? `rate=${rate}` : undefined,
-  ].filter(Boolean);
-
-  if (controlValue.length === 0) {
-    throw new QstashError("Provide at least one of parallelism or ratePerSecond for flowControl");
-  }
-
-  return {
-    flowControlKey: flowControl.key,
-    flowControlValue: controlValue.join(", "),
-  };
-};

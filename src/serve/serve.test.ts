@@ -133,9 +133,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-            body: JSON.stringify(initialPayload),
-            method: "POST",
-          })
+              body: JSON.stringify(initialPayload),
+              method: "POST",
+            })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");
@@ -578,11 +578,11 @@ describe("serve", () => {
 
     test("should set failure headers in context call", async () => {
       const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo", "my-payload", []);
+      request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");
       let called = false;
       const myFailureFunction: WorkflowServeOptions["failureFunction"] = async () => {
         return;
       };
-
 
       const routeFunction: RouteFunction<unknown> = async (context) => {
         await context.call("call step", {
@@ -590,10 +590,10 @@ describe("serve", () => {
           retries: 4,
           timeout: 10,
           headers: {
-            "test": "headers"
+            test: "headers",
           },
           body: "body",
-          method: "PATCH"
+          method: "PATCH",
         });
       };
 
@@ -601,7 +601,7 @@ describe("serve", () => {
         qstashClient,
         receiver: undefined,
         failureUrl: "some-failure-url",
-        retries: 2
+        retries: 2,
       });
       await mockQStashServer({
         execute: async () => {
@@ -622,15 +622,21 @@ describe("serve", () => {
                 "upstash-callback": "https://requestcatcher.com/api",
                 "upstash-callback-failure-callback-feature-set": "LazyFetch,InitialBody",
                 "upstash-callback-failure-callback": "some-failure-url",
-                "upstash-callback-failure-callback-forward-upstash-workflow-failure-callback": "true",
+                "upstash-callback-failure-callback-forward-upstash-workflow-failure-callback":
+                  "true",
                 "upstash-callback-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-callback-failure-callback-retries": "2",
                 "upstash-callback-failure-callback-workflow-calltype": "failureCall",
                 "upstash-callback-failure-callback-workflow-init": "false",
                 "upstash-callback-failure-callback-workflow-runid": "wfr-foo",
                 "upstash-callback-failure-callback-workflow-url": "https://requestcatcher.com/api",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                // invoke counts:
+                "upstash-callback-failure-callback-forward-upstash-workflow-invoke-count": "2",
+                "upstash-failure-callback-forward-upstash-workflow-invoke-count": "2",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "2",
+                "upstash-forward-upstash-workflow-invoke-count": "2",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",

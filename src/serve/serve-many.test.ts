@@ -31,7 +31,7 @@ describe("serveMany", () => {
             settings: {
               body: "some-body",
               workflow: {
-                routeFunction: async () => { },
+                routeFunction: async () => {},
                 workflowId,
                 options: {},
               },
@@ -117,7 +117,7 @@ describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
       const throws = () =>
         serveMany({
-          "workflow/one": createWorkflow(async () => { }),
+          "workflow/one": createWorkflow(async () => {}),
         });
       expect(throws).toThrow(
         "Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'."
@@ -126,7 +126,7 @@ describe("serveMany", () => {
 
     test("should throw if workflowId doesn't match", async () => {
       const { POST: handler } = serveMany({
-        "workflow-one": createWorkflow(async () => { }),
+        "workflow-one": createWorkflow(async () => {}),
       });
 
       const request = new Request("http://localhost:3001/workflow-two", { method: "POST" });
