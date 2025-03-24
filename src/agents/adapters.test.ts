@@ -52,7 +52,6 @@ describe("wrapTools", () => {
 
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["aiSDKTool"];
-    // @ts-expect-error description exists but can't resolve the type
     expect(wrappedTool.description).toBe(aiSDKToolDescription);
 
     await mockQStashServer({
@@ -104,7 +103,6 @@ describe("wrapTools", () => {
 
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["langChainTool"];
-    // @ts-expect-error description exists but can't resolve the type
     expect(wrappedTool.description).toBe(langChainToolDescription);
 
     await mockQStashServer({
@@ -156,11 +154,9 @@ describe("wrapTools", () => {
 
     expect(Object.entries(wrappedTools).length).toBe(2);
     const wrappedLangChainTool = wrappedTools["langChainTool"];
-    // @ts-expect-error description exists but can't resolve the type
     expect(wrappedLangChainTool.description).toBe(langChainToolDescription);
 
     const wrappedAiSDKTool = wrappedTools["aiSDKTool"];
-    // @ts-expect-error description exists but can't resolve the type
     expect(wrappedAiSDKTool.description).toBe(aiSDKToolDescription);
   });
 
@@ -180,7 +176,6 @@ describe("wrapTools", () => {
 
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["nonwrappedWorkflowTool"];
-    // @ts-expect-error description exists but can't resolve the type
     expect(wrappedTool.description).toBe(workflowToolDescription);
 
     await mockQStashServer({
@@ -232,7 +227,6 @@ describe("wrapTools", () => {
 
     expect(Object.entries(wrappedTools).length).toBe(1);
     const wrappedTool = wrappedTools["wrappedWorkflowTool"];
-    // @ts-expect-error description exists but can't resolve the type
     expect(wrappedTool.description).toBe(workflowToolDescription);
 
     await mockQStashServer({
