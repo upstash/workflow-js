@@ -30,7 +30,7 @@ export const submitParallelSteps = async ({
     steps: planSteps,
   });
 
-  const result = await context.qstashClient.batch(
+  const result = (await context.qstashClient.batch(
     planSteps.map((planStep) => {
       const { headers } = getHeaders({
         initHeaderValue: "false",
@@ -55,7 +55,7 @@ export const submitParallelSteps = async ({
         delay: planStep.sleepFor,
       };
     })
-  ) as { messageId: string }[];
+  )) as { messageId: string }[];
 
   await debug?.log("INFO", "SUBMIT_STEP", {
     messageIds: result.map((message) => {
@@ -64,7 +64,6 @@ export const submitParallelSteps = async ({
       };
     }),
   });
-
 
   throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
 };

@@ -33,7 +33,18 @@ describe("agents", () => {
   const maxSteps = 2;
   const name = "my agent";
   const temparature = 0.4;
-  const model = agentsApi.openai("gpt-3.5-turbo");
+
+  const flowControlKey = "flowControlKey";
+  const model = agentsApi.openai("gpt-3.5-turbo", {
+    callSettings: {
+      flowControl: {
+        key: flowControlKey,
+        parallelism: 2,
+      },
+      retries: 5,
+      timeout: 10,
+    },
+  });
 
   const agent = new Agent(
     {
@@ -103,12 +114,15 @@ describe("agents", () => {
                 "upstash-forward-content-type": "application/json",
                 "upstash-forward-upstash-agent-name": "my agent",
                 "upstash-method": "POST",
-                "upstash-retries": "0",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": workflowRunId,
                 "upstash-workflow-url": "https://requestcatcher.com/api",
                 "upstash-callback-retries": "5",
+                "upstash-flow-control-key": "flowControlKey",
+                "upstash-flow-control-value": "parallelism=2",
+                "upstash-retries": "5",
+                "upstash-timeout": "10",
               },
             },
           ],
@@ -168,11 +182,14 @@ describe("agents", () => {
                 "upstash-forward-content-type": "application/json",
                 "upstash-forward-upstash-agent-name": "my agent",
                 "upstash-method": "POST",
-                "upstash-retries": "0",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": workflowRunId,
                 "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-flow-control-key": "flowControlKey",
+                "upstash-flow-control-value": "parallelism=2",
+                "upstash-retries": "5",
+                "upstash-timeout": "10",
               },
             },
           ],
@@ -231,11 +248,14 @@ describe("agents", () => {
               "upstash-forward-content-type": "application/json",
               "upstash-forward-upstash-agent-name": "manager llm",
               "upstash-method": "POST",
-              "upstash-retries": "0",
               "upstash-workflow-calltype": "toCallback",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-url": "https://requestcatcher.com/api",
+              "upstash-flow-control-key": "flowControlKey",
+              "upstash-flow-control-value": "parallelism=2",
+              "upstash-retries": "5",
+              "upstash-timeout": "10",
             },
           },
         ],
