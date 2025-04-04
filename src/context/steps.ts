@@ -151,14 +151,14 @@ export abstract class BaseLazyStep<TResult = unknown> {
   }
 
   async submitStep({ context, body, headers }: SubmitStepParams) {
-    return await context.qstashClient.batch([
+    return (await context.qstashClient.batch([
       {
         body,
         headers,
         method: "POST",
         url: context.url,
       },
-    ]) as { messageId: string }[];
+    ])) as { messageId: string }[];
   }
 }
 
@@ -236,7 +236,7 @@ export class LazySleepStep extends BaseLazyStep {
   }
 
   async submitStep({ context, body, headers, isParallel }: SubmitStepParams) {
-    return await context.qstashClient.batch([
+    return (await context.qstashClient.batch([
       {
         body,
         headers,
@@ -244,7 +244,7 @@ export class LazySleepStep extends BaseLazyStep {
         url: context.url,
         delay: isParallel ? undefined : this.sleep,
       },
-    ]) as { messageId: string }[]
+    ])) as { messageId: string }[];
   }
 }
 
@@ -287,7 +287,7 @@ export class LazySleepUntilStep extends BaseLazyStep {
   }
 
   async submitStep({ context, body, headers, isParallel }: SubmitStepParams) {
-    return await context.qstashClient.batch([
+    return (await context.qstashClient.batch([
       {
         body,
         headers,
@@ -295,7 +295,7 @@ export class LazySleepUntilStep extends BaseLazyStep {
         url: context.url,
         notBefore: isParallel ? undefined : this.sleepUntil,
       },
-    ]) as { messageId: string }[];
+    ])) as { messageId: string }[];
   }
 }
 
@@ -463,14 +463,14 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   }
 
   async submitStep({ context, headers }: SubmitStepParams) {
-    return await context.qstashClient.batch([
+    return (await context.qstashClient.batch([
       {
         headers,
         body: JSON.stringify(this.body),
         method: this.method,
         url: this.url,
       },
-    ]) as { messageId: string }[];
+    ])) as { messageId: string }[];
   }
 }
 
@@ -538,11 +538,11 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
       // to include telemetry headers:
       ...(telemetry
         ? Object.fromEntries(
-          Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
-            header,
-            [value],
-          ])
-        )
+            Object.entries(getTelemetryHeaders(telemetry)).map(([header, value]) => [
+              header,
+              [value],
+            ])
+          )
         : {}),
 
       // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
@@ -571,14 +571,14 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
   }
 
   async submitStep({ context, body, headers }: SubmitStepParams) {
-    const result = await context.qstashClient.http.request({
+    const result = (await context.qstashClient.http.request({
       path: ["v2", "wait", this.eventId],
       body: body,
       headers,
       method: "POST",
       parseResponseAsJson: false,
-    }) as { messageId: string };
-    return [result]
+    })) as { messageId: string };
+    return [result];
   }
 }
 
@@ -748,12 +748,12 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
 
   async submitStep({ context, body, headers }: SubmitStepParams) {
     const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
-    const result = await context.qstashClient.publish({
+    const result = (await context.qstashClient.publish({
       headers,
       method: "POST",
       body,
       url: newUrl,
-    }) as { messageId: string };
+    })) as { messageId: string };
     return [result];
   }
 }
