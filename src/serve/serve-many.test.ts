@@ -10,98 +10,9 @@ import {
 } from "../test-utils";
 import { nanoid } from "../utils";
 import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
-import { Telemetry } from "../types";
-import { getNewUrlFromWorkflowId, invokeWorkflow } from "./serve-many";
+import { getNewUrlFromWorkflowId } from "./serve-many";
 
 describe("serveMany", () => {
-  describe("invokeWorkflow", () => {
-    test("should call invokeWorkflow", async () => {
-      const token = nanoid();
-
-      const telemetry: Telemetry = {
-        sdk: "sdk",
-        framework: "framework",
-        runtime: "runtime",
-      };
-      const workflowId = "some-workflow-id";
-
-      await mockQStashServer({
-        execute: async () => {
-          await invokeWorkflow({
-            settings: {
-              body: "some-body",
-              workflow: {
-                routeFunction: async () => {},
-                workflowId,
-                options: {},
-              },
-              headers: { custom: "custom-header-value" },
-              retries: 6,
-              workflowRunId: "some-run-id",
-            },
-            invokeCount: 0,
-            invokeStep: {
-              stepId: 4,
-              concurrent: 1,
-              stepName: "invoke-step",
-              stepType: "Invoke",
-            },
-            context: new WorkflowContext({
-              headers: new Headers({ original: "original-headers-value" }) as Headers,
-              initialPayload: "initial-payload",
-              qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
-              steps: [],
-              url: `${WORKFLOW_ENDPOINT}/original_workflow`,
-              workflowRunId: "wfr_original_workflow",
-            }),
-            telemetry,
-          });
-        },
-        responseFields: { body: "msgId", status: 200 },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/${workflowId}`,
-          token,
-          body: {
-            body: '"some-body"',
-            headers: {
-              "Upstash-Workflow-Init": ["false"],
-              "Upstash-Workflow-RunId": ["wfr_original_workflow"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/original_workflow"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
-              "Upstash-Workflow-Sdk-Version": ["1"],
-              "content-type": ["application/json"],
-              "Upstash-Telemetry-Sdk": ["sdk"],
-              "Upstash-Telemetry-Framework": ["framework"],
-              "Upstash-Telemetry-Runtime": ["runtime"],
-              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Retries": ["3"],
-              "Upstash-Failure-Callback-Retries": ["3"],
-              "Upstash-Forward-original": ["original-headers-value"],
-              "Upstash-Failure-Callback-Forward-original": ["original-headers-value"],
-              "Upstash-Workflow-Runid": ["wfr_original_workflow"],
-            },
-            workflowRunId: "wfr_original_workflow",
-            workflowUrl: "https://requestcatcher.com/api/original_workflow",
-            step: {
-              stepId: 4,
-              concurrent: 1,
-              stepName: "invoke-step",
-              stepType: "Invoke",
-            },
-          },
-          headers: {
-            "upstash-retries": "6",
-            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
-            [`Upstash-Forward-custom`]: "custom-header-value",
-            "Upstash-Forward-original": null,
-          },
-        },
-      });
-    });
-  });
-
   describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
       const throws = () =>
@@ -243,13 +154,10 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Failure-Callback-Retries": ["3"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["0"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
               "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
               "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
@@ -300,13 +208,11 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Failure-Callback-Retries": ["3"],
               "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
               "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
               "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Retries": ["3"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
               "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
@@ -373,12 +279,11 @@ describe("serveMany", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "call other workflow",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
                 "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflow-three",
-                "upstash-failure-callback-retries": "3",
+                "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
                 "upstash-retries": "0",

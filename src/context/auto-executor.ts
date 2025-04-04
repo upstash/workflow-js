@@ -1,12 +1,10 @@
 import { WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step, WaitRequest, Telemetry } from "../types";
-import { LazyCallStep, LazyInvokeStep, type BaseLazyStep } from "./steps";
-import { getHeaders } from "../workflow-requests";
+import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
+import { type BaseLazyStep } from "./steps";
 import type { WorkflowLogger } from "../logger";
-import { NO_CONCURRENCY } from "../constants";
 import { QstashError } from "@upstash/qstash";
-import { invokeWorkflow } from "../serve/serve-many";
+import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -62,7 +60,7 @@ export class AutoExecutor {
     if (this.executingStep) {
       throw new WorkflowError(
         "A step can not be run inside another step." +
-          ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
+        ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
       );
     }
 
@@ -126,7 +124,7 @@ export class AutoExecutor {
    * @param lazyStep lazy step to execute
    * @returns step result
    */
-  protected async runSingle<TResult>(lazyStep: BaseLazyStep<TResult>) {
+  protected async runSingle<TResult>(lazyStep: BaseLazyStep<TResult>): Promise<TResult> {
     if (this.stepCount < this.nonPlanStepCount) {
       const step = this.steps[this.stepCount + this.planStepCount];
       validateStep(lazyStep, step);
@@ -138,16 +136,16 @@ export class AutoExecutor {
       return lazyStep.parseOut(step.out);
     }
 
-    const resultStep = await lazyStep.getResultStep(NO_CONCURRENCY, this.stepCount);
-
-    await this.debug?.log("INFO", "RUN_SINGLE", {
-      fromRequest: false,
-      step: resultStep,
-      stepCount: this.stepCount,
+    const resultStep = await submitSingleStep({
+      context: this.context,
+      lazyStep,
+      stepId: this.stepCount,
+      invokeCount: this.invokeCount,
+      concurrency: 1,
+      telemetry: this.telemetry,
+      debug: this.debug,
     });
-    await this.submitStepsToQStash([resultStep], [lazyStep]);
-
-    return resultStep.out as TResult;
+    throw new WorkflowAbort(lazyStep.stepName, resultStep);
   }
 
   /**
@@ -175,7 +173,7 @@ export class AutoExecutor {
       // user has added/removed a parallel step
       throw new WorkflowError(
         `Incompatible number of parallel steps when call state was '${parallelCallState}'.` +
-          ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
+        ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
       );
     }
 
@@ -189,14 +187,14 @@ export class AutoExecutor {
 
     switch (parallelCallState) {
       case "first": {
-        /**
-         * Encountering a parallel step for the first time, create plan steps for each parallel step
-         * and send them to QStash. QStash will call us back parallelSteps.length many times
-         */
-        const planSteps = parallelSteps.map((parallelStep, index) =>
-          parallelStep.getPlanStep(parallelSteps.length, initialStepCount + index)
-        );
-        await this.submitStepsToQStash(planSteps, parallelSteps);
+        await submitParallelSteps({
+          context: this.context,
+          steps: parallelSteps,
+          initialStepCount,
+          invokeCount: this.invokeCount,
+          telemetry: this.telemetry,
+          debug: this.debug
+        });
         break;
       }
       case "partial": {
@@ -210,7 +208,7 @@ export class AutoExecutor {
         if (!planStep || planStep.targetStep === undefined) {
           throw new WorkflowError(
             `There must be a last step and it should have targetStep larger than 0.` +
-              `Received: ${JSON.stringify(planStep)}`
+            `Received: ${JSON.stringify(planStep)}`
           );
         }
         const stepIndex = planStep.targetStep - initialStepCount;
@@ -226,11 +224,16 @@ export class AutoExecutor {
         validateStep(parallelSteps[stepIndex], planStep);
         try {
           const parallelStep = parallelSteps[stepIndex];
-          const resultStep = await parallelStep.getResultStep(
-            parallelSteps.length,
-            planStep.targetStep
-          );
-          await this.submitStepsToQStash([resultStep], [parallelStep]);
+          const resultStep = await submitSingleStep({
+            context: this.context,
+            lazyStep: parallelStep,
+            stepId: planStep.targetStep,
+            invokeCount: this.invokeCount,
+            concurrency: parallelSteps.length,
+            telemetry: this.telemetry,
+            debug: this.debug,
+          });
+          throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {
           if (
             error instanceof WorkflowAbort ||
@@ -325,148 +328,6 @@ export class AutoExecutor {
   }
 
   /**
-   * sends the steps to QStash as batch
-   *
-   * @param steps steps to send
-   */
-  private async submitStepsToQStash(steps: Step[], lazySteps: BaseLazyStep[]) {
-    // if there are no steps, something went wrong. Raise exception
-    if (steps.length === 0) {
-      throw new WorkflowError(
-        `Unable to submit steps to QStash. Provided list is empty. Current step: ${this.stepCount}`
-      );
-    }
-
-    await this.debug?.log("SUBMIT", "SUBMIT_STEP", {
-      length: steps.length,
-      steps,
-    });
-
-    // must check length to be 1, otherwise was the if would return
-    // true for plan steps.
-    if (steps[0].waitEventId && steps.length === 1) {
-      const waitStep = steps[0];
-
-      const { headers, timeoutHeaders } = getHeaders({
-        initHeaderValue: "false",
-        workflowRunId: this.context.workflowRunId,
-        workflowUrl: this.context.url,
-        userHeaders: this.context.headers,
-        step: waitStep,
-        failureUrl: this.context.failureUrl,
-        retries: this.context.retries,
-        telemetry: this.telemetry,
-        invokeCount: this.invokeCount,
-        flowControl: this.context.flowControl,
-      });
-
-      // call wait
-      const waitBody: WaitRequest = {
-        url: this.context.url,
-        timeout: waitStep.timeout,
-        timeoutBody: undefined,
-        timeoutUrl: this.context.url,
-        timeoutHeaders,
-        step: {
-          stepId: waitStep.stepId,
-          stepType: "Wait",
-          stepName: waitStep.stepName,
-          concurrent: waitStep.concurrent,
-          targetStep: waitStep.targetStep,
-        },
-      };
-
-      await this.context.qstashClient.http.request({
-        path: ["v2", "wait", waitStep.waitEventId],
-        body: JSON.stringify(waitBody),
-        headers,
-        method: "POST",
-        parseResponseAsJson: false,
-      });
-
-      throw new WorkflowAbort(waitStep.stepName, waitStep);
-    }
-    // must check length to be 1, otherwise was the if would return
-    // true for plan steps.
-    if (steps.length === 1 && lazySteps[0] instanceof LazyInvokeStep) {
-      const invokeStep = steps[0];
-      const lazyInvokeStep = lazySteps[0];
-      await invokeWorkflow({
-        settings: lazyInvokeStep.params,
-        invokeStep,
-        context: this.context,
-        invokeCount: this.invokeCount,
-        telemetry: this.telemetry,
-      });
-
-      throw new WorkflowAbort(invokeStep.stepName, invokeStep);
-    }
-
-    const result = await this.context.qstashClient.batch(
-      steps.map((singleStep, index) => {
-        const lazyStep = lazySteps[index];
-        const { headers } = getHeaders({
-          initHeaderValue: "false",
-          workflowRunId: this.context.workflowRunId,
-          workflowUrl: this.context.url,
-          userHeaders: this.context.headers,
-          step: singleStep,
-          failureUrl: this.context.failureUrl,
-          retries: this.context.retries,
-          callRetries: lazyStep instanceof LazyCallStep ? lazyStep.retries : undefined,
-          callTimeout: lazyStep instanceof LazyCallStep ? lazyStep.timeout : undefined,
-          telemetry: this.telemetry,
-          invokeCount: this.invokeCount,
-          flowControl: this.context.flowControl,
-          callFlowControl: lazyStep instanceof LazyCallStep ? lazyStep.flowControl : undefined,
-        });
-
-        // if the step is a single step execution or a plan step, we can add sleep headers
-        const willWait = singleStep.concurrent === NO_CONCURRENCY || singleStep.stepId === 0;
-
-        singleStep.out = JSON.stringify(singleStep.out);
-
-        return singleStep.callUrl && lazyStep instanceof LazyCallStep
-          ? // if the step is a third party call, we call the third party
-            // url (singleStep.callUrl) and pass information about the workflow
-            // in the headers (handled in getHeaders). QStash makes the request
-            // to callUrl and returns the result to Workflow endpoint.
-            // handleThirdPartyCallResult method sends the result of the third
-            // party call to QStash.
-            {
-              headers,
-              method: singleStep.callMethod,
-              body: JSON.stringify(singleStep.callBody),
-              url: singleStep.callUrl,
-            }
-          : // if the step is not a third party call, we use workflow
-            // endpoint (context.url) as URL when calling QStash. QStash
-            // calls us back with the updated steps list.
-            {
-              headers,
-              method: "POST",
-              body: JSON.stringify(singleStep),
-              url: this.context.url,
-              notBefore: willWait ? singleStep.sleepUntil : undefined,
-              delay: willWait ? singleStep.sleepFor : undefined,
-            };
-      })
-    );
-
-    const _result = result as { messageId: string }[];
-    await this.debug?.log("INFO", "SUBMIT_STEP", {
-      messageIds: _result.map((message) => {
-        return {
-          message: message.messageId,
-        };
-      }),
-    });
-
-    // if the steps are sent successfully, abort to stop the current request
-    throw new WorkflowAbort(steps[0].stepName, steps[0]);
-  }
-
-  /**
    * Get the promise by executing the lazt steps list. If there is a single
    * step, we call `runSingle`. Otherwise `runParallel` is called.
    *
@@ -523,14 +384,14 @@ const validateStep = (lazyStep: BaseLazyStep, stepFromRequest: Step): void => {
   if (lazyStep.stepName !== stepFromRequest.stepName) {
     throw new WorkflowError(
       `Incompatible step name. Expected '${lazyStep.stepName}',` +
-        ` got '${stepFromRequest.stepName}' from the request`
+      ` got '${stepFromRequest.stepName}' from the request`
     );
   }
   // check type name
   if (lazyStep.stepType !== stepFromRequest.stepType) {
     throw new WorkflowError(
       `Incompatible step type. Expected '${lazyStep.stepType}',` +
-        ` got '${stepFromRequest.stepType}' from the request`
+      ` got '${stepFromRequest.stepType}' from the request`
     );
   }
 };
@@ -558,10 +419,10 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
       const requestStepTypes = stepsFromRequest.map((step) => step.stepType);
       throw new WorkflowError(
         `Incompatible steps detected in parallel execution: ${error.message}` +
-          `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
-          `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +
-          `\n  > Step Names expected: ${JSON.stringify(lazyStepNames)}` +
-          `\n    Step Types expected: ${JSON.stringify(lazyStepTypes)}`
+        `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
+        `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +
+        `\n  > Step Names expected: ${JSON.stringify(lazyStepNames)}` +
+        `\n    Step Types expected: ${JSON.stringify(lazyStepTypes)}`
       );
     }
     throw error;

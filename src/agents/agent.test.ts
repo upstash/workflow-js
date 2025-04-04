@@ -24,6 +24,7 @@ describe("agents", () => {
     steps: [],
     url: WORKFLOW_ENDPOINT,
     workflowRunId,
+    retries: 5,
   });
 
   const agentsApi = new WorkflowAgents({ context });
@@ -93,13 +94,10 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
-                "upstash-callback-retries": "3",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": workflowRunId,
                 "upstash-callback-workflow-url": "https://requestcatcher.com/api",
-                "upstash-failure-callback-retries": "3",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-authorization": `Bearer ${openaiToken}`,
                 "upstash-forward-content-type": "application/json",
@@ -110,6 +108,7 @@ describe("agents", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": workflowRunId,
                 "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-callback-retries": "5",
               },
             },
           ],
@@ -120,7 +119,6 @@ describe("agents", () => {
     test("should convert agent to tool", async () => {
       const agentTool = agent.asTool();
 
-      // @ts-expect-error description exists but isn't accessible
       expect(agentTool.description).toBe(
         "An AI Agent with the following background: an agentHas access to the following tools: ai sdk tool"
       );
@@ -160,13 +158,11 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "2",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-forward-upstash-workflow-invoke-count": "0",
-                "upstash-callback-retries": "3",
+                "upstash-callback-retries": "5",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": workflowRunId,
                 "upstash-callback-workflow-url": "https://requestcatcher.com/api",
-                "upstash-failure-callback-retries": "3",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-authorization": `Bearer ${openaiToken}`,
                 "upstash-forward-content-type": "application/json",
@@ -225,13 +221,11 @@ describe("agents", () => {
               "upstash-callback-forward-upstash-workflow-stepid": "3",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent manager llm",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
-              "upstash-callback-forward-upstash-workflow-invoke-count": "0",
-              "upstash-callback-retries": "3",
+              "upstash-callback-retries": "5",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
               "upstash-callback-workflow-runid": workflowRunId,
               "upstash-callback-workflow-url": "https://requestcatcher.com/api",
-              "upstash-failure-callback-retries": "3",
               "upstash-feature-set": "WF_NoDelete,InitialBody",
               "upstash-forward-authorization": `Bearer ${openaiToken}`,
               "upstash-forward-content-type": "application/json",

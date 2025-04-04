@@ -3,7 +3,6 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
 import {
-  getHeaders,
   handleThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
@@ -32,6 +31,8 @@ import {
 } from "./test-utils";
 import { WorkflowLogger } from "./logger";
 import { FinishState } from "./integration.test";
+import { getHeaders } from "./qstash/headers";
+import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
 
 describe("Workflow Requests", () => {
   test("should send first invocation request", async () => {
@@ -305,6 +306,7 @@ describe("Workflow Requests", () => {
           },
           headers: {
             "upstash-retries": "2",
+            "upstash-failure-callback": WORKFLOW_ENDPOINT,
           },
         },
       });
@@ -443,14 +445,17 @@ describe("Workflow Requests", () => {
   describe("getHeaders", () => {
     const workflowRunId = nanoid();
     test("should create headers without step passed", () => {
-      const { headers, timeoutHeaders } = getHeaders({
+      const { headers } = getHeaders({
         initHeaderValue: "true",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        flowControl: {
-          key: "initial-key",
-          parallelism: 2,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          flowControl: {
+            key: "initial-key",
+            parallelism: 2,
+          },
         },
+        userHeaders: new Headers() as Headers,
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
@@ -463,29 +468,30 @@ describe("Workflow Requests", () => {
         "Upstash-Flow-Control-Key": "initial-key",
         "Upstash-Flow-Control-Value": "parallelism=2",
       });
-      expect(timeoutHeaders).toBeUndefined();
     });
 
-    test("should create headers with a result step", () => {
+    test("should create headers with a result step", async () => {
       const stepId = 3;
       const stepName = "some step";
-      const stepType: StepType = "Run";
 
-      const { headers, timeoutHeaders } = getHeaders({
+      const lazyStep = new LazyFunctionStep(stepName, () => {});
+      const { headers } = getHeaders({
         initHeaderValue: "false",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        step: {
-          stepId,
-          stepName,
-          stepType: stepType,
-          concurrent: 1,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          flowControl: {
+            key: "step-key",
+            ratePerSecond: 3,
+          },
         },
-        flowControl: {
-          key: "step-key",
-          ratePerSecond: 3,
+        stepInfo: {
+          step: await lazyStep.getResultStep(1, stepId),
+          lazyStep,
         },
+        userHeaders: new Headers() as Headers,
       });
+
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
@@ -497,13 +503,11 @@ describe("Workflow Requests", () => {
         "Upstash-Flow-Control-Key": "step-key",
         "Upstash-Flow-Control-Value": "rate=3",
       });
-      expect(timeoutHeaders).toBeUndefined();
     });
 
-    test("should create headers with a call step", () => {
+    test("should create headers with a call step", async () => {
       const stepId = 3;
       const stepName = "some step";
-      const stepType: StepType = "Call";
       const callUrl = "https://www.some-call-endpoint.com/api";
       const callMethod = "GET";
       const callHeaders = {
@@ -511,31 +515,36 @@ describe("Workflow Requests", () => {
       };
       const callBody = undefined;
 
-      const { headers, timeoutHeaders } = getHeaders({
-        initHeaderValue: "false",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        step: {
-          stepId,
-          stepName,
-          stepType: stepType,
-          concurrent: 1,
-          callUrl,
-          callMethod,
-          callHeaders,
-          callBody,
-        },
-        invokeCount: 3,
-        flowControl: {
-          key: "regular-flow-key",
-          ratePerSecond: 3,
-          parallelism: 4,
-        },
-        callFlowControl: {
+      const lazyStep = new LazyCallStep(
+        stepName,
+        callUrl,
+        callMethod,
+        callBody,
+        callHeaders,
+        0,
+        undefined,
+        {
           key: "call-flow-key",
           ratePerSecond: 5,
           parallelism: 6,
-        },
+        }
+      );
+      const { headers } = lazyStep.getHeaders({
+        context: new WorkflowContext({
+          qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
+          workflowRunId,
+          headers: new Headers() as Headers,
+          steps: [],
+          url: WORKFLOW_ENDPOINT,
+          initialPayload: undefined,
+          flowControl: {
+            key: "regular-flow-key",
+            ratePerSecond: 3,
+            parallelism: 4,
+          },
+        }),
+        invokeCount: 3,
+        step: await lazyStep.getResultStep(1, stepId),
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
@@ -544,6 +553,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete,InitialBody",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Forward-Upstash-Workflow-Invoke-Count": "3",
+        "Upstash-Forward-Upstash-Workflow-Invoke-Count": "3",
         "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
@@ -560,32 +570,36 @@ describe("Workflow Requests", () => {
         "Upstash-Forward-my-custom-header": "my-custom-header-value",
         "Upstash-Workflow-CallType": "toCallback",
         "content-type": "application/json",
+        // flow control:
         "Upstash-Callback-Flow-Control-Key": "regular-flow-key",
         "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3",
         "Upstash-Flow-Control-Key": "call-flow-key",
         "Upstash-Flow-Control-Value": "parallelism=6, rate=5",
       });
-      expect(timeoutHeaders).toBeUndefined();
     });
 
     test("should include failure header", () => {
       const failureUrl = "https://my-failure-endpoint.com";
-      const { headers, timeoutHeaders } = getHeaders({
+      const { headers } = getHeaders({
         initHeaderValue: "true",
-        workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        userHeaders: new Headers() as Headers,
-        failureUrl,
-        flowControl: {
-          key: "failure-key",
-          parallelism: 2,
+        workflowConfig: {
+          workflowRunId,
+          workflowUrl: WORKFLOW_ENDPOINT,
+          failureUrl,
+          flowControl: {
+            key: "failure-key",
+            parallelism: 2,
+          },
+          retries: 6,
         },
+        userHeaders: new Headers() as Headers,
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+        "Upstash-Failure-Callback-Feature-Set": "LazyFetch,InitialBody",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
@@ -600,27 +614,37 @@ describe("Workflow Requests", () => {
         "Upstash-Failure-Callback-Flow-Control-Value": "parallelism=2",
         "Upstash-Flow-Control-Key": "failure-key",
         "Upstash-Flow-Control-Value": "parallelism=2",
+        "Upstash-Failure-Callback-Retries": "6",
+        "Upstash-Retries": "6",
       });
-      expect(timeoutHeaders).toBeUndefined();
     });
 
-    test("should return timeout headers for wait step", () => {
-      const { headers, timeoutHeaders } = getHeaders({
-        initHeaderValue: "false",
+    test("should return timeout headers for wait step", async () => {
+      const lazyStep = new LazyWaitForEventStep("waiting-step-name", "wait event id", "20s");
+
+      const step = await lazyStep.getResultStep(1, 1);
+      const context = new WorkflowContext({
+        headers: new Headers() as Headers,
+        initialPayload: undefined,
+        qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "token" }),
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
         workflowRunId,
-        workflowUrl: WORKFLOW_ENDPOINT,
-        step: {
-          stepId: 1,
-          stepName: "waiting-step-name",
-          stepType: "Wait",
-          concurrent: 1,
-          waitEventId: "wait event id",
-          timeout: "20s",
-        },
         flowControl: {
           key: "wait-key",
           parallelism: 2,
         },
+      });
+      const { headers } = lazyStep.getHeaders({
+        context,
+        step,
+        invokeCount: 0,
+      });
+      const body = lazyStep.getBody({
+        context,
+        headers,
+        invokeCount: 0,
+        step,
       });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",
@@ -634,18 +658,25 @@ describe("Workflow Requests", () => {
         "Upstash-Flow-Control-Key": "wait-key",
         "Upstash-Flow-Control-Value": "parallelism=2",
       });
-      expect(timeoutHeaders).toEqual({
-        "Upstash-Workflow-Init": ["false"],
-        "Upstash-Workflow-RunId": [workflowRunId],
-        "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
-        [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
-        [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody"],
-        "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-        "Upstash-Workflow-Runid": [workflowRunId],
-        "Upstash-Workflow-CallType": ["step"],
-        "content-type": ["application/json"],
-        "Upstash-Flow-Control-Key": ["wait-key"],
-        "Upstash-Flow-Control-Value": ["parallelism=2"],
+      expect(typeof body).toBe("string");
+      expect(JSON.parse(body)).toEqual({
+        url: "https://requestcatcher.com/api",
+        timeout: "20s",
+        timeoutUrl: "https://requestcatcher.com/api",
+        timeoutHeaders: {
+          "Upstash-Workflow-Init": ["false"],
+          "Upstash-Workflow-RunId": [workflowRunId],
+          "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
+          [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody"],
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
+          "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+          "content-type": ["application/json"],
+          "Upstash-Flow-Control-Key": ["wait-key"],
+          "Upstash-Flow-Control-Value": ["parallelism=2"],
+          "Upstash-Workflow-CallType": ["step"],
+          "Upstash-Workflow-Runid": [workflowRunId],
+        },
+        step: { stepId: 1, stepType: "Wait", stepName: "waiting-step-name", concurrent: 1 },
       });
     });
   });
@@ -923,7 +954,6 @@ describe("Workflow Requests", () => {
             [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
             "Upstash-Retries": "0",
-            "Upstash-Failure-Callback-Retries": "0",
             "content-type": "application/json",
           },
           requestPayload: undefined,
