@@ -1,6 +1,8 @@
 import type { CoreTool, generateText } from "ai";
 import { Agent } from "./agent";
-import { createWorkflowOpenAI, WorkflowTool } from "./adapters";
+import { WorkflowTool } from "./adapters";
+import { CallSettings } from "../types";
+import { createOpenAI } from "@ai-sdk/openai";
 
 export type AISDKTool = CoreTool;
 export type LangchainTool = {
@@ -90,8 +92,11 @@ export type ManagerAgentParameters = {
 } & Pick<Partial<AgentParameters>, "name" | "background"> &
   Pick<AgentParameters, "maxSteps">;
 
-type ModelParams = Parameters<ReturnType<typeof createWorkflowOpenAI>>;
-type CustomModelSettings = ModelParams["1"] & { baseURL?: string; apiKey?: string };
+type ModelParams = Parameters<ReturnType<typeof createOpenAI>>;
+export type AgentCallParams = Pick<CallSettings, "flowControl" | "retries" | "timeout">;
+type CustomModelSettings = ModelParams["1"] & { baseURL?: string; apiKey?: string } & {
+  callSettings: AgentCallParams;
+};
 export type CustomModelParams = [ModelParams[0], CustomModelSettings?];
 
 export type ProviderFunction = (params: {

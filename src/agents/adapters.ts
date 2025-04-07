@@ -3,16 +3,16 @@
  * this file contains adapters which convert tools and models
  * to workflow tools and models.
  */
-import { createOpenAI } from "@ai-sdk/openai";
 import { HTTPMethods } from "@upstash/qstash";
 import { WorkflowContext } from "../context";
 import { tool } from "ai";
-import { AISDKTool, LangchainTool, ProviderFunction } from "./types";
+import { AgentCallParams, AISDKTool, LangchainTool, ProviderFunction } from "./types";
 import { AGENT_NAME_HEADER } from "./constants";
 import { z, ZodType } from "zod";
 
 export const fetchWithContextCall = async (
   context: WorkflowContext,
+  agentCallParams?: AgentCallParams,
   ...params: Parameters<typeof fetch>
 ) => {
   const [input, init] = params;
@@ -33,6 +33,9 @@ export const fetchWithContextCall = async (
       method: init?.method as HTTPMethods,
       headers,
       body,
+      timeout: agentCallParams?.timeout,
+      retries: agentCallParams?.retries,
+      flowControl: agentCallParams?.flowControl,
     });
 
     // Construct headers for the response
@@ -61,37 +64,19 @@ export const fetchWithContextCall = async (
   }
 };
 
-/**
- * creates an AI SDK openai client with a custom
- * fetch implementation which uses context.call.
- *
- * @param context workflow context
- * @returns ai sdk openai
- */
-export const createWorkflowOpenAI = (
-  context: WorkflowContext,
-  config?: { baseURL?: string; apiKey?: string }
-) => {
-  const { baseURL, apiKey } = config ?? {};
-  return createOpenAI({
-    baseURL,
-    apiKey,
-    compatibility: "strict",
-    fetch: async (...params) => fetchWithContextCall(context, ...params),
-  });
-};
-
 export const createWorkflowModel = <TProvider extends ProviderFunction>({
   context,
   provider,
   providerParams,
+  agentCallParams,
 }: {
   context: WorkflowContext;
   provider: TProvider;
   providerParams?: Omit<Required<Parameters<TProvider>>[0], "fetch">;
+  agentCallParams?: AgentCallParams;
 }): ReturnType<TProvider> => {
   return provider({
-    fetch: (...params) => fetchWithContextCall(context, ...params),
+    fetch: (...params) => fetchWithContextCall(context, agentCallParams, ...params),
     ...providerParams,
   });
 };
