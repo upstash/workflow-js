@@ -214,11 +214,9 @@ describe("disabled workflow context", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
-                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
-                "upstash-failure-callback-retries": "0",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -238,6 +236,7 @@ describe("disabled workflow context", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
+        retries: 0,
       });
 
       let called = false;
@@ -271,11 +270,9 @@ describe("disabled workflow context", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
-                "upstash-forward-upstash-workflow-invoke-count": "0",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
-                "upstash-retries": "3",
-                "upstash-failure-callback-retries": "3",
+                "upstash-retries": "0",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -295,6 +292,7 @@ describe("disabled workflow context", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
+        invokeCount: 4,
       });
 
       let called = false;
@@ -329,11 +327,9 @@ describe("disabled workflow context", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
-                "upstash-forward-upstash-workflow-invoke-count": "0",
+                "upstash-forward-upstash-workflow-invoke-count": "4",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
-                "upstash-retries": "3",
-                "upstash-failure-callback-retries": "3",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
