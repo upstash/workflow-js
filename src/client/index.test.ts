@@ -431,7 +431,7 @@ describe("workflow client", () => {
               failureFunction: {
                 messageId: expect.any(String),
                 dlqId: expect.any(String),
-                failResponse: "400 ",
+                failResponse: "400 Bad Request",
                 failStatus: 400,
                 url: "https://httpstat.us/400",
                 state: "DELIVERED",
