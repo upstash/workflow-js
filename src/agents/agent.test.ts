@@ -8,6 +8,7 @@ import { WorkflowAgents } from ".";
 import { tool } from "ai";
 import { z } from "zod";
 import { getAgentsApi } from "./task.test";
+import { WORKFLOW_PROTOCOL_VERSION } from "../constants";
 
 describe("agents", () => {
   const openaiToken = nanoid();
@@ -105,6 +106,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": workflowRunId,
@@ -172,6 +174,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "2",
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
                 "upstash-callback-retries": "5",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
@@ -238,6 +241,7 @@ describe("agents", () => {
               "upstash-callback-forward-upstash-workflow-stepid": "3",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent manager llm",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
+              "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
               "upstash-callback-retries": "5",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",

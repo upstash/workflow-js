@@ -279,6 +279,7 @@ describe("serveMany", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "call other workflow",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-forward-upstash-workflow-sdk-version": "1",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
