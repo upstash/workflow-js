@@ -17,7 +17,7 @@ describe("serveMany", () => {
     test("should throw if workflowId contains '/'", () => {
       const throws = () =>
         serveMany({
-          "workflow/one": createWorkflow(async () => {}),
+          "workflow/one": createWorkflow(async () => { }),
         });
       expect(throws).toThrow(
         "Invalid workflow name found: 'workflow/one'. Workflow name cannot contain '/'."
@@ -26,7 +26,7 @@ describe("serveMany", () => {
 
     test("should throw if workflowId doesn't match", async () => {
       const { POST: handler } = serveMany({
-        "workflow-one": createWorkflow(async () => {}),
+        "workflow-one": createWorkflow(async () => { }),
       });
 
       const request = new Request("http://localhost:3001/workflow-two", { method: "POST" });
@@ -160,7 +160,7 @@ describe("serveMany", () => {
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
-              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.13"],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
@@ -215,7 +215,7 @@ describe("serveMany", () => {
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
-              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.13"],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
@@ -289,7 +289,7 @@ describe("serveMany", () => {
                 "upstash-retries": "0",
                 "upstash-telemetry-framework": "nextjs",
                 "upstash-telemetry-runtime": "node@v22.6.0",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
