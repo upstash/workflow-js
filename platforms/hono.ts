@@ -37,7 +37,11 @@ export const serve = <
   options?: PublicServeOptions<TInitialPayload>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
-    const environment = context.env;
+    const environment = context.env
+      ? context.env
+      : typeof process === "undefined"
+        ? ({} as Record<string, string>)
+        : process.env;
     const request = context.req.raw;
 
     const { handler: serveHandler } = serveBase(routeFunction, telemetry, {
