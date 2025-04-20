@@ -7,6 +7,7 @@ import { WorkflowAgents } from ".";
 import { tool } from "ai";
 import { z } from "zod";
 import { DisabledWorkflowContext } from "../serve/authorization";
+import { WORKFLOW_PROTOCOL_VERSION } from "../constants";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 
@@ -118,6 +119,7 @@ describe("tasks", () => {
               "upstash-callback-forward-upstash-workflow-stepid": "1",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
+              "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
               "upstash-callback-workflow-runid": workflowRunId,
@@ -196,6 +198,7 @@ describe("tasks", () => {
               "upstash-callback-forward-upstash-workflow-stepid": "1",
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent Manager LLM",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
+              "upstash-callback-forward-upstash-workflow-sdk-version": WORKFLOW_PROTOCOL_VERSION,
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
               "upstash-callback-workflow-runid": workflowRunId,
@@ -262,6 +265,7 @@ describe("tasks", () => {
               "upstash-callback-feature-set": "LazyFetch,InitialBody",
               "upstash-callback-forward-upstash-workflow-callback": "true",
               "upstash-callback-forward-upstash-workflow-concurrent": "1",
+              "upstash-callback-forward-upstash-workflow-sdk-version": "1",
               "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
               "upstash-callback-forward-upstash-workflow-stepid": "1",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",

@@ -19,7 +19,13 @@ import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
 import { WorkflowContext } from "./context";
 import { getHeaders, prepareFlowControl } from "../qstash/headers";
-import { WORKFLOW_FEATURE_HEADER, WORKFLOW_INIT_HEADER, WORKFLOW_URL_HEADER } from "../constants";
+import {
+  WORKFLOW_FEATURE_HEADER,
+  WORKFLOW_INIT_HEADER,
+  WORKFLOW_PROTOCOL_VERSION,
+  WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_URL_HEADER,
+} from "../constants";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
 
 type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
@@ -450,6 +456,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
         "Upstash-Callback-Workflow-Url": context.url,
         "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
 
+        [`Upstash-Callback-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
         "Upstash-Callback-Forward-Upstash-Workflow-StepName": this.stepName,
