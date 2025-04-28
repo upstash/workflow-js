@@ -304,7 +304,7 @@ describe("test steps", () => {
   });
 
   describe("stepName check", () => {
-    test("should throw when step name is undefined ", () => {
+    test("should throw when step name is undefined", () => {
       // @ts-expect-error allow undefined for test purposes
       const throws = () => new LazySleepStep(undefined, 10);
       expect(throws).toThrow(
@@ -314,11 +314,21 @@ describe("test steps", () => {
       );
     });
 
-    test("should throw when step name is empty string ", () => {
+    test("should throw when step name is empty string", () => {
       const throws = () => new LazyFunctionStep("", () => {});
       expect(throws).toThrow(
         new WorkflowError(
           "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
+        )
+      );
+    });
+
+    test("should throw when step name isn't string", () => {
+      // @ts-expect-error passing number for test purposes
+      const throws = () => new LazyFunctionStep(1, () => {});
+      expect(throws).toThrow(
+        new WorkflowError(
+          "A workflow step name must be a string."
         )
       );
     });

@@ -47,6 +47,9 @@ export abstract class BaseLazyStep<TResult = unknown> {
         "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
       );
     }
+    if (typeof stepName !== "string") {
+      throw new WorkflowError("A workflow step name must be a string.");
+    }
     this.stepName = stepName;
   }
 
