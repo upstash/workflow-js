@@ -326,11 +326,7 @@ describe("test steps", () => {
     test("should throw when step name isn't string", () => {
       // @ts-expect-error passing number for test purposes
       const throws = () => new LazyFunctionStep(1, () => {});
-      expect(throws).toThrow(
-        new WorkflowError(
-          "A workflow step name must be a string."
-        )
-      );
+      expect(throws).toThrow(new WorkflowError("A workflow step name must be a string."));
     });
   });
 });
