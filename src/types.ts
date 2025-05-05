@@ -537,5 +537,6 @@ export type MiddlewareCallbacks = {
 };
 
 export type MiddlewareParameters = {
-  init: () => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
+  name: string;
+  init: (params: { workflowRunId: string }) => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
 };

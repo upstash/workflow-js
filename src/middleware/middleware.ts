@@ -13,7 +13,7 @@ export class WorkflowMiddleware {
     callback: K,
     parameters: Parameters<NonNullable<MiddlewareCallbacks[K]>>[0]
   ): Promise<void> {
-    await this.ensureInit();
+    await this.ensureInit(parameters.workflowRunId);
     const cb = this.middlewareCallbacks?.[callback];
     if (cb) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,9 +21,9 @@ export class WorkflowMiddleware {
     }
   }
 
-  private async ensureInit() {
+  private async ensureInit(workflowRunId: string) {
     if (!this.middlewareCallbacks) {
-      this.middlewareCallbacks = await this.init();
+      this.middlewareCallbacks = await this.init({ workflowRunId });
     }
   }
 }

@@ -9,6 +9,7 @@ import { RouteFunction, Step } from "../types";
 const createLoggingMiddleware = () => {
   const accumulator: [string, unknown?][] = [];
   const middleware = new WorkflowMiddleware({
+    name: "test",
     init: () => {
       accumulator.push(["init"]);
 
@@ -35,7 +36,7 @@ const createLoggingMiddleware = () => {
 describe("middleware", () => {
   test("should not call init in constructor", () => {
     const init = jest.fn();
-    new WorkflowMiddleware({ init });
+    new WorkflowMiddleware({ name: "test", init });
     expect(init).not.toHaveBeenCalled();
   });
 
