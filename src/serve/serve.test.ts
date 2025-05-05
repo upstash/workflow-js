@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, jest, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
   driveWorkflow,
@@ -133,9 +133,9 @@ describe("serve", () => {
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
-            body: JSON.stringify(initialPayload),
-            method: "POST",
-          })
+              body: JSON.stringify(initialPayload),
+              method: "POST",
+            })
           : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
 
         request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");
@@ -1017,10 +1017,17 @@ describe("serve", () => {
 
   describe("incorrect url will throw", () => {
     const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
+
+    qstashClient.publish = jest.fn().mockImplementation(() => {
+      return {
+        messageId: "some-message-id",
+        deduplicationId: "some-deduplication-id",
+      };
+    });
     const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
     test("allow http://", async () => {
-      const url = "http://requestcatcher.com";
+      const url = "http://some-website.com";
       const { handler } = serve(
         async (context) => {
           await context.sleep("sleeping", 1);
