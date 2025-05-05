@@ -119,6 +119,11 @@ export const submitSingleStep = async ({
     steps: [resultStep],
   });
 
+  await runMiddlewares(middlewares, "afterExecution", {
+    workflowRunId: context.workflowRunId,
+    stepName: lazyStep.stepName,
+  });
+
   const submitResult = await lazyStep.submitStep({
     context,
     body,

@@ -6,7 +6,6 @@ import type { WorkflowLogger } from "../logger";
 import { QstashError } from "@upstash/qstash";
 import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
 import { WorkflowMiddleware } from "../middleware";
-import { runMiddlewares } from "../middleware/middleware";
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -140,17 +139,6 @@ export class AutoExecutor {
       });
       const parsedOut = lazyStep.parseOut(step.out);
 
-      const isLastMemoized =
-        this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
-
-      if (isLastMemoized) {
-        runMiddlewares(this.middlewares, "afterExecution", {
-          workflowRunId: this.context.workflowRunId,
-          stepName: lazyStep.stepName,
-          result: parsedOut,
-        });
-      }
-
       return parsedOut;
     }
 
@@ -276,22 +264,6 @@ export class AutoExecutor {
          * This call to the API should be discarded: no operations are to be made. Parallel steps which are still
          * running will finish and call QStash eventually.
          */
-
-        if (this.middlewares) {
-          const resultStep = this.steps.at(-1)!;
-          const lazyStep = parallelSteps.find(
-            (planStep, index) => resultStep.stepId - index === initialStepCount
-          );
-
-          if (lazyStep) {
-            runMiddlewares(this.middlewares, "afterExecution", {
-              workflowRunId: this.context.workflowRunId,
-              stepName: lazyStep.stepName,
-              result: lazyStep.parseOut(resultStep.out),
-            });
-          }
-        }
-
         throw new WorkflowAbort("discarded parallel");
       }
       case "last": {
@@ -306,23 +278,6 @@ export class AutoExecutor {
           .slice(0, parallelSteps.length); // get the result steps of parallel run
 
         validateParallelSteps(parallelSteps, parallelResultSteps);
-
-        if (this.middlewares) {
-          const isLastMemoized =
-            this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
-          if (isLastMemoized) {
-            const resultStep = this.steps.at(-1)!;
-            const lazyStep = parallelSteps.find(
-              (planStep, index) => resultStep.stepId - index === initialStepCount
-            )!;
-
-            runMiddlewares(this.middlewares, "afterExecution", {
-              workflowRunId: this.context.workflowRunId,
-              stepName: lazyStep.stepName,
-              result: lazyStep.parseOut(resultStep.out),
-            });
-          }
-        }
 
         return parallelResultSteps.map((step, index) =>
           parallelSteps[index].parseOut(step.out)

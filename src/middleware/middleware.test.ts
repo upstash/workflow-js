@@ -26,6 +26,9 @@ const createLoggingMiddleware = () => {
         runCompleted(params) {
           accumulator.push(["runCompleted", params]);
         },
+        onError(params) {
+          accumulator.push(["onError", params]);
+        },
       };
     },
   });
@@ -69,32 +72,28 @@ describe("middleware", () => {
         ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
       ]);
 
-      const result = "some-result";
       await middleware.runCallback("afterExecution", {
         workflowRunId: "wfr-id",
         stepName: stepName,
-        result,
       });
       expect(accumulator).toEqual([
         ["init"],
         ["runStarted", { workflowRunId: "wfr-id" }],
         ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
         ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["afterExecution", { workflowRunId: "wfr-id", stepName, result }],
+        ["afterExecution", { workflowRunId: "wfr-id", stepName }],
       ]);
 
-      const finishResult = "finished-result";
       await middleware.runCallback("runCompleted", {
         workflowRunId: "wfr-id",
-        result: finishResult,
       });
       expect(accumulator).toEqual([
         ["init"],
         ["runStarted", { workflowRunId: "wfr-id" }],
         ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
         ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["afterExecution", { workflowRunId: "wfr-id", stepName, result }],
-        ["runCompleted", { workflowRunId: "wfr-id", result: finishResult }],
+        ["afterExecution", { workflowRunId: "wfr-id", stepName }],
+        ["runCompleted", { workflowRunId: "wfr-id" }],
       ]);
     });
 
@@ -128,6 +127,13 @@ describe("middleware", () => {
                 stepName: stepOneName,
               },
             ],
+            [
+              "afterExecution",
+              {
+                workflowRunId: "wfr-id",
+                stepName: stepOneName,
+              },
+            ],
           ],
         },
         {
@@ -141,15 +147,14 @@ describe("middleware", () => {
           middlewareAccumaltor: [
             ["init"],
             [
-              "afterExecution",
+              "beforeExecution",
               {
                 workflowRunId: "wfr-id",
-                stepName: stepOneName,
-                result: undefined,
+                stepName: stepTwoName,
               },
             ],
             [
-              "beforeExecution",
+              "afterExecution",
               {
                 workflowRunId: "wfr-id",
                 stepName: stepTwoName,
@@ -165,17 +170,7 @@ describe("middleware", () => {
             out: JSON.stringify(stepResult),
             concurrent: 1,
           },
-          middlewareAccumaltor: [
-            ["init"],
-            [
-              "afterExecution",
-              {
-                workflowRunId: "wfr-id",
-                stepName: stepTwoName,
-                result: stepResult,
-              },
-            ],
-          ],
+          middlewareAccumaltor: [],
         },
         {
           step: {
@@ -189,6 +184,13 @@ describe("middleware", () => {
             ["init"],
             [
               "beforeExecution",
+              {
+                workflowRunId: "wfr-id",
+                stepName: parallelRunOne,
+              },
+            ],
+            [
+              "afterExecution",
               {
                 workflowRunId: "wfr-id",
                 stepName: parallelRunOne,
@@ -213,6 +215,13 @@ describe("middleware", () => {
                 stepName: parallelRunTwo,
               },
             ],
+            [
+              "afterExecution",
+              {
+                workflowRunId: "wfr-id",
+                stepName: parallelRunTwo,
+              },
+            ],
           ],
         },
         {
@@ -223,17 +232,7 @@ describe("middleware", () => {
             out: JSON.stringify(stepResultTwo),
             concurrent: 2,
           },
-          middlewareAccumaltor: [
-            ["init"],
-            [
-              "afterExecution",
-              {
-                workflowRunId: "wfr-id",
-                stepName: parallelRunTwo,
-                result: stepResultTwo,
-              },
-            ],
-          ],
+          middlewareAccumaltor: [],
         },
         {
           step: {
@@ -246,15 +245,14 @@ describe("middleware", () => {
           middlewareAccumaltor: [
             ["init"],
             [
-              "afterExecution",
+              "beforeExecution",
               {
                 workflowRunId: "wfr-id",
-                result: stepResultOne,
-                stepName: parallelRunOne,
+                stepName: stepThreeName,
               },
             ],
             [
-              "beforeExecution",
+              "afterExecution",
               {
                 workflowRunId: "wfr-id",
                 stepName: stepThreeName,
@@ -273,18 +271,9 @@ describe("middleware", () => {
           middlewareAccumaltor: [
             ["init"],
             [
-              "afterExecution",
-              {
-                workflowRunId: "wfr-id",
-                result: undefined,
-                stepName: stepThreeName,
-              },
-            ],
-            [
               "runCompleted",
               {
                 workflowRunId: "wfr-id",
-                result: undefined,
               },
             ],
           ],
@@ -306,7 +295,8 @@ describe("middleware", () => {
 
       const runMiddlewareTest = async (
         steps: Step[],
-        expectedAccumulator: ReturnType<typeof createLoggingMiddleware>["accumulator"]
+        expectedAccumulator: ReturnType<typeof createLoggingMiddleware>["accumulator"],
+        status: number = 200
       ) => {
         const { middleware, accumulator } = createLoggingMiddleware();
 
@@ -320,7 +310,7 @@ describe("middleware", () => {
         });
 
         const response = await handler(request);
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(status);
 
         expect(accumulator).toEqual(expectedAccumulator);
       };
@@ -333,6 +323,31 @@ describe("middleware", () => {
         test(`should call middleware in order case #${index + 1}`, async () => {
           await runMiddlewareTest(testSteps, middlewareAccumaltor);
         });
+      });
+
+      test("with error", async () => {
+        await runMiddlewareTest(
+          [
+            {
+              stepId: 1,
+              stepName: stepOneName + "-error",
+              stepType: "SleepFor",
+              sleepFor: 1,
+              concurrent: 1,
+            },
+          ],
+          [
+            ["init"],
+            [
+              "onError",
+              {
+                workflowRunId: "wfr-id",
+                error: expect.any(Error),
+              },
+            ],
+          ],
+          500
+        );
       });
     });
   });

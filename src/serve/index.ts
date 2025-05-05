@@ -1,5 +1,5 @@
 import { makeCancelRequest } from "../client/utils";
-import { SDK_TELEMETRY, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
+import { SDK_TELEMETRY, WORKFLOW_ID_HEADER, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
@@ -218,7 +218,6 @@ export const serveBase = <
             onCleanup: async (result) => {
               await runMiddlewares(middlewares, "runCompleted", {
                 workflowRunId: workflowContext.workflowRunId,
-                result,
               });
               await triggerWorkflowDelete(workflowContext, result, debug);
             },
@@ -263,6 +262,24 @@ export const serveBase = <
           status: 500,
         }) as TResponse;
       }
+
+      try {
+        runMiddlewares(middlewares, "onError", {
+          workflowRunId: request.headers.get(WORKFLOW_ID_HEADER) ?? "no-workflow-id",
+          error: error as Error,
+        });
+      } catch (middlewareError) {
+        const formattedMiddlewareError = formatWorkflowError(middlewareError);
+        const errorMessage =
+          `Error while running middleware onError callback: '${formattedMiddlewareError.message}'.` +
+          `\nOriginal error: '${formattedError.message}'`;
+
+        console.error(errorMessage);
+        return new Response(errorMessage, {
+          status: 500,
+        }) as TResponse;
+      }
+
       return new Response(JSON.stringify(formattedError), {
         status: 500,
       }) as TResponse;

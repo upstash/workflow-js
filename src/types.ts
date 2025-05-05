@@ -527,13 +527,10 @@ export type InvokableWorkflow<TInitialPayload, TResult> = {
 
 export type MiddlewareCallbacks = {
   beforeExecution?: (params: { workflowRunId: string; stepName: string }) => Promise<void> | void;
-  afterExecution?: (params: {
-    workflowRunId: string;
-    stepName: string;
-    result: unknown;
-  }) => Promise<void> | void;
+  afterExecution?: (params: { workflowRunId: string; stepName: string }) => Promise<void> | void;
   runStarted?: (params: { workflowRunId: string }) => Promise<void> | void;
-  runCompleted?: (params: { workflowRunId: string; result: unknown }) => Promise<void> | void;
+  runCompleted?: (params: { workflowRunId: string }) => Promise<void> | void;
+  onError?: (params: { workflowRunId: string; error: Error }) => Promise<void> | void;
 };
 
 export type MiddlewareParameters = {
