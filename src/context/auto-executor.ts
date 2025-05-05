@@ -5,6 +5,8 @@ import { type BaseLazyStep } from "./steps";
 import type { WorkflowLogger } from "../logger";
 import { QstashError } from "@upstash/qstash";
 import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
+import { WorkflowMiddleware } from "../middleware";
+import { runMiddlewares } from "../middleware/middleware";
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -15,8 +17,9 @@ export class AutoExecutor {
   private readonly nonPlanStepCount: number;
   private readonly steps: Step[];
   private indexInCurrentList = 0;
-  private invokeCount: number;
-  private telemetry?: Telemetry;
+  private readonly invokeCount: number;
+  private readonly telemetry?: Telemetry;
+  private readonly middlewares?: WorkflowMiddleware[];
 
   public stepCount = 0;
   public planStepCount = 0;
@@ -28,13 +31,15 @@ export class AutoExecutor {
     steps: Step[],
     telemetry?: Telemetry,
     invokeCount?: number,
-    debug?: WorkflowLogger
+    debug?: WorkflowLogger,
+    middlewares?: WorkflowMiddleware[]
   ) {
     this.context = context;
     this.steps = steps;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
     this.debug = debug;
+    this.middlewares = middlewares;
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -133,7 +138,20 @@ export class AutoExecutor {
         step,
         stepCount: this.stepCount,
       });
-      return lazyStep.parseOut(step);
+      const parsedOut = lazyStep.parseOut(step);
+
+      const isLastMemoized =
+        this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
+
+      if (isLastMemoized) {
+        runMiddlewares(this.middlewares, "afterExecution", {
+          workflowRunId: this.context.workflowRunId,
+          stepName: lazyStep.stepName,
+          result: parsedOut,
+        });
+      }
+
+      return parsedOut;
     }
 
     const resultStep = await submitSingleStep({
@@ -144,6 +162,7 @@ export class AutoExecutor {
       concurrency: 1,
       telemetry: this.telemetry,
       debug: this.debug,
+      middlewares: this.middlewares,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
   }
@@ -232,6 +251,7 @@ export class AutoExecutor {
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
             debug: this.debug,
+            middlewares: this.middlewares,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {
@@ -256,6 +276,22 @@ export class AutoExecutor {
          * This call to the API should be discarded: no operations are to be made. Parallel steps which are still
          * running will finish and call QStash eventually.
          */
+
+        if (this.middlewares) {
+          const resultStep = this.steps.at(-1)!;
+          const lazyStep = parallelSteps.find(
+            (planStep, index) => resultStep.stepId - index === initialStepCount
+          );
+
+          if (lazyStep) {
+            runMiddlewares(this.middlewares, "afterExecution", {
+              workflowRunId: this.context.workflowRunId,
+              stepName: lazyStep.stepName,
+              result: lazyStep.parseOut(resultStep),
+            });
+          }
+        }
+
         throw new WorkflowAbort("discarded parallel");
       }
       case "last": {
@@ -270,6 +306,23 @@ export class AutoExecutor {
           .slice(0, parallelSteps.length); // get the result steps of parallel run
 
         validateParallelSteps(parallelSteps, parallelResultSteps);
+
+        if (this.middlewares) {
+          const isLastMemoized =
+            this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
+          if (isLastMemoized) {
+            const resultStep = this.steps.at(-1)!;
+            const lazyStep = parallelSteps.find(
+              (planStep, index) => resultStep.stepId - index === initialStepCount
+            )!;
+
+            runMiddlewares(this.middlewares, "afterExecution", {
+              workflowRunId: this.context.workflowRunId,
+              stepName: lazyStep.stepName,
+              result: lazyStep.parseOut(resultStep),
+            });
+          }
+        }
 
         return parallelResultSteps.map((step, index) =>
           parallelSteps[index].parseOut(step)

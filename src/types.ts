@@ -5,6 +5,7 @@ import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
+import { WorkflowMiddleware } from "./middleware";
 
 /**
  * Interface for Client with required methods
@@ -315,6 +316,10 @@ export type WorkflowServeOptions<
    * and number of requests per second with the same key.
    */
   flowControl?: FlowControl;
+  /**
+   * List of workflow middlewares to use
+   */
+  middlewares?: WorkflowMiddleware[];
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -614,4 +619,19 @@ export type InvokableWorkflow<TInitialPayload, TResult> = {
   routeFunction: RouteFunction<TInitialPayload, TResult>;
   options: WorkflowServeOptions<Response, TInitialPayload>;
   workflowId?: string;
+};
+
+export type MiddlewareCallbacks = {
+  beforeExecution?: (params: { workflowRunId: string; stepName: string }) => Promise<void> | void;
+  afterExecution?: (params: {
+    workflowRunId: string;
+    stepName: string;
+    result: unknown;
+  }) => Promise<void> | void;
+  runStarted?: (params: { workflowRunId: string }) => Promise<void> | void;
+  runCompleted?: (params: { workflowRunId: string; result: unknown }) => Promise<void> | void;
+};
+
+export type MiddlewareParameters = {
+  init: () => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
 };

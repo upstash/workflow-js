@@ -10,3 +10,4 @@ export {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "./error";
+export { WorkflowMiddleware, loggingMiddleware } from "./middleware";
