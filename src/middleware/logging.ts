@@ -1,6 +1,7 @@
 import { WorkflowMiddleware } from "./middleware";
 
 export const loggingMiddleware = new WorkflowMiddleware({
+  name: "logging",
   init: () => {
     console.log("Logging middleware initialized");
 
