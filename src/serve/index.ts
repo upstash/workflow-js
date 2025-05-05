@@ -3,6 +3,7 @@ import { SDK_TELEMETRY, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
+import { runMiddlewares } from "../middleware/middleware";
 import {
   ExclusiveValidationOptions,
   RouteFunction,
@@ -63,6 +64,7 @@ export const serveBase = <
     disableTelemetry,
     flowControl,
     onError,
+    middlewares,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -154,6 +156,7 @@ export const serveBase = <
       telemetry,
       invokeCount,
       flowControl,
+      middlewares,
     });
 
     // attempt running routeFunction until the first step
@@ -204,8 +207,19 @@ export const serveBase = <
             invokeCount,
           })
         : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
+            onStep: async () => {
+              if (steps.length === 1) {
+                await runMiddlewares(middlewares, "runStarted", {
+                  workflowRunId: workflowContext.workflowRunId,
+                });
+              }
+              await routeFunction(workflowContext);
+            },
             onCleanup: async (result) => {
+              await runMiddlewares(middlewares, "runCompleted", {
+                workflowRunId: workflowContext.workflowRunId,
+                result,
+              });
               await triggerWorkflowDelete(workflowContext, result, debug);
             },
             onCancel: async () => {

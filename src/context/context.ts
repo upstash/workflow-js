@@ -28,6 +28,7 @@ import { WorkflowApi } from "./api";
 import { WorkflowAgents } from "../agents";
 import { FlowControl } from "@upstash/qstash";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
+import { WorkflowMiddleware } from "../middleware";
 
 /**
  * Upstash Workflow context
@@ -176,6 +177,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     telemetry,
     invokeCount,
     flowControl,
+    middlewares,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -190,6 +192,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     telemetry?: Telemetry;
     invokeCount?: number;
     flowControl?: FlowControl;
+    middlewares?: WorkflowMiddleware[];
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -202,7 +205,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.retries = retries ?? DEFAULT_RETRIES;
     this.flowControl = flowControl;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
+    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug, middlewares);
   }
 
   /**

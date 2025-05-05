@@ -6,3 +6,4 @@ export * from "./logger";
 export * from "./client";
 export { WorkflowError, WorkflowAbort } from "./error";
 export { WorkflowTool } from "./agents/adapters";
+export { WorkflowMiddleware, loggingMiddleware } from "./middleware";

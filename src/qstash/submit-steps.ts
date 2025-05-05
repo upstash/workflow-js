@@ -5,6 +5,8 @@ import { Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
 import { getHeaders } from "./headers";
+import { WorkflowMiddleware } from "../middleware";
+import { runMiddlewares } from "../middleware/middleware";
 
 export const submitParallelSteps = async ({
   context,
@@ -76,6 +78,7 @@ export const submitSingleStep = async ({
   concurrency,
   telemetry,
   debug,
+  middlewares,
 }: {
   context: WorkflowContext;
   lazyStep: BaseLazyStep;
@@ -84,8 +87,13 @@ export const submitSingleStep = async ({
   concurrency: number;
   telemetry?: Telemetry;
   debug?: WorkflowLogger;
+  middlewares?: WorkflowMiddleware[];
 }) => {
   const resultStep = await lazyStep.getResultStep(concurrency, stepId);
+  await runMiddlewares(middlewares, "beforeExecution", {
+    workflowRunId: context.workflowRunId,
+    stepName: resultStep.stepName,
+  });
   await debug?.log("INFO", "RUN_SINGLE", {
     fromRequest: false,
     step: resultStep,
