@@ -64,15 +64,20 @@ export const getTestConfig = async (route: string) => {
 
 export const initiateTest = async (route: string) => {
   const randomTestId = nanoid()
+  console.log(`initiating test for ${route}`);
+  
   const { headers, payload, expectedCallCount, expectedResult, shouldWorkflowStart = true } = await getTestConfig(route)
+  console.log(`got config`);
 
   const { messageId } = await qstash.startWorkflow({ route, headers, payload }, randomTestId)
+  console.log(`starting workflow`);
 
   // sleep for 4 secs and check that message is delivered
   await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
   try {
     await qstash.checkWorkflowStart(messageId);
+    console.log(`workflow started`);
   } catch (error) {
     console.error(error);
     if (shouldWorkflowStart) {
@@ -80,6 +85,7 @@ export const initiateTest = async (route: string) => {
     };
   }
 
+  console.log("checking redis for results");
   await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
 }
 

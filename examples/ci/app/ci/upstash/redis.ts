@@ -120,6 +120,8 @@ export const checkRedisForResults = async (
 
   const retryCount = retryOverride ?? RETRY_COUNT
   for ( let i=1; i <= retryCount; i++ ) {
+    console.log(`check ${i}`);
+    
     testResult = await redis.get<RedisResult>(key)
     if (testResult) {
       break
