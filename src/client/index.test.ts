@@ -134,7 +134,6 @@ describe("workflow client", () => {
         });
 
         await new Promise((r) => setTimeout(r, 1000));
-
         await eventually(
           async () => {
             const firstCancel = await liveClient.cancel({
