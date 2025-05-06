@@ -168,7 +168,7 @@ describe("workflow client", () => {
           url: "http://requestcatcher.com/second",
         });
 
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 5000));
 
         await eventually(
           async () => {
