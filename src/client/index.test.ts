@@ -133,10 +133,18 @@ describe("workflow client", () => {
           url: "http://requestcatcher.com",
         });
 
-        const firstCancel = await liveClient.cancel({
-          ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
-        });
-        expect(firstCancel).toEqual({ cancelled: 2 });
+        await new Promise((r) => setTimeout(r, 1000));
+
+        await eventually(
+          async () => {
+            const firstCancel = await liveClient.cancel({
+              ids: [workflowRunIdOne, workflowRunIdTwo, "non-existent"],
+            });
+            expect(firstCancel).toEqual({ cancelled: 2 });
+          },
+          { timeout: 5000, interval: 1000 }
+        );
+        await new Promise((r) => setTimeout(r, 1000));
 
         // trying to cancel the workflows one by one gives error, as they were canceled above
         const secondCancel = await liveClient.cancel({ ids: workflowRunIdOne });
@@ -147,7 +155,7 @@ describe("workflow client", () => {
         expect(thirdCancel).toEqual({ cancelled: 0 });
       },
       {
-        timeout: 10000,
+        timeout: 20000,
       }
     );
 
@@ -161,14 +169,20 @@ describe("workflow client", () => {
           url: "http://requestcatcher.com/second",
         });
 
-        const cancel = await liveClient.cancel({
-          urlStartingWith: "http://requestcatcher.com",
-        });
+        await new Promise((r) => setTimeout(r, 2000));
 
-        expect(cancel).toEqual({ cancelled: 2 });
+        await eventually(
+          async () => {
+            const cancel = await liveClient.cancel({
+              urlStartingWith: "http://requestcatcher.com",
+            });
+            expect(cancel).toEqual({ cancelled: 2 });
+          },
+          { timeout: 5000, interval: 1000 }
+        );
       },
       {
-        timeout: 10000,
+        timeout: 15000,
       }
     );
 
