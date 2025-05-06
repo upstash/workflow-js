@@ -54,7 +54,7 @@ export const { POST, GET } = testServe(
           }
         ),
         context.waitForEvent("wait sdk", config.sdkEventId, {
-          timeout: "5s"
+          timeout: "10s"
         })
       ])
 

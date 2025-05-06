@@ -1,6 +1,6 @@
 import { TestConfig } from "./types"
 
-export const RETRY_COUNT = 20
+export const RETRY_COUNT = 30
 export const RETRY_INTERVAL_DURATION = 2000
 export const CHECK_WF_AFTER_INIT_DURATION = 10000
 const TEST_BUFFER_DURATION = 5000

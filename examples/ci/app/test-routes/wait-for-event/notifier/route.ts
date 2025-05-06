@@ -16,7 +16,7 @@ export const POST = async (request: Request) => {
 
   const sleepAndNotify = async () => {
     
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 3000));
     
     const result = await client.notify({
       eventId: sdkEventId,
