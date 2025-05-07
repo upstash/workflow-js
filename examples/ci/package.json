@@ -15,6 +15,7 @@
     "@upstash/workflow": "latest",
     "@vercel/functions": "^1.5.0",
     "clsx": "^2.1.1",
+    "dotenv": "^16.5.0",
     "next": "14.2.23",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

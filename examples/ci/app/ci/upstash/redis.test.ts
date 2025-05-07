@@ -3,18 +3,16 @@ import * as redis from "./redis"
 import { nanoid } from "../utils";
 
 describe("redis", () => {
-  test("should throw on missing results", () => {
-    expect(() =>
-      redis.checkRedisForResults("some-route", "some-id", -1, "some-result", 1)
-    ).toThrow(
-      "result not found for route some-route with randomTestId some-id"
+  test("should throw on missing results", { timeout: 15000 },async () => {
+    await expect(redis.checkRedisForResults("some-route", "some-id", -1, "some-result", 1)).rejects.toThrowError(
+            "result not found for route some-route with randomTestId some-id"
     )
-  }, { timeout: 15000 })
+  })
 
   test("should throw when saving results without any increment", () => {
-    expect(() =>
-      redis.saveResultsWithoutContext("some-route", "some-id", "some-result")
-    ).toThrow(
+    expect(async () =>
+      await redis.saveResultsWithoutContext("some-route", "some-id", "some-result")
+    ).rejects.toThrowError(
       "callCount shouldn't be 0. It was 0 in test of the route 'some-route'"
     )
   })
@@ -32,53 +30,54 @@ describe("redis", () => {
     })
 
     test("should throw on mismatching result", () => {
-      expect(() =>
-        redis.checkRedisForResults(route, randomId, 2, "not-correct")
-      ).toThrow(
+      expect(async () =>
+        await redis.checkRedisForResults(route, randomId, 2, "not-correct")
+      ).rejects.toThrowError(
         `Unexpected value.\n\tReceived \"${result}\"\n\tExpected \"not-correct\"`
       )
     })
 
     test("should throw on mismatching call count", () => {
-      expect(() =>
-        redis.checkRedisForResults(route, randomId, 123, result)
-      ).toThrow(
+      expect(async () =>
+        await redis.checkRedisForResults(route, randomId, 123, result)
+      ).rejects.toThrowError(
         `Unexpected value.\n\tReceived \"2\"\n\tExpected \"123\"`
       )
     })
 
     test("should not throw on correct results", () => {
-      expect(() =>
-        redis.checkRedisForResults(route, randomId, 2, result)
-      ).not.toThrow()
+      expect(async () =>
+        await redis.checkRedisForResults(route, randomId, 2, result)
+      ).not.toThrowError()
     })
   })
 
-  test("should override call count", async () => {
+  describe("override call count", () => {
+    test("should override call count", async () => {
+      const route = "override-route";
+      const randomId = `random-id-${nanoid()}`;
+      const result = `random-result-${nanoid()}`;
+      const override = -3;
 
-    const route = "override-route"
-    const randomId = `random-id-${nanoid()}`
-    const result = `random-result-${nanoid()}`
-    const override = -3
+      await redis.increment(route, randomId);
+      await redis.increment(route, randomId);
+      await redis.increment(route, randomId);
 
-    await redis.increment(route, randomId)
-    await redis.increment(route, randomId)
-    await redis.increment(route, randomId)
+      await redis.saveResultsWithoutContext(route, randomId, result, override);
 
-    await redis.saveResultsWithoutContext(route, randomId, result, override)
-
-    expect(() =>
-      redis.checkRedisForResults(route, randomId, 3, result)
-    ).toThrow(
-      `Unexpected value.\n\tReceived \"-3\"\n\tExpected \"3\"`
-    )
+      expect(async () =>
+        await redis.checkRedisForResults(route, randomId, 3, result)
+      ).rejects.toThrowError(
+        `Unexpected value.\n\tReceived \"-3\"\n\tExpected \"3\"`
+      );
+    });
 
     test("should not throw on correct results", () => {
-      expect(() =>
-        redis.checkRedisForResults(route, randomId, override, result)
-      ).not.toThrow()
-    })
-  })
+      expect(async () =>
+        await redis.checkRedisForResults("override-route", `random-id-${nanoid()}`, -3, `random-result-${nanoid()}`)
+      ).not.toThrowError();
+    });
+  });
 
   test("should fail if marked as failed", async () => {
 
@@ -93,7 +92,7 @@ describe("redis", () => {
 
     // mark as failed and check
     await redis.failWithoutContext(route, randomId)
-    expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
+    expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrowError(redis.FAILED_TEXT)
       
   })
 })

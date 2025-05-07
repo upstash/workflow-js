@@ -22,7 +22,7 @@ export const startWorkflow = async (
       [ CI_ROUTE_HEADER ]: testConfig.route,
       ...testConfig.headers
     },
-    body: testConfig.payload
+    body: testConfig.payload,
   })
   return result
 }
