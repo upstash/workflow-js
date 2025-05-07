@@ -1,5 +1,4 @@
-
-import { describe, test, expect, beforeAll } from "bun:test";
+import { describe, test, expect, beforeAll } from "vitest";
 import * as redis from "./redis"
 import { nanoid } from "../utils";
 
@@ -33,23 +32,23 @@ describe("redis", () => {
     })
 
     test("should throw on mismatching result", () => {
-      expect(async () =>
+      expect(() =>
         redis.checkRedisForResults(route, randomId, 2, "not-correct")
       ).toThrow(
-        `Unexpected value.\n\tReceived "${result}"\n\tExpected "not-correct"`
+        `Unexpected value.\n\tReceived \"${result}\"\n\tExpected \"not-correct\"`
       )
     })
 
     test("should throw on mismatching call count", () => {
-      expect(async () =>
+      expect(() =>
         redis.checkRedisForResults(route, randomId, 123, result)
       ).toThrow(
-        `Unexpected value.\n\tReceived "2"\n\tExpected "123"`
+        `Unexpected value.\n\tReceived \"2\"\n\tExpected \"123\"`
       )
     })
 
     test("should not throw on correct results", () => {
-      expect(async () =>
+      expect(() =>
         redis.checkRedisForResults(route, randomId, 2, result)
       ).not.toThrow()
     })
@@ -68,14 +67,14 @@ describe("redis", () => {
 
     await redis.saveResultsWithoutContext(route, randomId, result, override)
 
-    expect(async () =>
+    expect(() =>
       redis.checkRedisForResults(route, randomId, 3, result)
     ).toThrow(
-      `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
+      `Unexpected value.\n\tReceived \"-3\"\n\tExpected \"3\"`
     )
 
     test("should not throw on correct results", () => {
-      expect(async () =>
+      expect(() =>
         redis.checkRedisForResults(route, randomId, override, result)
       ).not.toThrow()
     })

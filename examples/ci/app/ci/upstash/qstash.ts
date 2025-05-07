@@ -2,7 +2,7 @@ import { Client, QstashError } from "@upstash/qstash"
 import { TEST_ROUTE_PREFIX, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants"
 import { TestConfig } from "../types"
 
-const client = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+const client = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN!, retry: false })
 
 /**
  * starts a workflow run given the config

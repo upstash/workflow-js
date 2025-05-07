@@ -1,4 +1,4 @@
-import { test, describe } from "bun:test"
+import { test, describe } from "vitest";
 import { TEST_ROUTES, TEST_TIMEOUT_DURATION } from "./constants";
 import { initiateTest } from "./utils";
 
