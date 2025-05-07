@@ -244,11 +244,16 @@ function addPrefixToHeaders(headers: Record<string, string>, prefix: string) {
 
 export const prepareFlowControl = (flowControl: FlowControl) => {
   const parallelism = flowControl.parallelism?.toString();
-  const rate = flowControl.ratePerSecond?.toString();
+  const rate = (flowControl.rate ?? flowControl.ratePerSecond)?.toString();
+  const period =
+  typeof flowControl.period === "number"
+    ? `${flowControl.period}s`
+    : flowControl.period;
 
   const controlValue = [
     parallelism ? `parallelism=${parallelism}` : undefined,
     rate ? `rate=${rate}` : undefined,
+    period ? `period=${period}` : undefined,
   ].filter(Boolean);
 
   if (controlValue.length === 0) {

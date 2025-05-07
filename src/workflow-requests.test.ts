@@ -525,8 +525,9 @@ describe("Workflow Requests", () => {
         undefined,
         {
           key: "call-flow-key",
-          ratePerSecond: 5,
+          rate: 5,
           parallelism: 6,
+          period: 30
         }
       );
       const { headers } = lazyStep.getHeaders({
@@ -539,8 +540,9 @@ describe("Workflow Requests", () => {
           initialPayload: undefined,
           flowControl: {
             key: "regular-flow-key",
-            ratePerSecond: 3,
+            rate: 3,
             parallelism: 4,
+            period: "1m"
           },
         }),
         invokeCount: 3,
@@ -572,9 +574,9 @@ describe("Workflow Requests", () => {
         "content-type": "application/json",
         // flow control:
         "Upstash-Callback-Flow-Control-Key": "regular-flow-key",
-        "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3",
+        "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3, period=1m",
         "Upstash-Flow-Control-Key": "call-flow-key",
-        "Upstash-Flow-Control-Value": "parallelism=6, rate=5",
+        "Upstash-Flow-Control-Value": "parallelism=6, rate=5, period=30s",
       });
     });
 
