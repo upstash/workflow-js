@@ -590,14 +590,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
       - uses: pnpm/action-setup@v2
         with:
           version: latest
+
+      - name: Install Dependencies
+        run: pnpm i
+        working-directory: examples/ci
 
       - name: Deploy
         run: |
@@ -610,7 +609,7 @@ jobs:
         working-directory: examples/ci
 
       - name: Test
-        run: bun test .
+        run: pnpm test
         working-directory: examples/ci
 
   cloudflare-workers-hono-deployed:
