@@ -209,6 +209,7 @@ describe("workflow client", () => {
           headers: { "user-header": "user-header-value" },
           workflowRunId: myWorkflowRunId,
           retries: 15,
+          delay: 1,
         });
       },
       responseFields: {
@@ -228,6 +229,7 @@ describe("workflow client", () => {
           "upstash-workflow-init": "true",
           "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
           "upstash-workflow-url": "https://requestcatcher.com/api",
+          "upstash-delay": "1s",
         },
       },
     });
