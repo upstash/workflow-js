@@ -1,6 +1,6 @@
 {
   "name": "@upstash/workflow",
-  "version": "0.1.0",
+  "version": "0.2.13",
   "description": "Durable, Reliable and Performant Serverless Functions",
   "main": "./index.js",
   "module": "./index.mjs",
