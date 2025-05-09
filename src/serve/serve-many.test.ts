@@ -41,7 +41,11 @@ describe("serveMany", () => {
 
   describe("serve tests", () => {
     const token = nanoid();
-    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false });
+    const qstashClient = new Client({
+      baseUrl: MOCK_QSTASH_SERVER_URL,
+      token,
+      enableTelemetry: false,
+    });
 
     const workflowOne = createWorkflow(
       async (context: WorkflowContext<number>) => {

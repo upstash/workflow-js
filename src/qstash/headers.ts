@@ -253,9 +253,7 @@ export const prepareFlowControl = (flowControl: FlowControl) => {
   const parallelism = flowControl.parallelism?.toString();
   const rate = (flowControl.rate ?? flowControl.ratePerSecond)?.toString();
   const period =
-  typeof flowControl.period === "number"
-    ? `${flowControl.period}s`
-    : flowControl.period;
+    typeof flowControl.period === "number" ? `${flowControl.period}s` : flowControl.period;
 
   const controlValue = [
     parallelism ? `parallelism=${parallelism}` : undefined,

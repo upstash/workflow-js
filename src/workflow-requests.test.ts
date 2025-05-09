@@ -527,7 +527,7 @@ describe("Workflow Requests", () => {
           key: "call-flow-key",
           rate: 5,
           parallelism: 6,
-          period: 30
+          period: 30,
         }
       );
       const { headers } = lazyStep.getHeaders({
@@ -542,7 +542,7 @@ describe("Workflow Requests", () => {
             key: "regular-flow-key",
             rate: 3,
             parallelism: 4,
-            period: "1m"
+            period: "1m",
           },
         }),
         invokeCount: 3,

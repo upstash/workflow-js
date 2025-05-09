@@ -1111,7 +1111,7 @@ describe("serve", () => {
       headers: {
         [header]: headerValue,
       },
-      enableTelemetry: false
+      enableTelemetry: false,
     });
 
     const { handler: endpoint } = serve(
