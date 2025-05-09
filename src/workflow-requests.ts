@@ -20,7 +20,7 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
-import { FlowControl, QstashError } from "@upstash/qstash";
+import { FlowControl, PublishRequest, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
 
@@ -30,12 +30,14 @@ export const triggerFirstInvocation = async <TInitialPayload>({
   telemetry,
   debug,
   invokeCount,
+  delay,
 }: {
   workflowContext: WorkflowContext<TInitialPayload>;
   useJSONContent?: boolean;
   telemetry?: Telemetry;
   debug?: WorkflowLogger;
   invokeCount?: number;
+  delay?: PublishRequest["delay"];
 }): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
   const { headers } = getHeaders({
     initHeaderValue: "true",
@@ -72,6 +74,7 @@ export const triggerFirstInvocation = async <TInitialPayload>({
       method: "POST",
       body,
       url: workflowContext.url,
+      delay,
     });
 
     if (result.deduplicated) {

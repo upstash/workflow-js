@@ -28,7 +28,7 @@ export const getAgentsApi = ({
     context = new DisabledWorkflowContext({
       headers: new Headers({}) as Headers,
       initialPayload: "mock",
-      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false }),
       steps: [{ stepId: 0, stepName: "init", concurrent: 1, stepType: "Initial" }],
       url: WORKFLOW_ENDPOINT,
       workflowRunId,
@@ -37,10 +37,14 @@ export const getAgentsApi = ({
     context = new WorkflowContext({
       headers: new Headers({}) as Headers,
       initialPayload: "mock",
-      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false }),
       steps: [{ stepId: 0, stepName: "init", concurrent: 1, stepType: "Initial" }],
       url: WORKFLOW_ENDPOINT,
       workflowRunId,
+      telemetry: {
+        framework: "bun",
+        sdk: "workflow",
+      },
     });
   }
 
@@ -132,6 +136,11 @@ describe("tasks", () => {
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-url": "https://requestcatcher.com/api",
+
+              "upstash-telemetry-agent": "true",
+              "upstash-telemetry-framework": "bun",
+              "upstash-telemetry-runtime": "unknown",
+              "upstash-telemetry-sdk": "workflow",
             },
           },
         ],
@@ -210,6 +219,11 @@ describe("tasks", () => {
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-url": "https://requestcatcher.com/api",
+
+              "upstash-telemetry-agent": "true",
+              "upstash-telemetry-framework": "bun",
+              "upstash-telemetry-runtime": "unknown",
+              "upstash-telemetry-sdk": "workflow",
             },
           },
         ],
@@ -282,6 +296,10 @@ describe("tasks", () => {
               // anthropic specific headers:
               "upstash-forward-x-api-key": "antrhopic-key",
               "upstash-forward-anthropic-version": "2023-06-01",
+              "upstash-telemetry-agent": "true",
+              "upstash-telemetry-framework": "bun",
+              "upstash-telemetry-runtime": "unknown",
+              "upstash-telemetry-sdk": "workflow",
             },
           },
         ],

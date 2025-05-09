@@ -1,5 +1,5 @@
 import { NotifyResponse, Waiter } from "../types";
-import { FlowControl, Client as QStashClient } from "@upstash/qstash";
+import { FlowControl, PublishRequest, Client as QStashClient } from "@upstash/qstash";
 import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
@@ -190,6 +190,11 @@ export class Client {
    *   with `wfr_`.
    * @param retries retry to use in the initial request. in the rest of
    *   the workflow, `retries` option of the `serve` will be used.
+   * @param flowControl Settings for controlling the number of active requests
+   *   and number of requests per second with the same key.
+   * @param delay Delay for the workflow run. This is used to delay the
+   *   execution of the workflow run. The delay is in seconds or can be passed
+   *   as a string with a time unit (e.g. "1h", "30m", "15s").
    * @returns workflow run id
    */
   public async trigger({
@@ -199,6 +204,7 @@ export class Client {
     workflowRunId,
     retries,
     flowControl,
+    delay,
   }: {
     url: string;
     body?: unknown;
@@ -206,6 +212,7 @@ export class Client {
     workflowRunId?: string;
     retries?: number;
     flowControl?: FlowControl;
+    delay?: PublishRequest["delay"];
   }): Promise<{ workflowRunId: string }> {
     const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
     const context = new WorkflowContext({
@@ -223,6 +230,7 @@ export class Client {
     const result = await triggerFirstInvocation({
       workflowContext: context,
       telemetry: undefined, // can't know workflow telemetry here
+      delay,
     });
     if (result.isOk()) {
       return { workflowRunId: finalWorkflowRunId };
