@@ -47,6 +47,14 @@ export abstract class BaseLazyStep<TResult = unknown> {
         "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
       );
     }
+    if (typeof stepName !== "string") {
+      // when updating this warning as error, don't forget to enable to corresponding test
+      // in steps.test.ts. If possible, should be changed together with other deprecations
+      // if a major version is released
+      console.warn(
+        "Workflow Warning: A workflow step name must be a string. In a future release, this will throw an error."
+      );
+    }
     this.stepName = stepName;
   }
 
