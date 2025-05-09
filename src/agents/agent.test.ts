@@ -20,7 +20,7 @@ describe("agents", () => {
   const context = new WorkflowContext({
     headers: new Headers({}) as Headers,
     initialPayload: "mock",
-    qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+    qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false }),
     steps: [],
     url: WORKFLOW_ENDPOINT,
     workflowRunId,
