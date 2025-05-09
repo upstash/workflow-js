@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, jest, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
   driveWorkflow,
@@ -1017,6 +1017,10 @@ describe("serve", () => {
 
   describe("incorrect url will throw", () => {
     const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
+    qstashClient.batch = jest
+      .fn()
+      .mockReturnValue([{ deduplicatedId: false, messageId: "some-message-id" }]);
+    qstashClient.publish = jest.fn({ deduplicatedId: false, messageId: "some-message-id" });
     const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
     test("allow http://", async () => {
