@@ -10,7 +10,7 @@ import { DisabledWorkflowContext } from "./authorization";
 
 describe("disabled workflow context", () => {
   const token = nanoid();
-  const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+  const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false });
   const disabledContext = new DisabledWorkflowContext({
     qstashClient,
     workflowRunId: "wfr-foo",

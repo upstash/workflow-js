@@ -41,7 +41,7 @@ describe("serveMany", () => {
 
   describe("serve tests", () => {
     const token = nanoid();
-    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+    const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false });
 
     const workflowOne = createWorkflow(
       async (context: WorkflowContext<number>) => {
@@ -160,7 +160,7 @@ describe("serveMany", () => {
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
-              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.13"],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
@@ -215,7 +215,7 @@ describe("serveMany", () => {
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": ["node@v22.6.0"],
-              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+              "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.13"],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
@@ -289,7 +289,7 @@ describe("serveMany", () => {
                 "upstash-retries": "0",
                 "upstash-telemetry-framework": "nextjs",
                 "upstash-telemetry-runtime": "node@v22.6.0",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
