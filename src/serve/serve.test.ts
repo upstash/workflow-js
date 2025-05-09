@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, jest, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
   driveWorkflow,
@@ -32,7 +32,7 @@ const someWork = (input: string) => {
 const workflowRunId = `wfr${nanoid()}`;
 const token = nanoid();
 
-const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false });
 
 describe("serve", () => {
   test("should send create workflow request in initial request", async () => {
@@ -409,7 +409,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
               },
               body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
@@ -458,7 +458,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -511,7 +511,7 @@ describe("serve", () => {
                 "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -566,7 +566,7 @@ describe("serve", () => {
                 "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -661,7 +661,7 @@ describe("serve", () => {
                 "upstash-retries": "4",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
                 "upstash-timeout": "10",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
@@ -875,7 +875,7 @@ describe("serve", () => {
             "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
             "Upstash-Telemetry-Framework": ["unknown"],
             "Upstash-Telemetry-Runtime": ["unknown"],
-            "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.7"],
+            "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.13"],
           },
           timeoutUrl: WORKFLOW_ENDPOINT,
           url: WORKFLOW_ENDPOINT,
@@ -1017,6 +1017,10 @@ describe("serve", () => {
 
   describe("incorrect url will throw", () => {
     const qstashClient = new Client({ token: process.env.QSTASH_TOKEN! });
+    qstashClient.batch = jest
+      .fn()
+      .mockReturnValue([{ deduplicatedId: false, messageId: "some-message-id" }]);
+    qstashClient.publish = jest.fn({ deduplicatedId: false, messageId: "some-message-id" });
     const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
     test("allow http://", async () => {
@@ -1111,6 +1115,7 @@ describe("serve", () => {
       headers: {
         [header]: headerValue,
       },
+      enableTelemetry: false,
     });
 
     const { handler: endpoint } = serve(
@@ -1158,7 +1163,7 @@ describe("serve", () => {
               "upstash-forward-test-header": headerValue,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.7",
+              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
             },
             body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
           },

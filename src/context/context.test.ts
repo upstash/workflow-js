@@ -16,7 +16,11 @@ import { upstash } from "@upstash/qstash";
 
 describe("context tests", () => {
   const token = nanoid();
-  const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+  const qstashClient = new Client({
+    baseUrl: MOCK_QSTASH_SERVER_URL,
+    token,
+    enableTelemetry: false,
+  });
   test("should raise when there are nested steps (with run)", () => {
     const context = new WorkflowContext({
       qstashClient,
