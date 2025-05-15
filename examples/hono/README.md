@@ -4,37 +4,28 @@ This is an example of how to use Upstash Workflow in a Hono project. You can lea
 
 ## Development
 
-> [!TIP]
-> You can use [the `bootstrap.sh` script](https://github.com/upstash/workflow-js/tree/main/examples) to run this example with a local tunnel.
->
-> Simply set the environment variables as explained below and run the following command in the `workflow-js/examples` directory:
->
-> ```
-> bash bootstrap.sh hono
-> ```
-
 1. Install the dependencies
 
 ```bash
 npm install
 ```
 
-2. Get the credentials from the [Upstash Console](https://console.upstash.com/qstash) and add them to the `.env` file.
+2. [Start the QStash development server](https://upstash.com/docs/workflow/howto/local-development):
 
 ```bash
-QSTASH_URL=
-QSTASH_TOKEN=
+npx @upstash/qstash-cli dev
 ```
 
-3. Open a local tunnel to port of the development server
+3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.env` file:
 
 ```bash
-ngrok http 3001
+QSTASH_URL="***"
+QSTASH_TOKEN="***"
 ```
 
-Also, set the `UPSTASH_WORKLFOW_URL` environment variable to the public url provided by ngrok.
+When you are deploying your app to production, you don't need to set `QSTASH_URL`. You should only set the `QSTASH_TOKEN` environment variable to the token you get from [Upstash Console](https://console.upstash.com/qstash).
 
-4. Run the development server
+4. Run your app:
 
 ```bash
 npm run dev

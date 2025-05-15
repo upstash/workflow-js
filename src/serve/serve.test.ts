@@ -1020,7 +1020,7 @@ describe("serve", () => {
     qstashClient.batch = jest
       .fn()
       .mockReturnValue([{ deduplicatedId: false, messageId: "some-message-id" }]);
-    qstashClient.publish = jest.fn({ deduplicatedId: false, messageId: "some-message-id" });
+    qstashClient.publish = jest.fn().mockReturnValue({ deduplicatedId: false, messageId: "some-message-id" });
     const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
     test("allow http://", async () => {
