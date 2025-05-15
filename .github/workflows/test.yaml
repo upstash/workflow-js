@@ -262,6 +262,51 @@ jobs:
         run: npm run dev &
         working-directory: examples/agents-researcher
 
+  nestjs-local-build:
+    needs:
+      - local-tests
+    runs-on: ubuntu-latest
+    name: Nestjs Local Build
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+        working-directory: examples/nestjs
+
+      - name: Install local package
+        run: npm install @upstash/workflow@file:../../dist
+        working-directory: examples/nestjs
+
+      - name: Build Project
+        run: npm run build
+        working-directory: examples/nestjs
+
+      - name: Run example
+        run: npm run dev &
+        working-directory: examples/nestjs
+
+      - name: Run local tests
+        run: bun test .
+        working-directory: examples/nestjs
+
   nextjs-local-build:
     needs:
       - local-tests

@@ -20,7 +20,7 @@ To deploy the project at vercel and try the endpoints, you should start with set
 vercel
 ```
 
-Next, you shoud go to vercel.com, find your project and add `QSTASH_TOKEN`, to the project as environment variables. You can find this env variables from the [Upstash Console](https://console.upstash.com/qstash). To learn more about other env variables and their use in the context of Upstash Workflow, you can read [the Secure your Endpoint in our documentation](https://upstash.com/docs/qstash/workflow/howto/security#using-qstashs-built-in-request-verification-recommended).
+Next, you shoud go to vercel.com, find your project and add `QSTASH_TOKEN`, to the project as environment variables. You can find this env variables from the [Upstash Console](https://console.upstash.com/workflow). To learn more about other env variables and their use in the context of Upstash Workflow, you can read [the Secure your Endpoint in our documentation](https://upstash.com/docs/qstash/workflow/howto/security#using-qstashs-built-in-request-verification-recommended).
 
 Once you add the env variables, you can deploy the project with:
 
@@ -32,7 +32,7 @@ Note that the project won't work in preview. It should be deployed to production
 
 Once you have the app deployed, you can go to the deployment and call the endpoints using the form on the page.
 
-You can observe the logs at [Upstash console under the Worfklow tab](https://console.upstash.com/qstash?tab=workflow) or vercel.com to see your workflow operate.
+You can observe the logs at [Upstash console under the Worfklow tab](https://console.upstash.com/workflow) or vercel.com to see your workflow operate.
 
 ## Local Development
 

@@ -1,6 +1,6 @@
-# Upstash Workflow Express Example
+# Upstash Workflow Nestjs Example
 
-This is an example of how to use Upstash Workflow in a Express.js project. You can learn more in [Getting Started with Upstash Workflow](https://upstash.com/docs/workflow/getstarted).
+This is an example of how to use Upstash Workflow in a Nestjs project. You can learn more in [Getting Started with Upstash Workflow](https://upstash.com/docs/workflow/getstarted).
 
 ## Development
 
@@ -28,12 +28,12 @@ When you are deploying your app to production, you don't need to set `QSTASH_URL
 4. Run your app:
 
 ```bash
-npm run dev
+npm run start
 ```
 
 5. Send a `POST` request to the `/workflow` endpoint.
 
-**NOTE**: Workflow on Express.js only works with `Content-Type: application/json` header.
+**NOTE**: Workflow on Nestjs only works with `Content-Type: application/json` header.
 
 ```bash
 curl -X POST http://localhost:3001/workflow \
