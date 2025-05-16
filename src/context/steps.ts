@@ -393,7 +393,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     }
   }
 
-  private static applicationHeaders = new Set([
+  private static applicationContentTypes = [
     "application/json",
     "application/xml",
     "application/javascript",
@@ -402,13 +402,13 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     "application/ld+json",
     "application/rss+xml",
     "application/atom+xml",
-  ]);
+  ];
 
   private static isText = (contentTypeHeader: string | null) => {
     if (!contentTypeHeader) {
       return false;
     }
-    if (LazyCallStep.applicationHeaders.has(contentTypeHeader)) {
+    if (LazyCallStep.applicationContentTypes.some((type) => contentTypeHeader.includes(type))) {
       return true;
     }
     if (contentTypeHeader.startsWith("text/")) {
