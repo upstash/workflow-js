@@ -330,6 +330,7 @@ describe("workflow client", () => {
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
+                      retries: 3,
                     },
                   ],
                   type: "sequential",
@@ -372,6 +373,7 @@ describe("workflow client", () => {
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
+                      retries: 3,
                     },
                   ],
                   type: "sequential",
@@ -430,14 +432,15 @@ describe("workflow client", () => {
               workflowState: "RUN_FAILED",
               workflowRunCreatedAt: expect.any(Number),
               workflowRunCompletedAt: expect.any(Number),
+              dlqId: expect.any(String),
               failureFunction: {
                 messageId: expect.any(String),
-                dlqId: expect.any(String),
                 failResponse: "400 Bad Request",
                 failStatus: 400,
                 url: "https://httpstat.us/400",
                 state: "DELIVERED",
                 failHeaders: expect.any(Object),
+                dlqId: expect.any(String),
               },
               steps: [
                 {
@@ -452,6 +455,7 @@ describe("workflow client", () => {
                       },
                       messageId: expect.any(String),
                       out: "some-body",
+                      retries: 0,
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
@@ -464,6 +468,15 @@ describe("workflow client", () => {
                     {
                       state: "STEP_FAILED",
                       messageId: expect.any(String),
+                      retries: 0,
+                      errors: [
+                        {
+                          error: "400 Bad Request",
+                          headers: expect.any(Object),
+                          status: 400,
+                          time: expect.any(Number),
+                        },
+                      ],
                     },
                   ],
                   type: "next",
@@ -471,7 +484,7 @@ describe("workflow client", () => {
               ],
             });
           },
-          { timeout: 30_000, interval: 100 }
+          { timeout: 30_000, interval: 1000 }
         );
       },
       {
