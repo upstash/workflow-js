@@ -1,8 +1,9 @@
 import { makeCancelRequest } from "../client/utils";
-import { SDK_TELEMETRY, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
+import { SDK_TELEMETRY, WORKFLOW_ID_HEADER, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError } from "../error";
 import { WorkflowLogger } from "../logger";
+import { runMiddlewares } from "../middleware/middleware";
 import {
   ExclusiveValidationOptions,
   RouteFunction,
@@ -63,6 +64,7 @@ export const serveBase = <
     disableTelemetry,
     flowControl,
     onError,
+    middlewares,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
   const debug = WorkflowLogger.getLogger(verbose);
@@ -154,6 +156,7 @@ export const serveBase = <
       telemetry,
       invokeCount,
       flowControl,
+      middlewares,
     });
 
     // attempt running routeFunction until the first step
@@ -204,8 +207,18 @@ export const serveBase = <
             invokeCount,
           })
         : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
+            onStep: async () => {
+              if (steps.length === 1) {
+                await runMiddlewares(middlewares, "runStarted", {
+                  workflowRunId: workflowContext.workflowRunId,
+                });
+              }
+              await routeFunction(workflowContext);
+            },
             onCleanup: async (result) => {
+              await runMiddlewares(middlewares, "runCompleted", {
+                workflowRunId: workflowContext.workflowRunId,
+              });
               await triggerWorkflowDelete(workflowContext, result, debug);
             },
             onCancel: async () => {
@@ -249,6 +262,24 @@ export const serveBase = <
           status: 500,
         }) as TResponse;
       }
+
+      try {
+        runMiddlewares(middlewares, "onError", {
+          workflowRunId: request.headers.get(WORKFLOW_ID_HEADER) ?? "no-workflow-id",
+          error: error as Error,
+        });
+      } catch (middlewareError) {
+        const formattedMiddlewareError = formatWorkflowError(middlewareError);
+        const errorMessage =
+          `Error while running middleware onError callback: '${formattedMiddlewareError.message}'.` +
+          `\nOriginal error: '${formattedError.message}'`;
+
+        console.error(errorMessage);
+        return new Response(errorMessage, {
+          status: 500,
+        }) as TResponse;
+      }
+
       return new Response(JSON.stringify(formattedError), {
         status: 500,
       }) as TResponse;

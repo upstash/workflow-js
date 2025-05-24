@@ -4,6 +4,7 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
+import { WorkflowMiddleware } from "./middleware";
 
 /**
  * Interface for Client with required methods
@@ -256,6 +257,10 @@ export type WorkflowServeOptions<
    * and number of requests per second with the same key.
    */
   flowControl?: FlowControl;
+  /**
+   * List of workflow middlewares to use
+   */
+  middlewares?: WorkflowMiddleware[];
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
@@ -518,4 +523,17 @@ export type InvokableWorkflow<TInitialPayload, TResult> = {
   routeFunction: RouteFunction<TInitialPayload, TResult>;
   options: WorkflowServeOptions<Response, TInitialPayload>;
   workflowId?: string;
+};
+
+export type MiddlewareCallbacks = {
+  beforeExecution?: (params: { workflowRunId: string; stepName: string }) => Promise<void> | void;
+  afterExecution?: (params: { workflowRunId: string; stepName: string }) => Promise<void> | void;
+  runStarted?: (params: { workflowRunId: string }) => Promise<void> | void;
+  runCompleted?: (params: { workflowRunId: string }) => Promise<void> | void;
+  onError?: (params: { workflowRunId: string; error: Error }) => Promise<void> | void;
+};
+
+export type MiddlewareParameters = {
+  name: string;
+  init: (params: { workflowRunId: string }) => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
 };
