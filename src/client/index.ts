@@ -1,10 +1,10 @@
 import { NotifyResponse, Waiter } from "../types";
-import { FlowControl, PublishRequest, Client as QStashClient } from "@upstash/qstash";
+import { Client as QStashClient } from "@upstash/qstash";
 import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
-import { WorkflowRunLog, WorkflowRunLogs } from "./types";
+import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -205,15 +205,11 @@ export class Client {
     retries,
     flowControl,
     delay,
-  }: {
-    url: string;
-    body?: unknown;
-    headers?: Record<string, string>;
-    workflowRunId?: string;
-    retries?: number;
-    flowControl?: FlowControl;
-    delay?: PublishRequest["delay"];
-  }): Promise<{ workflowRunId: string }> {
+    failureUrl,
+    useFailureFunction,
+  }: TriggerOptions): Promise<{ workflowRunId: string }> {
+    failureUrl = useFailureFunction ? url : failureUrl;
+
     const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
     const context = new WorkflowContext({
       qstashClient: this.client,
@@ -226,6 +222,7 @@ export class Client {
       retries,
       telemetry: undefined, // can't know workflow telemetry here
       flowControl,
+      failureUrl,
     });
     const result = await triggerFirstInvocation({
       workflowContext: context,

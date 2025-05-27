@@ -1,4 +1,4 @@
-import { HTTPMethods, State } from "@upstash/qstash";
+import { FlowControl, HTTPMethods, PublishRequest, State } from "@upstash/qstash";
 import { RawStep, StepType } from "../types";
 
 type BaseStepLog = {
@@ -270,3 +270,65 @@ export type WorkflowRunLogs = {
   cursor: string;
   runs: WorkflowRunLog[];
 };
+
+export type TriggerOptions = {
+  /**
+   * URL of the workflow to trigger
+   */
+  url: string;
+  /**
+   * Body to send to the workflow
+   */
+  body?: unknown;
+  /**
+   * Headers to send to the workflow
+   */
+  headers?: Record<string, string>;
+  /**
+   * Workflow run id to use for the workflow run.
+   * If not provided, a random workflow run id will be generated.
+   */
+  workflowRunId?: string;
+  /**
+   * Number of retries to perform if the request fails.
+   *
+   * @default 3
+   */
+  retries?: number;
+  /**
+   * Flow control to use for the workflow run.
+   * If not provided, no flow control will be used.
+   */
+  flowControl?: FlowControl;
+  /**
+   * Delay to apply before triggering the workflow.
+   */
+  delay?: PublishRequest["delay"];
+} & (
+  | {
+      /**
+       * URL to call if the first request to the workflow endpoint fails
+       */
+      failureUrl?: never;
+      /**
+       * Whether the workflow endpoint has a failure function
+       * defined to be invoked if the first request fails.
+       *
+       * If true, the failureUrl will be ignored.
+       */
+      useFailureFunction?: true;
+    }
+  | {
+      /**
+       * URL to call if the first request to the workflow endpoint fails
+       */
+      failureUrl?: string;
+      /**
+       * Whether the workflow endpoint has a failure function
+       * defined to be invoked if the first request fails.
+       *
+       * If true, the failureUrl will be ignored.
+       */
+      useFailureFunction?: never;
+    }
+);
