@@ -49,6 +49,10 @@ type BaseStepLog = {
    * headers
    */
   headers: Record<string, string[]>;
+  /**
+   * retries
+   */
+  retries: number;
 };
 
 type CallUrlGroup = {
@@ -165,6 +169,19 @@ type StepLogGroup =
       steps: {
         messageId: string;
         state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
+        /**
+         * retries
+         */
+        retries: number;
+        /**
+         * errors which occured in the step
+         */
+        errors?: {
+          error: string;
+          headers: Record<string, string[]>;
+          status: number;
+          time: number;
+        }[];
       }[];
       /**
        * Log which belongs to the next step
@@ -197,6 +214,9 @@ type FailureFunctionLog = {
    * Response body of the step which caused the workflow to fail
    */
   failResponse: string;
+  /**
+   * @deprecated use dlqId field of the workflow run itself
+   */
   dlqId: string;
 };
 
@@ -264,6 +284,10 @@ export type WorkflowRunLog = {
      */
     workflowRunCreatedAt: number;
   };
+  /**
+   * If the workflow run has failed, id of the run in DLQ
+   */
+  dlqId?: string;
 };
 
 export type WorkflowRunLogs = {
