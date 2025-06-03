@@ -13,7 +13,7 @@ bun install
 ### 2. [Start the QStash development server](https://upstash.com/docs/workflow/howto/local-development):
 
 ```bash
-bunx @upstash/qstash-cli dev
+npx @upstash/qstash-cli dev
 ```
 
 ### 3. Once you run the development server, you will see `QSTASH_URL` and `QSTASH_TOKEN` environment variables for the local development server. Add these to the `.env` file:
