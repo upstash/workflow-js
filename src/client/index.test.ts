@@ -230,10 +230,90 @@ describe("workflow client", () => {
           "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
           "upstash-workflow-url": "https://requestcatcher.com/api",
           "upstash-delay": "1s",
+          "upstash-failure-callback": null,
         },
       },
     });
   });
+
+  test("should trigger workflow run with failure function", async () => {
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
+    await mockQStashServer({
+      execute: async () => {
+        await client.trigger({
+          url: WORKFLOW_ENDPOINT,
+          body,
+          headers: { "user-header": "user-header-value" },
+          workflowRunId: myWorkflowRunId,
+          retries: 15,
+          delay: 1,
+          useFailureFunction: true,
+        });
+      },
+      responseFields: {
+        status: 200,
+        body: "msgId",
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+        token,
+        body,
+        headers: {
+          "upstash-forward-upstash-workflow-sdk-version": "1",
+          "upstash-forward-user-header": "user-header-value",
+          "upstash-method": "POST",
+          "upstash-retries": "15",
+          "upstash-workflow-init": "true",
+          "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
+          "upstash-workflow-url": "https://requestcatcher.com/api",
+          "upstash-delay": "1s",
+          "upstash-failure-callback": "https://requestcatcher.com/api",
+        },
+      },
+    });
+  });
+
+  test("should trigger workflow run with failure callback", async () => {
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
+    await mockQStashServer({
+      execute: async () => {
+        await client.trigger({
+          url: WORKFLOW_ENDPOINT,
+          body,
+          headers: { "user-header": "user-header-value" },
+          workflowRunId: myWorkflowRunId,
+          retries: 15,
+          delay: 1,
+          failureUrl: "https://requestcatcher.com/some-failure-callback",
+        });
+      },
+      responseFields: {
+        status: 200,
+        body: "msgId",
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+        token,
+        body,
+        headers: {
+          "upstash-forward-upstash-workflow-sdk-version": "1",
+          "upstash-forward-user-header": "user-header-value",
+          "upstash-method": "POST",
+          "upstash-retries": "15",
+          "upstash-workflow-init": "true",
+          "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
+          "upstash-workflow-url": "https://requestcatcher.com/api",
+          "upstash-delay": "1s",
+          "upstash-failure-callback": "https://requestcatcher.com/some-failure-callback",
+        },
+      },
+    });
+  });
+
   describe("logs", () => {
     test("should send logs request", async () => {
       const count = 10;
