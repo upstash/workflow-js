@@ -197,40 +197,49 @@ export class Client {
    *   as a string with a time unit (e.g. "1h", "30m", "15s").
    * @returns workflow run id
    */
-  public async trigger({
-    url,
-    body,
-    headers,
-    workflowRunId,
-    retries,
-    flowControl,
-    delay,
-    failureUrl,
-    useFailureFunction,
-  }: TriggerOptions): Promise<{ workflowRunId: string }> {
-    failureUrl = useFailureFunction ? url : failureUrl;
+  // Overload signatures
+  public async trigger(params: TriggerOptions): Promise<{ workflowRunId: string }>;
+  public async trigger(params: TriggerOptions[]): Promise<{ workflowRunId: string }[]>;
 
-    const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
-    const context = new WorkflowContext({
-      qstashClient: this.client,
-      // @ts-expect-error headers type mismatch
-      headers: new Headers(headers ?? {}),
-      initialPayload: body,
-      steps: [],
-      url,
-      workflowRunId: finalWorkflowRunId,
-      retries,
-      telemetry: undefined, // can't know workflow telemetry here
-      flowControl,
-      failureUrl,
+  public async trigger(
+    params: TriggerOptions | TriggerOptions[]
+  ): Promise<{ workflowRunId: string } | { workflowRunId: string }[]> {
+    const isBatchInput = Array.isArray(params);
+    const options = isBatchInput ? params : [params];
+
+    const workflowRunIds: string[] = [];
+
+    const invocations = options.map((option) => {
+      const failureUrl = option.useFailureFunction ? option.url : option.failureUrl;
+      const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
+      workflowRunIds.push(finalWorkflowRunId);
+
+      const context = new WorkflowContext({
+        qstashClient: this.client,
+        // @ts-expect-error headers type mismatch
+        headers: new Headers(option.headers ?? {}),
+        initialPayload: option.body,
+        steps: [],
+        url: option.url,
+        workflowRunId: finalWorkflowRunId,
+        retries: option.retries,
+        telemetry: undefined, // can't know workflow telemetry here
+        flowControl: option.flowControl,
+        failureUrl,
+      });
+
+      return {
+        workflowContext: context,
+        telemetry: undefined, // can't know workflow telemetry here
+        delay: option.delay,
+      };
     });
-    const result = await triggerFirstInvocation({
-      workflowContext: context,
-      telemetry: undefined, // can't know workflow telemetry here
-      delay,
-    });
+    const result = await triggerFirstInvocation(invocations);
+
     if (result.isOk()) {
-      return { workflowRunId: finalWorkflowRunId };
+      return isBatchInput
+        ? workflowRunIds.map((id) => ({ workflowRunId: id }))
+        : { workflowRunId: workflowRunIds[0] };
     } else {
       throw result.error;
     }

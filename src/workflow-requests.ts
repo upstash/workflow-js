@@ -20,79 +20,103 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
-import { FlowControl, PublishRequest, QstashError } from "@upstash/qstash";
+import { FlowControl, PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
+import { PublishToUrlResponse } from "@upstash/qstash";
 
-export const triggerFirstInvocation = async <TInitialPayload>({
-  workflowContext,
-  useJSONContent,
-  telemetry,
-  debug,
-  invokeCount,
-  delay,
-}: {
+type TriggerFirstInvocationParams<TInitialPayload> = {
   workflowContext: WorkflowContext<TInitialPayload>;
   useJSONContent?: boolean;
   telemetry?: Telemetry;
   debug?: WorkflowLogger;
   invokeCount?: number;
   delay?: PublishRequest["delay"];
-}): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
-  const { headers } = getHeaders({
-    initHeaderValue: "true",
-    workflowConfig: {
-      workflowRunId: workflowContext.workflowRunId,
-      workflowUrl: workflowContext.url,
-      failureUrl: workflowContext.failureUrl,
-      retries: workflowContext.retries,
-      telemetry,
-      flowControl: workflowContext.flowControl,
-      useJSONContent: useJSONContent ?? false,
-    },
-    invokeCount: invokeCount ?? 0,
-    userHeaders: workflowContext.headers,
-  });
+};
 
-  // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
-  // so we need to pass it in the headers
-  if (workflowContext.headers.get("content-type")) {
-    headers["content-type"] = workflowContext.headers.get("content-type")!;
-  }
+export const triggerFirstInvocation = async <TInitialPayload>(
+  params:
+    | TriggerFirstInvocationParams<TInitialPayload>
+    | TriggerFirstInvocationParams<TInitialPayload>[]
+): Promise<Ok<"success" | "workflow-run-already-exists", never> | Err<never, Error>> => {
+  const firstInvocationParams = Array.isArray(params) ? params : [params];
+  const workflowContextClient = firstInvocationParams[0].workflowContext.qstashClient;
 
-  if (useJSONContent) {
-    headers["content-type"] = "application/json";
-  }
+  const invocationBatch = firstInvocationParams.map((invocation) => {
+    const { headers } = getHeaders({
+      initHeaderValue: "true",
+      workflowConfig: {
+        workflowRunId: invocation.workflowContext.workflowRunId,
+        workflowUrl: invocation.workflowContext.url,
+        failureUrl: invocation.workflowContext.failureUrl,
+        retries: invocation.workflowContext.retries,
+        telemetry: invocation.telemetry,
+        flowControl: invocation.workflowContext.flowControl,
+        useJSONContent: invocation.useJSONContent ?? false,
+      },
+      invokeCount: invocation.invokeCount ?? 0,
+      userHeaders: invocation.workflowContext.headers,
+    });
 
-  try {
+    // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
+    // so we need to pass it in the headers
+    if (invocation.workflowContext.headers.get("content-type")) {
+      headers["content-type"] = invocation.workflowContext.headers.get("content-type")!;
+    }
+
+    if (invocation.useJSONContent) {
+      headers["content-type"] = "application/json";
+    }
+
     const body =
-      typeof workflowContext.requestPayload === "string"
-        ? workflowContext.requestPayload
-        : JSON.stringify(workflowContext.requestPayload);
-    const result = await workflowContext.qstashClient.publish({
+      typeof invocation.workflowContext.requestPayload === "string"
+        ? invocation.workflowContext.requestPayload
+        : JSON.stringify(invocation.workflowContext.requestPayload);
+
+    return {
       headers,
       method: "POST",
       body,
-      url: workflowContext.url,
-      delay,
-    });
+      url: invocation.workflowContext.url,
+      delay: invocation.delay,
+    } as PublishBatchRequest;
+  });
 
-    if (result.deduplicated) {
-      await debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
-        message: `Workflow run ${workflowContext.workflowRunId} already exists. A new one isn't created.`,
-        headers,
-        requestPayload: workflowContext.requestPayload,
-        url: workflowContext.url,
-        messageId: result.messageId,
-      });
+  try {
+    const results = (await workflowContextClient.batch(invocationBatch)) as PublishToUrlResponse[];
+
+    const invocationStatuses: ("success" | "workflow-run-already-exists")[] = [];
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const invocationParams = firstInvocationParams[i];
+      if (result.deduplicated) {
+        await invocationParams.debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
+          message: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
+          headers: invocationParams.workflowContext.headers,
+          requestPayload: invocationParams.workflowContext.requestPayload,
+          url: invocationParams.workflowContext.url,
+          messageId: result.messageId,
+        });
+        invocationStatuses.push("workflow-run-already-exists");
+      } else {
+        await invocationParams.debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
+          headers: invocationParams.workflowContext.headers,
+          requestPayload: invocationParams.workflowContext.requestPayload,
+          url: invocationParams.workflowContext.url,
+          messageId: result.messageId,
+        });
+        invocationStatuses.push("success");
+      }
+    }
+
+    const hasAnyDeduplicated = invocationStatuses.some(
+      (status) => status === "workflow-run-already-exists"
+    );
+
+    if (hasAnyDeduplicated) {
       return ok("workflow-run-already-exists");
     } else {
-      await debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-        headers,
-        requestPayload: workflowContext.requestPayload,
-        url: workflowContext.url,
-        messageId: result.messageId,
-      });
       return ok("success");
     }
   } catch (error) {
