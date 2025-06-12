@@ -93,7 +93,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       if (result.deduplicated) {
         await invocationParams.debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
           message: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
-          headers: invocationParams.workflowContext.headers,
+          headers: invocationBatch[i].headers,
           requestPayload: invocationParams.workflowContext.requestPayload,
           url: invocationParams.workflowContext.url,
           messageId: result.messageId,
@@ -101,7 +101,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         invocationStatuses.push("workflow-run-already-exists");
       } else {
         await invocationParams.debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-          headers: invocationParams.workflowContext.headers,
+          headers: invocationBatch[i].headers,
           requestPayload: invocationParams.workflowContext.requestPayload,
           url: invocationParams.workflowContext.url,
           messageId: result.messageId,
