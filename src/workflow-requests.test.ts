@@ -56,20 +56,32 @@ describe("Workflow Requests", () => {
         expect(result.isOk()).toBeTrue();
       },
       responseFields: {
-        body: { messageId: "msgId" },
+        body: [{ messageId: "msgId" }],
         status: 200,
       },
       receivesRequest: {
         method: "POST",
-        url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/https://requestcatcher.com/api`,
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
         token,
-        body: initialPayload,
-        headers: {
-          "upstash-retries": "0",
-          "Upstash-Workflow-Init": "true",
-          "Upstash-Workflow-RunId": workflowRunId,
-          "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
-        },
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: {
+              "content-type": "application/json",
+              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-method": "POST",
+              "upstash-retries": "0",
+              "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
+              "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
+              "upstash-workflow-init": "true",
+              "upstash-workflow-runid": workflowRunId,
+              "upstash-workflow-sdk-version": "1",
+              "upstash-workflow-url": WORKFLOW_ENDPOINT,
+            },
+            body: initialPayload,
+          },
+        ],
       },
     });
   });
