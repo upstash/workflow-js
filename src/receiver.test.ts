@@ -196,12 +196,34 @@ describe("receiver", () => {
           const response = await endpoint(requestWithHeader);
           expect(response.status).toBe(200);
         },
-        responseFields: { body: "msgId", status: 200 },
+        responseFields: { body: [{ messageId: "msgId" }], status: 200 },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
           token,
-          body,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-forward-authorization": expect.stringMatching(/Bearer /),
+                "upstash-forward-upstash-signature": expect.any(String),
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": expect.stringMatching(/unknown, bun@/),
+                "upstash-telemetry-sdk": expect.stringMatching(
+                  /@upstash\/workflow@.*upstash-qstash-js@/
+                ),
+                "upstash-workflow-init": "true",
+                "upstash-workflow-runid": expect.any(String),
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+              body: JSON.stringify(body),
+            },
+          ],
         },
       });
       expect(called).toBeTrue();

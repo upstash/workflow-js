@@ -8,9 +8,9 @@ const qstashClient = new Client({
   token: "mock"
 })
 
-// @ts-expect-error mocking publish
-qstashClient.publish = async () => {
-  return { messageId: "msgId" }
+// mocking batch
+qstashClient.batch = async () => {
+  return [{ messageId: "msgId" }]
 }
 
 const { POST: serveHandler } = serve(

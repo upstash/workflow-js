@@ -13,8 +13,9 @@ const qstashClient = new Client({
   token: "mock",
 })
 
-qstashClient.publish = async () => {
-  return { messageId: "msgId" }
+// mocking batch
+qstashClient.batch = async () => {
+  return [{ messageId: "msgId" }]
 }
 
 console.log(">>> TESTING INITIAL INVOCATION")

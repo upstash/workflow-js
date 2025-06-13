@@ -65,20 +65,33 @@ describe("serve", () => {
         const response = await endpoint(request);
         expect(response.status).toBe(200);
       },
-      responseFields: { body: "msgId", status: 200 },
+      responseFields: { body: [{ messageId: "msgId" }], status: 200 },
       receivesRequest: {
         method: "POST",
-        url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
         token,
-        body: initialPayload,
-        headers: {
-          [WORKFLOW_INIT_HEADER]: "true",
-          [WORKFLOW_PROTOCOL_VERSION_HEADER]: "1",
-          [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: "1",
-          "upstash-retries": "1",
-          "Upstash-Flow-Control-Key": "my-key",
-          "Upstash-Flow-Control-Value": "parallelism=1",
-        },
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: {
+              "content-type": "application/json",
+              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-flow-control-key": "my-key",
+              "upstash-flow-control-value": "parallelism=1",
+              "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-method": "POST",
+              "upstash-retries": "1",
+              "upstash-telemetry-framework": "unknown",
+              "upstash-telemetry-runtime": "unknown",
+              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.13",
+              "upstash-workflow-init": "true",
+              "upstash-workflow-runid": expect.stringMatching(/^wfr_/),
+              "upstash-workflow-sdk-version": "1",
+              "upstash-workflow-url": WORKFLOW_ENDPOINT,
+            },
+            body: initialPayload,
+          },
+        ],
       },
     });
   });
@@ -148,25 +161,32 @@ describe("serve", () => {
         {
           stepsToAdd: [],
           responseFields: {
-            body: { messageId: "some-message-id" },
+            body: [{ messageId: "some-message-id" }],
             status: 200,
           },
           receivesRequest: {
             method: "POST",
-            url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/https://requestcatcher.com/api`,
+            url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
             token,
-            body: initialPayload,
-            headers: {
-              "upstash-workflow-sdk-version": "1",
-              "upstash-feature-set": "LazyFetch,InitialBody",
-              "upstash-forward-upstash-workflow-sdk-version": "1",
-              "upstash-forward-upstash-workflow-invoke-count": "2",
-              "upstash-method": "POST",
-              "upstash-workflow-init": "true",
-              "upstash-workflow-url": WORKFLOW_ENDPOINT,
-              "upstash-flow-control-key": "my-key",
-              "upstash-flow-control-value": "rate=3",
-            },
+            body: [
+              {
+                destination: WORKFLOW_ENDPOINT,
+                headers: {
+                  "upstash-workflow-sdk-version": "1",
+                  "content-type": "application/json",
+                  "upstash-feature-set": "LazyFetch,InitialBody",
+                  "upstash-forward-upstash-workflow-sdk-version": "1",
+                  "upstash-forward-upstash-workflow-invoke-count": "2",
+                  "upstash-method": "POST",
+                  "upstash-workflow-init": "true",
+                  "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                  "upstash-flow-control-key": "my-key",
+                  "upstash-flow-control-value": "rate=3",
+                  "upstash-workflow-runid": expect.stringMatching(/^wfr/),
+                },
+                body: initialPayload,
+              },
+            ],
           },
         },
         {

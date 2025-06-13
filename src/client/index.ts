@@ -165,8 +165,9 @@ export class Client {
   }
 
   /**
-   * Trigger new workflow run and returns the workflow run id
+   * Trigger new workflow run and returns the workflow run id or an array of workflow run ids
    *
+   * trigger a single workflow run:
    * ```ts
    * const { workflowRunId } = await client.trigger({
    *   url: "https://workflow-endpoint.com",
@@ -178,6 +179,31 @@ export class Client {
    *
    * console.log(workflowRunId)
    * // wfr_my-workflow
+   * ```
+   * trigger multiple workflow runs:
+   * ```ts
+   * const result = await client.trigger([
+   *   {
+   *   url: "https://workflow-endpoint.com",
+   *   body: "hello there!",         // Optional body
+   *   headers: { ... },             // Optional headers
+   *   workflowRunId: "my-workflow", // Optional workflow run ID
+   *   retries: 3                    // Optional retries for the initial request
+   * },
+   *   {
+   *   url: "https://workflow-endpoint-2.com",
+   *   body: "hello world!",           // Optional body
+   *   headers: { ... },               // Optional headers
+   *   workflowRunId: "my-workflow-2", // Optional workflow run ID
+   *   retries: 5                      // Optional retries for the initial request
+   * },
+   * ]);
+   *
+   * console.log(result)
+   * // [
+   * //   { workflowRunId: "wfr_my-workflow" },
+   * //   { workflowRunId: "wfr_my-workflow-2" },
+   * // ]
    * ```
    *
    * @param url URL of the workflow
@@ -195,42 +221,52 @@ export class Client {
    * @param delay Delay for the workflow run. This is used to delay the
    *   execution of the workflow run. The delay is in seconds or can be passed
    *   as a string with a time unit (e.g. "1h", "30m", "15s").
-   * @returns workflow run id
+   * @returns workflow run id or an array of workflow run ids
    */
-  public async trigger({
-    url,
-    body,
-    headers,
-    workflowRunId,
-    retries,
-    flowControl,
-    delay,
-    failureUrl,
-    useFailureFunction,
-  }: TriggerOptions): Promise<{ workflowRunId: string }> {
-    failureUrl = useFailureFunction ? url : failureUrl;
 
-    const finalWorkflowRunId = getWorkflowRunId(workflowRunId);
-    const context = new WorkflowContext({
-      qstashClient: this.client,
-      // @ts-expect-error headers type mismatch
-      headers: new Headers(headers ?? {}),
-      initialPayload: body,
-      steps: [],
-      url,
-      workflowRunId: finalWorkflowRunId,
-      retries,
-      telemetry: undefined, // can't know workflow telemetry here
-      flowControl,
-      failureUrl,
+  public async trigger(params: TriggerOptions): Promise<{ workflowRunId: string }>;
+  public async trigger(params: TriggerOptions[]): Promise<{ workflowRunId: string }[]>;
+
+  public async trigger(
+    params: TriggerOptions | TriggerOptions[]
+  ): Promise<{ workflowRunId: string } | { workflowRunId: string }[]> {
+    const isBatchInput = Array.isArray(params);
+    const options = isBatchInput ? params : [params];
+
+    const invocations = options.map((option) => {
+      const failureUrl = option.useFailureFunction ? option.url : option.failureUrl;
+      const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
+
+      const context = new WorkflowContext({
+        qstashClient: this.client,
+        // @ts-expect-error headers type mismatch
+        headers: new Headers(option.headers ?? {}),
+        initialPayload: option.body,
+        steps: [],
+        url: option.url,
+        workflowRunId: finalWorkflowRunId,
+        retries: option.retries,
+        telemetry: undefined, // can't know workflow telemetry here
+        flowControl: option.flowControl,
+        failureUrl,
+      });
+
+      return {
+        workflowContext: context,
+        telemetry: undefined, // can't know workflow telemetry here
+        delay: option.delay,
+      };
     });
-    const result = await triggerFirstInvocation({
-      workflowContext: context,
-      telemetry: undefined, // can't know workflow telemetry here
-      delay,
-    });
+    const result = await triggerFirstInvocation(invocations);
+
+    const workflowRunIds: string[] = invocations.map(
+      (invocation) => invocation.workflowContext.workflowRunId
+    );
+
     if (result.isOk()) {
-      return { workflowRunId: finalWorkflowRunId };
+      return isBatchInput
+        ? workflowRunIds.map((id) => ({ workflowRunId: id }))
+        : { workflowRunId: workflowRunIds[0] };
     } else {
       throw result.error;
     }
