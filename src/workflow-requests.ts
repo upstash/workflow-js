@@ -42,45 +42,47 @@ export const triggerFirstInvocation = async <TInitialPayload>(
   const firstInvocationParams = Array.isArray(params) ? params : [params];
   const workflowContextClient = firstInvocationParams[0].workflowContext.qstashClient;
 
-  const invocationBatch = firstInvocationParams.map((invocation) => {
-    const { headers } = getHeaders({
-      initHeaderValue: "true",
-      workflowConfig: {
-        workflowRunId: invocation.workflowContext.workflowRunId,
-        workflowUrl: invocation.workflowContext.url,
-        failureUrl: invocation.workflowContext.failureUrl,
-        retries: invocation.workflowContext.retries,
-        telemetry: invocation.telemetry,
-        flowControl: invocation.workflowContext.flowControl,
-        useJSONContent: invocation.useJSONContent ?? false,
-      },
-      invokeCount: invocation.invokeCount ?? 0,
-      userHeaders: invocation.workflowContext.headers,
-    });
+  const invocationBatch = firstInvocationParams.map(
+    ({ workflowContext, useJSONContent, telemetry, invokeCount, delay }) => {
+      const { headers } = getHeaders({
+        initHeaderValue: "true",
+        workflowConfig: {
+          workflowRunId: workflowContext.workflowRunId,
+          workflowUrl: workflowContext.url,
+          failureUrl: workflowContext.failureUrl,
+          retries: workflowContext.retries,
+          telemetry: telemetry,
+          flowControl: workflowContext.flowControl,
+          useJSONContent: useJSONContent ?? false,
+        },
+        invokeCount: invokeCount ?? 0,
+        userHeaders: workflowContext.headers,
+      });
 
-    // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
-    // so we need to pass it in the headers
-    if (invocation.workflowContext.headers.get("content-type")) {
-      headers["content-type"] = invocation.workflowContext.headers.get("content-type")!;
+      // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
+      // so we need to pass it in the headers
+      if (workflowContext.headers.get("content-type")) {
+        headers["content-type"] = workflowContext.headers.get("content-type")!;
+      }
+
+      if (useJSONContent) {
+        headers["content-type"] = "application/json";
+      }
+
+      const body =
+        typeof workflowContext.requestPayload === "string"
+          ? workflowContext.requestPayload
+          : JSON.stringify(workflowContext.requestPayload);
+
+      return {
+        headers,
+        method: "POST",
+        body,
+        url: workflowContext.url,
+        delay: delay,
+      } as PublishBatchRequest;
     }
-
-    if (invocation.useJSONContent) {
-      headers["content-type"] = "application/json";
-    }
-
-    const body =
-      typeof invocation.workflowContext.requestPayload === "string"
-        ? invocation.workflowContext.requestPayload
-        : JSON.stringify(invocation.workflowContext.requestPayload);
-
-    return {
-      headers,
-      method: "POST",
-      body,
-      url: invocation.workflowContext.url,
-      delay: invocation.delay,
-    } as PublishBatchRequest;
-  });
+  );
 
   try {
     const results = (await workflowContextClient.batch(invocationBatch)) as PublishToUrlResponse[];
