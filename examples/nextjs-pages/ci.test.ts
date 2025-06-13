@@ -146,8 +146,8 @@ describe("nextjs-pages", () => {
       token: "mock"
     })
     
-    // @ts-expect-error mocking publish
-    qstashClient.publish = async () => {
+    // @ts-expect-error mocking batch
+    qstashClient.batch = async () => {
       return { messageId: "msgId" }
     }
     
