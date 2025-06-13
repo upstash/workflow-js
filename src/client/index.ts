@@ -233,7 +233,6 @@ export class Client {
     const isBatchInput = Array.isArray(params);
     const options = isBatchInput ? params : [params];
 
-
     const invocations = options.map((option) => {
       const failureUrl = option.useFailureFunction ? option.url : option.failureUrl;
       const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
@@ -260,7 +259,9 @@ export class Client {
     });
     const result = await triggerFirstInvocation(invocations);
 
-    const workflowRunIds: string[] = invocations.map((invocation) => invocation.workflowContext.workflowRunId);
+    const workflowRunIds: string[] = invocations.map(
+      (invocation) => invocation.workflowContext.workflowRunId
+    );
 
     if (result.isOk()) {
       return isBatchInput
