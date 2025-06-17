@@ -844,6 +844,39 @@ describe("serve", () => {
     expect(runs).toBeFalse();
   });
 
+  test("should call qstash to fail workflow on context.fail", async () => {
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-2", "my-payload", []);
+    let called = false;
+    let runs = false;
+    const { handler: endpoint } = serve(
+      async (context) => {
+        called = true;
+        await context.fail();
+        await context.run("wont run", () => {
+          runs = true;
+        });
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        verbose: true,
+      }
+    );
+
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+
+        expect(response.status).toBe(489);
+        expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
+      },
+      responseFields: { body: undefined, status: 489 },
+      receivesRequest: false,
+    });
+    expect(called).toBeTrue();
+    expect(runs).toBeFalse();
+  });
+
   test("should send waitForEvent", async () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
     const { handler: endpoint } = serve(

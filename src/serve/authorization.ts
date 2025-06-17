@@ -58,6 +58,13 @@ export class DisabledWorkflowContext<
   }
 
   /**
+   * overwrite fail method to do nothing
+   */
+  public async fail() {
+    return;
+  }
+
+  /**
    * copies the passed context to create a DisabledWorkflowContext. Then, runs the
    * route function with the new context.
    *

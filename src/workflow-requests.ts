@@ -138,7 +138,8 @@ export const triggerRouteFunction = async ({
   onCancel: () => Promise<void>;
   debug?: WorkflowLogger;
 }): Promise<
-  Ok<"workflow-finished" | "step-finished" | "workflow-was-finished", never> | Err<never, Error>
+  | Ok<"workflow-finished" | "step-finished" | "workflow-was-finished" | "workflow-failed", never>
+  | Err<never, Error>
 > => {
   try {
     // When onStep completes successfully, it throws an exception named `WorkflowAbort`,
@@ -158,6 +159,8 @@ export const triggerRouteFunction = async ({
       return ok("workflow-was-finished");
     } else if (!(error_ instanceof WorkflowAbort)) {
       return err(error_);
+    } else if (error_.failWorkflow) {
+      return ok("workflow-failed");
     } else if (error_.cancelWorkflow) {
       await onCancel();
       return ok("workflow-finished");

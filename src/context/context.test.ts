@@ -442,6 +442,28 @@ describe("context tests", () => {
     throw new Error("Test error: context.cancel should have thrown abort error.");
   });
 
+  test("fail should throw abort", async () => {
+    const context = new WorkflowContext({
+      qstashClient,
+      initialPayload: "my-payload",
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      headers: new Headers() as Headers,
+      workflowRunId: "wfr-id",
+    });
+    try {
+      await context.fail();
+    } catch (error) {
+      expect(error instanceof WorkflowAbort).toBeTrue();
+      const _error = error as WorkflowAbort;
+      expect(_error.stepName).toBe("fail");
+      expect(_error.name).toBe("WorkflowAbort");
+      expect(_error.failWorkflow).toBeTrue();
+      return;
+    }
+    throw new Error("Test error: context.fail should have thrown abort error.");
+  });
+
   describe("context.api steps", () => {
     test("should throw if provider isn't provdided", async () => {
       const context = new WorkflowContext({
