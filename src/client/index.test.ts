@@ -327,12 +327,23 @@ describe("workflow client", () => {
                       },
                       messageId: expect.any(String),
                       out: "some-body",
+                      retries: 3,
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
                     },
                   ],
                   type: "sequential",
+                },
+                {
+                  steps: [
+                    {
+                      messageId: expect.any(String),
+                      retries: 3,
+                      state: "STEP_PROGRESS",
+                    },
+                  ],
+                  type: "next",
                 },
               ],
             });
@@ -369,12 +380,23 @@ describe("workflow client", () => {
                       },
                       messageId: expect.any(String),
                       out: "some-body",
+                      retries: 3,
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
                     },
                   ],
                   type: "sequential",
+                },
+                {
+                  steps: [
+                    {
+                      messageId: expect.any(String),
+                      retries: 3,
+                      state: "STEP_CANCELED",
+                    },
+                  ],
+                  type: "next",
                 },
               ],
             });
@@ -387,7 +409,9 @@ describe("workflow client", () => {
       }
     );
 
-    test(
+    // skipping test as the httpstat service is removed and we don't have a replacement
+    // for it yet.
+    test.skip(
       "should include failure logs in case of failure",
       async () => {
         const qstashClient = new QStashClient({
@@ -410,7 +434,7 @@ describe("workflow client", () => {
             workflowRunId,
             steps: [],
             url: "https://httpstat.us/400",
-            failureUrl: "https://httpstat.us/200",
+            failureUrl: "https://400check.requestcatcher.com/",
             retries: 0,
           }),
         });
@@ -452,6 +476,7 @@ describe("workflow client", () => {
                       },
                       messageId: expect.any(String),
                       out: "some-body",
+                      retries: 0,
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
@@ -464,6 +489,7 @@ describe("workflow client", () => {
                     {
                       state: "STEP_FAILED",
                       messageId: expect.any(String),
+                      retries: 0,
                     },
                   ],
                   type: "next",
@@ -471,7 +497,7 @@ describe("workflow client", () => {
               ],
             });
           },
-          { timeout: 30_000, interval: 100 }
+          { timeout: 10000, interval: 100 }
         );
       },
       {

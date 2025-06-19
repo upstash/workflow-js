@@ -32,6 +32,10 @@ type BaseStepLog = {
    */
   out: unknown;
   /**
+   * number of retries for the step
+   */
+  retries: number;
+  /**
    * number of parallel steps
    *
    * if the step is sequential (non-parallel), will be 1.
@@ -165,6 +169,7 @@ type StepLogGroup =
       steps: {
         messageId: string;
         state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
+        retries: number;
       }[];
       /**
        * Log which belongs to the next step
