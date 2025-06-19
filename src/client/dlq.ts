@@ -59,7 +59,7 @@ export class DLQ {
         ...filter,
         source: "workflow",
       },
-    })) as { messages: PublicDLQMessage[] };
+    })) as { messages: PublicDLQMessage[], cursor?: string };
   }
 
   async resume(parameters: { dlqId: string; workflowRunId?: string }) {
