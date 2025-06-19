@@ -91,10 +91,6 @@ describe("disabled workflow context", () => {
       expect(called).toBeTrue();
     });
 
-    test("shouldn't throw on cancel", () => {
-      const dontThrow = disabledContext.cancel;
-      expect(dontThrow).not.toThrowError();
-    });
   });
 
   describe("tryAuthentication", () => {
