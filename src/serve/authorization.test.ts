@@ -90,7 +90,6 @@ describe("disabled workflow context", () => {
       });
       expect(called).toBeTrue();
     });
-
   });
 
   describe("tryAuthentication", () => {

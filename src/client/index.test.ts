@@ -462,7 +462,7 @@ describe("workflow client", () => {
           }),
         });
         console.log("result", result);
-        
+
         expect(result.isOk()).toBe(true);
 
         await eventually(
