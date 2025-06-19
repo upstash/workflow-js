@@ -90,6 +90,38 @@ describe("disabled workflow context", () => {
       });
       expect(called).toBeTrue();
     });
+    test("cancel", async () => {
+      let called = false;
+      await mockQStashServer({
+        execute: () => {
+          const throws = disabledContext.cancel();
+          expect(throws).rejects.toThrow(WorkflowAbort);
+          called = true;
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: false,
+      });
+      expect(called).toBeTrue();
+    });
+    test("fail", async () => {
+      let called = false;
+      await mockQStashServer({
+        execute: () => {
+          const throws = disabledContext.fail();
+          expect(throws).rejects.toThrow(WorkflowAbort);
+          called = true;
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: false,
+      });
+      expect(called).toBeTrue();
+    });
   });
 
   describe("tryAuthentication", () => {
