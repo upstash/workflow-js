@@ -461,6 +461,7 @@ describe("workflow client", () => {
             url: "https://httpstat.us/200",
           }),
         });
+
         expect(result.isOk()).toBe(true);
 
         await eventually(

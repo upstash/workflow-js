@@ -214,6 +214,10 @@ export const serveBase = <
             debug,
           });
 
+      if (result.isOk() && result.value === "workflow-failed") {
+        return onStepFinish(workflowRunId, "workflow-failed");
+      }
+
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
         await debug?.log("ERROR", "ERROR", { error: result.error.message });

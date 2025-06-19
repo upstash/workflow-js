@@ -51,10 +51,17 @@ export class DisabledWorkflowContext<
   }
 
   /**
-   * overwrite cancel method to do nothing
+   * overwrite cancel method to throw WorkflowAbort with the disabledMessage
    */
   public async cancel() {
-    return;
+    throw new WorkflowAbort(DisabledWorkflowContext.disabledMessage);
+  }
+
+  /**
+   * overwrite fail method to throw WorkflowAbort with the disabledMessage
+   */
+  public async fail() {
+    throw new WorkflowAbort(DisabledWorkflowContext.disabledMessage);
   }
 
   /**

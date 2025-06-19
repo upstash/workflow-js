@@ -466,6 +466,17 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }
 
   /**
+   * Fail the current workflow run
+   *
+   * Will throw WorkflowAbort to stop workflow retries.
+   * Shouldn't be inside try/catch.
+   */
+  public async fail() {
+    // throw an abort which will stop workflow retries
+    throw new WorkflowAbort("fail", undefined, false, true);
+  }
+
+  /**
    * Adds steps to the executor. Needed so that it can be overwritten in
    * DisabledWorkflowContext.
    */
