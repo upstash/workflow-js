@@ -1,4 +1,4 @@
-import { HTTPMethods, State } from "@upstash/qstash";
+import { FlowControl, HTTPMethods, PublishRequest, State } from "@upstash/qstash";
 import { RawStep, StepType } from "../types";
 
 type BaseStepLog = {
@@ -169,7 +169,19 @@ type StepLogGroup =
       steps: {
         messageId: string;
         state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
+        /**
+         * retries
+         */
         retries: number;
+        /**
+         * errors which occured in the step
+         */
+        errors?: {
+          error: string;
+          headers: Record<string, string[]>;
+          status: number;
+          time: number;
+        }[];
       }[];
       /**
        * Log which belongs to the next step
@@ -202,6 +214,9 @@ type FailureFunctionLog = {
    * Response body of the step which caused the workflow to fail
    */
   failResponse: string;
+  /**
+   * @deprecated use dlqId field of the workflow run itself
+   */
   dlqId: string;
 };
 
@@ -269,9 +284,75 @@ export type WorkflowRunLog = {
      */
     workflowRunCreatedAt: number;
   };
+  /**
+   * If the workflow run has failed, id of the run in DLQ
+   */
+  dlqId?: string;
 };
 
 export type WorkflowRunLogs = {
   cursor: string;
   runs: WorkflowRunLog[];
 };
+
+export type TriggerOptions = {
+  /**
+   * URL of the workflow to trigger
+   */
+  url: string;
+  /**
+   * Body to send to the workflow
+   */
+  body?: unknown;
+  /**
+   * Headers to send to the workflow
+   */
+  headers?: Record<string, string>;
+  /**
+   * Workflow run id to use for the workflow run.
+   * If not provided, a random workflow run id will be generated.
+   */
+  workflowRunId?: string;
+  /**
+   * Number of retries to perform if the request fails.
+   *
+   * @default 3
+   */
+  retries?: number;
+  /**
+   * Flow control to use for the workflow run.
+   * If not provided, no flow control will be used.
+   */
+  flowControl?: FlowControl;
+  /**
+   * Delay to apply before triggering the workflow.
+   */
+  delay?: PublishRequest["delay"];
+} & (
+  | {
+      /**
+       * URL to call if the first request to the workflow endpoint fails
+       */
+      failureUrl?: never;
+      /**
+       * Whether the workflow endpoint has a failure function
+       * defined to be invoked if the first request fails.
+       *
+       * If true, the failureUrl will be ignored.
+       */
+      useFailureFunction?: true;
+    }
+  | {
+      /**
+       * URL to call if the first request to the workflow endpoint fails
+       */
+      failureUrl?: string;
+      /**
+       * Whether the workflow endpoint has a failure function
+       * defined to be invoked if the first request fails.
+       *
+       * If true, the failureUrl will be ignored.
+       */
+      useFailureFunction?: never;
+    }
+);
