@@ -63,28 +63,36 @@ export class DLQ {
   }
 
   async resume(parameters: { dlqId: string; workflowRunId?: string }) {
-    const { dlqId, workflowRunId } = parameters;
-    return await this.client.http.request({
+    const { dlqId, workflowRunId: userWorkflowRunId } = parameters;
+    const { workflowCreatedAt, workflowRunId } = await this.client.http.request<{
+      workflowRunId: string;
+      workflowCreatedAt: string;
+    }>({
       path: ["v2", "workflows", "dlq", "resume", dlqId],
-      headers: workflowRunId
-        ? {
-            "Upstash-Workflow-RunId": `wfr_${workflowRunId}`,
-          }
-        : {},
+      headers: this.getHeaders(userWorkflowRunId),
       method: "POST",
     });
+    return { workflowCreatedAt, workflowRunId };
   }
 
   async restart(parameters: { dlqId: string; workflowRunId?: string }) {
-    const { dlqId, workflowRunId } = parameters;
-    return await this.client.http.request({
+    const { dlqId, workflowRunId: userWorkflowRunId } = parameters;
+    const { workflowCreatedAt, workflowRunId } = await this.client.http.request<{
+      workflowRunId: string;
+      workflowCreatedAt: string;
+    }>({
       path: ["v2", "workflows", "dlq", "restart", dlqId],
-      headers: workflowRunId
-        ? {
-            "Upstash-Workflow-RunId": `wfr_${workflowRunId}`,
-          }
-        : {},
+      headers: this.getHeaders(userWorkflowRunId),
       method: "POST",
     });
+    return { workflowCreatedAt, workflowRunId };
+  }
+
+  private getHeaders(workflowRunId?: string): Record<string, string> {
+    return workflowRunId
+      ? {
+          "Upstash-Workflow-RunId": `wfr_${workflowRunId}`,
+        }
+      : {};
   }
 }
