@@ -55,6 +55,13 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
             status: 400,
           }
         ) as TResponse;
+      } else if (finishCondition === "workflow-failed") {
+        return new Response(JSON.stringify({ workflowRunId }), {
+          headers: {
+            "Upstash-NonRetryable-Error": "true",
+          },
+          status: 489,
+        }) as TResponse;
       }
       return new Response(JSON.stringify({ workflowRunId }), {
         status: 200,

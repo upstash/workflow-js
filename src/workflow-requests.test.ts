@@ -186,6 +186,38 @@ describe("Workflow Requests", () => {
     expect(result.value).toBe("workflow-finished");
   });
 
+  test("should fail workflow and return ok if context.fail is called", async () => {
+    const workflowRunId = nanoid();
+    const token = "myToken";
+
+    const context = new WorkflowContext({
+      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
+      workflowRunId: workflowRunId,
+      initialPayload: undefined,
+      headers: new Headers({}) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+    });
+
+    const result = await triggerRouteFunction({
+      onStep: async () => {
+        await context.fail();
+        await context.run("shouldn't call", () => {
+          throw new Error("shouldn't call context.run");
+        });
+      },
+      onCleanup: async () => {
+        throw new Error("shouldn't call");
+      },
+      onCancel: async () => {
+        throw new Error("shouldn't call");
+      },
+    });
+    expect(result.isOk()).toBeTrue();
+    // @ts-expect-error value will be set since result isOk
+    expect(result.value).toBe("workflow-failed");
+  });
+
   test("should call onCancel if context.cancel is called inside context.run", async () => {
     const workflowRunId = nanoid();
     const token = "myToken";
