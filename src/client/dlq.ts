@@ -1,4 +1,6 @@
 import { Client as QStashClient } from "@upstash/qstash";
+import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
+import { prepareFlowControl } from "../qstash/headers";
 
 type QStashDLQFilterOptions = NonNullable<
   Required<Parameters<QStashClient["dlq"]["listMessages"]>[0]>
@@ -46,8 +48,21 @@ type PublicDLQMessage = Pick<
 >;
 
 export class DLQ {
-  constructor(private client: QStashClient) {}
+  constructor(private client: QStashClient) { }
 
+  /**
+   * list the items in the DLQ
+   * 
+   * @param cursor - Optional cursor for pagination.
+   * @param count - Optional number of items to return.
+   * @param filter - Optional filter options to apply to the DLQ items.
+   *    The available filter options are:
+   *    - `fromDate`: Filter items which entered the DLQ after this date.
+   *    - `toDate`: Filter items which entered the DLQ before this date.
+   *    - `url`: Filter items by the URL they were sent to.
+   *    - `responseStatus`: Filter items by the response status code.
+   * @returns 
+   */
   async list(parameters?: { cursor?: string; count?: number; filter?: DLQFilterOptions }) {
     const { cursor, count, filter } = parameters || {};
     return (await this.client.http.request({
@@ -62,37 +77,151 @@ export class DLQ {
     })) as { messages: PublicDLQMessage[]; cursor?: string };
   }
 
-  async resume(parameters: { dlqId: string; workflowRunId?: string }) {
-    const { dlqId, workflowRunId: userWorkflowRunId } = parameters;
-    const { workflowCreatedAt, workflowRunId } = await this.client.http.request<{
-      workflowRunId: string;
-      workflowCreatedAt: string;
-    }>({
-      path: ["v2", "workflows", "dlq", "resume", dlqId],
-      headers: this.getHeaders(userWorkflowRunId),
+  /**
+   * Resumes the workflow run for the given DLQ message(s).
+   * 
+   * Resuming means that the new workflow run will start execting from where
+   * the original workflow run failed, using the same input and context.
+   * 
+   * If you want to restart the workflow run from the beginning, use
+   * `restart` method instead.
+   * 
+   * Example with a single DLQ ID:
+   * ```ts
+   * const response = await client.dlq.resume({
+   *   dlqId: "dlq-12345",
+   *   flowControl: {
+   *     key: "my-flow-control-key",
+   *     value: "my-flow-control-value",
+   *   },
+   *   retries: 3,
+   * });
+   * 
+   * console.log(response.workflowRunId); // ID of the new workflow run
+   * ```
+   * 
+   * Example with multiple DLQ IDs:
+   * ```ts
+   * const response = await client.dlq.resume({
+   *  dlqId: ["dlq-12345", "dlq-67890"],
+   *  // other parameters...
+   * });
+   * console.log(response[0].workflowRunId); // ID of the first workflow run
+   * console.log(response[1].workflowRunId); // ID of the second workflow run
+   * ```
+   * 
+   * if the dlqId is not found, throws an error.
+   * 
+   * @param dlqId - The ID(s) of the DLQ message(s) to resume.
+   * @param flowControl - Optional flow control parameters. If not passed, flow
+   *     control of the failing workflow will be used
+   * @param retries - Optional number of retries to perform if the request fails.
+   *     If not passed, retries settings of the failing workflow will be used.
+   * @returns run id and creation time of the new workflow run(s).
+   */
+  async resume(parameters: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>
+  async resume(parameters: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>
+  async resume(parameters: DLQResumeRestartOptions) {
+    const { headers, queryParams } = DLQ.handleDLQOptions(parameters);
+    const { workflowRuns } = await this.client.http.request<{ workflowRuns: DLQResumeRestartResponse[] }>({
+      path: ["v2", "workflows", "dlq", `resume?${queryParams}`],
+      headers,
       method: "POST",
     });
-    return { workflowCreatedAt, workflowRunId };
+
+    if (Array.isArray(parameters.dlqId)) {
+      return workflowRuns;
+    }
+    return workflowRuns[0];
   }
 
-  async restart(parameters: { dlqId: string; workflowRunId?: string }) {
-    const { dlqId, workflowRunId: userWorkflowRunId } = parameters;
-    const { workflowCreatedAt, workflowRunId } = await this.client.http.request<{
-      workflowRunId: string;
-      workflowCreatedAt: string;
-    }>({
-      path: ["v2", "workflows", "dlq", "restart", dlqId],
-      headers: this.getHeaders(userWorkflowRunId),
+
+
+  /**
+   * Restarts the workflow run for the given DLQ message(s).
+   * 
+   * Restarting means that the new workflow run will start execting from the
+   * beginning with the same initial payload and configuration.
+   * 
+   * If you want to resume the workflow run from where it failed, use
+   * `resume` method instead.
+   * 
+   * Example with a single DLQ ID:
+   * ```ts
+   * const response = await client.dlq.restart({
+   *   dlqId: "dlq-12345",
+   *   flowControl: {
+   *     key: "my-flow-control-key",
+   *     value: "my-flow-control-value",
+   *   },
+   *   retries: 3,
+   * });
+   * 
+   * console.log(response.workflowRunId); // ID of the new workflow run
+   * ```
+   * 
+   * Example with multiple DLQ IDs:
+   * ```ts
+   * const response = await client.dlq.restart({
+   *  dlqId: ["dlq-12345", "dlq-67890"],
+   *  // other parameters...
+   * });
+   * console.log(response[0].workflowRunId); // ID of the first workflow run
+   * console.log(response[1].workflowRunId); // ID of the second workflow run
+   * ```
+   * 
+   * if the dlqId is not found, throws an error.
+   * 
+   * @param dlqId - The ID(s) of the DLQ message(s) to restart.
+   * @param flowControl - Optional flow control parameters. If not passed, flow
+   *     control of the failing workflow will be used
+   * @param retries - Optional number of retries to perform if the request fails.
+   *     If not passed, retries settings of the failing workflow will be used.
+   * @returns run id and creation time of the new workflow run(s).
+   */
+  async restart(parameters: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>
+  async restart(parameters: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>
+  async restart(parameters: DLQResumeRestartOptions) {
+    const { headers, queryParams } = DLQ.handleDLQOptions(parameters);
+    const { workflowRuns } = await this.client.http.request<{ workflowRuns: DLQResumeRestartResponse[] }>({
+      path: ["v2", "workflows", "dlq", `restart?${queryParams}`],
+      headers,
       method: "POST",
     });
-    return { workflowCreatedAt, workflowRunId };
+
+    if (Array.isArray(parameters.dlqId)) {
+      return workflowRuns;
+    }
+    return workflowRuns[0];
   }
 
-  private getHeaders(workflowRunId?: string): Record<string, string> {
-    return workflowRunId
-      ? {
-          "Upstash-Workflow-RunId": `wfr_${workflowRunId}`,
-        }
-      : {};
+  private static handleDLQOptions(
+    options: DLQResumeRestartOptions
+  ) {
+    const { dlqId, flowControl, retries } = options
+
+    const headers: Record<string, string> = {}
+    if (flowControl) {
+      const { flowControlKey, flowControlValue } = prepareFlowControl(
+        flowControl
+      );
+      headers["Upstash-Flow-Control-Key"] = flowControlKey;
+      headers["Upstash-Flow-Control-Value"] = flowControlValue;
+    }
+
+    if (retries !== undefined) {
+      headers["Upstash-Retries"] = retries.toString();
+    }
+
+    return {
+      queryParams: DLQ.getDlqIdQueryParameter(dlqId),
+      headers
+    }
+  }
+
+  private static getDlqIdQueryParameter(dlqId: string | string[]): string {
+    const dlqIds = Array.isArray(dlqId) ? dlqId : [dlqId];
+    const paramsArray: [string, string][] = dlqIds.map((id) => ["dlqIds", id]);
+    return new URLSearchParams(paramsArray).toString();
   }
 }
