@@ -358,8 +358,8 @@ export type TriggerOptions = {
 );
 
 export type DLQResumeRestartOptions<TDLQId extends string | string[] = string | string[]> = {
-  dlqId: TDLQId,
-} & Pick<TriggerOptions, "flowControl" | "retries">
+  dlqId: TDLQId;
+} & Pick<TriggerOptions, "flowControl" | "retries">;
 
 export type DLQResumeRestartResponse = {
   /**
@@ -370,4 +370,4 @@ export type DLQResumeRestartResponse = {
    * Time when the new workflow run was created
    */
   workflowCreatedAt: string;
-}
+};
