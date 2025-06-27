@@ -32,6 +32,10 @@ type BaseStepLog = {
    */
   out: unknown;
   /**
+   * number of retries for the step
+   */
+  retries: number;
+  /**
    * number of parallel steps
    *
    * if the step is sequential (non-parallel), will be 1.
@@ -49,10 +53,6 @@ type BaseStepLog = {
    * headers
    */
   headers: Record<string, string[]>;
-  /**
-   * retries
-   */
-  retries: number;
 };
 
 type CallUrlGroup = {
@@ -356,3 +356,18 @@ export type TriggerOptions = {
       useFailureFunction?: never;
     }
 );
+
+export type DLQResumeRestartOptions<TDLQId extends string | string[] = string | string[]> = {
+  dlqId: TDLQId;
+} & Pick<TriggerOptions, "flowControl" | "retries">;
+
+export type DLQResumeRestartResponse = {
+  /**
+   * id of the workflow run created to resume or restart the DLQ message
+   */
+  workflowRunId: string;
+  /**
+   * Time when the new workflow run was created
+   */
+  workflowCreatedAt: string;
+};

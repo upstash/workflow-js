@@ -4,6 +4,7 @@ import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
+import { DLQ } from "./dlq";
 import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
@@ -334,5 +335,9 @@ export class Client {
     });
 
     return result;
+  }
+
+  get dlq() {
+    return new DLQ(this.client);
   }
 }
