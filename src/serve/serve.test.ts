@@ -24,6 +24,7 @@ import {
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
 import { WorkflowLogger } from "../logger";
 import { z } from "zod";
+import { WorkflowNonRetryableError } from "../error";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -844,17 +845,13 @@ describe("serve", () => {
     expect(runs).toBeFalse();
   });
 
-  test("should call qstash to fail workflow on context.fail", async () => {
+  test("should call qstash to fail workflow on WorkflowNonRetryableError", async () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-2", "my-payload", []);
     let called = false;
-    let runs = false;
     const { handler: endpoint } = serve(
       async (context) => {
         called = true;
-        await context.fail();
-        await context.run("wont run", () => {
-          runs = true;
-        });
+        throw new WorkflowNonRetryableError("This is a non-retryable error");
       },
       {
         qstashClient,
@@ -874,7 +871,6 @@ describe("serve", () => {
       receivesRequest: false,
     });
     expect(called).toBeTrue();
-    expect(runs).toBeFalse();
   });
 
   test("should send waitForEvent", async () => {

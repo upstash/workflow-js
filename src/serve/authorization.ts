@@ -58,13 +58,6 @@ export class DisabledWorkflowContext<
   }
 
   /**
-   * overwrite fail method to throw WorkflowAbort with the disabledMessage
-   */
-  public async fail() {
-    throw new WorkflowAbort(DisabledWorkflowContext.disabledMessage);
-  }
-
-  /**
    * copies the passed context to create a DisabledWorkflowContext. Then, runs the
    * route function with the new context.
    *

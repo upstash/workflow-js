@@ -22,10 +22,6 @@ export class WorkflowAbort extends Error {
    * whether workflow is to be canceled on abort
    */
   public cancelWorkflow: boolean;
-  /**
-   * whether workflow is to be failed on abort
-   */
-  public failWorkflow: boolean;
 
   /**
    *
@@ -33,7 +29,7 @@ export class WorkflowAbort extends Error {
    * @param stepInfo step information
    * @param cancelWorkflow
    */
-  constructor(stepName: string, stepInfo?: Step, cancelWorkflow = false, failWorkflow = false) {
+  constructor(stepName: string, stepInfo?: Step, cancelWorkflow = false) {
     super(
       "This is an Upstash Workflow error thrown after a step executes. It is expected to be raised." +
         " Make sure that you await for each step. Also, if you are using try/catch blocks, you should not wrap context.run/sleep/sleepUntil/call methods with try/catch." +
@@ -43,7 +39,20 @@ export class WorkflowAbort extends Error {
     this.stepName = stepName;
     this.stepInfo = stepInfo;
     this.cancelWorkflow = cancelWorkflow;
-    this.failWorkflow = failWorkflow;
+  }
+}
+
+/**
+ * Raised when the workflow is failed due to a non-retryable error
+ */
+export class WorkflowNonRetryableError extends WorkflowAbort {
+  /**
+   * @param message error message to be displayed
+   */
+  constructor(message?: string) {
+    super("fail", undefined, false);
+    this.name = "WorkflowNonRetryableError";
+    if (message) this.message = message;
   }
 }
 
