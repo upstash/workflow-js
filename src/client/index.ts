@@ -5,6 +5,7 @@ import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
+import { SDK_TELEMETRY } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -246,14 +247,14 @@ export class Client {
         url: option.url,
         workflowRunId: finalWorkflowRunId,
         retries: option.retries,
-        telemetry: undefined, // can't know workflow telemetry here
+        telemetry: { sdk: SDK_TELEMETRY },
         flowControl: option.flowControl,
         failureUrl,
       });
 
       return {
         workflowContext: context,
-        telemetry: undefined, // can't know workflow telemetry here
+        telemetry: { sdk: SDK_TELEMETRY },
         delay: option.delay,
       };
     });
