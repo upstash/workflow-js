@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { WorkflowAbort } from "../error";
+import { WorkflowAbort, WorkflowNonRetryableError } from "../error";
 import { RouteFunction } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
@@ -91,7 +91,10 @@ export class DisabledWorkflowContext<
     try {
       await routeFunction(disabledContext);
     } catch (error) {
-      if (error instanceof WorkflowAbort && error.stepName === this.disabledMessage) {
+      if (
+        (error instanceof WorkflowAbort && error.stepName === this.disabledMessage) ||
+        error instanceof WorkflowNonRetryableError
+      ) {
         return ok("step-found");
       }
       return err(error as Error);
