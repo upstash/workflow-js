@@ -15,7 +15,7 @@ type DLQMessage = {
   messageId: string;
   url: string;
   method: string;
-  header: object;
+  header: Record<string, string[]>;
   body: string;
   maxRetries: number;
   notBefore: number;
@@ -25,7 +25,7 @@ type DLQMessage = {
   workflowCreatedAt: number;
   workflowUrl: string;
   responseStatus: number;
-  responseHeader: object;
+  responseHeader: Record<string, string[]>;
   responseBody: string;
   dlqId: string;
 };

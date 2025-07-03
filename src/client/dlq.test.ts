@@ -6,7 +6,7 @@ import { nanoid } from "../utils";
 const MOCK_DLQ_MESSAGES = [
   {
     dlqId: `dlq-${nanoid()}`,
-    header: { "user-agent": "test-agent" },
+    header: { "user-agent": ["test-agent"] },
     body: "all-params-body-1",
     maxRetries: 1,
     notBefore: 1645000000000,
@@ -16,12 +16,12 @@ const MOCK_DLQ_MESSAGES = [
     workflowCreatedAt: 1645000000000,
     workflowUrl: "https://example.com/all-params-1",
     responseStatus: 422,
-    responseHeader: { "content-length": "100" },
+    responseHeader: { "content-length": ["100"] },
     responseBody: "Validation Error",
   },
   {
     dlqId: `dlq-${nanoid()}`,
-    header: { accept: "application/json" },
+    header: { accept: ["application/json"] },
     body: "all-params-body-2",
     maxRetries: 4,
     notBefore: 1645100000000,
@@ -31,10 +31,10 @@ const MOCK_DLQ_MESSAGES = [
     workflowCreatedAt: 1645100000000,
     workflowUrl: "https://example.com/all-params-2",
     responseStatus: 503,
-    responseHeader: { "retry-after": "60" },
+    responseHeader: { "retry-after": ["60"] },
     responseBody: "Service Unavailable",
   },
-];
+] as Awaited<ReturnType<Client["dlq"]["list"]>>["messages"];
 
 describe("DLQ", () => {
   const token = nanoid();
