@@ -503,7 +503,8 @@ describe("workflow client", () => {
                     {
                       messageId: expect.any(String),
                       retries: 3,
-                      state: "STEP_PROGRESS",
+                      errors: expect.any(Array),
+                      state: "STEP_RETRY",
                     },
                   ],
                   type: "next",
@@ -556,6 +557,7 @@ describe("workflow client", () => {
                     {
                       messageId: expect.any(String),
                       retries: 3,
+                      errors: expect.any(Array),
                       state: "STEP_CANCELED",
                     },
                   ],
