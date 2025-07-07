@@ -281,7 +281,7 @@ export type Telemetry = {
   /**
    * platform (such as nextjs/cloudflare)
    */
-  framework: string;
+  framework?: string;
   /**
    * node version
    */

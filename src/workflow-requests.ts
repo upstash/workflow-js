@@ -427,7 +427,7 @@ export type HeadersResponse = {
 export const getTelemetryHeaders = (telemetry: Telemetry) => {
   return {
     [TELEMETRY_HEADER_SDK]: telemetry.sdk,
-    [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework,
+    [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework ?? "unknown",
     [TELEMETRY_HEADER_RUNTIME]: telemetry.runtime ?? "unknown",
   };
 };
