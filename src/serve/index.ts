@@ -1,7 +1,7 @@
 import { makeCancelRequest } from "../client/utils";
 import { SDK_TELEMETRY, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
 import { WorkflowContext } from "../context";
-import { formatWorkflowError } from "../error";
+import { formatWorkflowError, WorkflowNonRetryableError } from "../error";
 import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
@@ -214,8 +214,8 @@ export const serveBase = <
             debug,
           });
 
-      if (result.isOk() && result.value === "workflow-failed") {
-        return onStepFinish(workflowRunId, "workflow-failed");
+      if (result.isOk() && result.value instanceof WorkflowNonRetryableError) {
+        return onStepFinish(workflowRunId, result.value);
       }
 
       if (result.isErr()) {

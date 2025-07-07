@@ -866,6 +866,12 @@ describe("serve", () => {
 
         expect(response.status).toBe(489);
         expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
+
+        const body = await response.json();
+        expect(body).toEqual({
+          error: "WorkflowNonRetryableError",
+          message: "This is a non-retryable error",
+        });
       },
       responseFields: { body: undefined, status: 489 },
       receivesRequest: false,
