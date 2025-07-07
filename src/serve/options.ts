@@ -3,7 +3,7 @@ import { Client } from "@upstash/qstash";
 import { DEFAULT_RETRIES } from "../constants";
 import type { FinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
-import { WorkflowError } from "../error";
+import { formatWorkflowError, WorkflowError, WorkflowNonRetryableError } from "../error";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -55,8 +55,8 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
             status: 400,
           }
         ) as TResponse;
-      } else if (finishCondition === "workflow-failed") {
-        return new Response(JSON.stringify({ workflowRunId }), {
+      } else if (finishCondition instanceof WorkflowNonRetryableError) {
+        return new Response(JSON.stringify(formatWorkflowError(finishCondition)), {
           headers: {
             "Upstash-NonRetryable-Error": "true",
           },

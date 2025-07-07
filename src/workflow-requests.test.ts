@@ -200,7 +200,7 @@ describe("Workflow Requests", () => {
     });
     expect(result.isOk()).toBeTrue();
     // @ts-expect-error value will be set since result isOk
-    expect(result.value).toBe("workflow-failed");
+    expect(result.value).toBeInstanceOf(WorkflowNonRetryableError);
   });
 
   test("should call onCancel if context.cancel is called inside context.run", async () => {

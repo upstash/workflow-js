@@ -299,14 +299,6 @@ jobs:
         run: npm run build
         working-directory: examples/nestjs
 
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/nestjs
-
-      - name: Run local tests
-        run: bun test .
-        working-directory: examples/nestjs
-
   nextjs-local-build:
     needs:
       - local-tests

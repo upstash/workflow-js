@@ -4,6 +4,7 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
+import { WorkflowNonRetryableError } from "./error";
 
 /**
  * Interface for Client with required methods
@@ -133,7 +134,7 @@ export type FinishCondition =
   | "auth-fail"
   | "failure-callback"
   | "workflow-already-ended"
-  | "workflow-failed";
+  | WorkflowNonRetryableError;
 
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
