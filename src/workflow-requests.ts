@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { WorkflowAbort, WorkflowError } from "./error";
+import { WorkflowAbort, WorkflowError, WorkflowNonRetryableError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   TELEMETRY_HEADER_FRAMEWORK,
@@ -159,7 +159,7 @@ export const triggerRouteFunction = async ({
       return ok("workflow-was-finished");
     } else if (!(error_ instanceof WorkflowAbort)) {
       return err(error_);
-    } else if (error_.failWorkflow) {
+    } else if (error_ instanceof WorkflowNonRetryableError) {
       return ok("workflow-failed");
     } else if (error_.cancelWorkflow) {
       await onCancel();
@@ -427,7 +427,7 @@ export type HeadersResponse = {
 export const getTelemetryHeaders = (telemetry: Telemetry) => {
   return {
     [TELEMETRY_HEADER_SDK]: telemetry.sdk,
-    [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework,
+    [TELEMETRY_HEADER_FRAMEWORK]: telemetry.framework ?? "unknown",
     [TELEMETRY_HEADER_RUNTIME]: telemetry.runtime ?? "unknown",
   };
 };

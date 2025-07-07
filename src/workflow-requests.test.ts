@@ -9,7 +9,7 @@ import {
   triggerRouteFunction,
   triggerWorkflowDelete,
 } from "./workflow-requests";
-import { WorkflowAbort } from "./error";
+import { WorkflowAbort, WorkflowNonRetryableError } from "./error";
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "./client";
@@ -186,25 +186,10 @@ describe("Workflow Requests", () => {
     expect(result.value).toBe("workflow-finished");
   });
 
-  test("should fail workflow and return ok if context.fail is called", async () => {
-    const workflowRunId = nanoid();
-    const token = "myToken";
-
-    const context = new WorkflowContext({
-      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
-      workflowRunId: workflowRunId,
-      initialPayload: undefined,
-      headers: new Headers({}) as Headers,
-      steps: [],
-      url: WORKFLOW_ENDPOINT,
-    });
-
+  test("should fail workflow and return ok if WorkflowNonRetryableError is thrown", async () => {
     const result = await triggerRouteFunction({
       onStep: async () => {
-        await context.fail();
-        await context.run("shouldn't call", () => {
-          throw new Error("shouldn't call context.run");
-        });
+        throw new WorkflowNonRetryableError("This is a non-retryable error");
       },
       onCleanup: async () => {
         throw new Error("shouldn't call");
