@@ -80,7 +80,7 @@ export class DLQ {
   /**
    * Resumes the workflow run for the given DLQ message(s).
    *
-   * Resuming means that the new workflow run will start execting from where
+   * Resuming means that the new workflow run will start executing from where
    * the original workflow run failed, using the same input and context.
    *
    * If you want to restart the workflow run from the beginning, use
@@ -140,7 +140,7 @@ export class DLQ {
   /**
    * Restarts the workflow run for the given DLQ message(s).
    *
-   * Restarting means that the new workflow run will start execting from the
+   * Restarting means that the new workflow run will start executing from the
    * beginning with the same initial payload and configuration.
    *
    * If you want to resume the workflow run from where it failed, use
