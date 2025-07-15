@@ -387,8 +387,6 @@ export const handleFailure = async <TInitialPayload>(
       failHeaders: header,
     });
   } catch (error) {
-    console.log(error);
-
     return err(error as Error);
   }
 
