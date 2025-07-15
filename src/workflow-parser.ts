@@ -333,7 +333,19 @@ export const handleFailure = async <TInitialPayload>(
     };
 
     const decodedBody = body ? decodeBase64(body) : "{}";
-    const errorPayload = JSON.parse(decodedBody) as FailureFunctionPayload;
+    let errorMessage: string = "";
+    try {
+      const errorPayload = JSON.parse(decodedBody) as FailureFunctionPayload;
+      if (errorPayload.message) {
+        errorMessage = errorPayload.message;
+      }
+    } catch {
+      // skip
+    }
+
+    if (!errorMessage) {
+      errorMessage = `Couldn't parse 'failResponse' in 'failureFunction', received: '${decodedBody}'`;
+    }
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
@@ -371,7 +383,7 @@ export const handleFailure = async <TInitialPayload>(
     await failureFunction({
       context: workflowContext,
       failStatus: status,
-      failResponse: errorPayload.message,
+      failResponse: errorMessage,
       failHeaders: header,
     });
   } catch (error) {
