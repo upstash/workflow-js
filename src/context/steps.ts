@@ -482,7 +482,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   }
 }
 
-export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
+export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepResponse<TEventData>> {
   private readonly eventId: string;
   private readonly timeout: string;
   stepType: StepType = "Wait";
@@ -510,7 +510,7 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
     };
   }
 
-  public async getResultStep(concurrent: number, stepId: number): Promise<Step<WaitStepResponse>> {
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step<WaitStepResponse<TEventData>>> {
     return await Promise.resolve({
       stepId,
       stepName: this.stepName,
@@ -521,7 +521,7 @@ export class LazyWaitForEventStep extends BaseLazyStep<WaitStepResponse> {
     });
   }
 
-  protected safeParseOut(out: string): WaitStepResponse {
+  protected safeParseOut(out: string): WaitStepResponse<TEventData> {
     const result = JSON.parse(out) as WaitStepResponse;
     return {
       ...result,

@@ -404,16 +404,16 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *   The `timeout` property specifies if the workflow has timed out. The `eventData`
    *   is the data passed when notifying this workflow of an event.
    */
-  public async waitForEvent(
+  public async waitForEvent<TEventData = unknown>(
     stepName: string,
     eventId: string,
     options: WaitEventOptions = {}
-  ): Promise<WaitStepResponse> {
+  ): Promise<WaitStepResponse<TEventData>> {
     const { timeout = "7d" } = options;
 
     const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
 
-    return await this.addStep(new LazyWaitForEventStep(stepName, eventId, timeoutStr));
+    return await this.addStep(new LazyWaitForEventStep<TEventData>(stepName, eventId, timeoutStr));
   }
 
   /**
