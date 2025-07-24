@@ -218,6 +218,14 @@ type FailureFunctionLog = {
    * @deprecated use dlqId field of the workflow run itself
    */
   dlqId: string;
+  /**
+   * String body returned from the failure function
+   */
+  responseBody?: string;
+  /**
+   * Headers received from the failure function
+   */
+  responseHeaders?: Record<string, string[]>;
 };
 
 export type WorkflowRunLog = {
