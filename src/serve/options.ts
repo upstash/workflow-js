@@ -1,6 +1,6 @@
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
-import { DEFAULT_RETRIES } from "../constants";
+import { DEFAULT_RETRIES, WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
 import type { FinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
 import { formatWorkflowError, WorkflowError, WorkflowNonRetryableError } from "../error";
@@ -53,18 +53,25 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           }),
           {
             status: 400,
+            headers: {
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            }
           }
         ) as TResponse;
       } else if (finishCondition instanceof WorkflowNonRetryableError) {
         return new Response(JSON.stringify(formatWorkflowError(finishCondition)), {
           headers: {
             "Upstash-NonRetryable-Error": "true",
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION
           },
           status: 489,
         }) as TResponse;
       }
       return new Response(JSON.stringify({ workflowRunId }), {
         status: 200,
+        headers: {
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+        }
       }) as TResponse;
     },
     initialPayloadParser: (initialRequest: string) => {
