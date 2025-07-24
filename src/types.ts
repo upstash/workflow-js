@@ -341,7 +341,7 @@ export type WaitRequest = {
   timeoutHeaders?: Record<string, string[]>;
 };
 
-export type WaitStepResponse = {
+export type WaitStepResponse<TEventData = unknown> = {
   /**
    * whether the wait for event step timed out. false if
    * the step is notified
@@ -350,7 +350,7 @@ export type WaitStepResponse = {
   /**
    * body passed in notify request
    */
-  eventData: unknown;
+  eventData: TEventData;
 };
 
 export type NotifyStepResponse = {
