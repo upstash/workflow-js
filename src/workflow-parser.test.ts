@@ -793,6 +793,80 @@ describe("Workflow Parser", () => {
       },
     });
 
+    test("should show failResponse with warning when payload doesn't have message field", async () => {
+      const routeFunction = async (context: WorkflowContext) => {
+        await context.sleep("sleeping", 1);
+      };
+
+      const incorrectErrorResponseBody = JSON.stringify({
+        nonMessageField: "any-value",
+      });
+
+      let calledFailureFunction = false;
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({ failResponse }) => {
+        expect(failResponse).toBe(
+          `Couldn't parse 'failResponse' in 'failureFunction', received: '${incorrectErrorResponseBody}'`
+        );
+        calledFailureFunction = true;
+        return;
+      };
+
+      const result2 = await handleFailure(
+        failureRequest,
+        JSON.stringify({
+          status: 201,
+          body: btoa(incorrectErrorResponseBody),
+          url: WORKFLOW_ENDPOINT,
+        }),
+        client,
+        initialPayloadParser,
+        routeFunction,
+        failureFunction,
+        {},
+        0,
+        undefined
+      );
+
+      expect(result2.isOk()).toBeTrue();
+      expect(calledFailureFunction).toBeTrue();
+    });
+
+    test("should show failResponse with warning when payload can't be parsed", async () => {
+      const routeFunction = async (context: WorkflowContext) => {
+        await context.sleep("sleeping", 1);
+      };
+
+      const nonJSONPayload = "helloWorld";
+
+      let calledFailureFunction = false;
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({ failResponse }) => {
+        expect(failResponse).toBe(
+          `Couldn't parse 'failResponse' in 'failureFunction', received: '${nonJSONPayload}'`
+        );
+        calledFailureFunction = true;
+        return;
+      };
+
+      const result2 = await handleFailure(
+        failureRequest,
+        JSON.stringify({
+          status: 201,
+          body: btoa(nonJSONPayload),
+          url: WORKFLOW_ENDPOINT,
+        }),
+        client,
+        initialPayloadParser,
+        routeFunction,
+        failureFunction,
+        {},
+        0,
+        undefined
+      );
+
+      expect(result2.isOk()).toBeTrue();
+      expect(calledFailureFunction).toBeTrue();
+    });
+
     test("should throw WorkflowError if header is set but function is not passed", async () => {
       let called = false;
       const routeFunction = async (context: WorkflowContext) => {
@@ -877,7 +951,6 @@ describe("Workflow Parser", () => {
         0,
         undefined
       );
-      console.log(result);
 
       expect(result.isOk()).toBeTrue();
       expect(result.isOk() && result.value).toEqual({
