@@ -512,7 +512,10 @@ export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepRespo
     };
   }
 
-  public async getResultStep(concurrent: number, stepId: number): Promise<Step<WaitStepResponse<TEventData>>> {
+  public async getResultStep(
+    concurrent: number,
+    stepId: number
+  ): Promise<Step<WaitStepResponse<TEventData>>> {
     return await Promise.resolve({
       stepId,
       stepName: this.stepName,
