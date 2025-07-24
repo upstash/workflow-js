@@ -226,6 +226,10 @@ type FailureFunctionLog = {
    * Headers received from the failure function
    */
   responseHeaders?: Record<string, string[]>;
+  /**
+   * Status code of the response from the failure function
+   */
+  responseStatus?: number;
 };
 
 export type WorkflowRunLog = {
