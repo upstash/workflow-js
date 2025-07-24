@@ -24,6 +24,9 @@ type FailureCallbackInfo = {
 
 type DLQMessage = {
   messageId: string;
+  /**
+   * URL of the workflow
+   */
   url: string;
   method: string;
   header: Record<string, string[]>;
@@ -39,6 +42,13 @@ type DLQMessage = {
   responseHeader: Record<string, string[]>;
   responseBody: string;
   dlqId: string;
+  /**
+   * URL of the failure callback
+   */
+  failureCallback: string;
+  /**
+   * status of the failure callback
+   */
   failureCallbackInfo: FailureCallbackInfo;
 };
 
