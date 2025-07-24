@@ -305,9 +305,16 @@ export const handleFailure = async <TInitialPayload>(
   retries: WorkflowServeOptions["retries"],
   flowControl: WorkflowServeOptions["flowControl"],
   debug?: WorkflowLogger
-): Promise<Ok<"is-failure-callback" | "not-failure-callback", never> | Err<never, Error>> => {
+): Promise<
+  | Ok<
+      | { result: "is-failure-callback"; response: string | void }
+      | { result: "not-failure-callback" },
+      never
+    >
+  | Err<never, Error>
+> => {
   if (request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true") {
-    return ok("not-failure-callback");
+    return ok({ result: "not-failure-callback" });
   }
 
   if (!failureFunction) {
@@ -368,15 +375,14 @@ export const handleFailure = async <TInitialPayload>(
       return err(new WorkflowError("Not authorized to run the failure function."));
     }
 
-    await failureFunction({
+    const failureResponse = await failureFunction({
       context: workflowContext,
       failStatus: status,
       failResponse: errorPayload.message,
       failHeaders: header,
     });
+    return ok({ result: "is-failure-callback", response: failureResponse });
   } catch (error) {
     return err(error as Error);
   }
-
-  return ok("is-failure-callback");
 };

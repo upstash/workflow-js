@@ -1,9 +1,9 @@
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
 import { DEFAULT_RETRIES } from "../constants";
-import type { FinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
+import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
-import { formatWorkflowError, WorkflowError, WorkflowNonRetryableError } from "../error";
+import { formatWorkflowError, WorkflowError } from "../error";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -43,8 +43,8 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
       baseUrl: environment.QSTASH_URL!,
       token: environment.QSTASH_TOKEN!,
     }),
-    onStepFinish: (workflowRunId: string, finishCondition: FinishCondition) => {
-      if (finishCondition === "auth-fail") {
+    onStepFinish: (workflowRunId, _finishCondition, detailedFinishCondition) => {
+      if (detailedFinishCondition?.condition === "auth-fail") {
         console.error(AUTH_FAIL_MESSAGE);
         return new Response(
           JSON.stringify({
@@ -55,12 +55,16 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
             status: 400,
           }
         ) as TResponse;
-      } else if (finishCondition instanceof WorkflowNonRetryableError) {
-        return new Response(JSON.stringify(formatWorkflowError(finishCondition)), {
+      } else if (detailedFinishCondition?.condition === "non-retryable-error") {
+        return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
           headers: {
             "Upstash-NonRetryable-Error": "true",
           },
           status: 489,
+        }) as TResponse;
+      } else if (detailedFinishCondition?.condition === "failure-callback") {
+        return new Response(detailedFinishCondition.result ?? undefined, {
+          status: 200,
         }) as TResponse;
       }
       return new Response(JSON.stringify({ workflowRunId }), {

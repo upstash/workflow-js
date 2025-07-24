@@ -11,6 +11,13 @@ type DLQFilterOptions = Pick<
   "fromDate" | "toDate" | "url" | "responseStatus"
 >;
 
+type FailureCallbackInfo = {
+  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS";
+  responseStatus?: number;
+  responseBody?: string;
+  responseHeaders?: Record<string, string[]>;
+};
+
 type DLQMessage = {
   messageId: string;
   url: string;
@@ -28,6 +35,7 @@ type DLQMessage = {
   responseHeader: Record<string, string[]>;
   responseBody: string;
   dlqId: string;
+  failureCallbackInfo: FailureCallbackInfo;
 };
 
 type PublicDLQMessage = Pick<
@@ -45,6 +53,7 @@ type PublicDLQMessage = Pick<
   | "responseHeader"
   | "responseBody"
   | "dlqId"
+  | "failureCallbackInfo"
 >;
 
 export class DLQ {

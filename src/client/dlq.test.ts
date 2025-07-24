@@ -18,6 +18,12 @@ const MOCK_DLQ_MESSAGES = [
     responseStatus: 422,
     responseHeader: { "content-length": ["100"] },
     responseBody: "Validation Error",
+    failureCallbackInfo: {
+      state: "CALLBACK_FAIL",
+      responseStatus: 500,
+      responseBody: "Internal Server Error",
+      responseHeaders: { "content-type": ["application/json"] },
+    },
   },
   {
     dlqId: `dlq-${nanoid()}`,
