@@ -141,6 +141,13 @@ export type StepLog = BaseStepLog &
   AsOptional<{ sleepUntil: number }> &
   AsOptional<WaitEventGroup>;
 
+type StepError = {
+  error: string;
+  headers: Record<string, string[]>;
+  status: number;
+  time: number;
+};
+
 type StepLogGroup =
   | {
       /**
@@ -176,12 +183,7 @@ type StepLogGroup =
         /**
          * errors which occured in the step
          */
-        errors?: {
-          error: string;
-          headers: Record<string, string[]>;
-          status: number;
-          time: number;
-        }[];
+        errors?: StepError[];
       }[];
       /**
        * Log which belongs to the next step
@@ -218,6 +220,10 @@ type FailureFunctionLog = {
    * @deprecated use dlqId field of the workflow run itself
    */
   dlqId: string;
+  /**
+   * Errors received while running failure function
+   */
+  errors?: StepError[];
   /**
    * String body returned from the failure function
    */

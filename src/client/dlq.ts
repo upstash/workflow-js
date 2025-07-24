@@ -9,7 +9,11 @@ type QStashDLQFilterOptions = NonNullable<
 type DLQFilterOptions = Pick<
   QStashDLQFilterOptions,
   "fromDate" | "toDate" | "url" | "responseStatus"
->;
+> & {
+  workflowRunId?: string;
+  workflowCreatedAt?: string;
+  failureFunctionState?: FailureCallbackInfo["state"];
+};
 
 type FailureCallbackInfo = {
   state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS";
