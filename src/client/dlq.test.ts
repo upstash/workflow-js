@@ -410,4 +410,29 @@ describe("DLQ", () => {
       });
     });
   });
+
+  describe("retryFailureFunction", () => {
+    test("should retry failure function of a DLQ message", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const workflowRunId = `wfr-${nanoid()}`;
+      const workflowCreatedAt = "2023-01-01T00:00:00Z";
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.retryFailureFunction({ dlqId });
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
+        },
+        responseFields: {
+          status: 200,
+          body: { workflowRunId, workflowCreatedAt },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/${dlqId}`,
+          token,
+        },
+      });
+    });
+  });
 });
