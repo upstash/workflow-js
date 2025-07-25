@@ -767,7 +767,7 @@ describe("Workflow Parser", () => {
         undefined
       );
       expect(result1.isOk()).toBeTrue();
-      expect(result1.isOk() && result1.value === "not-failure-callback").toBeTrue();
+      expect(result1.isOk() && result1.value.result === "not-failure-callback").toBeTrue();
 
       // with failureFunction
       const result2 = await handleFailure(
@@ -782,7 +782,7 @@ describe("Workflow Parser", () => {
         undefined
       );
       expect(result2.isOk()).toBeTrue();
-      expect(result2.isOk() && result2.value === "not-failure-callback").toBeTrue();
+      expect(result2.isOk() && result2.value.result === "not-failure-callback").toBeTrue();
       expect(called).toBeFalse(); // didn't call as the request is not a failure request
     });
 
@@ -927,6 +927,8 @@ describe("Workflow Parser", () => {
         called = true;
         await context.sleep("sleeping", 1);
       };
+
+      const failureFunctionResponse = `hello world! (${nanoid})`;
       const failureFunction: WorkflowServeOptions["failureFunction"] = async ({
         context,
         failStatus,
@@ -935,7 +937,7 @@ describe("Workflow Parser", () => {
         expect(failStatus).toBe(201);
         expect(failResponse).toBe(failMessage);
         expect(context.headers.get("authorization")).toBe(authorization);
-        return;
+        return failureFunctionResponse;
       };
 
       const result = await handleFailure(
@@ -951,7 +953,10 @@ describe("Workflow Parser", () => {
       );
 
       expect(result.isOk()).toBeTrue();
-      expect(result.isOk() && result.value).toBe("is-failure-callback");
+      expect(result.isOk() && result.value).toEqual({
+        result: "is-failure-callback",
+        response: failureFunctionResponse,
+      });
       expect(called).toBeTrue();
     });
 

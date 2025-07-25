@@ -108,6 +108,7 @@ describe("workflow client", () => {
       async () => {
         const { workflowRunId } = await liveClient.trigger({
           url: "http://requestcatcher.com",
+          useFailureFunction: true,
         });
 
         const cancel = await liveClient.cancel({
