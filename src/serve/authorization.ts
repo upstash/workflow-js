@@ -97,6 +97,9 @@ export class DisabledWorkflowContext<
       ) {
         return ok("step-found");
       }
+      console.warn(
+        "Upstash Workflow: Received an error while authorizing request. Please avoid throwing errors before the first step of your workflow."
+      );
       return err(error as Error);
     }
 
