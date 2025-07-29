@@ -56,7 +56,7 @@ type BaseStepLog = {
   /**
    * retry delay parameter for the step if it was set
    */
-  retryDelay?: string
+  retryDelay?: string;
 };
 
 type CallUrlGroup = {
@@ -191,7 +191,7 @@ type StepLogGroup =
         /**
          * retry delay parameter for the step if it was set
          */
-        retryDelay?: string
+        retryDelay?: string;
       }[];
       /**
        * Log which belongs to the next step
