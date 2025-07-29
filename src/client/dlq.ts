@@ -9,10 +9,24 @@ type QStashDLQFilterOptions = NonNullable<
 type DLQFilterOptions = Pick<
   QStashDLQFilterOptions,
   "fromDate" | "toDate" | "url" | "responseStatus"
->;
+> & {
+  workflowRunId?: string;
+  workflowCreatedAt?: string;
+  failureFunctionState?: FailureCallbackInfo["state"];
+};
+
+type FailureCallbackInfo = {
+  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS";
+  responseStatus?: number;
+  responseBody?: string;
+  responseHeaders?: Record<string, string[]>;
+};
 
 type DLQMessage = {
   messageId: string;
+  /**
+   * URL of the workflow
+   */
   url: string;
   method: string;
   header: Record<string, string[]>;
@@ -28,6 +42,14 @@ type DLQMessage = {
   responseHeader: Record<string, string[]>;
   responseBody: string;
   dlqId: string;
+  /**
+   * URL of the failure callback
+   */
+  failureCallback?: string;
+  /**
+   * status of the failure callback
+   */
+  failureCallbackInfo?: FailureCallbackInfo;
 };
 
 type PublicDLQMessage = Pick<
@@ -45,6 +67,8 @@ type PublicDLQMessage = Pick<
   | "responseHeader"
   | "responseBody"
   | "dlqId"
+  | "failureCallback"
+  | "failureCallbackInfo"
 >;
 
 export class DLQ {
@@ -195,6 +219,22 @@ export class DLQ {
       return workflowRuns;
     }
     return workflowRuns[0];
+  }
+
+  /**
+   * Retry the failure callback of a workflow run whose failureUrl/failureFunction
+   * request has failed.
+   *
+   * @param dlqId - The ID of the DLQ message to retry.
+   * @returns
+   */
+  async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
+    const response = await this.client.http.request<DLQResumeRestartResponse>({
+      path: ["v2", "workflows", "dlq", "callback", dlqId],
+      method: "POST",
+    });
+
+    return response;
   }
 
   private static handleDLQOptions(options: DLQResumeRestartOptions) {

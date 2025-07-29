@@ -18,6 +18,13 @@ const MOCK_DLQ_MESSAGES = [
     responseStatus: 422,
     responseHeader: { "content-length": ["100"] },
     responseBody: "Validation Error",
+    failureCallbackInfo: {
+      state: "CALLBACK_FAIL",
+      responseStatus: 500,
+      responseBody: "Internal Server Error",
+      responseHeaders: { "content-type": ["application/json"] },
+    },
+    failureCallback: "https://example.com/failure-callback",
   },
   {
     dlqId: `dlq-${nanoid()}`,
@@ -33,6 +40,7 @@ const MOCK_DLQ_MESSAGES = [
     responseStatus: 503,
     responseHeader: { "retry-after": ["60"] },
     responseBody: "Service Unavailable",
+    failureCallback: "https://example.com/failure-callback",
   },
 ] as Awaited<ReturnType<Client["dlq"]["list"]>>["messages"];
 
@@ -406,6 +414,31 @@ describe("DLQ", () => {
             "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
             "Upstash-Retries": "3",
           },
+        },
+      });
+    });
+  });
+
+  describe("retryFailureFunction", () => {
+    test("should retry failure function of a DLQ message", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const workflowRunId = `wfr-${nanoid()}`;
+      const workflowCreatedAt = "2023-01-01T00:00:00Z";
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.retryFailureFunction({ dlqId });
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
+        },
+        responseFields: {
+          status: 200,
+          body: { workflowRunId, workflowCreatedAt },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/${dlqId}`,
+          token,
         },
       });
     });

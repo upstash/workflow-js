@@ -5,6 +5,7 @@ import { serve } from ".";
 import {
   driveWorkflow,
   getRequest,
+  getRequestBody,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
@@ -14,6 +15,7 @@ import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "../client";
 import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
 import {
+  WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
@@ -84,7 +86,7 @@ describe("serve", () => {
               "upstash-retries": "1",
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": expect.stringMatching(/^wfr_/),
               "upstash-workflow-sdk-version": "1",
@@ -430,7 +432,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
               },
               body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
@@ -479,7 +481,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -532,7 +534,7 @@ describe("serve", () => {
                 "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -587,7 +589,7 @@ describe("serve", () => {
                 "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -682,7 +684,7 @@ describe("serve", () => {
                 "upstash-retries": "4",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
                 "upstash-timeout": "10",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
@@ -930,7 +932,7 @@ describe("serve", () => {
             "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
             "Upstash-Telemetry-Framework": ["unknown"],
             "Upstash-Telemetry-Runtime": ["unknown"],
-            "Upstash-Telemetry-Sdk": ["@upstash/workflow@v0.2.15"],
+            "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
           },
           timeoutUrl: WORKFLOW_ENDPOINT,
           url: WORKFLOW_ENDPOINT,
@@ -1066,6 +1068,50 @@ describe("serve", () => {
         expect(response.status).toBe(200);
 
         expect(called).toBeTrue();
+      });
+    });
+
+    describe("failure callback", () => {
+      test("should execute failureFunction if failure callback", async () => {
+        const workflowRunId = `wfr-${nanoid()}`;
+        const request = new Request(WORKFLOW_ENDPOINT, {
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            [WORKFLOW_FAILURE_HEADER]: "true",
+            "upstash-workflow-runid": workflowRunId,
+            "upstash-message-id": "msg-id",
+          },
+          method: "POST",
+          body: getRequestBody("some body", []),
+        });
+
+        const failureFunctionResponse = `failure-function-response-${nanoid()}`;
+        const { handler } = serve(
+          async (context) => {
+            await context.sleep("first step", 2);
+          },
+          {
+            failureFunction() {
+              return failureFunctionResponse;
+            },
+            receiver: undefined,
+            qstashClient,
+          }
+        );
+
+        await mockQStashServer({
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = await response.text();
+            expect(body).toBe(failureFunctionResponse);
+          },
+          receivesRequest: false,
+          responseFields: {
+            status: 404,
+            body: "not found",
+          },
+        });
       });
     });
   });
@@ -1220,7 +1266,7 @@ describe("serve", () => {
               "upstash-forward-test-header": headerValue,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": "@upstash/workflow@v0.2.15",
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
             },
             body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
           },

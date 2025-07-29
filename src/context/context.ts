@@ -374,7 +374,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Pauses workflow execution until a specific event occurs or a timeout is reached.
    *
    *```ts
-   * const result = await workflow.waitForEvent("payment-confirmed", {
+   * const result = await workflow.waitForEvent("payment-confirmed", "payment.confirmed", {
    *   timeout: "5m"
    * });
    *```
