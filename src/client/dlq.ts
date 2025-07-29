@@ -197,6 +197,22 @@ export class DLQ {
     return workflowRuns[0];
   }
 
+  /**
+   * Retry the failure callback of a workflow run whose failureUrl/failureFunction
+   * request has failed.
+   *
+   * @param dlqId - The ID of the DLQ message to retry.
+   * @returns
+   */
+  async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
+    const response = await this.client.http.request<DLQResumeRestartResponse>({
+      path: ["v2", "workflows", "dlq", "callback", dlqId],
+      method: "POST",
+    });
+
+    return response;
+  }
+
   private static handleDLQOptions(options: DLQResumeRestartOptions) {
     const { dlqId, flowControl, retries } = options;
 
