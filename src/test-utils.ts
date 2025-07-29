@@ -51,10 +51,6 @@ export const mockQStashServer = async ({
     async fetch(request) {
       called = true;
 
-      console.log(request.url);
-      console.log(request.method);
-      console.log(request.headers);
-
       if (!receivesRequest) {
         return new Response("assertion in mock QStash failed. fetch shouldn't have been called.", {
           status: 500,

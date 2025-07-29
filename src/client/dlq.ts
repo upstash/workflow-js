@@ -45,11 +45,11 @@ type DLQMessage = {
   /**
    * URL of the failure callback
    */
-  failureCallback: string;
+  failureCallback?: string;
   /**
    * status of the failure callback
    */
-  failureCallbackInfo: FailureCallbackInfo;
+  failureCallbackInfo?: FailureCallbackInfo;
 };
 
 type PublicDLQMessage = Pick<
@@ -67,6 +67,7 @@ type PublicDLQMessage = Pick<
   | "responseHeader"
   | "responseBody"
   | "dlqId"
+  | "failureCallback"
   | "failureCallbackInfo"
 >;
 

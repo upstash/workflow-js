@@ -24,6 +24,7 @@ const MOCK_DLQ_MESSAGES = [
       responseBody: "Internal Server Error",
       responseHeaders: { "content-type": ["application/json"] },
     },
+    failureCallback: "https://example.com/failure-callback",
   },
   {
     dlqId: `dlq-${nanoid()}`,
@@ -39,6 +40,7 @@ const MOCK_DLQ_MESSAGES = [
     responseStatus: 503,
     responseHeader: { "retry-after": ["60"] },
     responseBody: "Service Unavailable",
+    failureCallback: "https://example.com/failure-callback",
   },
 ] as Awaited<ReturnType<Client["dlq"]["list"]>>["messages"];
 
