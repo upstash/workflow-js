@@ -128,7 +128,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-runid": workflowRunId,
@@ -224,7 +224,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-delay": "123s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -243,7 +243,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-delay": "10m",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -262,7 +262,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-not-before": "123123",
@@ -281,7 +281,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-runid": workflowRunId,
@@ -342,7 +342,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-runid": workflowRunId,
@@ -399,7 +399,7 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-runid": workflowRunId,

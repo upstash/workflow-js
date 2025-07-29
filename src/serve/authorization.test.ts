@@ -227,7 +227,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -283,7 +283,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -340,7 +340,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-forward-upstash-workflow-invoke-count": "4",
                 "upstash-workflow-sdk-version": "1",

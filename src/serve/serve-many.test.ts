@@ -158,7 +158,7 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
               "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
               "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
@@ -212,7 +212,7 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
               "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
               "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
@@ -271,7 +271,7 @@ describe("serveMany", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api/workflow-three",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-callback-flow-control-key": "workflowThreeFlowControl",
                 "upstash-callback-flow-control-value": "parallelism=4, rate=6",
                 "upstash-flow-control-key": "workflowOneFlowControl",

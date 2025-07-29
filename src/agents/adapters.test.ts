@@ -81,7 +81,7 @@ describe("wrapTools", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-workflow-init": "false",
@@ -129,7 +129,7 @@ describe("wrapTools", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-workflow-init": "false",
@@ -198,7 +198,7 @@ describe("wrapTools", () => {
             headers: {
               "content-type": "application/json",
               "upstash-delay": "1000s",
-              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-workflow-init": "false",
@@ -246,7 +246,7 @@ describe("wrapTools", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-workflow-init": "false",

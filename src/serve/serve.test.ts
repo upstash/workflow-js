@@ -78,7 +78,7 @@ describe("serve", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-flow-control-key": "my-key",
               "upstash-flow-control-value": "parallelism=1",
               "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -177,7 +177,7 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody",
+                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
@@ -209,7 +209,7 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody",
+                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
@@ -239,7 +239,7 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody",
+                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
@@ -424,7 +424,7 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
@@ -472,7 +472,7 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -517,8 +517,8 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -572,8 +572,8 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -643,7 +643,8 @@ describe("serve", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api",
-                "upstash-callback-failure-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-failure-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-callback-failure-callback": "some-failure-url",
                 "upstash-callback-failure-callback-forward-upstash-workflow-failure-callback":
                   "true",
@@ -654,7 +655,7 @@ describe("serve", () => {
                 "upstash-callback-failure-callback-workflow-runid": "wfr-foo",
                 "upstash-callback-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 // invoke counts:
                 "upstash-callback-failure-callback-forward-upstash-workflow-invoke-count": "2",
                 "upstash-failure-callback-forward-upstash-workflow-invoke-count": "2",
@@ -670,7 +671,7 @@ describe("serve", () => {
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
                 "upstash-callback-workflow-url": "https://requestcatcher.com/api",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
+                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-failure-callback-retries": "2",
@@ -920,7 +921,7 @@ describe("serve", () => {
           timeoutHeaders: {
             "Upstash-Workflow-Sdk-Version": ["1"],
             "content-type": ["application/json"],
-            "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
+            "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
             "Upstash-Retries": ["2"],
             "Upstash-Flow-Control-Key": ["fc-key"],
@@ -1248,8 +1249,8 @@ describe("serve", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-delay": "1s",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
