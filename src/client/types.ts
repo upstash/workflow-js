@@ -177,7 +177,20 @@ type StepLogGroup =
          * errors which occured in the step
          */
         errors?: {
+          /**
+           * error message associated with the request
+           *
+           * example:
+           * ```
+           * detected a non-workflow destination for trigger/invoke.
+           * make sure you are sending the request to the correct endpoint
+           * ```
+           */
           error: string;
+          /**
+           * response body returned in the request which resulted in an error
+           */
+          body: string;
           headers: Record<string, string[]>;
           status: number;
           time: number;

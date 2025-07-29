@@ -663,6 +663,7 @@ describe("workflow client", () => {
                       errors: [
                         {
                           error: "400 Bad Request",
+                          body: expect.any(String),
                           headers: expect.any(Object),
                           status: 400,
                           time: expect.any(Number),
