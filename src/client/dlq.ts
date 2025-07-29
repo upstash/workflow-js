@@ -9,10 +9,24 @@ type QStashDLQFilterOptions = NonNullable<
 type DLQFilterOptions = Pick<
   QStashDLQFilterOptions,
   "fromDate" | "toDate" | "url" | "responseStatus"
->;
+> & {
+  workflowRunId?: string;
+  workflowCreatedAt?: string;
+  failureFunctionState?: FailureCallbackInfo["state"];
+};
+
+type FailureCallbackInfo = {
+  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS";
+  responseStatus?: number;
+  responseBody?: string;
+  responseHeaders?: Record<string, string[]>;
+};
 
 type DLQMessage = {
   messageId: string;
+  /**
+   * URL of the workflow
+   */
   url: string;
   method: string;
   header: Record<string, string[]>;
@@ -28,6 +42,14 @@ type DLQMessage = {
   responseHeader: Record<string, string[]>;
   responseBody: string;
   dlqId: string;
+  /**
+   * URL of the failure callback
+   */
+  failureCallback?: string;
+  /**
+   * status of the failure callback
+   */
+  failureCallbackInfo?: FailureCallbackInfo;
 };
 
 type PublicDLQMessage = Pick<
@@ -45,6 +67,8 @@ type PublicDLQMessage = Pick<
   | "responseHeader"
   | "responseBody"
   | "dlqId"
+  | "failureCallback"
+  | "failureCallbackInfo"
 >;
 
 export class DLQ {

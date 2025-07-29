@@ -53,6 +53,10 @@ type BaseStepLog = {
    * headers
    */
   headers: Record<string, string[]>;
+  /**
+   * retry delay parameter for the step if it was set
+   */
+  retryDelay?: string;
 };
 
 type CallUrlGroup = {
@@ -141,6 +145,13 @@ export type StepLog = BaseStepLog &
   AsOptional<{ sleepUntil: number }> &
   AsOptional<WaitEventGroup>;
 
+type StepError = {
+  error: string;
+  headers: Record<string, string[]>;
+  status: number;
+  time: number;
+};
+
 type StepLogGroup =
   | {
       /**
@@ -176,12 +187,11 @@ type StepLogGroup =
         /**
          * errors which occured in the step
          */
-        errors?: {
-          error: string;
-          headers: Record<string, string[]>;
-          status: number;
-          time: number;
-        }[];
+        errors?: StepError[];
+        /**
+         * retry delay parameter for the step if it was set
+         */
+        retryDelay?: string;
       }[];
       /**
        * Log which belongs to the next step
@@ -218,6 +228,22 @@ type FailureFunctionLog = {
    * @deprecated use dlqId field of the workflow run itself
    */
   dlqId: string;
+  /**
+   * Errors received while running failure function
+   */
+  errors?: StepError[];
+  /**
+   * String body returned from the failure function
+   */
+  responseBody?: string;
+  /**
+   * Headers received from the failure function
+   */
+  responseHeaders?: Record<string, string[]>;
+  /**
+   * Status code of the response from the failure function
+   */
+  responseStatus?: number;
 };
 
 export type WorkflowRunLog = {

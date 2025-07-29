@@ -108,6 +108,7 @@ describe("workflow client", () => {
       async () => {
         const { workflowRunId } = await liveClient.trigger({
           url: "http://requestcatcher.com",
+          useFailureFunction: true,
         });
 
         const cancel = await liveClient.cancel({
@@ -498,6 +499,7 @@ describe("workflow client", () => {
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
+                      retryDelay: expect.any(String),
                     },
                   ],
                   type: "sequential",
@@ -509,6 +511,7 @@ describe("workflow client", () => {
                       retries: 3,
                       errors: expect.any(Array),
                       state: "STEP_RETRY",
+                      retryDelay: expect.any(String),
                     },
                   ],
                   type: "next",
@@ -552,6 +555,7 @@ describe("workflow client", () => {
                       state: "STEP_SUCCESS",
                       stepName: "init",
                       stepType: "Initial",
+                      retryDelay: expect.any(String),
                     },
                   ],
                   type: "sequential",
@@ -563,6 +567,7 @@ describe("workflow client", () => {
                       retries: 3,
                       errors: expect.any(Array),
                       state: "STEP_CANCELED",
+                      retryDelay: expect.any(String),
                     },
                   ],
                   type: "next",

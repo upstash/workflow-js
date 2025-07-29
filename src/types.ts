@@ -136,6 +136,20 @@ export type FinishCondition =
   | "workflow-already-ended"
   | WorkflowNonRetryableError;
 
+export type DetailedFinishCondition =
+  | {
+      condition: Exclude<FinishCondition, WorkflowNonRetryableError | "failure-callback">;
+      result?: never;
+    }
+  | {
+      condition: "non-retryable-error";
+      result: WorkflowNonRetryableError;
+    }
+  | {
+      condition: "failure-callback";
+      result: string | void;
+    };
+
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
@@ -150,7 +164,12 @@ export type WorkflowServeOptions<
    * @param workflowRunId
    * @returns response
    */
-  onStepFinish?: (workflowRunId: string, finishCondition: FinishCondition) => TResponse;
+  onStepFinish?: (
+    workflowRunId: string,
+    finishCondition: FinishCondition,
+    // made optional to be backwards compatible:
+    detailedFinishCondition?: DetailedFinishCondition
+  ) => TResponse;
   /**
    * Url of the endpoint where the workflow is set up.
    *
@@ -211,7 +230,7 @@ export type WorkflowServeOptions<
     failStatus: number;
     failResponse: string;
     failHeaders: Record<string, string[]>;
-  }) => Promise<void> | void;
+  }) => Promise<void | string> | void | string;
   /**
    * Base Url of the workflow endpoint
    *
