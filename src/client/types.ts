@@ -53,6 +53,10 @@ type BaseStepLog = {
    * headers
    */
   headers: Record<string, string[]>;
+  /**
+   * retry delay parameter for the step if it was set
+   */
+  retryDelay?: string
 };
 
 type CallUrlGroup = {
@@ -184,6 +188,10 @@ type StepLogGroup =
          * errors which occured in the step
          */
         errors?: StepError[];
+        /**
+         * retry delay parameter for the step if it was set
+         */
+        retryDelay?: string
       }[];
       /**
        * Log which belongs to the next step
