@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
 import { WorkflowError } from "../error";
 import { InvokableWorkflow, PublicServeOptions, RouteFunction } from "../types";
 
@@ -74,6 +75,9 @@ export const serveManyBase = <
           `Unexpected request in serveMany. workflowId not set. Please update the URL of your request.`,
           {
             status: 404,
+            headers: {
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            },
           }
         );
       }
@@ -83,6 +87,9 @@ export const serveManyBase = <
           `No workflows in serveMany found for '${pickedWorkflowId}'. Please update the URL of your request.`,
           {
             status: 404,
+            headers: {
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            },
           }
         );
       }

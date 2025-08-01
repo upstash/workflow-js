@@ -66,6 +66,11 @@ function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
     const response = await serveHandler(webRequest);
 
     res.status(response.status).json(await response.json());
+
+    // set headers
+    for (const [key, value] of response.headers.entries()) {
+      res.setHeader(key, value);
+    }
   };
 }
 

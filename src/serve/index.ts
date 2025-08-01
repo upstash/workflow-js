@@ -1,5 +1,10 @@
 import { makeCancelRequest } from "../client/utils";
-import { SDK_TELEMETRY, WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
+import {
+  SDK_TELEMETRY,
+  WORKFLOW_INVOKE_COUNT_HEADER,
+  WORKFLOW_PROTOCOL_VERSION,
+  WORKFLOW_PROTOCOL_VERSION_HEADER,
+} from "../constants";
 import { WorkflowContext } from "../context";
 import { formatWorkflowError, WorkflowNonRetryableError } from "../error";
 import { WorkflowLogger } from "../logger";
@@ -268,10 +273,16 @@ export const serveBase = <
         console.error(errorMessage);
         return new Response(errorMessage, {
           status: 500,
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+          },
         }) as TResponse;
       }
       return new Response(JSON.stringify(formattedError), {
         status: 500,
+        headers: {
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+        },
       }) as TResponse;
     }
   };
