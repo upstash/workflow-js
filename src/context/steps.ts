@@ -165,6 +165,9 @@ export abstract class BaseLazyStep<TResult = unknown> {
         body,
         headers,
         method: "POST",
+        retries: context.retries,
+        retryDelay: context.retryDelay,
+        flowControl: context.flowControl,
         url: context.url,
       },
     ])) as { messageId: string }[];
@@ -251,6 +254,9 @@ export class LazySleepStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
+        retries: context.retries,
+        retryDelay: context.retryDelay,
+        flowControl: context.flowControl,
         delay: isParallel ? undefined : this.sleep,
       },
     ])) as { messageId: string }[];
@@ -302,6 +308,9 @@ export class LazySleepUntilStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
+        retries: context.retries,
+        retryDelay: context.retryDelay,
+        flowControl: context.flowControl,
         notBefore: isParallel ? undefined : this.sleepUntil,
       },
     ])) as { messageId: string }[];
@@ -484,6 +493,9 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
         body: JSON.stringify(this.body),
         method: this.method,
         url: this.url,
+        retries: this.retries,
+        retryDelay: this.retryDelay,
+        flowControl: this.flowControl,
       },
     ])) as { messageId: string }[];
   }

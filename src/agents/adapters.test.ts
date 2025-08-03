@@ -7,6 +7,7 @@ import { WorkflowTool, wrapTools } from "./adapters";
 import { tool } from "ai";
 import { z } from "zod";
 import { LangchainTool } from "./types";
+import { DEFAULT_RETRIES } from "../constants";
 
 describe("wrapTools", () => {
   const token = getWorkflowRunId();
@@ -81,6 +82,7 @@ describe("wrapTools", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
+              "upstash-retries": DEFAULT_RETRIES.toString(),
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
@@ -129,6 +131,7 @@ describe("wrapTools", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
+              "upstash-retries": DEFAULT_RETRIES.toString(),
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
@@ -198,6 +201,7 @@ describe("wrapTools", () => {
             headers: {
               "content-type": "application/json",
               "upstash-delay": "1000s",
+              "upstash-retries": DEFAULT_RETRIES.toString(),
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
@@ -248,6 +252,7 @@ describe("wrapTools", () => {
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-retries": DEFAULT_RETRIES.toString(),
               "upstash-method": "POST",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": workflowRunId,
