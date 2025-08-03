@@ -309,6 +309,7 @@ describe("Workflow Requests", () => {
             workflowUrl: WORKFLOW_ENDPOINT,
             failureUrl: WORKFLOW_ENDPOINT,
             retries: 2,
+            retryDelay: "1000",
             telemetry: {
               framework: "some-platform",
               sdk: "some-sdk",
@@ -335,6 +336,7 @@ describe("Workflow Requests", () => {
           },
           headers: {
             "upstash-retries": "2",
+            "upstash-retry-delay": "1000",
             "upstash-failure-callback": WORKFLOW_ENDPOINT,
           },
         },
@@ -387,6 +389,7 @@ describe("Workflow Requests", () => {
         workflowUrl: WORKFLOW_ENDPOINT,
         failureUrl: WORKFLOW_ENDPOINT,
         retries: 3,
+        retryDelay: "1000",
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -441,6 +444,7 @@ describe("Workflow Requests", () => {
         workflowUrl: WORKFLOW_ENDPOINT,
         failureUrl: WORKFLOW_ENDPOINT,
         retries: 5,
+        retryDelay: "1000",
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -552,6 +556,7 @@ describe("Workflow Requests", () => {
         callHeaders,
         0,
         undefined,
+        undefined,
         {
           key: "call-flow-key",
           rate: 5,
@@ -622,6 +627,7 @@ describe("Workflow Requests", () => {
             parallelism: 2,
           },
           retries: 6,
+          retryDelay: "1000",
         },
         userHeaders: new Headers() as Headers,
       });
@@ -646,7 +652,9 @@ describe("Workflow Requests", () => {
         "Upstash-Flow-Control-Key": "failure-key",
         "Upstash-Flow-Control-Value": "parallelism=2",
         "Upstash-Failure-Callback-Retries": "6",
+        "Upstash-Failure-Callback-Retry-Delay": "1000",
         "Upstash-Retries": "6",
+        "Upstash-Retry-Delay": "1000",
       });
     });
 

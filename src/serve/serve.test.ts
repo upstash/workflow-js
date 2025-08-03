@@ -50,6 +50,7 @@ describe("serve", () => {
         verbose: true,
         receiver: undefined,
         retries: 1,
+        retryDelay: "1000",
         schema: z.string(),
         flowControl: {
           key: "my-key",
@@ -84,6 +85,7 @@ describe("serve", () => {
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-retries": "1",
+              "upstash-retry-delay": "1000",
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
               "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
@@ -611,6 +613,7 @@ describe("serve", () => {
         await context.call("call step", {
           url: "some-url",
           retries: 4,
+          retryDelay: "2000",
           timeout: 10,
           headers: {
             test: "headers",
@@ -625,6 +628,7 @@ describe("serve", () => {
         receiver: undefined,
         failureUrl: "some-failure-url",
         retries: 2,
+        retryDelay: "1000",
       });
       await mockQStashServer({
         execute: async () => {
@@ -649,6 +653,7 @@ describe("serve", () => {
                   "true",
                 "upstash-callback-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-callback-failure-callback-retries": "2",
+                "upstash-callback-failure-callback-retry-delay": "1000",
                 "upstash-callback-failure-callback-workflow-calltype": "failureCall",
                 "upstash-callback-failure-callback-workflow-init": "false",
                 "upstash-callback-failure-callback-workflow-runid": "wfr-foo",
@@ -666,6 +671,7 @@ describe("serve", () => {
                 "upstash-callback-forward-upstash-workflow-stepname": "call step",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "2",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
@@ -674,6 +680,7 @@ describe("serve", () => {
                 "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
                 "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
                 "upstash-failure-callback-retries": "2",
+                "upstash-failure-callback-retry-delay": "1000",
                 "upstash-failure-callback-workflow-calltype": "failureCall",
                 "upstash-failure-callback-workflow-init": "false",
                 "upstash-failure-callback-workflow-runid": "wfr-foo",
@@ -682,6 +689,7 @@ describe("serve", () => {
                 "upstash-forward-test": "headers",
                 "upstash-method": "PATCH",
                 "upstash-retries": "4",
+                "upstash-retry-delay": "2000",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
                 "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
@@ -891,6 +899,7 @@ describe("serve", () => {
         qstashClient,
         receiver: undefined,
         retries: 2,
+        retryDelay: "1000",
         flowControl: {
           key: "fc-key",
           ratePerSecond: 2,
@@ -923,6 +932,7 @@ describe("serve", () => {
             "Upstash-Feature-Set": ["LazyFetch,InitialBody"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
             "Upstash-Retries": ["2"],
+            "Upstash-Retry-Delay": ["1000"],
             "Upstash-Flow-Control-Key": ["fc-key"],
             "Upstash-Flow-Control-Value": ["rate=2"],
             "Upstash-Workflow-CallType": ["step"],
