@@ -39,6 +39,7 @@ export const submitParallelSteps = async ({
           workflowUrl: context.url,
           failureUrl: context.failureUrl,
           retries: context.retries,
+          retryDelay: context.retryDelay,
           flowControl: context.flowControl,
           telemetry,
         },

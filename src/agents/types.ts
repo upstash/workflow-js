@@ -93,7 +93,10 @@ export type ManagerAgentParameters = {
   Pick<AgentParameters, "maxSteps">;
 
 type ModelParams = Parameters<ReturnType<typeof createOpenAI>>;
-export type AgentCallParams = Pick<CallSettings, "flowControl" | "retries" | "timeout">;
+export type AgentCallParams = Pick<
+  CallSettings,
+  "flowControl" | "retries" | "timeout" | "retryDelay"
+>;
 type CustomModelSettings = ModelParams["1"] & { baseURL?: string; apiKey?: string } & {
   callSettings: AgentCallParams;
 };

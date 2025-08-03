@@ -303,6 +303,7 @@ export const handleFailure = async <TInitialPayload>(
   failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
   env: WorkflowServeOptions["env"],
   retries: WorkflowServeOptions["retries"],
+  retryDelay: WorkflowServeOptions["retryDelay"],
   flowControl: WorkflowServeOptions["flowControl"],
   debug?: WorkflowLogger
 ): Promise<
@@ -368,6 +369,7 @@ export const handleFailure = async <TInitialPayload>(
       debug,
       env,
       retries,
+      retryDelay,
       flowControl,
       telemetry: undefined, // not going to make requests in authentication check
     });
