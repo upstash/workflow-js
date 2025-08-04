@@ -19,7 +19,12 @@ import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
 import { WorkflowContext } from "./context";
 import { getHeaders, prepareFlowControl } from "../qstash/headers";
-import { WORKFLOW_FEATURE_HEADER, WORKFLOW_INIT_HEADER, WORKFLOW_URL_HEADER } from "../constants";
+import {
+  DEFAULT_RETRIES,
+  WORKFLOW_FEATURE_HEADER,
+  WORKFLOW_INIT_HEADER,
+  WORKFLOW_URL_HEADER,
+} from "../constants";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
 
 type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
@@ -144,7 +149,8 @@ export abstract class BaseLazyStep<TResult = unknown> {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
         failureUrl: context.failureUrl,
-        retries: context.retries,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
+        retryDelay: context.retryDelay,
         useJSONContent: false,
         telemetry,
         flowControl: context.flowControl,
@@ -164,6 +170,9 @@ export abstract class BaseLazyStep<TResult = unknown> {
         body,
         headers,
         method: "POST",
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
+        retryDelay: context.retryDelay,
+        flowControl: context.flowControl,
         url: context.url,
       },
     ])) as { messageId: string }[];
@@ -250,6 +259,9 @@ export class LazySleepStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
+        retryDelay: context.retryDelay,
+        flowControl: context.flowControl,
         delay: isParallel ? undefined : this.sleep,
       },
     ])) as { messageId: string }[];
@@ -301,6 +313,9 @@ export class LazySleepUntilStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
+        retryDelay: context.retryDelay,
+        flowControl: context.flowControl,
         notBefore: isParallel ? undefined : this.sleepUntil,
       },
     ])) as { messageId: string }[];
@@ -315,6 +330,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   private readonly body: TBody;
   public readonly headers: Record<string, string>;
   public readonly retries: number;
+  public readonly retryDelay?: string;
   public readonly timeout?: number | Duration;
   public readonly flowControl?: FlowControl;
   stepType: StepType = "Call";
@@ -327,6 +343,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     body: TBody,
     headers: Record<string, string>,
     retries: number,
+    retryDelay: string | undefined,
     timeout: number | Duration | undefined,
     flowControl: FlowControl | undefined
   ) {
@@ -336,6 +353,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     this.body = body;
     this.headers = headers;
     this.retries = retries;
+    this.retryDelay = retryDelay;
     this.timeout = timeout;
     this.flowControl = flowControl;
   }
@@ -429,6 +447,9 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     const { headers, contentType } = super.getHeaders({ context, telemetry, invokeCount, step });
 
     headers["Upstash-Retries"] = this.retries.toString();
+    if (this.retryDelay) {
+      headers["Upstash-Retry-Delay"] = this.retryDelay;
+    }
     headers[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
 
     if (this.flowControl) {
@@ -477,6 +498,9 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
         body: JSON.stringify(this.body),
         method: this.method,
         url: this.url,
+        retries: DEFAULT_RETRIES === this.retries ? undefined : this.retries,
+        retryDelay: this.retryDelay,
+        flowControl: this.flowControl,
       },
     ])) as { messageId: string }[];
   }
@@ -621,7 +645,10 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   InvokeStepResponse<TResult>
 > {
   stepType: StepType = "Invoke";
-  params: RequiredExceptFields<LazyInvokeStepParams<TBody, TResult>, "retries" | "flowControl">;
+  params: RequiredExceptFields<
+    LazyInvokeStepParams<TBody, TResult>,
+    "retries" | "flowControl" | "retryDelay"
+  >;
   protected allowUndefinedOut = false;
   /**
    * workflow id of the invoked workflow
@@ -636,6 +663,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       headers = {},
       workflowRunId,
       retries,
+      retryDelay,
       flowControl,
     }: LazyInvokeStepParams<TBody, TResult>
   ) {
@@ -646,6 +674,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       headers,
       workflowRunId: getWorkflowRunId(workflowRunId),
       retries,
+      retryDelay,
       flowControl,
     };
 
@@ -698,6 +727,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         workflowUrl: context.url,
         failureUrl: context.failureUrl,
         retries: context.retries,
+        retryDelay: context.retryDelay,
         telemetry,
         flowControl: context.flowControl,
         useJSONContent: false,
@@ -726,12 +756,14 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       headers = {},
       workflowRunId = getWorkflowRunId(),
       retries,
+      retryDelay,
       flowControl,
     } = this.params;
     const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
 
     const {
       retries: workflowRetries,
+      retryDelay: workflowRetryDelay,
       failureFunction,
       failureUrl,
       useJSONContent,
@@ -744,6 +776,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         workflowRunId: workflowRunId,
         workflowUrl: newUrl,
         retries: retries ?? workflowRetries,
+        retryDelay: retryDelay ?? workflowRetryDelay,
         telemetry,
         failureUrl: failureFunction ? newUrl : failureUrl,
         flowControl: flowControl ?? workflowFlowControl,

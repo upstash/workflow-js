@@ -35,6 +35,7 @@ export const fetchWithContextCall = async (
       body,
       timeout: agentCallParams?.timeout,
       retries: agentCallParams?.retries,
+      retryDelay: agentCallParams?.retryDelay,
       flowControl: agentCallParams?.flowControl,
     });
 

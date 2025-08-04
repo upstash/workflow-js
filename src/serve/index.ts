@@ -59,6 +59,7 @@ export const serveBase = <
     baseUrl,
     env,
     retries,
+    retryDelay,
     useJSONContent,
     disableTelemetry,
     flowControl,
@@ -129,6 +130,7 @@ export const serveBase = <
       failureFunction,
       env,
       retries,
+      retryDelay,
       flowControl,
       debug
     );
@@ -158,6 +160,7 @@ export const serveBase = <
       debug,
       env,
       retries,
+      retryDelay,
       telemetry,
       invokeCount,
       flowControl,
@@ -191,6 +194,7 @@ export const serveBase = <
       workflowUrl,
       failureUrl: workflowFailureUrl,
       retries,
+      retryDelay,
       flowControl,
       telemetry,
       debug,

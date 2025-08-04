@@ -32,7 +32,7 @@ export abstract class BaseWorkflowApi {
     >
   ): Promise<CallResponse<TResult>> {
     const { url, appendHeaders, method } = getProviderInfo(settings.api);
-    const { method: userMethod, body, headers = {}, retries = 0, timeout } = settings;
+    const { method: userMethod, body, headers = {}, retries = 0, retryDelay, timeout } = settings;
 
     return await this.context.call<TResult, TBody>(stepName, {
       url,
@@ -43,6 +43,7 @@ export abstract class BaseWorkflowApi {
         ...headers,
       },
       retries,
+      retryDelay,
       timeout,
     });
   }

@@ -120,6 +120,7 @@ describe("context tests", () => {
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
       retries: 2,
+      retryDelay: "1000",
       invokeCount: 5,
     });
 
@@ -151,6 +152,7 @@ describe("context tests", () => {
               "upstash-forward-upstash-workflow-invoke-count": "5",
               "upstash-method": "POST",
               "upstash-retries": "2",
+              "upstash-retry-delay": "1000",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-id",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -285,6 +287,7 @@ describe("context tests", () => {
     const body = "request-body";
     test("should send correct headers for context.call", async () => {
       const retries = 10;
+      const retryDelay = "1000";
       const context = new WorkflowContext({
         qstashClient,
         initialPayload: "my-payload",
@@ -293,6 +296,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 7,
+        retryDelay: "1000 * retried",
       });
       await mockQStashServer({
         execute: () => {
@@ -306,6 +310,7 @@ describe("context tests", () => {
               },
               method: "PATCH",
               retries: retries,
+              retryDelay: retryDelay,
               timeout: 30,
             });
           expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
@@ -345,6 +350,8 @@ describe("context tests", () => {
                 "upstash-forward-my-header": "my-value",
                 "upstash-method": "PATCH",
                 "upstash-retries": retries.toString(),
+                "upstash-retry-delay": retryDelay,
+                "upstash-callback-retry-delay": "1000 * retried",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
@@ -452,6 +459,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         retries: 2,
+        retryDelay: "1000",
       });
 
       await mockQStashServer({
@@ -482,6 +490,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         retries: 2,
+        retryDelay: "1000",
       });
 
       await mockQStashServer({
@@ -513,6 +522,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         retries: 2,
+        retryDelay: "1000",
       });
 
       const openAIToken = `hello-there`;
@@ -565,6 +575,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "2",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -594,6 +605,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         retries: 2,
+        retryDelay: "1000",
         invokeCount: 5,
       });
 
@@ -650,6 +662,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "2",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -679,6 +692,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         retries: 2,
+        retryDelay: "1000",
       });
 
       const resendToken = `hello-there`;
@@ -729,6 +743,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "2",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -759,6 +774,7 @@ describe("context tests", () => {
         workflowRunId: "wfr-id",
         retries: 2,
         invokeCount: 3,
+        retryDelay: "1000",
       });
 
       const anthropicToken = `hello-there`;
@@ -821,6 +837,7 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "2",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",

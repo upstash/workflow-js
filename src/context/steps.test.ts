@@ -157,6 +157,7 @@ describe("test steps", () => {
       callBody,
       callHeaders,
       14,
+      "1000",
       30,
       flowControl
     );
@@ -166,6 +167,7 @@ describe("test steps", () => {
       expect(step.stepType).toBe("Call");
       expect(step.flowControl).toEqual(flowControl);
       expect(step.retries).toBe(14);
+      expect(step.retryDelay).toBe("1000");
       expect(step.timeout).toBe(30);
     });
     test("should create plan step", () => {

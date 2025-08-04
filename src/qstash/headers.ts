@@ -19,6 +19,7 @@ import { AGENT_NAME_HEADER } from "../agents/constants";
 
 export type WorkflowConfig = {
   retries?: number;
+  retryDelay?: string;
   flowControl?: FlowControl;
   failureUrl?: string;
   telemetry?: Telemetry;
@@ -92,6 +93,7 @@ class WorkflowHeaders {
   getHeaders(): HeadersResponse {
     this.addBaseHeaders();
     this.addRetries();
+    this.addRetryDelay();
     this.addFlowControl();
     this.addUserHeaders();
     this.addInvokeCount();
@@ -156,6 +158,19 @@ class WorkflowHeaders {
     }
   }
 
+  private addRetryDelay() {
+    if (this.workflowConfig.retryDelay === undefined || this.workflowConfig.retryDelay === "") {
+      return;
+    }
+
+    const retryDelay = this.workflowConfig.retryDelay.toString();
+
+    this.headers.workflowHeaders["Retry-Delay"] = retryDelay;
+    if (this.workflowConfig.failureUrl) {
+      this.headers.failureHeaders["Retry-Delay"] = retryDelay;
+    }
+  }
+
   private addFlowControl() {
     if (!this.workflowConfig.flowControl) {
       return;
@@ -203,6 +218,9 @@ class WorkflowHeaders {
       this.workflowConfig.retries !== DEFAULT_RETRIES
     ) {
       this.headers.failureHeaders["Retries"] = this.workflowConfig.retries.toString();
+    }
+    if (this.workflowConfig.retryDelay !== undefined && this.workflowConfig.retryDelay !== "") {
+      this.headers.failureHeaders["Retry-Delay"] = this.workflowConfig.retryDelay.toString();
     }
   }
 
