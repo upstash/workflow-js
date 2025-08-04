@@ -25,6 +25,7 @@ describe("agents", () => {
     url: WORKFLOW_ENDPOINT,
     workflowRunId,
     retries: 5,
+    retryDelay: "1000",
   });
 
   const agentsApi = new WorkflowAgents({ context });
@@ -43,6 +44,7 @@ describe("agents", () => {
       },
       retries: 5,
       timeout: 10,
+      retryDelay: "1000",
     },
   });
 
@@ -119,9 +121,11 @@ describe("agents", () => {
                 "upstash-workflow-runid": workflowRunId,
                 "upstash-workflow-url": "https://requestcatcher.com/api",
                 "upstash-callback-retries": "5",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-flow-control-key": "flowControlKey",
                 "upstash-flow-control-value": "parallelism=2",
                 "upstash-retries": "5",
+                "upstash-retry-delay": "1000",
                 "upstash-timeout": "10",
               },
             },
@@ -173,6 +177,7 @@ describe("agents", () => {
                 "upstash-callback-forward-upstash-workflow-stepname": "Call Agent my agent",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-retries": "5",
+                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": workflowRunId,
@@ -189,6 +194,7 @@ describe("agents", () => {
                 "upstash-flow-control-key": "flowControlKey",
                 "upstash-flow-control-value": "parallelism=2",
                 "upstash-retries": "5",
+                "upstash-retry-delay": "1000",
                 "upstash-timeout": "10",
               },
             },
@@ -239,6 +245,7 @@ describe("agents", () => {
               "upstash-callback-forward-upstash-workflow-stepname": "Call Agent manager llm",
               "upstash-callback-forward-upstash-workflow-steptype": "Call",
               "upstash-callback-retries": "5",
+              "upstash-callback-retry-delay": "1000",
               "upstash-callback-workflow-calltype": "fromCallback",
               "upstash-callback-workflow-init": "false",
               "upstash-callback-workflow-runid": workflowRunId,
@@ -255,6 +262,7 @@ describe("agents", () => {
               "upstash-flow-control-key": "flowControlKey",
               "upstash-flow-control-value": "parallelism=2",
               "upstash-retries": "5",
+              "upstash-retry-delay": "1000",
               "upstash-timeout": "10",
             },
           },

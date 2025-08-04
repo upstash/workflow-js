@@ -51,6 +51,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
           workflowUrl: workflowContext.url,
           failureUrl: workflowContext.failureUrl,
           retries: workflowContext.retries,
+          retryDelay: workflowContext.retryDelay,
           telemetry: telemetry,
           flowControl: workflowContext.flowControl,
           useJSONContent: useJSONContent ?? false,
@@ -253,6 +254,7 @@ export const handleThirdPartyCallResult = async ({
   workflowUrl,
   failureUrl,
   retries,
+  retryDelay,
   telemetry,
   flowControl,
   debug,
@@ -263,6 +265,7 @@ export const handleThirdPartyCallResult = async ({
   workflowUrl: string;
   failureUrl: WorkflowServeOptions["failureUrl"];
   retries: number;
+  retryDelay?: string;
   telemetry?: Telemetry;
   flowControl?: FlowControl;
   debug?: WorkflowLogger;
@@ -373,6 +376,7 @@ export const handleThirdPartyCallResult = async ({
           workflowUrl,
           failureUrl,
           retries,
+          retryDelay,
           telemetry,
           flowControl,
         },

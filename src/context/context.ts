@@ -157,6 +157,37 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly retries: number;
   /**
+   * Delay between retries.
+   *
+   * By default, the `retryDelay` is exponential backoff.
+   * More details can be found in: https://upstash.com/docs/qstash/features/retry.
+   *
+   * The `retryDelay` option allows you to customize the delay (in milliseconds) between retry attempts when message delivery fails.
+   *
+   * You can use mathematical expressions and the following built-in functions to calculate the delay dynamically.
+   * The special variable `retried` represents the current retry attempt count (starting from 0).
+   *
+   * Supported functions:
+   * - `pow`
+   * - `sqrt`
+   * - `abs`
+   * - `exp`
+   * - `floor`
+   * - `ceil`
+   * - `round`
+   * - `min`
+   * - `max`
+   *
+   * Examples of valid `retryDelay` values:
+   * ```ts
+   * 1000 // 1 second
+   * 1000 * (1 + retried)  // 1 second multiplied by the current retry attempt
+   * pow(2, retried) // 2 to the power of the current retry attempt
+   * max(10, pow(2, retried)) // The greater of 10 or 2^retried
+   * ```
+   */
+  public readonly retryDelay?: string;
+  /**
    * Settings for controlling the number of active requests
    * and number of requests per second with the same key.
    */
@@ -173,6 +204,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     initialPayload,
     env,
     retries,
+    retryDelay,
     telemetry,
     invokeCount,
     flowControl,
@@ -187,6 +219,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
     retries?: number;
+    retryDelay?: string;
     telemetry?: Telemetry;
     invokeCount?: number;
     flowControl?: FlowControl;
@@ -200,6 +233,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.requestPayload = initialPayload;
     this.env = env ?? {};
     this.retries = retries ?? DEFAULT_RETRIES;
+    this.retryDelay = retryDelay;
     this.flowControl = flowControl;
 
     this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
@@ -306,6 +340,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param body call body
    * @param headers call headers
    * @param retries number of call retries. 0 by default
+   * @param retryDelay delay / time gap between retries.
    * @param timeout max duration to wait for the endpoint to respond. in seconds.
    * @returns call result as {
    *     status: number;
@@ -341,6 +376,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         settings.body,
         settings.headers || {},
         settings.retries || 0,
+        settings.retryDelay,
         settings.timeout,
         settings.flowControl ?? settings.workflow.options.flowControl
       );
@@ -351,6 +387,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         body,
         headers = {},
         retries = 0,
+        retryDelay,
         timeout,
         flowControl,
       } = settings;
@@ -362,6 +399,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         body,
         headers,
         retries,
+        retryDelay,
         timeout,
         flowControl
       );

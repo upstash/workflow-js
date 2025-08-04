@@ -36,6 +36,10 @@ type BaseStepLog = {
    */
   retries: number;
   /**
+   * retry delay parameter for the step if it was set
+   */
+  retryDelay?: string;
+  /**
    * number of parallel steps
    *
    * if the step is sequential (non-parallel), will be 1.
@@ -53,10 +57,6 @@ type BaseStepLog = {
    * headers
    */
   headers: Record<string, string[]>;
-  /**
-   * retry delay parameter for the step if it was set
-   */
-  retryDelay?: string;
 };
 
 type CallUrlGroup = {
@@ -198,13 +198,13 @@ type StepLogGroup =
          */
         retries: number;
         /**
-         * errors which occured in the step
-         */
-        errors?: StepError[];
-        /**
          * retry delay parameter for the step if it was set
          */
         retryDelay?: string;
+        /**
+         * errors which occured in the step
+         */
+        errors?: StepError[];
       }[];
       /**
        * Log which belongs to the next step
@@ -358,6 +358,38 @@ export type TriggerOptions = {
    * @default 3
    */
   retries?: number;
+  /**
+   * Delay between retries.
+   *
+   * By default, the `retryDelay` is exponential backoff.
+   * More details can be found in: https://upstash.com/docs/qstash/features/retry.
+   *
+   * The `retryDelay` option allows you to customize the delay (in milliseconds) between retry attempts when message delivery fails.
+   *
+   * You can use mathematical expressions and the following built-in functions to calculate the delay dynamically.
+   * The special variable `retried` represents the current retry attempt count (starting from 0).
+   *
+   * Supported functions:
+   * - `pow`
+   * - `sqrt`
+   * - `abs`
+   * - `exp`
+   * - `floor`
+   * - `ceil`
+   * - `round`
+   * - `min`
+   * - `max`
+   *
+   * Examples of valid `retryDelay` values:
+   * ```ts
+   * 1000 // 1 second
+   * 1000 * (1 + retried)  // 1 second multiplied by the current retry attempt
+   * pow(2, retried) // 2 to the power of the current retry attempt
+   * max(10, pow(2, retried)) // The greater of 10 or 2^retried
+   * ```
+   */
+  retryDelay?: string;
+
   /**
    * Flow control to use for the workflow run.
    * If not provided, no flow control will be used.

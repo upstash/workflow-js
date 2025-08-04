@@ -85,6 +85,7 @@ export class DisabledWorkflowContext<
       initialPayload: context.requestPayload,
       env: context.env,
       retries: context.retries,
+      retryDelay: context.retryDelay,
       flowControl: context.flowControl,
     });
 

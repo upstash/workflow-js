@@ -109,6 +109,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
   finishState,
   failureFunction,
   retries,
+  retryDelay,
   port = WORKFLOW_PORT,
 }: {
   finalCount?: number;
@@ -118,6 +119,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
   finishState: FinishState;
   failureFunction?: WorkflowServeOptions["failureFunction"];
   retries?: number;
+  retryDelay?: string;
   port?: string;
 }) => {
   let counter = 0;
@@ -128,6 +130,7 @@ const testEndpoint = async <TInitialPayload = unknown>({
     verbose: true,
     failureFunction,
     retries,
+    retryDelay,
   });
 
   const server = serve({
@@ -557,6 +560,7 @@ describe.skip("live serve tests", () => {
           });
         },
         retries: 1,
+        retryDelay: "1000",
         failureFunction: ({ context, failStatus, failResponse, failHeaders }) => {
           expect(failStatus).toBe(500);
           expect(failResponse).toBe("my-custom-error");

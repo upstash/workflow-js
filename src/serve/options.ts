@@ -34,6 +34,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   | "baseUrl"
   | "schema"
   | "flowControl"
+  | "retryDelay"
 > => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);

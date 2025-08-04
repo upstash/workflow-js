@@ -177,6 +177,7 @@ export class Client {
    *   headers: { ... },             // Optional headers
    *   workflowRunId: "my-workflow", // Optional workflow run ID
    *   retries: 3                    // Optional retries for the initial request
+   *   retryDelay: "1000"            // Optional retry delay for the delay between retries
    * });
    *
    * console.log(workflowRunId)
@@ -191,6 +192,7 @@ export class Client {
    *   headers: { ... },             // Optional headers
    *   workflowRunId: "my-workflow", // Optional workflow run ID
    *   retries: 3                    // Optional retries for the initial request
+   *   retryDelay: "1000"            // Optional retry delay for the delay between retries
    * },
    *   {
    *   url: "https://workflow-endpoint-2.com",
@@ -198,6 +200,7 @@ export class Client {
    *   headers: { ... },               // Optional headers
    *   workflowRunId: "my-workflow-2", // Optional workflow run ID
    *   retries: 5                      // Optional retries for the initial request
+   *   retryDelay: "1000"              // Optional retry delay for the delay between retries
    * },
    * ]);
    *
@@ -218,6 +221,7 @@ export class Client {
    *   with `wfr_`.
    * @param retries retry to use in the initial request. in the rest of
    *   the workflow, `retries` option of the `serve` will be used.
+   * @param retryDelay delay between retries.
    * @param flowControl Settings for controlling the number of active requests
    *   and number of requests per second with the same key.
    * @param delay Delay for the workflow run. This is used to delay the
@@ -241,13 +245,14 @@ export class Client {
 
       const context = new WorkflowContext({
         qstashClient: this.client,
-        // @ts-expect-error headers type mismatch
-        headers: new Headers(option.headers ?? {}),
+        // @ts-expect-error header type mismatch because of bun
+        headers: new Headers((option.headers ?? {})),
         initialPayload: option.body,
         steps: [],
         url: option.url,
         workflowRunId: finalWorkflowRunId,
         retries: option.retries,
+        retryDelay: option.retryDelay,
         telemetry: { sdk: SDK_TELEMETRY },
         flowControl: option.flowControl,
         failureUrl,

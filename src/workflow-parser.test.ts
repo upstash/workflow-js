@@ -764,6 +764,7 @@ describe("Workflow Parser", () => {
         undefined,
         {},
         3,
+        "1000",
         undefined
       );
       expect(result1.isOk()).toBeTrue();
@@ -779,6 +780,7 @@ describe("Workflow Parser", () => {
         failureFunction,
         {},
         0,
+        undefined,
         undefined
       );
       expect(result2.isOk()).toBeTrue();
@@ -824,6 +826,7 @@ describe("Workflow Parser", () => {
         failureFunction,
         {},
         0,
+        undefined,
         undefined
       );
 
@@ -860,6 +863,7 @@ describe("Workflow Parser", () => {
         failureFunction,
         {},
         0,
+        undefined,
         undefined
       );
 
@@ -883,6 +887,7 @@ describe("Workflow Parser", () => {
         undefined,
         {},
         0,
+        undefined,
         undefined
       );
       expect(result.isErr()).toBeTrue();
@@ -914,6 +919,7 @@ describe("Workflow Parser", () => {
         failureFunction,
         {},
         3,
+        "1000",
         undefined
       );
       expect(result.isErr()).toBeTrue();
@@ -949,6 +955,7 @@ describe("Workflow Parser", () => {
         failureFunction,
         {},
         0,
+        undefined,
         undefined
       );
 
@@ -976,6 +983,7 @@ describe("Workflow Parser", () => {
         failureFunction,
         {},
         3,
+        "1000",
         undefined
       );
 
