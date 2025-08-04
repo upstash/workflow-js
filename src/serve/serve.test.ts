@@ -15,7 +15,6 @@ import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "../client";
 import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
 import {
-  DEFAULT_RETRIES,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
@@ -432,7 +431,6 @@ describe("serve", () => {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
-                "upstash-retries": DEFAULT_RETRIES.toString(),
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
@@ -482,7 +480,6 @@ describe("serve", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
-                "upstash-retries": DEFAULT_RETRIES.toString(),
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
@@ -528,7 +525,6 @@ describe("serve", () => {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
-                "upstash-retries": DEFAULT_RETRIES.toString(),
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -585,7 +581,6 @@ describe("serve", () => {
                 "upstash-feature-set": "LazyFetch,InitialBody",
                 "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
                 "upstash-delay": "1s",
-                "upstash-retries": DEFAULT_RETRIES.toString(),
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
@@ -1270,7 +1265,6 @@ describe("serve", () => {
               "upstash-feature-set": "LazyFetch,InitialBody",
               "upstash-failure-callback-feature-set": "LazyFetch,InitialBody",
               "upstash-delay": "1s",
-              "upstash-retries": DEFAULT_RETRIES.toString(),
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",

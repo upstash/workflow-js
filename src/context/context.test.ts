@@ -296,6 +296,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 7,
+        retryDelay: "1000 * retried",
       });
       await mockQStashServer({
         execute: () => {
@@ -350,6 +351,7 @@ describe("context tests", () => {
                 "upstash-method": "PATCH",
                 "upstash-retries": retries.toString(),
                 "upstash-retry-delay": retryDelay,
+                "upstash-callback-retry-delay": "1000 * retried",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",

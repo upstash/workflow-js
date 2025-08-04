@@ -7,7 +7,6 @@ import { nanoid } from "../utils";
 import { WorkflowAbort } from "../error";
 import type { RouteFunction } from "../types";
 import { DisabledWorkflowContext } from "./authorization";
-import { DEFAULT_RETRIES } from "../constants";
 
 describe("disabled workflow context", () => {
   const token = nanoid();
@@ -346,7 +345,6 @@ describe("disabled workflow context", () => {
                 "upstash-forward-upstash-workflow-invoke-count": "4",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
-                "upstash-retries": DEFAULT_RETRIES.toString(),
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,

@@ -48,6 +48,7 @@ describe("Workflow Requests", () => {
       steps: [],
       url: WORKFLOW_ENDPOINT,
       retries: 0,
+      retryDelay: "1000 * retried",
     });
 
     await mockQStashServer({
@@ -72,6 +73,7 @@ describe("Workflow Requests", () => {
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-retries": "0",
+              "upstash-retry-delay": "1000 * retried",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
               "upstash-workflow-init": "true",

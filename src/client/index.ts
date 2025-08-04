@@ -245,8 +245,8 @@ export class Client {
 
       const context = new WorkflowContext({
         qstashClient: this.client,
-        // @ts-expect-error headers type mismatch
-        headers: new Headers(option.headers ?? {}),
+        // @ts-expect-error header type mismatch because of bun
+        headers: new Headers((option.headers ?? {})),
         initialPayload: option.body,
         steps: [],
         url: option.url,

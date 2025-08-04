@@ -19,7 +19,12 @@ import { WorkflowError } from "../error";
 import { getWorkflowRunId } from "../utils";
 import { WorkflowContext } from "./context";
 import { getHeaders, prepareFlowControl } from "../qstash/headers";
-import { WORKFLOW_FEATURE_HEADER, WORKFLOW_INIT_HEADER, WORKFLOW_URL_HEADER } from "../constants";
+import {
+  DEFAULT_RETRIES,
+  WORKFLOW_FEATURE_HEADER,
+  WORKFLOW_INIT_HEADER,
+  WORKFLOW_URL_HEADER,
+} from "../constants";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
 
 type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
@@ -144,7 +149,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
         failureUrl: context.failureUrl,
-        retries: context.retries,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
         retryDelay: context.retryDelay,
         useJSONContent: false,
         telemetry,
@@ -165,7 +170,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
         body,
         headers,
         method: "POST",
-        retries: context.retries,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
         retryDelay: context.retryDelay,
         flowControl: context.flowControl,
         url: context.url,
@@ -254,7 +259,7 @@ export class LazySleepStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
-        retries: context.retries,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
         retryDelay: context.retryDelay,
         flowControl: context.flowControl,
         delay: isParallel ? undefined : this.sleep,
@@ -308,7 +313,7 @@ export class LazySleepUntilStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
-        retries: context.retries,
+        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
         retryDelay: context.retryDelay,
         flowControl: context.flowControl,
         notBefore: isParallel ? undefined : this.sleepUntil,
@@ -493,7 +498,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
         body: JSON.stringify(this.body),
         method: this.method,
         url: this.url,
-        retries: this.retries,
+        retries: DEFAULT_RETRIES === this.retries ? undefined : this.retries,
         retryDelay: this.retryDelay,
         flowControl: this.flowControl,
       },
