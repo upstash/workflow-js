@@ -145,7 +145,7 @@ export type StepLog = BaseStepLog &
   AsOptional<{ sleepUntil: number }> &
   AsOptional<WaitEventGroup>;
 
-type StepError = {
+export type StepError = {
   /**
    * error message associated with the request
    *
