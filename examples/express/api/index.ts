@@ -26,7 +26,7 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
 
   const { body } = await context.call("get-data", {
     url: `${process.env.UPSTASH_WORKFLOW_URL ?? "http://localhost:3001"}/get-data`,
-    method: "POST",
+    method: "GET",
     body: { message: result1 }
   })
 
@@ -37,6 +37,11 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
     return output
   })
 }));
+
+app.get('/get-data', (req, res) => {
+  const message = req.body.message as string;
+  res.json({ message: `Received: ${message}` });
+});
 
 /**
  * ServeMany
@@ -122,6 +127,6 @@ app.post("/ci", serve(
   }
 ))
 
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
+app.listen(3001, () => {
+  console.log('Server running on port 3001');
 });

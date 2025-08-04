@@ -65,12 +65,12 @@ function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
 
     const response = await serveHandler(webRequest);
 
-    res.status(response.status).json(await response.json());
-
     // set headers
     for (const [key, value] of response.headers.entries()) {
       res.setHeader(key, value);
     }
+
+    res.status(response.status).json(await response.json());
   };
 }
 
@@ -82,7 +82,7 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
 
   const handler: RequestHandler = createExpressHandler([routeFunction, options]);
 
-  router.all("*", handler);
+  router.all(/(.*)/, handler);
 
   return router;
 }
@@ -113,6 +113,6 @@ export const serveMany = (
     options,
   });
 
-  router.all("*", handler);
+  router.all(/(.*)/, handler);
   return router;
 };

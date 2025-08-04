@@ -105,12 +105,13 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
       method: "POST",
     });
     const response = await serveHandler(request);
-    res.status(response.status).json(await response.json());
 
     // set headers
     for (const [key, value] of response.headers.entries()) {
       res.setHeader(key, value);
     }
+
+    res.status(response.status).json(await response.json());
   };
 
   return {
