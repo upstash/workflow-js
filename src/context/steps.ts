@@ -447,9 +447,12 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     const { headers, contentType } = super.getHeaders({ context, telemetry, invokeCount, step });
 
     headers["Upstash-Retries"] = this.retries.toString();
+
     if (this.retryDelay) {
       headers["Upstash-Retry-Delay"] = this.retryDelay;
     }
+    
+    // WF_DetectTrigger is not included because these requests are going to external endpoints
     headers[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
 
     if (this.flowControl) {
@@ -477,7 +480,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
         "Upstash-Callback-Workflow-CallType": "fromCallback",
         "Upstash-Callback-Workflow-Init": "false",
         "Upstash-Callback-Workflow-Url": context.url,
-        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody",
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
 
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),

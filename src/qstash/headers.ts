@@ -109,7 +109,7 @@ class WorkflowHeaders {
       [WORKFLOW_INIT_HEADER]: this.initHeaderValue,
       [WORKFLOW_ID_HEADER]: this.workflowConfig.workflowRunId,
       [WORKFLOW_URL_HEADER]: this.workflowConfig.workflowUrl,
-      [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody",
+      [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
       [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
       ...(this.workflowConfig.telemetry ? getTelemetryHeaders(this.workflowConfig.telemetry) : {}),
       ...(this.workflowConfig.telemetry &&
@@ -212,7 +212,7 @@ class WorkflowHeaders {
     this.headers.failureHeaders["Workflow-Init"] = "false";
     this.headers.failureHeaders["Workflow-Url"] = this.workflowConfig.workflowUrl;
     this.headers.failureHeaders["Workflow-Calltype"] = "failureCall";
-    this.headers.failureHeaders["Feature-Set"] = "LazyFetch,InitialBody";
+    this.headers.failureHeaders["Feature-Set"] = "LazyFetch,InitialBody,WF_DetectTrigger";
     if (
       this.workflowConfig.retries !== undefined &&
       this.workflowConfig.retries !== DEFAULT_RETRIES

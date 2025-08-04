@@ -1,6 +1,10 @@
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
-import { DEFAULT_RETRIES } from "../constants";
+import {
+  DEFAULT_RETRIES,
+  WORKFLOW_PROTOCOL_VERSION,
+  WORKFLOW_PROTOCOL_VERSION_HEADER,
+} from "../constants";
 import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { WorkflowLogger } from "../logger";
 import { formatWorkflowError, WorkflowError } from "../error";
@@ -54,22 +58,32 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           }),
           {
             status: 400,
+            headers: {
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            },
           }
         ) as TResponse;
       } else if (detailedFinishCondition?.condition === "non-retryable-error") {
         return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
           headers: {
             "Upstash-NonRetryable-Error": "true",
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
           },
           status: 489,
         }) as TResponse;
       } else if (detailedFinishCondition?.condition === "failure-callback") {
         return new Response(detailedFinishCondition.result ?? undefined, {
           status: 200,
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+          },
         }) as TResponse;
       }
       return new Response(JSON.stringify({ workflowRunId }), {
         status: 200,
+        headers: {
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+        },
       }) as TResponse;
     },
     initialPayloadParser: (initialRequest: string) => {

@@ -206,7 +206,7 @@ describe("receiver", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
                 "upstash-forward-authorization": expect.stringMatching(/Bearer /),
                 "upstash-forward-upstash-signature": expect.any(String),
                 "upstash-forward-upstash-workflow-sdk-version": "1",

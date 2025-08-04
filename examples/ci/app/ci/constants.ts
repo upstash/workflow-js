@@ -99,6 +99,10 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     route: "invoke/workflows/workflowOne",
     waitForSeconds: 10
+  },
+  {
+    route: "trigger-non-workflow/workflow",
+    waitForSeconds: 10
   }
 
   /**
