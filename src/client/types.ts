@@ -399,6 +399,12 @@ export type TriggerOptions = {
    * Delay to apply before triggering the workflow.
    */
   delay?: PublishRequest["delay"];
+  /**
+   * Label to apply to the workflow run.
+   *
+   * Can be used to filter the workflow run logs.
+   */
+  label?: string;
 } & (
   | {
       /**

@@ -87,6 +87,7 @@ export class DisabledWorkflowContext<
       retries: context.retries,
       retryDelay: context.retryDelay,
       flowControl: context.flowControl,
+      label: context.label,
     });
 
     try {

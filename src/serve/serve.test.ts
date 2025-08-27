@@ -19,6 +19,7 @@ import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
+  WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
@@ -58,9 +59,13 @@ describe("serve", () => {
     );
 
     const initialPayload = nanoid();
+    const labelValue = `test-label-${nanoid()}`;
     const request = new Request(WORKFLOW_ENDPOINT, {
       method: "POST",
       body: initialPayload,
+      headers: {
+        [WORKFLOW_LABEL_HEADER]: labelValue,
+      },
     });
     await mockQStashServer({
       execute: async () => {
@@ -78,6 +83,7 @@ describe("serve", () => {
             headers: {
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-forward-upstash-workflow-label": labelValue,
               "upstash-flow-control-key": "my-key",
               "upstash-flow-control-value": "parallelism=1",
               "upstash-forward-upstash-workflow-sdk-version": "1",
@@ -145,14 +151,20 @@ describe("serve", () => {
       },
     ];
 
+    const labelValue = `test-label-${nanoid()}`;
     await driveWorkflow({
       execute: async (initialPayload, steps, first) => {
         const request = first
           ? new Request(WORKFLOW_ENDPOINT, {
               body: JSON.stringify(initialPayload),
               method: "POST",
+              headers: {
+                [WORKFLOW_LABEL_HEADER]: labelValue,
+              },
             })
-          : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps);
+          : getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps, {
+              [WORKFLOW_LABEL_HEADER]: labelValue,
+            });
 
         request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "2");
 
@@ -188,6 +200,7 @@ describe("serve", () => {
                   "upstash-flow-control-key": "my-key",
                   "upstash-flow-control-value": "rate=3",
                   "upstash-workflow-runid": expect.stringMatching(/^wfr/),
+                  "upstash-forward-upstash-workflow-label": labelValue,
                 },
                 body: initialPayload,
               },
@@ -222,6 +235,7 @@ describe("serve", () => {
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
                   "upstash-flow-control-key": "my-key",
                   "upstash-flow-control-value": "rate=3",
+                  "upstash-forward-upstash-workflow-label": labelValue,
                 },
               },
             ],
@@ -254,6 +268,7 @@ describe("serve", () => {
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
                   "upstash-flow-control-key": "my-key",
                   "upstash-flow-control-value": "rate=3",
+                  "upstash-forward-upstash-workflow-label": labelValue,
                 },
                 body: JSON.stringify(steps[1]),
               },

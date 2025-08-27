@@ -212,6 +212,7 @@ describe("workflow client", () => {
           retries: 15,
           retryDelay: "1000",
           delay: 1,
+          label: "test-label",
         });
       },
       responseFields: {
@@ -237,6 +238,7 @@ describe("workflow client", () => {
               "upstash-delay": "1s",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-forward-upstash-workflow-label": "test-label",
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),

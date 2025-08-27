@@ -35,6 +35,63 @@ import { getHeaders } from "./qstash/headers";
 import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
 
 describe("Workflow Requests", () => {
+  test("should preserve WORKFLOW_LABEL_HEADER in recreateUserHeaders", () => {
+    const headers = new Headers();
+    headers.append("Upstash-Workflow-Other-Header", "value1");
+    headers.append("My-Header", "value2");
+    headers.append("Upstash-Workflow-Label", "my-label");
+
+    const newHeaders = recreateUserHeaders(headers as Headers);
+
+    expect(newHeaders.get("Upstash-Workflow-Other-Header")).toBe(null);
+    expect(newHeaders.get("My-Header")).toBe("value2");
+    expect(newHeaders.get("Upstash-Workflow-Label")).toBe("my-label");
+  });
+
+  test("should propagate label from trigger options to context and headers", async () => {
+    const workflowRunId = nanoid();
+    const initialPayload = nanoid();
+    const token = "myToken";
+    const label = "test-label";
+
+    const context = new WorkflowContext({
+      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+      workflowRunId: workflowRunId,
+      initialPayload,
+      headers: new Headers({ "Upstash-Workflow-Label": label }) as Headers,
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      retries: 0,
+      retryDelay: "1000 * retried",
+      label,
+    });
+
+    expect(context.label).toBe(label);
+    expect(context.headers.get("Upstash-Workflow-Label")).toBe(label);
+
+    await mockQStashServer({
+      execute: async () => {
+        const result = await triggerFirstInvocation({ workflowContext: context });
+        expect(result.isOk()).toBeTrue();
+      },
+      responseFields: {
+        body: [{ messageId: "msgId" }],
+        status: 200,
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              "upstash-workflow-label": label,
+            }),
+          }),
+        ],
+      },
+    });
+  });
   test("should send first invocation request", async () => {
     const workflowRunId = nanoid();
     const initialPayload = nanoid();
