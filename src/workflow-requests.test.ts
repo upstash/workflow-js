@@ -86,6 +86,7 @@ describe("Workflow Requests", () => {
           expect.objectContaining({
             headers: expect.objectContaining({
               "upstash-label": label,
+              "upstash-forward-upstash-label": label,
             }),
           }),
         ],

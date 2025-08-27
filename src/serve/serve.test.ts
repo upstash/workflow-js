@@ -83,6 +83,7 @@ describe("serve", () => {
             headers: {
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-label": labelValue,
               "upstash-forward-upstash-label": labelValue,
               "upstash-flow-control-key": "my-key",
               "upstash-flow-control-value": "parallelism=1",
