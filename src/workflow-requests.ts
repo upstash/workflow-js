@@ -71,6 +71,17 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         headers["content-type"] = "application/json";
       }
 
+      /**
+       * WORKFLOW_LABEL_HEADER exists in the headers with forward prefix
+       * so that it can be passed to the workflow context in subsequent steps.
+       *
+       * we also need to set it here without the prefix so that server
+       * sets the label of the workflow run.
+       */
+      if (workflowContext.label) {
+        headers[WORKFLOW_LABEL_HEADER] = workflowContext.label;
+      }
+
       const body =
         typeof workflowContext.requestPayload === "string"
           ? workflowContext.requestPayload

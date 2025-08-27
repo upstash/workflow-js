@@ -16,7 +16,7 @@ export const CI_ROUTE_HEADER = `Ci-Test-Route`
 /**
  * a label header set in the SDK itself to set context.label via client.trigger
  */
-export const WORKFLOW_LABEL_HEADER = "upstash-workflow-label"
+export const WORKFLOW_LABEL_HEADER = "upstash-label"
 
 export const BASE_URL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`

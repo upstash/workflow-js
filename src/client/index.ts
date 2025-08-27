@@ -317,6 +317,7 @@ export class Client {
     state?: WorkflowRunLog["workflowState"];
     workflowUrl?: WorkflowRunLog["workflowUrl"];
     workflowCreatedAt?: WorkflowRunLog["workflowRunCreatedAt"];
+    label?: WorkflowRunLog["label"];
   }): Promise<WorkflowRunLogs> {
     const { workflowRunId, cursor, count, state, workflowUrl, workflowCreatedAt } = params ?? {};
 
@@ -338,6 +339,9 @@ export class Client {
     }
     if (workflowCreatedAt) {
       urlParams.append("workflowCreatedAt", workflowCreatedAt.toString());
+    }
+    if (params?.label) {
+      urlParams.append("label", params.label);
     }
 
     const result = await this.client.http.request<WorkflowRunLogs>({

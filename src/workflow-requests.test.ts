@@ -39,13 +39,13 @@ describe("Workflow Requests", () => {
     const headers = new Headers();
     headers.append("Upstash-Workflow-Other-Header", "value1");
     headers.append("My-Header", "value2");
-    headers.append("Upstash-Workflow-Label", "my-label");
+    headers.append("upstash-label", "my-label");
 
     const newHeaders = recreateUserHeaders(headers as Headers);
 
     expect(newHeaders.get("Upstash-Workflow-Other-Header")).toBe(null);
     expect(newHeaders.get("My-Header")).toBe("value2");
-    expect(newHeaders.get("Upstash-Workflow-Label")).toBe("my-label");
+    expect(newHeaders.get("upstash-label")).toBe("my-label");
   });
 
   test("should propagate label from trigger options to context and headers", async () => {
@@ -58,7 +58,7 @@ describe("Workflow Requests", () => {
       qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
       workflowRunId: workflowRunId,
       initialPayload,
-      headers: new Headers({ "Upstash-Workflow-Label": label }) as Headers,
+      headers: new Headers({ "upstash-label": label }) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
       retries: 0,
@@ -67,7 +67,7 @@ describe("Workflow Requests", () => {
     });
 
     expect(context.label).toBe(label);
-    expect(context.headers.get("Upstash-Workflow-Label")).toBe(label);
+    expect(context.headers.get("upstash-label")).toBe(label);
 
     await mockQStashServer({
       execute: async () => {
@@ -85,7 +85,7 @@ describe("Workflow Requests", () => {
         body: [
           expect.objectContaining({
             headers: expect.objectContaining({
-              "upstash-workflow-label": label,
+              "upstash-label": label,
             }),
           }),
         ],

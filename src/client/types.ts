@@ -327,6 +327,10 @@ export type WorkflowRunLog = {
    * If the workflow run has failed, id of the run in DLQ
    */
   dlqId?: string;
+  /**
+   * Label of the workflow run
+   */
+  label?: string;
 };
 
 export type WorkflowRunLogs = {

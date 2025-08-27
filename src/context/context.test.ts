@@ -22,12 +22,12 @@ describe("context tests", () => {
       initialPayload: "my-payload",
       steps: [],
       url: WORKFLOW_ENDPOINT,
-      headers: new Headers({ "Upstash-Workflow-Label": label }) as Headers,
+      headers: new Headers({ "upstash-label": label }) as Headers,
       workflowRunId: "wfr-id",
       label,
     });
     expect(context.label).toBe(label);
-    expect(context.headers.get("Upstash-Workflow-Label")).toBe(label);
+    expect(context.headers.get("upstash-label")).toBe(label);
   });
   const token = nanoid();
   const qstashClient = new Client({
