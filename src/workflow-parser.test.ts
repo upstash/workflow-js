@@ -729,7 +729,6 @@ describe("Workflow Parser", () => {
       url: WORKFLOW_ENDPOINT,
       sourceHeader: {
         [`Upstash-Failure-Callback-Forward-Authorization`]: [authorization],
-        [WORKFLOW_LABEL_HEADER]: [labelValue],
       },
       sourceBody: btoa(
         JSON.stringify([
@@ -795,6 +794,7 @@ describe("Workflow Parser", () => {
       headers: {
         [WORKFLOW_FAILURE_HEADER]: "true",
         authorization: authorization,
+        [WORKFLOW_LABEL_HEADER]: labelValue,
       },
     });
 

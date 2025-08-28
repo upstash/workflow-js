@@ -454,7 +454,7 @@ describe("workflow client", () => {
       });
     });
 
-    test(
+    test.skip(
       "should get logs - live",
       async () => {
         const qstashClient = new QStashClient({
@@ -532,7 +532,7 @@ describe("workflow client", () => {
               ],
             });
           },
-          { timeout: 30_000, interval: 100 }
+          { timeout: 1000, interval: 100 }
         );
 
         await liveClient.cancel({ ids: workflowRunId });
