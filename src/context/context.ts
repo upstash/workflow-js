@@ -193,6 +193,23 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly flowControl?: FlowControl;
 
+  /**
+   * Label to apply to the workflow run.
+   *
+   * Can be used to filter the workflow run logs.
+   *
+   * Can be set by passing a `label` parameter when triggering the workflow
+   * with `client.trigger`:
+   *
+   * ```ts
+   * await client.trigger({
+   *   url: "https://workflow-endpoint.com",
+   *   label: "my-label"
+   * });
+   * ```
+   */
+  public readonly label?: string;
+
   constructor({
     qstashClient,
     workflowRunId,
@@ -208,6 +225,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     telemetry,
     invokeCount,
     flowControl,
+    label,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -223,6 +241,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     telemetry?: Telemetry;
     invokeCount?: number;
     flowControl?: FlowControl;
+    label?: string;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -235,6 +254,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.retries = retries ?? DEFAULT_RETRIES;
     this.retryDelay = retryDelay;
     this.flowControl = flowControl;
+    this.label = label;
 
     this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
   }

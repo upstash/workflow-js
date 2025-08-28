@@ -176,13 +176,15 @@ export const getRequest = (
   workflowUrl: string,
   workflowRunId: string,
   initialPayload: unknown,
-  steps: Step[]
+  steps: Step[],
+  headers?: Record<string, string>
 ): Request => {
   return new Request(workflowUrl, {
     body: getRequestBody(initialPayload, steps),
     headers: {
       [WORKFLOW_ID_HEADER]: workflowRunId,
       [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+      ...headers,
     },
   });
 };

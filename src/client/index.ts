@@ -6,7 +6,7 @@ import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
 import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
-import { SDK_TELEMETRY } from "../constants";
+import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -246,7 +246,10 @@ export class Client {
       const context = new WorkflowContext({
         qstashClient: this.client,
         // @ts-expect-error header type mismatch because of bun
-        headers: new Headers((option.headers ?? {})),
+        headers: new Headers({
+          ...(option.headers ?? {}),
+          ...(option.label ? { [WORKFLOW_LABEL_HEADER]: option.label } : {}),
+        }),
         initialPayload: option.body,
         steps: [],
         url: option.url,
@@ -256,6 +259,7 @@ export class Client {
         telemetry: { sdk: SDK_TELEMETRY },
         flowControl: option.flowControl,
         failureUrl,
+        label: option.label,
       });
 
       return {
@@ -313,6 +317,7 @@ export class Client {
     state?: WorkflowRunLog["workflowState"];
     workflowUrl?: WorkflowRunLog["workflowUrl"];
     workflowCreatedAt?: WorkflowRunLog["workflowRunCreatedAt"];
+    label?: WorkflowRunLog["label"];
   }): Promise<WorkflowRunLogs> {
     const { workflowRunId, cursor, count, state, workflowUrl, workflowCreatedAt } = params ?? {};
 
@@ -334,6 +339,9 @@ export class Client {
     }
     if (workflowCreatedAt) {
       urlParams.append("workflowCreatedAt", workflowCreatedAt.toString());
+    }
+    if (params?.label) {
+      urlParams.append("label", params.label);
     }
 
     const result = await this.client.http.request<WorkflowRunLogs>({

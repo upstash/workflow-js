@@ -5,6 +5,7 @@ import { getPayload, handleFailure, parseRequest, validateRequest } from "./work
 import {
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
+  WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "./constants";
@@ -720,13 +721,14 @@ describe("Workflow Parser", () => {
     const failMessage = `my-custom-error-${nanoid()}`;
     const authorization = `Bearer ${nanoid()}`;
     const initialPayload = { hello: "world" };
+    const labelValue = `test-label-${nanoid()}`;
     const body = {
       status: 201,
       header: { myHeader: "value" },
       body: btoa(JSON.stringify(formatWorkflowError(new WorkflowError(failMessage)))),
       url: WORKFLOW_ENDPOINT,
       sourceHeader: {
-        [`Upstash-Failure-Callback-Forward-Authorization`]: authorization,
+        [`Upstash-Failure-Callback-Forward-Authorization`]: [authorization],
       },
       sourceBody: btoa(
         JSON.stringify([
@@ -792,6 +794,7 @@ describe("Workflow Parser", () => {
       headers: {
         [WORKFLOW_FAILURE_HEADER]: "true",
         authorization: authorization,
+        [WORKFLOW_LABEL_HEADER]: labelValue,
       },
     });
 
@@ -943,6 +946,7 @@ describe("Workflow Parser", () => {
         expect(failStatus).toBe(201);
         expect(failResponse).toBe(failMessage);
         expect(context.headers.get("authorization")).toBe(authorization);
+        expect(context.label).toBe(labelValue);
         return failureFunctionResponse;
       };
 
