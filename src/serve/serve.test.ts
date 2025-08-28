@@ -202,6 +202,7 @@ describe("serve", () => {
                   "upstash-flow-control-value": "rate=3",
                   "upstash-workflow-runid": expect.stringMatching(/^wfr/),
                   "upstash-forward-upstash-label": labelValue,
+                  "upstash-label": labelValue,
                 },
                 body: initialPayload,
               },
