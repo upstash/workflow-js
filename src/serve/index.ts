@@ -2,6 +2,7 @@ import { makeCancelRequest } from "../client/utils";
 import {
   SDK_TELEMETRY,
   WORKFLOW_INVOKE_COUNT_HEADER,
+  WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
@@ -152,6 +153,7 @@ export const serveBase = <
     }
 
     const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
+    const label = request.headers.get(WORKFLOW_LABEL_HEADER) ?? undefined;
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
@@ -169,6 +171,7 @@ export const serveBase = <
       telemetry,
       invokeCount,
       flowControl,
+      label,
     });
 
     // attempt running routeFunction until the first step

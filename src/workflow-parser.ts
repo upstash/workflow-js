@@ -5,6 +5,7 @@ import {
   NO_CONCURRENCY,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
+  WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "./constants";
@@ -355,6 +356,8 @@ export const handleFailure = async <TInitialPayload>(
       errorMessage = `Couldn't parse 'failResponse' in 'failureFunction', received: '${decodedBody}'`;
     }
 
+    const userHeaders = recreateUserHeaders(request.headers as Headers);
+
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient,
@@ -362,7 +365,7 @@ export const handleFailure = async <TInitialPayload>(
       initialPayload: sourceBody
         ? initialPayloadParser(decodeBase64(sourceBody))
         : (undefined as TInitialPayload),
-      headers: recreateUserHeaders(request.headers as Headers),
+      headers: userHeaders,
       steps: [],
       url: url,
       failureUrl: url,
@@ -372,6 +375,7 @@ export const handleFailure = async <TInitialPayload>(
       retryDelay,
       flowControl,
       telemetry: undefined, // not going to make requests in authentication check
+      label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,
     });
 
     // attempt running routeFunction until the first step

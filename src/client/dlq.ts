@@ -13,6 +13,7 @@ type DLQFilterOptions = Pick<
   workflowRunId?: string;
   workflowCreatedAt?: string;
   failureFunctionState?: FailureCallbackInfo["state"];
+  label?: string;
 };
 
 type FailureCallbackInfo = {
@@ -50,6 +51,10 @@ type DLQMessage = {
    * status of the failure callback
    */
   failureCallbackInfo?: FailureCallbackInfo;
+  /**
+   * label passed when triggering workflow
+   */
+  label?: string;
 };
 
 type PublicDLQMessage = Pick<
@@ -69,6 +74,7 @@ type PublicDLQMessage = Pick<
   | "dlqId"
   | "failureCallback"
   | "failureCallbackInfo"
+  | "label"
 >;
 
 export class DLQ {

@@ -327,6 +327,10 @@ export type WorkflowRunLog = {
    * If the workflow run has failed, id of the run in DLQ
    */
   dlqId?: string;
+  /**
+   * Label of the workflow run
+   */
+  label?: string;
 };
 
 export type WorkflowRunLogs = {
@@ -399,6 +403,12 @@ export type TriggerOptions = {
    * Delay to apply before triggering the workflow.
    */
   delay?: PublishRequest["delay"];
+  /**
+   * Label to apply to the workflow run.
+   *
+   * Can be used to filter the workflow run logs.
+   */
+  label?: string;
 } & (
   | {
       /**

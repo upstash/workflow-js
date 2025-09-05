@@ -3,6 +3,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
 import { Client } from ".";
 import { nanoid } from "../utils";
 
+const WORKFLOW_LABEL = "some-label";
 const MOCK_DLQ_MESSAGES = [
   {
     dlqId: `dlq-${nanoid()}`,
@@ -25,6 +26,7 @@ const MOCK_DLQ_MESSAGES = [
       responseHeaders: { "content-type": ["application/json"] },
     },
     failureCallback: "https://example.com/failure-callback",
+    label: WORKFLOW_LABEL,
   },
   {
     dlqId: `dlq-${nanoid()}`,
@@ -75,8 +77,13 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.list({ cursor, count });
+          const result = await client.dlq.list({
+            cursor,
+            count,
+            filter: { label: WORKFLOW_LABEL },
+          });
           expect(result.messages).toEqual([MOCK_DLQ_MESSAGES[0]]);
+          expect(result.messages[0].label).toBe(WORKFLOW_LABEL);
           expect(result.cursor).toBe(nextCursor);
         },
         responseFields: {
@@ -85,7 +92,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "GET",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?cursor=${cursor}&count=${count}&source=workflow`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?cursor=${cursor}&count=${count}&label=${WORKFLOW_LABEL}&source=workflow`,
           token,
         },
       });

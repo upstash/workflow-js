@@ -451,7 +451,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     if (this.retryDelay) {
       headers["Upstash-Retry-Delay"] = this.retryDelay;
     }
-    
+
     // WF_DetectTrigger is not included because these requests are going to external endpoints
     headers[WORKFLOW_FEATURE_HEADER] = "WF_NoDelete,InitialBody";
 

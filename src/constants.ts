@@ -6,6 +6,7 @@ export const WORKFLOW_URL_HEADER = "Upstash-Workflow-Url";
 export const WORKFLOW_FAILURE_HEADER = "Upstash-Workflow-Is-Failure";
 export const WORKFLOW_FEATURE_HEADER = "Upstash-Feature-Set";
 export const WORKFLOW_INVOKE_COUNT_HEADER = "Upstash-Workflow-Invoke-Count";
+export const WORKFLOW_LABEL_HEADER = "Upstash-Label";
 
 export const WORKFLOW_PROTOCOL_VERSION = "1";
 export const WORKFLOW_PROTOCOL_VERSION_HEADER = "Upstash-Workflow-Sdk-Version";

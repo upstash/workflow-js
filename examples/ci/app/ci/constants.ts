@@ -13,6 +13,11 @@ export const TEST_TIMEOUT_DURATION = (
 export const CI_RANDOM_ID_HEADER = "Ci-Test-Id"
 export const CI_ROUTE_HEADER = `Ci-Test-Route`
 
+/**
+ * a label header set in the SDK itself to set context.label via client.trigger
+ */
+export const WORKFLOW_LABEL_HEADER = "upstash-label"
+
 export const BASE_URL = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : process.env.UPSTASH_WORKFLOW_URL

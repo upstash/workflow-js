@@ -1,5 +1,5 @@
 import { serve } from "@upstash/workflow/nextjs";
-import { BASE_URL } from "app/ci/constants";
+import { BASE_URL, WORKFLOW_LABEL_HEADER } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 import { WorkflowContext } from "@upstash/workflow";
@@ -10,7 +10,7 @@ const authHeaderValue = `Bearer super-secret-token`
 
 const errorMessage = `my-error`
 const payload = undefined
-
+const label = "my-label"
 
 export const { POST, GET } = testServe(
   serve<string>(
@@ -20,6 +20,8 @@ export const { POST, GET } = testServe(
       expect(typeof input, typeof payload);
       expect(input, payload);
       expect(context.headers.get(header)!, headerValue)
+      expect(context.headers.get(WORKFLOW_LABEL_HEADER)!, label)
+      expect(context.label, label)
 
       await context.run("step1", () => {
         throw new Error(errorMessage);
@@ -33,6 +35,8 @@ export const { POST, GET } = testServe(
         expect(context.requestPayload, payload);
         expect(typeof context.requestPayload, typeof payload);
         expect(context.headers.get("authentication")!, authHeaderValue);
+        expect(context.headers.get(WORKFLOW_LABEL_HEADER)!, label)
+        expect(context.label, label)
 
         await saveResult(
           context as WorkflowContext,
@@ -46,7 +50,11 @@ export const { POST, GET } = testServe(
     payload,
     headers: {
       [ header ]: headerValue,
-      "authentication": authHeaderValue
+      "authentication": authHeaderValue,
+      /**
+       * client trigger sets this header
+       */
+      [`upstash-forward-${WORKFLOW_LABEL_HEADER}`]: label
     }
   }
 ) 
