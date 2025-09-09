@@ -266,6 +266,7 @@ export class Client {
         workflowContext: context,
         telemetry: { sdk: SDK_TELEMETRY },
         delay: option.delay,
+        notBefore: option.notBefore,
       };
     });
     const result = await triggerFirstInvocation(invocations);
