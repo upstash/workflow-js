@@ -276,7 +276,7 @@ describe("workflow client", () => {
             workflowRunId: myWorkflowRunId2,
             retries: 15,
             retryDelay: "2000",
-            delay: 1,
+            notBefore: new Date("2100-01-01T00:00:00Z").getTime() / 1000,
             useFailureFunction: true,
           },
         ]);
@@ -326,7 +326,7 @@ describe("workflow client", () => {
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId2}`,
               "upstash-workflow-url": "https://requestcatcher.com/api",
-              "upstash-delay": "1s",
+              "upstash-not-before": "4102444800",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
               "upstash-telemetry-framework": "unknown",

@@ -404,6 +404,16 @@ export type TriggerOptions = {
    */
   delay?: PublishRequest["delay"];
   /**
+   * Optionally set the absolute delay of this message.
+   * This will override the delay option.
+   * The message will not delivered until the specified time.
+   *
+   * Unix timestamp in seconds.
+   *
+   * @default undefined
+   */
+  notBefore?: PublishRequest["notBefore"];
+  /**
    * Label to apply to the workflow run.
    *
    * Can be used to filter the workflow run logs.
