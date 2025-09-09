@@ -44,10 +44,12 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   );
 
   return {
-    qstashClient: new Client({
-      baseUrl: environment.QSTASH_URL!,
-      token: environment.QSTASH_TOKEN!,
-    }),
+    qstashClient:
+      options?.qstashClient ??
+      new Client({
+        baseUrl: environment.QSTASH_URL!,
+        token: environment.QSTASH_TOKEN!,
+      }),
     onStepFinish: (workflowRunId, _finishCondition, detailedFinishCondition) => {
       if (detailedFinishCondition?.condition === "auth-fail") {
         console.error(AUTH_FAIL_MESSAGE);
