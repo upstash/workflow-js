@@ -385,11 +385,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
       | CallSettings<TBody>
       | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
   ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
-    let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
+    let callStep: LazyCallStep<TResult | { workflowRunId: string }, typeof settings.body>;
     if ("workflow" in settings) {
       const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
 
-      callStep = new LazyCallStep<{ workflowRunId: string }>(
+      callStep = new LazyCallStep<{ workflowRunId: string }, typeof settings.body>(
         stepName,
         url,
         "POST",
@@ -398,7 +398,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
         settings.retries || 0,
         settings.retryDelay,
         settings.timeout,
-        settings.flowControl ?? settings.workflow.options.flowControl
+        settings.flowControl ?? settings.workflow.options.flowControl,
+        (settings.stringifyBody = true)
       );
     } else {
       const {
@@ -410,9 +411,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
         retryDelay,
         timeout,
         flowControl,
+        stringifyBody = true,
       } = settings;
 
-      callStep = new LazyCallStep<TResult>(
+      callStep = new LazyCallStep<TResult, typeof body>(
         stepName,
         url,
         method,
@@ -421,7 +423,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
         retries,
         retryDelay,
         timeout,
-        flowControl
+        flowControl,
+        stringifyBody
       );
     }
 

@@ -622,7 +622,8 @@ describe("Workflow Requests", () => {
           rate: 5,
           parallelism: 6,
           period: 30,
-        }
+        },
+        true
       );
       const { headers } = lazyStep.getHeaders({
         context: new WorkflowContext({

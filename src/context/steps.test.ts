@@ -159,7 +159,8 @@ describe("test steps", () => {
       14,
       "1000",
       30,
-      flowControl
+      flowControl,
+      true
     );
 
     test("should set correct fields", () => {

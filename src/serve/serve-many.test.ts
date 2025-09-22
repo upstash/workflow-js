@@ -125,11 +125,39 @@ describe("serveMany", () => {
       }
     );
 
+    const workflowFour = createWorkflow(async (context) => {
+      await context.invoke("invoke workflow two", {
+        workflow: workflowTwo,
+        body: "hello world",
+        stringifyBody: false,
+      });
+    });
+
+    const workflowFive = createWorkflow(async (context) => {
+      await context.invoke("invoke workflow two", {
+        workflow: workflowTwo,
+        body: "hello world",
+        stringifyBody: true,
+      });
+    });
+
+    const workflowSix = createWorkflow(async (context) => {
+      await context.invoke("invoke workflow two", {
+        workflow: workflowTwo,
+        stringifyBody: false,
+        // @ts-expect-error object body isn't accepted because stringifyBody is false
+        body: { hello: "world" },
+      });
+    });
+
     const { POST: handler } = serveMany(
       {
         "workflow-one": workflowOne,
         "workflow-two": workflowTwo,
         "workflow-three": workflowThree,
+        "workflow-four": workflowFour,
+        "workflow-five": workflowFive,
+        "workflow-six": workflowSix,
       },
       {
         qstashClient,
@@ -303,6 +331,119 @@ describe("serveMany", () => {
             },
           ],
         },
+      });
+    });
+
+    test("should not stringify body if stringifyBody: false", async () => {
+      const request = getRequest(
+        `${WORKFLOW_ENDPOINT}/workflow-four`,
+        "wfr_id",
+        "initial-payload",
+        []
+      );
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await handler(request);
+          expect(response.status).toBe(200);
+        },
+        responseFields: { body: "msgId", status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflow-two`,
+          token,
+          body: {
+            body: "hello world",
+            headers: {
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": [expect.any(String)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-four"],
+              "content-type": ["application/json"],
+            },
+            workflowRunId: expect.any(String),
+            workflowUrl: "https://requestcatcher.com/api/workflow-four",
+            step: {
+              stepId: 1,
+              concurrent: 1,
+              stepName: "invoke workflow two",
+              stepType: "Invoke",
+            },
+          },
+        },
+      });
+    });
+
+    test("should stringify body if stringifyBody: true", async () => {
+      const request = getRequest(
+        `${WORKFLOW_ENDPOINT}/workflow-five`,
+        "wfr_id",
+        "initial-payload",
+        []
+      );
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await handler(request);
+          expect(response.status).toBe(200);
+        },
+        responseFields: { body: "msgId", status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflow-two`,
+          token,
+          body: {
+            body: '"hello world"',
+            headers: {
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": [expect.any(String)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-five"],
+              "content-type": ["application/json"],
+            },
+            workflowRunId: expect.any(String),
+            workflowUrl: "https://requestcatcher.com/api/workflow-five",
+            step: {
+              stepId: 1,
+              concurrent: 1,
+              stepName: "invoke workflow two",
+              stepType: "Invoke",
+            },
+          },
+        },
+      });
+    });
+
+    test("should get an error if body isn't a string but stringifyBody is false", async () => {
+      const request = getRequest(
+        `${WORKFLOW_ENDPOINT}/workflow-six`,
+        "wfr_id",
+        "initial-payload",
+        []
+      );
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await handler(request);
+          expect(response.status).toBe(500);
+          expect((await response.json()).message).toBe(
+            "When stringifyBody is false, body must be a string. Please check the body type of your invoke step."
+          );
+        },
+        responseFields: { body: "msgId", status: 200 },
+        receivesRequest: false,
       });
     });
   });

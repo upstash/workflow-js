@@ -337,6 +337,9 @@ describe("context tests", () => {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
           token,
+          headers: {
+            "content-type": "application/json",
+          },
           body: [
             {
               body: '"request-body"',
@@ -438,6 +441,94 @@ describe("context tests", () => {
           ],
         },
       });
+    });
+    test("should send context.call without parsing body if stringifyBody is false", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+      });
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.call("my-step", {
+              url,
+              body,
+              headers: { "my-header": "my-value" },
+              method: "PATCH",
+              stringifyBody: false,
+            });
+          expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: "request-body",
+              destination: url,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "my-step",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-forward-my-header": "my-value",
+                "upstash-method": "PATCH",
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should throw error if stringifyBody is false and body is object", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+      });
+
+      const throws = () =>
+        context.call("my-step", {
+          url,
+          body: { foo: "bar" },
+          headers: { "my-header": "my-value" },
+          method: "PATCH",
+          // @ts-expect-error testing error case
+          stringifyBody: false,
+        });
+      expect(throws).toThrowError(
+        new WorkflowError(
+          `When stringifyBody is false, body must be a string. Please check the body type of your call step.`
+        )
+      );
     });
   });
 

@@ -443,15 +443,30 @@ export interface WaitEventOptions {
   timeout?: number | Duration;
 }
 
+export type StringifyBody<TBody = unknown> = TBody extends string ? boolean : true;
+
 export type CallSettings<TBody = unknown> = {
   url: string;
   method?: HTTPMethods;
+  /**
+   * Request body.
+   *
+   * By default, the body is stringified with `JSON.stringify`. If you want
+   * to send a string body without stringifying it, you need to set
+   * `stringifyBody` to false.
+   */
   body?: TBody;
   headers?: Record<string, string>;
   retries?: number;
   retryDelay?: string;
   timeout?: Duration | number;
   flowControl?: FlowControl;
+  /**
+   * Whether the body field should be stringified when making the request.
+   *
+   * @default true
+   */
+  stringifyBody?: StringifyBody<TBody>;
 };
 
 export type HeaderParams = {
@@ -571,9 +586,11 @@ export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
     InvokableWorkflow<TInitiaPayload, TResult>,
     "routeFunction" | "workflowId" | "options"
   >;
-  body: TInitiaPayload; // TODO make optional
   workflowRunId?: string;
-} & Pick<CallSettings, "retries" | "headers" | "flowControl" | "retryDelay">;
+} & Pick<
+  CallSettings<TInitiaPayload>,
+  "retries" | "headers" | "flowControl" | "retryDelay" | "stringifyBody" | "body"
+>;
 
 export type InvokeStepResponse<TBody> = {
   body: TBody;
