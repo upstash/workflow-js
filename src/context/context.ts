@@ -399,7 +399,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         settings.retryDelay,
         settings.timeout,
         settings.flowControl ?? settings.workflow.options.flowControl,
-        (settings.stringifyBody = true)
+        settings.stringifyBody ?? true
       );
     } else {
       const {
