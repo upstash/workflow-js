@@ -586,10 +586,11 @@ export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
     InvokableWorkflow<TInitiaPayload, TResult>,
     "routeFunction" | "workflowId" | "options"
   >;
+  body: TInitiaPayload; // tried to make this optional but didn't work so nicely
   workflowRunId?: string;
 } & Pick<
   CallSettings<TInitiaPayload>,
-  "retries" | "headers" | "flowControl" | "retryDelay" | "stringifyBody" | "body"
+  "retries" | "headers" | "flowControl" | "retryDelay" | "stringifyBody"
 >;
 
 export type InvokeStepResponse<TBody> = {

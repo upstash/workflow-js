@@ -512,7 +512,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
-    return await this.addStep(new LazyInvokeStep(stepName, settings));
+    return await this.addStep(new LazyInvokeStep<TResult, TInitialPayload>(stepName, settings));
   }
 
   /**
