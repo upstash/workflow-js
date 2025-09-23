@@ -343,10 +343,14 @@ export const handleFailure = async <TInitialPayload>(
 
     const decodedBody = body ? decodeBase64(body) : "{}";
     let errorMessage: string = "";
+    let failStack: string = "";
     try {
       const errorPayload = JSON.parse(decodedBody) as FailureFunctionPayload;
       if (errorPayload.message) {
         errorMessage = errorPayload.message;
+      }
+      if (errorPayload.stack) {
+        failStack = errorPayload.stack;
       }
     } catch {
       // skip
@@ -398,6 +402,7 @@ export const handleFailure = async <TInitialPayload>(
       failStatus: status,
       failResponse: errorMessage,
       failHeaders: header,
+      failStack,
     });
     return ok({ result: "is-failure-callback", response: failureResponse });
   } catch (error) {
