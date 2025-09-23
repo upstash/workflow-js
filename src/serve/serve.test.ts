@@ -322,6 +322,7 @@ describe("serve", () => {
         expect(result).toEqual({
           error: "Error",
           message: "some-error",
+          stack: expect.any(String),
         });
         called = true;
       },
@@ -903,6 +904,7 @@ describe("serve", () => {
         expect(body).toEqual({
           error: "WorkflowNonRetryableError",
           message: "This is a non-retryable error",
+          stack: expect.any(String),
         });
       },
       responseFields: { body: undefined, status: 489 },
@@ -1227,6 +1229,7 @@ describe("serve", () => {
       expect(content).toEqual({
         error: "WorkflowError",
         message: `Workflow URL should start with 'http://' or 'https://'. Recevied is '${url}'`,
+        stack: expect.any(String),
       });
 
       expect(logSpy).toBeCalledWith("WARN", "ENDPOINT_START", {

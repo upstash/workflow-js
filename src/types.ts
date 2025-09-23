@@ -360,6 +360,10 @@ export type FailureFunctionPayload = {
    * error message
    */
   message: string;
+  /**
+   * error stack trace if available
+   */
+  stack?: string;
 };
 
 /**

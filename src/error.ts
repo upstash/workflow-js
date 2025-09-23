@@ -67,6 +67,7 @@ export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
     ? {
         error: error.name,
         message: error.message,
+        stack: error.stack,
       }
     : {
         error: "Error",
