@@ -333,6 +333,8 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   public readonly retryDelay?: string;
   public readonly timeout?: number | Duration;
   public readonly flowControl?: FlowControl;
+  private readonly stringifyBody: boolean;
+
   stepType: StepType = "Call";
   allowUndefinedOut = false;
 
@@ -345,7 +347,8 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     retries: number,
     retryDelay: string | undefined,
     timeout: number | Duration | undefined,
-    flowControl: FlowControl | undefined
+    flowControl: FlowControl | undefined,
+    stringifyBody: boolean
   ) {
     super(stepName);
     this.url = url;
@@ -356,6 +359,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
     this.retryDelay = retryDelay;
     this.timeout = timeout;
     this.flowControl = flowControl;
+    this.stringifyBody = stringifyBody;
   }
 
   public getPlanStep(concurrent: number, targetStep: number): Step<undefined> {
@@ -495,10 +499,23 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   }
 
   async submitStep({ context, headers }: SubmitStepParams) {
+    let callBody: string;
+    if (this.stringifyBody) {
+      callBody = JSON.stringify(this.body);
+    } else {
+      if (typeof this.body === "string") {
+        callBody = this.body;
+      } else {
+        throw new WorkflowError(
+          "When stringifyBody is false, body must be a string. Please check the body type of your call step."
+        );
+      }
+    }
+
     return (await context.qstashClient.batch([
       {
         headers,
-        body: JSON.stringify(this.body),
+        body: callBody,
         method: this.method,
         url: this.url,
         retries: DEFAULT_RETRIES === this.retries ? undefined : this.retries,
@@ -650,7 +667,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   stepType: StepType = "Invoke";
   params: RequiredExceptFields<
     LazyInvokeStepParams<TBody, TResult>,
-    "retries" | "flowControl" | "retryDelay"
+    "retries" | "flowControl" | "retryDelay" | "body"
   >;
   protected allowUndefinedOut = false;
   /**
@@ -668,6 +685,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       retries,
       retryDelay,
       flowControl,
+      stringifyBody = true,
     }: LazyInvokeStepParams<TBody, TResult>
   ) {
     super(stepName);
@@ -679,6 +697,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       retries,
       retryDelay,
       flowControl,
+      stringifyBody,
     };
 
     const { workflowId } = workflow;
@@ -740,8 +759,21 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     });
     invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
+    let invokeBody: string;
+    if (this.params.stringifyBody) {
+      invokeBody = JSON.stringify(this.params.body);
+    } else {
+      if (typeof this.params.body === "string") {
+        invokeBody = this.params.body;
+      } else {
+        throw new WorkflowError(
+          "When stringifyBody is false, body must be a string. Please check the body type of your invoke step."
+        );
+      }
+    }
+
     const request: InvokeWorkflowRequest = {
-      body: JSON.stringify(this.params.body),
+      body: invokeBody,
       headers: Object.fromEntries(
         Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
       ),
