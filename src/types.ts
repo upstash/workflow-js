@@ -230,6 +230,7 @@ export type WorkflowServeOptions<
     failStatus: number;
     failResponse: string;
     failHeaders: Record<string, string[]>;
+    failStack: string;
   }) => Promise<void | string> | void | string;
   /**
    * Base Url of the workflow endpoint
@@ -360,6 +361,10 @@ export type FailureFunctionPayload = {
    * error message
    */
   message: string;
+  /**
+   * error stack trace if available
+   */
+  stack?: string;
 };
 
 /**
