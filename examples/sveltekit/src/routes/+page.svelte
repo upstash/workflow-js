@@ -170,8 +170,9 @@
             class="grid gap-4 p-6 rounded-xl bg-emerald-500/10"
           >
             <div>
-              <label class="text-xs uppercase opacity-60">Route</label>
+              <label for="route-select" class="text-xs uppercase opacity-60">Route</label>
               <select
+                id="route-select"
                 bind:value={$route}
                 class="block w-full h-8 px-2 mt-1 bg-white border border-gray-300 rounded-md"
               >
@@ -183,8 +184,9 @@
             </div>
 
             <div>
-              <label class="text-xs uppercase opacity-60">Body</label>
+              <label for="request-body" class="text-xs uppercase opacity-60">Body</label>
               <textarea
+                id="request-body"
                 bind:value={$requestBody}
                 rows="2"
                 class="block w-full px-2 py-2 mt-1 bg-white border border-gray-300 rounded-md"
