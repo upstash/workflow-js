@@ -1,7 +1,4 @@
-import type { PublicServeOptions, Telemetry, InvokableWorkflow } from "../src";
-import type { RouteMethodHandlerCtx } from "@tanstack/react-start";
-import type { AnyRoute } from "@tanstack/router-core";
-import { WorkflowContext } from "../src";
+import type { PublicServeOptions, Telemetry, InvokableWorkflow, RouteFunction } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
@@ -12,20 +9,6 @@ const telemetry: Telemetry = {
   runtime: `node@${process.version}`,
 };
 
-type TanStackRouteHandlerCtx<
-  TRegister = unknown,
-  TParentRoute extends AnyRoute = AnyRoute,
-  TFullPath extends string = string,
-  TServerMiddlewares = unknown,
-  TMethodMiddlewares = unknown,
-> = RouteMethodHandlerCtx<
-  TRegister,
-  TParentRoute,
-  TFullPath,
-  TServerMiddlewares,
-  TMethodMiddlewares
->;
-
 /**
  * Serve method to serve a Upstash Workflow in a TanStack Start project
  *
@@ -35,47 +18,22 @@ type TanStackRouteHandlerCtx<
  * @param options workflow options (same as Next.js serve options)
  * @returns handler object with POST method compatible with TanStack Start
  */
-export function serve<
-  TInitialPayload = unknown,
-  TResult = unknown,
-  TRegister = unknown,
-  TParentRoute extends AnyRoute = AnyRoute,
-  TFullPath extends string = string,
-  TServerMiddlewares = unknown,
-  TMethodMiddlewares = unknown,
->(
-  routeFunction: (
-    workflowContext: WorkflowContext<TInitialPayload>,
-    tanstackContext: TanStackRouteHandlerCtx<
-      TRegister,
-      TParentRoute,
-      TFullPath,
-      TServerMiddlewares,
-      TMethodMiddlewares
-    >
-  ) => Promise<TResult>,
+export function serve<TInitialPayload = unknown, TResult = unknown>(
+  routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: PublicServeOptions<TInitialPayload>
 ) {
-  const POST = (
-    tanstackContext: TanStackRouteHandlerCtx<
-      TRegister,
-      TParentRoute,
-      TFullPath,
-      TServerMiddlewares,
-      TMethodMiddlewares
-    >
-  ) => {
+  const POST = (tanstackContext: { request: Request }) => {
     // Create a Next.js compatible handler that passes the route context
     const { handler } = serveBase<TInitialPayload, Request, Response, TResult>(
-      (workflowContext) => routeFunction(workflowContext, tanstackContext),
+      routeFunction,
       telemetry,
       options
-    )
+    );
 
-    return handler(tanstackContext.request)
-  }
+    return handler(tanstackContext.request);
+  };
 
-  return { POST }
+  return { POST };
 }
 
 export const createWorkflow = <TInitialPayload, TResult>(
@@ -85,11 +43,6 @@ export const createWorkflow = <TInitialPayload, TResult>(
   return {
     options,
     workflowId: undefined,
-    // @ts-expect-error because tanstack route function has another parameter,
-    // the RouteFunction type can't cover this. We need to make RouteFunction
-    // accept more variables than simply the context. Until then, ignoring the
-    // error here. Tested the usage in tanstack project and it's fine. TODO.
-    // Astro has a similar issue, see astro.ts for more details.
     routeFunction,
   };
 };
