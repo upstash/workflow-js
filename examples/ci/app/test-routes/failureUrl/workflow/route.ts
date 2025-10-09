@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, ANY_STRING } from "app/ci/utils";
 import { ERROR_MESSAGE, PAYLOAD, HEADER, HEADER_VALUE } from "../constants";
 
 const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/failureUrl/third-party`
@@ -23,7 +23,7 @@ export const { POST, GET } = testServe(
     }
   ), {
     expectedCallCount: 2,
-    expectedResult: `{"error":"Error","message":"${ERROR_MESSAGE}"}`,
+    expectedResult: `{"error":"Error","message":"${ERROR_MESSAGE}","stack":${ANY_STRING}}`,
     payload: PAYLOAD,
     headers: {
       [ HEADER ]: HEADER_VALUE,

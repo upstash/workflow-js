@@ -84,10 +84,26 @@ export const initiateTest = async (route: string) => {
 }
 
 type ExpectType = number | string | object | undefined | void | boolean | null
+
+export const ANY_STRING = '__ANY_STRING_PLACEHOLDER_9d8f7e6c5b4a__'
+
 export const expect = <TObject extends ExpectType = ExpectType>(
   received: TObject,
   expected: TObject
 ) => {
+  // Handle string pattern matching with ANY_STRING
+  if (typeof received === 'string' && typeof expected === 'string') {
+    const expectedStr = expected as string
+    if (expectedStr.includes(ANY_STRING)) {
+      const pattern = expectedStr.replace(new RegExp(ANY_STRING.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '.*')
+      const regex = new RegExp(`^${pattern}$`)
+      if (!regex.test(received as string)) {
+        throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected pattern "${expected}"`)
+      }
+      return
+    }
+  }
+
   if (received !== expected) {
     throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected "${expected}"`)
   }
