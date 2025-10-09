@@ -72,6 +72,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
     console.log("workflow one says bye")
   })
 
+  await context.sleep("sleep so that the async workflowFour finishes", 3)
 
   await saveResult(
     context,
@@ -138,7 +139,7 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
 })
 
 const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
-  await context.sleep("mock", 1)
+  await context.run("mock", () => {})
 }, {
   retries: 0
 })
@@ -210,7 +211,7 @@ export const { POST, GET } = testServe(
     baseUrl: BASE_URL
   }),
   {
-    expectedCallCount: 29,
+    expectedCallCount: 30,
     expectedResult: "done invoke",
     payload,
     headers: {
