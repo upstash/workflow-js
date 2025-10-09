@@ -139,7 +139,7 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
 })
 
 const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
-  await context.sleep("mock", 1)
+  await context.run("mock", () => {})
 }, {
   retries: 0
 })
