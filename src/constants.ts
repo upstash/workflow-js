@@ -17,7 +17,7 @@ export const NO_CONCURRENCY = 1;
 export const NOT_SET = "not-set";
 export const DEFAULT_RETRIES = 3;
 
-export const VERSION = "v0.2.20";
+export const VERSION = "v0.2.21";
 export const SDK_TELEMETRY = `@upstash/workflow@${VERSION}`;
 
 export const TELEMETRY_HEADER_SDK = "Upstash-Telemetry-Sdk" as const;
