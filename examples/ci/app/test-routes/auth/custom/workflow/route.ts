@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, ANY_STRING } from "app/ci/utils";
 import { FailureFunctionPayload, WorkflowContext } from "@upstash/workflow";
 import { saveResult } from "app/ci/upstash/redis";
 
@@ -72,7 +72,8 @@ export const { POST, GET } = testServe(
         500,
         {
           error: "WorkflowError",
-          message: "Not authorized to run the failure function."
+          message: "Not authorized to run the failure function.",
+          stack: ANY_STRING
         }
       )
       

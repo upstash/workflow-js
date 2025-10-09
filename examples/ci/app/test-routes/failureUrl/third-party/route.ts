@@ -1,6 +1,6 @@
 import { CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants"
 import { saveResultsWithoutContext } from "app/ci/upstash/redis"
-import { expect } from "app/ci/utils"
+import { ANY_STRING, expect } from "app/ci/utils"
 import { ERROR_MESSAGE, HEADER, HEADER_VALUE } from "../constants"
 
 export const POST = async (request: Request) => {
@@ -11,7 +11,7 @@ export const POST = async (request: Request) => {
   }
 
   const errorMessage = atob(result.body)
-  expect(errorMessage, `{"error":"Error","message":"${ERROR_MESSAGE}"}`)
+  expect(errorMessage, `{"error":"Error","message":"${ERROR_MESSAGE}","stack":${ANY_STRING}}`)
   expect(request.headers.get(HEADER), HEADER_VALUE)
 
   // get id and route
