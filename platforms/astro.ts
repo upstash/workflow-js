@@ -39,7 +39,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
   const [routeFunction, options = {}] = params;
   return {
     workflowId: undefined,
-    // @ts-expect-error because astro route function has another parameeter,
+    // @ts-expect-error because astro route function has another parameter,
     // the RouteFunction type can't cover this. We need to make RouteFunction
     // accept more variables than simply the context. Until then, ignoring the
     // error here. Tested the usage in astro project and it's fine. TODO.

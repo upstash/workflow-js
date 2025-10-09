@@ -11,6 +11,7 @@ export default defineConfig({
     cloudflare: "./platforms/cloudflare.ts",
     astro: "./platforms/astro.ts",
     express: "./platforms/express.ts",
+    tanstack: "./platforms/tanstack.ts",
   },
   format: ["cjs", "esm"],
   clean: true,

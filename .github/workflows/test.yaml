@@ -555,6 +555,47 @@ jobs:
         run: npm run dev &
         working-directory: examples/sveltekit
 
+  tanstack-start-local-build:
+    needs:
+      - local-tests
+    runs-on: ubuntu-latest
+    name: TanStack Start Local Build
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm install
+        working-directory: examples/tanstack-start
+
+      - name: Install local package
+        run: npm install @upstash/workflow@file:../../dist
+        working-directory: examples/tanstack-start
+
+      - name: Build Project
+        run: npm run build
+        working-directory: examples/tanstack-start
+
+      - name: Run example
+        run: npm run dev &
+        working-directory: examples/tanstack-start
+
   release:
     concurrency: release
     outputs:
@@ -572,6 +613,7 @@ jobs:
       - nuxt-local-build
       # - solidjs-local-build
       - sveltekit-local-build
+      - tanstack-start-local-build
 
     name: Release
     runs-on: ubuntu-latest
