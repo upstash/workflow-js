@@ -278,6 +278,7 @@ describe("workflow client", () => {
             retryDelay: "2000",
             notBefore: new Date("2100-01-01T00:00:00Z").getTime() / 1000,
             useFailureFunction: true,
+            keepTriggerConfig: true,
           },
         ]);
         expect(result).toEqual([
@@ -328,7 +329,7 @@ describe("workflow client", () => {
               "upstash-workflow-url": "https://requestcatcher.com/api",
               "upstash-not-before": "4102444800",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),

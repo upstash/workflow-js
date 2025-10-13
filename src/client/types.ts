@@ -419,6 +419,13 @@ export type TriggerOptions = {
    * Can be used to filter the workflow run logs.
    */
   label?: string;
+  /**
+   * Whether to apply the configuration (flow control,
+   * retries, failure url, retry delay) passed in trigger
+   *
+   * @default false
+   */
+  keepTriggerConfig?: boolean;
 } & (
   | {
       /**
