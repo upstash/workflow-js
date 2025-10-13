@@ -61,6 +61,7 @@ type WorkflowHeaderParams = {
   invokeCount?: number;
   initHeaderValue: "true" | "false";
   stepInfo?: StepInfo;
+  keepTriggerConfig?: boolean;
 };
 
 class WorkflowHeaders {
@@ -70,6 +71,7 @@ class WorkflowHeaders {
   private initHeaderValue: "true" | "false";
   private stepInfo?: Required<StepInfo>;
   private headers: WorkflowHeaderGroups;
+  private keepTriggerConfig?: boolean;
 
   constructor({
     userHeaders,
@@ -77,6 +79,7 @@ class WorkflowHeaders {
     invokeCount,
     initHeaderValue,
     stepInfo,
+    keepTriggerConfig,
   }: WorkflowHeaderParams) {
     this.userHeaders = userHeaders;
     this.workflowConfig = workflowConfig;
@@ -88,6 +91,7 @@ class WorkflowHeaders {
       workflowHeaders: {},
       failureHeaders: {},
     };
+    this.keepTriggerConfig = keepTriggerConfig;
   }
 
   getHeaders(): HeadersResponse {
@@ -109,7 +113,9 @@ class WorkflowHeaders {
       [WORKFLOW_INIT_HEADER]: this.initHeaderValue,
       [WORKFLOW_ID_HEADER]: this.workflowConfig.workflowRunId,
       [WORKFLOW_URL_HEADER]: this.workflowConfig.workflowUrl,
-      [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+      [WORKFLOW_FEATURE_HEADER]:
+        "LazyFetch,InitialBody,WF_DetectTrigger" +
+        (this.keepTriggerConfig ? ",WF_TriggerOnConfig" : ""),
       [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
       ...(this.workflowConfig.telemetry ? getTelemetryHeaders(this.workflowConfig.telemetry) : {}),
       ...(this.workflowConfig.telemetry &&

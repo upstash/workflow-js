@@ -34,6 +34,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   invokeCount?: number;
   delay?: PublishRequest["delay"];
   notBefore?: PublishRequest["notBefore"];
+  keepTriggerConfig?: boolean;
 };
 
 export const triggerFirstInvocation = async <TInitialPayload>(
@@ -45,7 +46,15 @@ export const triggerFirstInvocation = async <TInitialPayload>(
   const workflowContextClient = firstInvocationParams[0].workflowContext.qstashClient;
 
   const invocationBatch = firstInvocationParams.map(
-    ({ workflowContext, useJSONContent, telemetry, invokeCount, delay, notBefore }) => {
+    ({
+      workflowContext,
+      useJSONContent,
+      telemetry,
+      invokeCount,
+      delay,
+      notBefore,
+      keepTriggerConfig,
+    }) => {
       const { headers } = getHeaders({
         initHeaderValue: "true",
         workflowConfig: {
@@ -60,6 +69,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         },
         invokeCount: invokeCount ?? 0,
         userHeaders: workflowContext.headers,
+        keepTriggerConfig: keepTriggerConfig,
       });
 
       // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
