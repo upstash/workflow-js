@@ -55,46 +55,49 @@ describe("redis", () => {
     })
   })
 
-  test("should override call count", async () => {
+  describe("other redis tests", () => {
 
-    const route = "override-route"
-    const randomId = `random-id-${nanoid()}`
-    const result = `random-result-${nanoid()}`
-    const override = -3
+    test("should override call count", async () => {
 
-    await redis.increment(route, randomId)
-    await redis.increment(route, randomId)
-    await redis.increment(route, randomId)
+      const route = "override-route"
+      const randomId = `random-id-${nanoid()}`
+      const result = `random-result-${nanoid()}`
+      const override = -3
 
-    await redis.saveResultsWithoutContext(route, randomId, result, override)
+      await redis.increment(route, randomId)
+      await redis.increment(route, randomId)
+      await redis.increment(route, randomId)
 
-    expect(async () =>
-      redis.checkRedisForResults(route, randomId, 3, result)
-    ).toThrow(
-      `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
-    )
+      await redis.saveResultsWithoutContext(route, randomId, result, override)
 
-    test("should not throw on correct results", () => {
       expect(async () =>
-        redis.checkRedisForResults(route, randomId, override, result)
-      ).not.toThrow()
+        redis.checkRedisForResults(route, randomId, 3, result)
+      ).toThrow(
+        `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
+      )
+
+      test("should not throw on correct results", () => {
+        expect(async () =>
+          redis.checkRedisForResults(route, randomId, override, result)
+        ).not.toThrow()
+      })
     })
-  })
 
-  test("should fail if marked as failed", async () => {
+    test("should fail if marked as failed", async () => {
 
-    const route = "fail-route"
-    const randomId = `random-id-${nanoid()}`
-    const result = `random-result-${nanoid()}`
+      const route = "fail-route"
+      const randomId = `random-id-${nanoid()}`
+      const result = `random-result-${nanoid()}`
 
-    // increment, save and check
-    await redis.increment(route, randomId)
-    await redis.saveResultsWithoutContext(route, randomId, result)
-    await redis.checkRedisForResults(route, randomId, 1, result)
+      // increment, save and check
+      await redis.increment(route, randomId)
+      await redis.saveResultsWithoutContext(route, randomId, result)
+      await redis.checkRedisForResults(route, randomId, 1, result)
 
-    // mark as failed and check
-    await redis.failWithoutContext(route, randomId)
-    expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
-      
+      // mark as failed and check
+      await redis.failWithoutContext(route, randomId)
+      expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
+
+    })
   })
 })
