@@ -94,7 +94,9 @@ fastify.register(fastifyEnv, options).after(() => {
 
       // Set status and headers
       reply.code(webResponse.status);
-
+      for (const [key, value] of webResponse.headers) {
+        reply.header(key, value);
+      }
       // Send body
       const responseBody = await webResponse.arrayBuffer();
       reply.send(Buffer.from(responseBody));
