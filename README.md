@@ -111,18 +111,21 @@ You can opt out by setting `disableTelemetry: true` when triggering the workflow
 
 ```ts
 // client
-const client = new Client( /***/ );
+const client = new Client(/***/);
 await client.trigger({
   // ...
   disableTelemetry: true,
-})
+});
 
 // workflow endpoint
-export const { POST } = serve(async (context) => {
-  // ...
-}, {
-  disableTelemetry: true
-})
+export const { POST } = serve(
+  async (context) => {
+    // ...
+  },
+  {
+    disableTelemetry: true,
+  }
+);
 ```
 
 ## Contributing
