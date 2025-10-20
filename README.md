@@ -98,6 +98,33 @@ const result = await client.getWaiters({
 });
 ```
 
+## Telemetry
+
+This sdk sends anonymous telemetry headers to help us improve your experience.
+We collect the following:
+
+- SDK version
+- Platform (Cloudflare, AWS or Vercel)
+- Runtime version (node@18.x)
+
+You can opt out by setting `disableTelemetry: true` when triggering the workflow and in the serve options:
+
+```ts
+// client
+const client = new Client( /***/ );
+await client.trigger({
+  // ...
+  disableTelemetry: true,
+})
+
+// workflow endpoint
+export const { POST } = serve(async (context) => {
+  // ...
+}, {
+  disableTelemetry: true
+})
+```
+
 ## Contributing
 
 ### Setup
