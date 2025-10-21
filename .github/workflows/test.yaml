@@ -859,14 +859,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: pnpm/action-setup@v2
         with:
-          bun-version: latest
+          version: latest
 
       - name: Deploy
         run: |
-          bun add @upstash/workflow@${{needs.release.outputs.version}}
+          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
           DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
           echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
         env:
@@ -875,5 +874,5 @@ jobs:
         working-directory: examples/express
 
       - name: Test
-        run: bun test ci.test.ts
+        run: pnpm test
         working-directory: examples/express

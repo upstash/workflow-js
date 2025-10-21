@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx api/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "author": "",
   "license": "ISC",
@@ -19,7 +21,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.5.2",
+    "@vitest/ui": "^2.1.8",
     "tsx": "^4.7.3",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "vitest": "^2.1.8"
   }
 }
