@@ -426,6 +426,14 @@ export type TriggerOptions = {
    * @default false
    */
   keepTriggerConfig?: boolean;
+  /**
+   * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
+   *
+   * Set `disableTelemetry` to disable this behavior.
+   *
+   * @default false
+   */
+  disableTelemetry?: boolean;
 } & (
   | {
       /**

@@ -256,7 +256,7 @@ export class Client {
         workflowRunId: finalWorkflowRunId,
         retries: option.retries,
         retryDelay: option.retryDelay,
-        telemetry: { sdk: SDK_TELEMETRY },
+        telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         flowControl: option.flowControl,
         failureUrl,
         label: option.label,
@@ -264,7 +264,7 @@ export class Client {
 
       return {
         workflowContext: context,
-        telemetry: { sdk: SDK_TELEMETRY },
+        telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         delay: option.delay,
         notBefore: option.notBefore,
         keepTriggerConfig: option.keepTriggerConfig,
