@@ -76,11 +76,9 @@ describe("redis", () => {
         `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
       )
 
-      test("should not throw on correct results", () => {
-        expect(async () =>
-          redis.checkRedisForResults(route, randomId, override, result)
-        ).not.toThrow()
-      })
+      expect(async () =>
+        redis.checkRedisForResults(route, randomId, override, result)
+      ).not.toThrow()
     })
 
     test("should fail if marked as failed", async () => {
