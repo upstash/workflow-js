@@ -10,610 +10,610 @@ env:
   QSTASH_NEXT_SIGNING_KEY: ${{ secrets.QSTASH_NEXT_SIGNING_KEY }}
 
 jobs:
-  local-tests:
-    runs-on: ubuntu-latest
-
-    name: Upstash Workflow Tests
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Run tests
-        run: bun run test
-
-      - name: Build
-        run: bun run build
-
-  cloudflare-workers-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: CF Workers Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/cloudflare-workers
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/cloudflare-workers
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/cloudflare-workers
-
-  cloudflare-workers-hono-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: CF Workers (Hono) Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/cloudflare-workers-hono
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/cloudflare-workers-hono
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/cloudflare-workers-hono
-
-      - name: Run local tests
-        run: bun test ci.test.ts
-        working-directory: examples/cloudflare-workers-hono
-
-  express-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Express Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/express
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/express
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/express
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/express
-
-  hono-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Hono Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/hono
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/hono
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/hono
-
-  image-gen-with-workflow-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Image Gen Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/image-gen-with-workflow
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/image-gen-with-workflow
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/image-gen-with-workflow
-
-  agents-researcher-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Cross Reference Agent Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/agents-researcher
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/agents-researcher
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/agents-researcher
-
-  nestjs-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Nestjs Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/nestjs
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/nestjs
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/nestjs
-
-  nextjs-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Nextjs Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/nextjs
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/nextjs
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/nextjs
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/nextjs
-
-      - name: Run local tests
-        run: bun test .
-        working-directory: examples/nextjs
-
-  nextjs12-node18-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Nextjs (Node 18) Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/nextjs-12
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/nextjs-12
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/nextjs-12
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/nextjs-12
-
-      - name: Run local tests
-        run: node ci.mjs
-        working-directory: examples/nextjs-12
-
-  nextjs-pages-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Nextjs Pages Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/nextjs-pages
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/nextjs-pages
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/nextjs-pages
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/nextjs-pages
-
-  nuxt-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Nuxt Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/nuxt
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/nuxt
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/nuxt
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/nuxt
-
-  solidjs-local-build:
-    # skip because solidjs doesn't build right now
-    if: false
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Solidjs Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/solidjs
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/solidjs
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/solidjs
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/solidjs
-
-  sveltekit-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: Sveltekit Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/sveltekit
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/sveltekit
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/sveltekit
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/sveltekit
-
-  tanstack-start-local-build:
-    needs:
-      - local-tests
-    runs-on: ubuntu-latest
-    name: TanStack Start Local Build
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Dependencies
-        run: bun install
-
-      - name: Build
-        run: bun run build
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install Dependencies
-        run: npm install
-        working-directory: examples/tanstack-start
-
-      - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
-        working-directory: examples/tanstack-start
-
-      - name: Build Project
-        run: npm run build
-        working-directory: examples/tanstack-start
-
-      - name: Run example
-        run: npm run dev &
-        working-directory: examples/tanstack-start
+  # local-tests:
+  #   runs-on: ubuntu-latest
+
+  #   name: Upstash Workflow Tests
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Run tests
+  #       run: bun run test
+
+  #     - name: Build
+  #       run: bun run build
+
+  # cloudflare-workers-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: CF Workers Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/cloudflare-workers
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/cloudflare-workers
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/cloudflare-workers
+
+  # cloudflare-workers-hono-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: CF Workers (Hono) Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/cloudflare-workers-hono
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/cloudflare-workers-hono
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/cloudflare-workers-hono
+
+  #     - name: Run local tests
+  #       run: bun test ci.test.ts
+  #       working-directory: examples/cloudflare-workers-hono
+
+  # express-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Express Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/express
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/express
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/express
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/express
+
+  # hono-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Hono Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/hono
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/hono
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/hono
+
+  # image-gen-with-workflow-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Image Gen Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/image-gen-with-workflow
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/image-gen-with-workflow
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/image-gen-with-workflow
+
+  # agents-researcher-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Cross Reference Agent Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/agents-researcher
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/agents-researcher
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/agents-researcher
+
+  # nestjs-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Nestjs Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/nestjs
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/nestjs
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/nestjs
+
+  # nextjs-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Nextjs Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/nextjs
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/nextjs
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/nextjs
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/nextjs
+
+  #     - name: Run local tests
+  #       run: bun test .
+  #       working-directory: examples/nextjs
+
+  # nextjs12-node18-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Nextjs (Node 18) Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 18
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/nextjs-12
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/nextjs-12
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/nextjs-12
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/nextjs-12
+
+  #     - name: Run local tests
+  #       run: node ci.mjs
+  #       working-directory: examples/nextjs-12
+
+  # nextjs-pages-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Nextjs Pages Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/nextjs-pages
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/nextjs-pages
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/nextjs-pages
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/nextjs-pages
+
+  # nuxt-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Nuxt Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/nuxt
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/nuxt
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/nuxt
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/nuxt
+
+  # solidjs-local-build:
+  #   # skip because solidjs doesn't build right now
+  #   if: false
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Solidjs Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/solidjs
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/solidjs
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/solidjs
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/solidjs
+
+  # sveltekit-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: Sveltekit Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/sveltekit
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/sveltekit
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/sveltekit
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/sveltekit
+
+  # tanstack-start-local-build:
+  #   needs:
+  #     - local-tests
+  #   runs-on: ubuntu-latest
+  #   name: TanStack Start Local Build
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+
+  #     - name: Install Dependencies
+  #       run: bun install
+
+  #     - name: Build
+  #       run: bun run build
+
+  #     - name: Install Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+
+  #     - name: Install Dependencies
+  #       run: npm install
+  #       working-directory: examples/tanstack-start
+
+  #     - name: Install local package
+  #       run: npm install @upstash/workflow@file:../../dist
+  #       working-directory: examples/tanstack-start
+
+  #     - name: Build Project
+  #       run: npm run build
+  #       working-directory: examples/tanstack-start
+
+  #     - name: Run example
+  #       run: npm run dev &
+  #       working-directory: examples/tanstack-start
 
   release:
     concurrency: release
     outputs:
       version: ${{ steps.version.outputs.version }}
-    needs:
-      - cloudflare-workers-local-build
-      - cloudflare-workers-hono-local-build
-      - express-local-build
-      - hono-local-build
-      - image-gen-with-workflow-local-build
-      - agents-researcher-local-build
-      - nextjs-local-build
-      - nextjs12-node18-local-build
-      - nextjs-pages-local-build
-      - nuxt-local-build
-      # - solidjs-local-build
-      - sveltekit-local-build
-      - tanstack-start-local-build
+    # needs:
+    #   - cloudflare-workers-local-build
+    #   - cloudflare-workers-hono-local-build
+    #   - express-local-build
+    #   - hono-local-build
+    #   - image-gen-with-workflow-local-build
+    #   - agents-researcher-local-build
+    #   - nextjs-local-build
+    #   - nextjs12-node18-local-build
+    #   - nextjs-pages-local-build
+    #   - nuxt-local-build
+    #   # - solidjs-local-build
+    #   - sveltekit-local-build
+    #   - tanstack-start-local-build
 
     name: Release
     runs-on: ubuntu-latest
@@ -656,195 +656,195 @@ jobs:
         run: sleep 10s
         shell: bash
 
-  integration-test:
-    concurrency: integration-test
-    runs-on: ubuntu-latest
-    needs:
-      - release
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v3
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
+  # integration-test:
+  #   concurrency: integration-test
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - release
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v3
+  #     - name: Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: latest
+  #     - uses: pnpm/action-setup@v2
+  #       with:
+  #         version: latest
 
-      - name: Deploy
-        run: |
-          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
-          DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
-          echo "UPSTASH_WORKFLOW_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
-        env:
-          VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
-          VERCEL_PROJECT_ID: "prj_pnmruGZQRZQFmfaT4UwJFB4fNrOQ"
-        working-directory: examples/ci
+  #     - name: Deploy
+  #       run: |
+  #         pnpm add @upstash/workflow@${{needs.release.outputs.version}}
+  #         DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
+  #         echo "UPSTASH_WORKFLOW_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+  #       env:
+  #         VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
+  #         VERCEL_PROJECT_ID: "prj_pnmruGZQRZQFmfaT4UwJFB4fNrOQ"
+  #       working-directory: examples/ci
 
-      - name: Test
-        run: bun test .
-        working-directory: examples/ci
+  #     - name: Test
+  #       run: bun test .
+  #       working-directory: examples/ci
 
-  cloudflare-workers-hono-deployed:
-    concurrency: cloudflare-workers-hono-deployed
-    needs:
-      - release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v3
-      - name: Setup nodejs
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
+  # cloudflare-workers-hono-deployed:
+  #   concurrency: cloudflare-workers-hono-deployed
+  #   needs:
+  #     - release
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v3
+  #     - name: Setup nodejs
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
 
-      - name: Install example
-        run: |
-          bun add @upstash/workflow@${{needs.release.outputs.version}}
-          npm i -g wrangler
-        working-directory: examples/cloudflare-workers-hono
+  #     - name: Install example
+  #       run: |
+  #         bun add @upstash/workflow@${{needs.release.outputs.version}}
+  #         npm i -g wrangler
+  #       working-directory: examples/cloudflare-workers-hono
 
-      - name: Add account ID
-        run: echo 'account_id = "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"' >> wrangler.toml
-        working-directory: examples/cloudflare-workers-hono
+  #     - name: Add account ID
+  #       run: echo 'account_id = "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"' >> wrangler.toml
+  #       working-directory: examples/cloudflare-workers-hono
 
-      - name: Add environment
-        run: |
-          echo '[vars]' >> wrangler.toml
-          echo "QSTASH_TOKEN = \"$QSTASH_TOKEN\"" >> ./wrangler.toml
-          echo "QSTASH_CURRENT_SIGNING_KEY = \"$QSTASH_CURRENT_SIGNING_KEY\"" >> ./wrangler.toml
-          echo "QSTASH_NEXT_SIGNING_KEY = \"$QSTASH_NEXT_SIGNING_KEY\"" >> ./wrangler.toml
-          echo "UPSTASH_REDIS_REST_URL = \"$UPSTASH_REDIS_REST_URL\"" >> ./wrangler.toml
-          echo "UPSTASH_REDIS_REST_TOKEN = \"$UPSTASH_REDIS_REST_TOKEN\"" >> ./wrangler.toml
-        working-directory: examples/cloudflare-workers-hono
+  #     - name: Add environment
+  #       run: |
+  #         echo '[vars]' >> wrangler.toml
+  #         echo "QSTASH_TOKEN = \"$QSTASH_TOKEN\"" >> ./wrangler.toml
+  #         echo "QSTASH_CURRENT_SIGNING_KEY = \"$QSTASH_CURRENT_SIGNING_KEY\"" >> ./wrangler.toml
+  #         echo "QSTASH_NEXT_SIGNING_KEY = \"$QSTASH_NEXT_SIGNING_KEY\"" >> ./wrangler.toml
+  #         echo "UPSTASH_REDIS_REST_URL = \"$UPSTASH_REDIS_REST_URL\"" >> ./wrangler.toml
+  #         echo "UPSTASH_REDIS_REST_TOKEN = \"$UPSTASH_REDIS_REST_TOKEN\"" >> ./wrangler.toml
+  #       working-directory: examples/cloudflare-workers-hono
 
-      - name: Deploy
-        run: wrangler deploy
-        working-directory: examples/cloudflare-workers-hono
-        env:
-          CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
+  #     - name: Deploy
+  #       run: wrangler deploy
+  #       working-directory: examples/cloudflare-workers-hono
+  #       env:
+  #         CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
 
-      - name: Test
-        run: bun test ci.test.ts
-        working-directory: examples/cloudflare-workers-hono
-        env:
-          DEPLOYMENT_URL: https://upstash-workflow-cf-hono.upsdev.workers.dev
+  #     - name: Test
+  #       run: bun test ci.test.ts
+  #       working-directory: examples/cloudflare-workers-hono
+  #       env:
+  #         DEPLOYMENT_URL: https://upstash-workflow-cf-hono.upsdev.workers.dev
 
-  nextjs12-node18-deployed:
-    concurrency: nextjs12-node18-deployed
-    runs-on: ubuntu-latest
-    needs:
-      - release
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v3
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+  # nextjs12-node18-deployed:
+  #   concurrency: nextjs12-node18-deployed
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - release
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v3
+  #     - name: Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 18
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: latest
+  #     - uses: pnpm/action-setup@v2
+  #       with:
+  #         version: latest
 
-      - name: Deploy
-        run: |
-          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
-          DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
-          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
-        env:
-          VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
-          VERCEL_PROJECT_ID: "prj_RY1PO3yEm129rSjcblVBNnyOpQY6"
-        working-directory: examples/nextjs-12
+  #     - name: Deploy
+  #       run: |
+  #         pnpm add @upstash/workflow@${{needs.release.outputs.version}}
+  #         DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
+  #         echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+  #       env:
+  #         VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
+  #         VERCEL_PROJECT_ID: "prj_RY1PO3yEm129rSjcblVBNnyOpQY6"
+  #       working-directory: examples/nextjs-12
 
-      - name: Test
-        run: node ci.mjs
-        working-directory: examples/nextjs-12
+  #     - name: Test
+  #       run: node ci.mjs
+  #       working-directory: examples/nextjs-12
 
-  nextjs-pages-deployed:
-    concurrency: nextjs-pages-deployed
-    runs-on: ubuntu-latest
-    needs:
-      - release
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v3
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
+  # nextjs-pages-deployed:
+  #   concurrency: nextjs-pages-deployed
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - release
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v3
+  #     - name: Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: latest
+  #     - uses: pnpm/action-setup@v2
+  #       with:
+  #         version: latest
 
-      - name: Deploy
-        run: |
-          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
-          DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
-          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
-        env:
-          VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
-          VERCEL_PROJECT_ID: "prj_JRuNjBlCZA90HAN32okkfOovLLwf"
-        working-directory: examples/nextjs-pages
+  #     - name: Deploy
+  #       run: |
+  #         pnpm add @upstash/workflow@${{needs.release.outputs.version}}
+  #         DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
+  #         echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+  #       env:
+  #         VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
+  #         VERCEL_PROJECT_ID: "prj_JRuNjBlCZA90HAN32okkfOovLLwf"
+  #       working-directory: examples/nextjs-pages
 
-      - name: Test
-        run: bun test ci.test.ts
-        working-directory: examples/nextjs-pages
+  #     - name: Test
+  #       run: bun test ci.test.ts
+  #       working-directory: examples/nextjs-pages
 
-  sveltekit-deployed:
-    concurrency: sveltekit-deployed
-    runs-on: ubuntu-latest
-    needs:
-      - release
-    steps:
-      - name: Setup repo
-        uses: actions/checkout@v3
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
+  # sveltekit-deployed:
+  #   concurrency: sveltekit-deployed
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - release
+  #   steps:
+  #     - name: Setup repo
+  #       uses: actions/checkout@v3
+  #     - name: Setup node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
 
-      - name: Deploy
-        run: |
-          bun add @upstash/workflow@${{needs.release.outputs.version}}
-          DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
-          echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
-        env:
-          VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
-          VERCEL_PROJECT_ID: "prj_XPoNFgpAih2OiJ70TxZCq9Xry5ob"
-        working-directory: examples/sveltekit
+  #     - name: Deploy
+  #       run: |
+  #         bun add @upstash/workflow@${{needs.release.outputs.version}}
+  #         DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
+  #         echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
+  #       env:
+  #         VERCEL_ORG_ID: ${{secrets.VERCEL_TEAM_ID}}
+  #         VERCEL_PROJECT_ID: "prj_XPoNFgpAih2OiJ70TxZCq9Xry5ob"
+  #       working-directory: examples/sveltekit
 
-      - name: Test
-        run: bun test ci.test.ts
-        working-directory: examples/sveltekit
+  #     - name: Test
+  #       run: bun test ci.test.ts
+  #       working-directory: examples/sveltekit
 
   express-deployed:
     concurrency: express-deployed

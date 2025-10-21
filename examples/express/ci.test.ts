@@ -93,6 +93,8 @@ const testEndpoint = ({
      })
 
     const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
+
+    console.log("passing secret", secret);    
     
     await client.trigger({
       url: `${process.env.DEPLOYMENT_URL}/${route}`,
@@ -105,7 +107,11 @@ const testEndpoint = ({
       retries: 0
     })
 
+    console.log("triggered, sleeping");
+
     await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
+
+    console.log("woke up");
 
     let result: RedisEntry | null = null
     for (let i=1; i<=RETRY_COUNT; i++) {
