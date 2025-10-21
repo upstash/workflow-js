@@ -4,18 +4,18 @@ import * as redis from "./redis"
 import { nanoid } from "../utils";
 
 describe("redis", () => {
-  test("should throw on missing results", () => {
-    expect(() =>
+  test("should throw on missing results", async () => {
+    await expect(
       redis.checkRedisForResults("some-route", "some-id", -1, "some-result", 1)
-    ).toThrow(
+    ).rejects.toThrow(
       "result not found for route some-route with randomTestId some-id"
     )
   }, 15000)
 
-  test("should throw when saving results without any increment", () => {
-    expect(() =>
+  test("should throw when saving results without any increment", async () => {
+    await expect(
       redis.saveResultsWithoutContext("some-route", "some-id", "some-result")
-    ).toThrow(
+    ).rejects.toThrow(
       "callCount shouldn't be 0. It was 0 in test of the route 'some-route'"
     )
   })
@@ -32,26 +32,26 @@ describe("redis", () => {
       await redis.saveResultsWithoutContext(route, randomId, result)
     })
 
-    test("should throw on mismatching result", () => {
-      expect(async () =>
+    test("should throw on mismatching result", async () => {
+      await expect(
         redis.checkRedisForResults(route, randomId, 2, "not-correct")
-      ).toThrow(
+      ).rejects.toThrow(
         `Unexpected value.\n\tReceived "${result}"\n\tExpected "not-correct"`
       )
     })
 
-    test("should throw on mismatching call count", () => {
-      expect(async () =>
+    test("should throw on mismatching call count", async () => {
+      await expect(
         redis.checkRedisForResults(route, randomId, 123, result)
-      ).toThrow(
+      ).rejects.toThrow(
         `Unexpected value.\n\tReceived "2"\n\tExpected "123"`
       )
     })
 
-    test("should not throw on correct results", () => {
-      expect(async () =>
+    test("should not throw on correct results", async () => {
+      await expect(
         redis.checkRedisForResults(route, randomId, 2, result)
-      ).not.toThrow()
+      ).resolves.not.toThrow()
     })
   })
 
@@ -70,15 +70,15 @@ describe("redis", () => {
 
       await redis.saveResultsWithoutContext(route, randomId, result, override)
 
-      expect(async () =>
+      await expect(
         redis.checkRedisForResults(route, randomId, 3, result)
-      ).toThrow(
+      ).rejects.toThrow(
         `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
       )
 
-      expect(async () =>
+      await expect(
         redis.checkRedisForResults(route, randomId, override, result)
-      ).not.toThrow()
+      ).resolves.not.toThrow()
     })
 
     test("should fail if marked as failed", async () => {
@@ -94,7 +94,7 @@ describe("redis", () => {
 
       // mark as failed and check
       await redis.failWithoutContext(route, randomId)
-      expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
+      await expect(redis.checkRedisForResults(route, randomId, 1, result)).rejects.toThrow(redis.FAILED_TEXT)
 
     })
   })
