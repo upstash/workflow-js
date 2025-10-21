@@ -1,7 +1,7 @@
 
 import { Client } from "@upstash/qstash"
 import { serve } from "@upstash/workflow/nextjs"
-import { describe, test, expect } from "bun:test"
+import { describe, test, expect } from "vitest"
 
 const qstashClient = new Client({
   baseUrl: "https://workflow-tests.requestcatcher.com/",

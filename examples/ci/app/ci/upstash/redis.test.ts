@@ -1,5 +1,5 @@
 
-import { describe, test, expect, beforeAll } from "bun:test";
+import { describe, test, expect, beforeAll } from "vitest";
 import * as redis from "./redis"
 import { nanoid } from "../utils";
 
@@ -10,7 +10,7 @@ describe("redis", () => {
     ).toThrow(
       "result not found for route some-route with randomTestId some-id"
     )
-  }, { timeout: 15000 })
+  }, 15000)
 
   test("should throw when saving results without any increment", () => {
     expect(() =>
