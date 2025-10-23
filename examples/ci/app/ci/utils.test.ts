@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect } from "vitest";
 import { expect as utilsExpect, ANY_STRING } from "./utils"
 
 test("expect - basic equality", () => {

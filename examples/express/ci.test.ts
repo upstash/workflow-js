@@ -1,8 +1,9 @@
 
 import { Redis } from "@upstash/redis"
 import { Client as WorkflowClient } from "@upstash/workflow"
-import { describe, test, expect } from "bun:test"
+import { describe, test, expect } from "vitest"
 import { RedisEntry } from "./api"
+import "dotenv/config"
 
 export const RETRY_COUNT = 10
 export const RETRY_INTERVAL_DURATION = 1000
@@ -93,7 +94,7 @@ const testEndpoint = ({
      })
 
     const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
-    
+
     await client.trigger({
       url: `${process.env.DEPLOYMENT_URL}/${route}`,
       body: payload,
@@ -121,9 +122,7 @@ const testEndpoint = ({
     expect(result).toBeDefined()
     expect(result?.secret).toBe(secret)
     expect(result?.result).toBe(expectedResult)
-  }, {
-    timeout: TEST_TIMEOUT_DURATION
-  })
+  }, TEST_TIMEOUT_DURATION)
 }
 
 describe("express", () => {

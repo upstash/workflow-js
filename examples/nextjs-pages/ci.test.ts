@@ -4,7 +4,7 @@ import { Client } from "@upstash/qstash"
 import { Client as WorkflowClient } from "@upstash/workflow"
 import { Redis } from "@upstash/redis"
 import { serve } from "@upstash/workflow/nextjs"
-import { describe, test, expect } from "bun:test"
+import { describe, test, expect } from "vitest"
 
 export const RETRY_COUNT = 10
 export const RETRY_INTERVAL_DURATION = 1000
@@ -134,9 +134,7 @@ const testEndpoint = ({
     expect(result).toBeDefined()
     expect(result?.secret).toBe(secret)
     expect(result?.result).toBe(expectedResult)
-  }, {
-    timeout: TEST_TIMEOUT_DURATION
-  })
+  }, TEST_TIMEOUT_DURATION)
 }
 
 describe("nextjs-pages", () => {

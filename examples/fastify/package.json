@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@fastify/env": "^5.0.2",
-    "@upstash/workflow": "file:../../dist",
+    "@upstash/workflow": "latest",
     "fastify": "^5.3.3",
     "fastify-cli": "^7.4.0"
   },

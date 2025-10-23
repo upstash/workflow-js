@@ -94,12 +94,16 @@ jobs:
         with:
           node-version: 20
 
+      - uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Install Dependencies
-        run: npm install
+        run: pnpm install
         working-directory: examples/cloudflare-workers-hono
 
       - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
+        run: pnpm add @upstash/workflow@file:../../dist
         working-directory: examples/cloudflare-workers-hono
 
       - name: Run example
@@ -107,7 +111,7 @@ jobs:
         working-directory: examples/cloudflare-workers-hono
 
       - name: Run local tests
-        run: bun test ci.test.ts
+        run: pnpm test
         working-directory: examples/cloudflare-workers-hono
 
   express-local-build:
@@ -324,12 +328,16 @@ jobs:
         with:
           node-version: 20
 
+      - uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
       - name: Install Dependencies
-        run: npm install
+        run: pnpm install
         working-directory: examples/nextjs
 
       - name: Install local package
-        run: npm install @upstash/workflow@file:../../dist
+        run: pnpm add @upstash/workflow@file:../../dist
         working-directory: examples/nextjs
 
       - name: Build Project
@@ -341,7 +349,7 @@ jobs:
         working-directory: examples/nextjs
 
       - name: Run local tests
-        run: bun test .
+        run: pnpm test
         working-directory: examples/nextjs
 
   nextjs12-node18-local-build:
@@ -669,11 +677,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
       - uses: pnpm/action-setup@v2
         with:
           version: latest
@@ -689,7 +692,7 @@ jobs:
         working-directory: examples/ci
 
       - name: Test
-        run: bun test .
+        run: pnpm test
         working-directory: examples/ci
 
   cloudflare-workers-hono-deployed:
@@ -705,14 +708,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: pnpm/action-setup@v2
         with:
-          bun-version: latest
+          version: latest
 
       - name: Install example
         run: |
-          bun add @upstash/workflow@${{needs.release.outputs.version}}
+          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
           npm i -g wrangler
         working-directory: examples/cloudflare-workers-hono
 
@@ -737,7 +739,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{secrets.CLOUDFLARE_API_TOKEN}}
 
       - name: Test
-        run: bun test ci.test.ts
+        run: pnpm test
         working-directory: examples/cloudflare-workers-hono
         env:
           DEPLOYMENT_URL: https://upstash-workflow-cf-hono.upsdev.workers.dev
@@ -791,11 +793,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
       - uses: pnpm/action-setup@v2
         with:
           version: latest
@@ -811,7 +808,7 @@ jobs:
         working-directory: examples/nextjs-pages
 
       - name: Test
-        run: bun test ci.test.ts
+        run: pnpm test
         working-directory: examples/nextjs-pages
 
   sveltekit-deployed:
@@ -827,14 +824,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: pnpm/action-setup@v2
         with:
-          bun-version: latest
+          version: latest
 
       - name: Deploy
         run: |
-          bun add @upstash/workflow@${{needs.release.outputs.version}}
+          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
           DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
           echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
         env:
@@ -843,7 +839,7 @@ jobs:
         working-directory: examples/sveltekit
 
       - name: Test
-        run: bun test ci.test.ts
+        run: pnpm test
         working-directory: examples/sveltekit
 
   express-deployed:
@@ -859,14 +855,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - uses: pnpm/action-setup@v2
         with:
-          bun-version: latest
+          version: latest
 
       - name: Deploy
         run: |
-          bun add @upstash/workflow@${{needs.release.outputs.version}}
+          pnpm add @upstash/workflow@${{needs.release.outputs.version}}
           DEPLOYMENT_URL=$(npx vercel --token=${{ secrets.VERCEL_TOKEN }})
           echo "DEPLOYMENT_URL=${DEPLOYMENT_URL}" >> $GITHUB_ENV
         env:
@@ -875,5 +870,5 @@ jobs:
         working-directory: examples/express
 
       - name: Test
-        run: bun test ci.test.ts
+        run: pnpm test
         working-directory: examples/express
