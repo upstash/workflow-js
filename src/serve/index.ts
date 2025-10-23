@@ -278,6 +278,8 @@ export const serveBase = <
           `\nOriginal error: '${formattedError.message}'`;
 
         console.error(errorMessage);
+        console.log("RETURNING 500");
+        
         return new Response(errorMessage, {
           status: 500,
           headers: {

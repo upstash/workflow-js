@@ -70,7 +70,9 @@ function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
       res.setHeader(key, value);
     }
 
-    res.status(response.status).json(await response.json());
+    const responseData = await response.json();
+    console.log("WRITING RESPONSE", response.status, responseData);
+    res.status(response.status).json(responseData);
   };
 }
 
