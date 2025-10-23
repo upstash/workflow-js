@@ -111,7 +111,8 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
       res.setHeader(key, value);
     }
 
-    res.status(response.status).json(await response.json());
+    const responseData = await response.json();
+    res.status(response.status).json(responseData);
   };
 
   return {
