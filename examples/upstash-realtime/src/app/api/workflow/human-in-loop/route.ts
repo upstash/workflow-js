@@ -31,7 +31,7 @@ export const { POST } = serve<WorkflowPayload>(
           timestamp: Date.now(),
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         const res = {
           preprocessed: true,
           userId,
@@ -109,7 +109,7 @@ export const { POST } = serve<WorkflowPayload>(
           timestamp: Date.now(),
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         if (eventData.approved) {
           const res = {
@@ -155,7 +155,7 @@ export const { POST } = serve<WorkflowPayload>(
               timestamp: Date.now(),
             });
 
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            await new Promise((resolve) => setTimeout(resolve, 100));
             const res = {
               completed: true,
               finalizedAt: Date.now(),

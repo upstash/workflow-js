@@ -34,7 +34,7 @@ export const { POST } = serve<WorkflowPayload>(
         });
 
         // Simulate validation logic
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         if (!userId || !action) {
           throw new Error("Missing required fields");
@@ -75,7 +75,7 @@ export const { POST } = serve<WorkflowPayload>(
         });
 
         // Simulate data processing
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         const res = {
           processedAt: Date.now(),
@@ -116,7 +116,7 @@ export const { POST } = serve<WorkflowPayload>(
         });
 
         // Simulate saving to database
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         const res = {
           saved: true,
