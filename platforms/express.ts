@@ -71,6 +71,7 @@ function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
     }
 
     const responseData = await response.json();
+    console.log("WRITING RESPONSE", response.status, responseData);
     res.status(response.status).json(responseData);
   };
 }

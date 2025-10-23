@@ -66,6 +66,8 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           }
         ) as TResponse;
       } else if (detailedFinishCondition?.condition === "non-retryable-error") {
+
+        console.log("RETURNING 489");
         return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
           headers: {
             "Upstash-NonRetryable-Error": "true",
