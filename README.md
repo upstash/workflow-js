@@ -83,6 +83,15 @@ waiting for an event or get the workflows waiting for an event:
 import { Client } from "@upstash/workflow";
 const client = new Client({ token: "<QSTASH_TOKEN>" });
 
+// trigger a workflow
+const { workflowRunId } = await client.trigger({
+  url: "https://workflow-endpoint.com",
+  body: "hello there!",         // Optional body
+  headers: { ... },             // Optional headers
+  workflowRunId: "my-workflow", // Optional workflow run ID
+  retries: 3                    // Optional retries for the initial request
+});
+
 // cancel workflow:
 await client.cancel({ workflowRunId: "<WORKFLOW_RUN_ID>" });
 
