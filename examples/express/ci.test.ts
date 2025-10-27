@@ -90,7 +90,7 @@ const tests: TestConfig[] = [
     })
   },
   {
-    testDescription: "shall return string responsefrom failure function correctly",
+    testDescription: "shall return string response from failure function correctly",
     route: "ci",
     payload: `fail`,
     headers: {
