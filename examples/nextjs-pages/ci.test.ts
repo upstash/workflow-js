@@ -89,7 +89,7 @@ const tests: TestConfig[] = [
   },
   {
     testDescription: "shall return empty response from failure function correctly",
-    route: "ci",
+    route: "api/ci",
     payload: `fail`,
     headers: {
       "workflow-should-fail": "true"
@@ -104,7 +104,7 @@ const tests: TestConfig[] = [
   },
   {
     testDescription: "shall return string response from failure function correctly",
-    route: "ci",
+    route: "api/ci",
     payload: `fail`,
     headers: {
       "workflow-should-fail": "true",
