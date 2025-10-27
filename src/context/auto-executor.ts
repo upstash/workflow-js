@@ -1,4 +1,4 @@
-import { WorkflowAbort, WorkflowError } from "../error";
+import { isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
@@ -236,8 +236,8 @@ export class AutoExecutor {
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {
           if (
-            error instanceof WorkflowAbort ||
-            (error instanceof QstashError && error.status === 400)
+            isInstanceOf(error, WorkflowAbort) ||
+            (isInstanceOf(error, QstashError) && error.status === 400)
           ) {
             throw error;
           }
@@ -412,7 +412,7 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
       validateStep(lazySteps[index], stepFromRequest);
     }
   } catch (error) {
-    if (error instanceof WorkflowError) {
+    if (isInstanceOf(error, WorkflowError)) {
       const lazyStepNames = lazySteps.map((lazyStep) => lazyStep.stepName);
       const lazyStepTypes = lazySteps.map((lazyStep) => lazyStep.stepType);
       const requestStepNames = stepsFromRequest.map((step) => step.stepName);

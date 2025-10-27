@@ -7,7 +7,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
 import { WorkflowContext } from "../context";
-import { formatWorkflowError, WorkflowNonRetryableError } from "../error";
+import { formatWorkflowError, isInstanceOf, WorkflowNonRetryableError } from "../error";
 import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
@@ -234,7 +234,7 @@ export const serveBase = <
             debug,
           });
 
-      if (result.isOk() && result.value instanceof WorkflowNonRetryableError) {
+      if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
         return onStepFinish(workflowRunId, result.value, {
           condition: "non-retryable-error",
           result: result.value,
@@ -278,9 +278,7 @@ export const serveBase = <
           `\nOriginal error: '${formattedError.message}'`;
 
         console.error(errorMessage);
-        console.log("RETURNING 500");
-        
-        return new Response(errorMessage, {
+        return new Response(JSON.stringify({ error: errorMessage }), {
           status: 500,
           headers: {
             [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,

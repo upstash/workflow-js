@@ -9,6 +9,7 @@ import { tool } from "ai";
 import { AgentCallParams, AISDKTool, LangchainTool, ProviderFunction } from "./types";
 import { AGENT_NAME_HEADER } from "./constants";
 import { z, ZodType } from "zod";
+import { isInstanceOf, WorkflowAbort } from "../error";
 
 export const fetchWithContextCall = async (
   context: WorkflowContext,
@@ -56,7 +57,7 @@ export const fetchWithContextCall = async (
       headers: responseHeaders,
     });
   } catch (error) {
-    if (error instanceof Error && error.name === "WorkflowAbort") {
+    if (error instanceof Error && isInstanceOf(error, WorkflowAbort)) {
       throw error;
     } else {
       console.error("Error in fetch implementation:", error);

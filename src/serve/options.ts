@@ -66,8 +66,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           }
         ) as TResponse;
       } else if (detailedFinishCondition?.condition === "non-retryable-error") {
-
-        console.log("RETURNING 489");
         return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
           headers: {
             "Upstash-NonRetryable-Error": "true",
@@ -76,12 +74,15 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           status: 489,
         }) as TResponse;
       } else if (detailedFinishCondition?.condition === "failure-callback") {
-        return new Response(detailedFinishCondition.result ?? undefined, {
-          status: 200,
-          headers: {
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          },
-        }) as TResponse;
+        return new Response(
+          JSON.stringify({ result: detailedFinishCondition.result ?? undefined }),
+          {
+            status: 200,
+            headers: {
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            },
+          }
+        ) as TResponse;
       }
       return new Response(JSON.stringify({ workflowRunId }), {
         status: 200,

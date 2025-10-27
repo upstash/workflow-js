@@ -1,6 +1,7 @@
 import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
 import { WorkflowLogger } from "../logger";
+import { isInstanceOf } from "../error";
 
 export const makeNotifyRequest = async (
   requester: Client["http"],
@@ -91,7 +92,7 @@ export const getSteps = async (
       return { steps: filteredSteps, workflowRunEnded: false };
     }
   } catch (error) {
-    if (error instanceof QstashError && error.status === 404) {
+    if (isInstanceOf(error, QstashError) && error.status === 404) {
       await debug?.log("WARN", "ENDPOINT_START", {
         message:
           "Couldn't fetch workflow run steps. This can happen if the workflow run succesfully ends before some callback is executed.",
