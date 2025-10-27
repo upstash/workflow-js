@@ -1138,7 +1138,7 @@ describe("serve", () => {
             const response = await handler(request);
             expect(response.status).toBe(200);
             const body = await response.text();
-            expect(body).toBe(failureFunctionResponse);
+            expect(body).toBe(JSON.stringify({ result: failureFunctionResponse }));
           },
           receivesRequest: false,
           responseFields: {
