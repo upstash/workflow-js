@@ -65,7 +65,7 @@ const { handler } = servePagesRouter<unknown>(
       })
 
       await redis.set<RedisEntry>(
-        `ci-cf-ran-${context.headers.get("secret-header")}`,
+        `ci-nextjs-pages-ran-${context.headers.get("secret-header")}`,
         {
           secret: context.headers.get("secret-header")!,
           result: failResponse
