@@ -9,7 +9,7 @@ import {
   triggerRouteFunction,
   triggerWorkflowDelete,
 } from "./workflow-requests";
-import { WorkflowAbort, WorkflowNonRetryableError } from "./error";
+import { WorkflowAbort, WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "./client";
@@ -261,6 +261,25 @@ describe("Workflow Requests", () => {
     expect(result.isOk()).toBeTrue();
     // @ts-expect-error value will be set since result isOk
     expect(result.value).toBeInstanceOf(WorkflowNonRetryableError);
+  });
+
+  test("should retry workflow and return ok if WorkflowRetryAfterError is thrown", async () => {
+    const result = await triggerRouteFunction({
+      onStep: async () => {
+        throw new WorkflowRetryAfterError("This is a retry-after error", 5);
+      },
+      onCleanup: async () => {
+        throw new Error("shouldn't call");
+      },
+      onCancel: async () => {
+        throw new Error("shouldn't call");
+      },
+    });
+    expect(result.isOk()).toBeTrue();
+    // @ts-expect-error value will be set since result isOk
+    expect(result.value).toBeInstanceOf(WorkflowRetryAfterError);
+    // @ts-expect-error value will be set since result isOk
+    expect(result.value.retryAfter).toBe(5);
   });
 
   test("should call onCancel if context.cancel is called inside context.run", async () => {

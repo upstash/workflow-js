@@ -1,5 +1,5 @@
 import { QstashError } from "@upstash/qstash";
-import type { FailureFunctionPayload, Step } from "./types";
+import type { Duration, FailureFunctionPayload, Step } from "./types";
 
 /**
  * Error raised during Workflow execution
@@ -52,6 +52,20 @@ export class WorkflowNonRetryableError extends WorkflowAbort {
   constructor(message?: string) {
     super("fail", undefined, false);
     this.name = "WorkflowNonRetryableError";
+    if (message) this.message = message;
+  }
+}
+
+export class WorkflowRetryAfterError extends WorkflowAbort {
+  public retryAfter: number | Duration;
+  /**
+   * @param retryAfter time in seconds after which the workflow should be retried
+   * @param message error message to be displayed
+   */
+  constructor(message: string, retryAfter: number | Duration) {
+    super("retry", undefined, false);
+    this.name = "WorkflowRetryAfterError";
+    this.retryAfter = retryAfter;
     if (message) this.message = message;
   }
 }

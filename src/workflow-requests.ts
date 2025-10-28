@@ -1,6 +1,12 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { isInstanceOf, WorkflowAbort, WorkflowError, WorkflowNonRetryableError } from "./error";
+import {
+  isInstanceOf,
+  WorkflowAbort,
+  WorkflowError,
+  WorkflowNonRetryableError,
+  WorkflowRetryAfterError,
+} from "./error";
 import type { WorkflowContext } from "./context";
 import {
   TELEMETRY_HEADER_FRAMEWORK,
@@ -164,7 +170,11 @@ export const triggerRouteFunction = async ({
   debug?: WorkflowLogger;
 }): Promise<
   | Ok<
-      "workflow-finished" | "step-finished" | "workflow-was-finished" | WorkflowNonRetryableError,
+      | "workflow-finished"
+      | "step-finished"
+      | "workflow-was-finished"
+      | WorkflowNonRetryableError
+      | WorkflowRetryAfterError,
       never
     >
   | Err<never, Error>
@@ -185,7 +195,10 @@ export const triggerRouteFunction = async ({
         errorMessage: error.message,
       });
       return ok("workflow-was-finished");
-    } else if (isInstanceOf(error_, WorkflowNonRetryableError)) {
+    } else if (
+      isInstanceOf(error_, WorkflowNonRetryableError) ||
+      isInstanceOf(error_, WorkflowRetryAfterError)
+    ) {
       return ok(error_);
     } else if (!isInstanceOf(error_, WorkflowAbort)) {
       return err(error_);
