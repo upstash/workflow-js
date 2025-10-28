@@ -3,7 +3,7 @@ import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
-import { z } from "zod/v3";
+import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
 
 /**
