@@ -10,3 +10,4 @@ export {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "./error";
+export { WorkflowTool } from "./agents/adapters";
