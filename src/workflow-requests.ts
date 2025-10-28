@@ -1,6 +1,6 @@
 import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
-import { WorkflowAbort, WorkflowError, WorkflowNonRetryableError } from "./error";
+import { isInstanceOf, WorkflowAbort, WorkflowError, WorkflowNonRetryableError } from "./error";
 import type { WorkflowContext } from "./context";
 import {
   TELEMETRY_HEADER_FRAMEWORK,
@@ -178,17 +178,17 @@ export const triggerRouteFunction = async ({
     return ok("workflow-finished");
   } catch (error) {
     const error_ = error as Error;
-    if (error instanceof QstashError && error.status === 400) {
+    if (isInstanceOf(error, QstashError) && error.status === 400) {
       await debug?.log("WARN", "RESPONSE_WORKFLOW", {
         message: `tried to append to a cancelled workflow. exiting without publishing.`,
         name: error.name,
         errorMessage: error.message,
       });
       return ok("workflow-was-finished");
-    } else if (!(error_ instanceof WorkflowAbort)) {
-      return err(error_);
-    } else if (error_ instanceof WorkflowNonRetryableError) {
+    } else if (isInstanceOf(error_, WorkflowNonRetryableError)) {
       return ok(error_);
+    } else if (!isInstanceOf(error_, WorkflowAbort)) {
+      return err(error_);
     } else if (error_.cancelWorkflow) {
       await onCancel();
       return ok("workflow-finished");

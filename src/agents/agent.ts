@@ -5,6 +5,7 @@ import { AgentParameters, AISDKTool, ManagerAgentParameters } from "./types";
 import { AGENT_NAME_HEADER, MANAGER_AGENT_PROMPT } from "./constants";
 import { WorkflowContext } from "../context";
 import { isDisabledWorkflowContext } from "../serve/utils";
+import { isInstanceOf, WorkflowAbort } from "../error";
 
 /**
  * An Agent which utilizes the model and tools available to it
@@ -68,13 +69,12 @@ export class Agent {
       });
       return { text: result.text };
     } catch (error) {
-      if (error instanceof ToolExecutionError) {
-        if (error.cause instanceof Error && error.cause.name === "WorkflowAbort") {
+      if (isInstanceOf(error, ToolExecutionError)) {
+        if (error.cause instanceof Error && isInstanceOf(error.cause, WorkflowAbort)) {
           throw error.cause;
         } else if (
-          error.cause instanceof ToolExecutionError &&
-          error.cause.cause instanceof Error &&
-          error.cause.cause.name === "WorkflowAbort"
+          isInstanceOf(error.cause, ToolExecutionError) &&
+          isInstanceOf(error.cause.cause, WorkflowAbort)
         ) {
           throw error.cause.cause;
         } else {

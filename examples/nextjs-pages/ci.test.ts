@@ -21,7 +21,8 @@ type TestConfig = {
   route: string,
   payload: undefined | string | object,
   headers: Record<string, string>,
-  expectedResult: unknown
+  expectedResult: unknown,
+  expectedLog?: unknown
 }
 
 const tests: TestConfig[] = [
@@ -85,6 +86,37 @@ const tests: TestConfig[] = [
       "Content-Type": "text/plain"
     },
     expectedResult: `step 1 input: '[object Object]', type: 'object', stringified input: '{"foo":"bar"}'`
+  },
+  {
+    testDescription: "shall return empty response from failure function correctly",
+    route: "api/ci",
+    payload: `fail`,
+    headers: {
+      "workflow-should-fail": "true"
+    },
+    expectedResult: `Function failed as requested`,
+    expectedLog: expect.objectContaining({
+      failureFunction: expect.objectContaining({
+        responseBody: "{}",
+        state: "DELIVERED"
+      })
+    })
+  },
+  {
+    testDescription: "shall return string response from failure function correctly",
+    route: "api/ci",
+    payload: `fail`,
+    headers: {
+      "workflow-should-fail": "true",
+      "workflow-failure-function-should-return": "true"
+    },
+    expectedResult: `Function failed as requested`,
+    expectedLog: expect.objectContaining({
+      failureFunction: expect.objectContaining({
+        responseBody: JSON.stringify({ result: "response" }),
+        state: "DELIVERED"
+      })
+    })
   }
 ]
 
@@ -94,6 +126,7 @@ const testEndpoint = ({
   payload,
   headers,
   expectedResult,
+  expectedLog
 }: TestConfig) => {
   test(testDescription, async () => {
     if (!process.env.DEPLOYMENT_URL) {
@@ -108,7 +141,7 @@ const testEndpoint = ({
 
     const secret = "secret-" + Math.floor(Math.random() * 10000).toString()
     
-    await client.trigger({
+    const { workflowRunId } = await client.trigger({
       url: `${process.env.DEPLOYMENT_URL}/${route}`,
       body: payload,
       headers: {
@@ -134,6 +167,16 @@ const testEndpoint = ({
     expect(result).toBeDefined()
     expect(result?.secret).toBe(secret)
     expect(result?.result).toBe(expectedResult)
+
+    if (expectedLog) {
+      const logs = await client.logs({
+        workflowRunId
+      })
+      
+      expect(logs).toBeDefined()
+      expect(logs.runs.length).toBe(1)
+      expect(logs.runs[0]).toEqual(expectedLog)
+    }
   }, TEST_TIMEOUT_DURATION)
 }
 

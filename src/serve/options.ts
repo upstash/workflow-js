@@ -74,12 +74,15 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           status: 489,
         }) as TResponse;
       } else if (detailedFinishCondition?.condition === "failure-callback") {
-        return new Response(detailedFinishCondition.result ?? undefined, {
-          status: 200,
-          headers: {
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          },
-        }) as TResponse;
+        return new Response(
+          JSON.stringify({ result: detailedFinishCondition.result ?? undefined }),
+          {
+            status: 200,
+            headers: {
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            },
+          }
+        ) as TResponse;
       }
       return new Response(JSON.stringify({ workflowRunId }), {
         status: 200,
