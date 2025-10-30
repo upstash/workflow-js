@@ -34,6 +34,7 @@ export const { POST } = serve(async (workflow) => {
   };
 
   await workflow.run("ai-generation", async () => {
+    await redis.set(`history:${id}`, messages);
     const result = streamText({
       model: openai("gpt-4o"),
       tools: {
