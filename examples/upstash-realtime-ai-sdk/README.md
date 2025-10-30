@@ -32,11 +32,16 @@ Before running this application, you'll need:
 
 ## 🛠️ Setup
 
+Start by cloning the repository and going to the example app directory:
+
+```bash
+git clone git@github.com:upstash/workflow-js.git
+cd workflow-js/examples/upstash-realtime-ai-sdk
+```
+
 ### 1. Clone and Install Dependencies
 
 ```bash
-git clone <your-repo-url>
-cd upstash-realtime-ai-sdk
 bun install
 ```
 
@@ -53,7 +58,6 @@ UPSTASH_REDIS_REST_TOKEN=your_redis_token
 OPENAI_API_KEY=your_openai_api_key
 
 # Qstash/Workflow Configuration
-QSTASH_URL=
 QSTASH_TOKEN=
 ```
 
@@ -66,9 +70,8 @@ QSTASH_TOKEN=
    - Copy the REST URL and token
 
 2. **Establish a QStash Server**:
-   - For dev environment, you should run `npx @upstash/qstash-cli@latest dev` in the terminal
-   - You can get the credentials from the [Upstash Console](https://console.upstash.com)
-   - Get Url (e.g. http://localhost:8080 for dev server) and the token
+   - For dev environment, you should run `npx @upstash/qstash-cli@latest dev` in the terminal to start QStash local dev server.
+   - Set the QSTASH_TOKEN in your `.env.local` file (set QSTASH_URL too if you are using local dev server)
 
 ### 4. Run the Application
 
@@ -151,11 +154,3 @@ src/
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- [Upstash](https://upstash.com) for providing the infrastructure
-- [Vercel](https://vercel.com) for the AI SDK
-- [OpenAI](https://openai.com) for the language model
-
----
