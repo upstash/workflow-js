@@ -7,7 +7,12 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
 import { WorkflowContext } from "../context";
-import { formatWorkflowError, isInstanceOf, WorkflowNonRetryableError } from "../error";
+import {
+  formatWorkflowError,
+  isInstanceOf,
+  WorkflowNonRetryableError,
+  WorkflowRetryAfterError,
+} from "../error";
 import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
@@ -237,6 +242,13 @@ export const serveBase = <
       if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
         return onStepFinish(workflowRunId, result.value, {
           condition: "non-retryable-error",
+          result: result.value,
+        });
+      }
+
+      if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
+        return onStepFinish(workflowRunId, result.value, {
+          condition: "retry-after-error",
           result: result.value,
         });
       }

@@ -73,6 +73,14 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           },
           status: 489,
         }) as TResponse;
+      } else if (detailedFinishCondition?.condition === "retry-after-error") {
+        return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
+          headers: {
+            "Retry-After": detailedFinishCondition.result.retryAfter.toString(),
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+          },
+          status: 429,
+        }) as TResponse;
       } else if (detailedFinishCondition?.condition === "failure-callback") {
         return new Response(
           JSON.stringify({ result: detailedFinishCondition.result ?? undefined }),

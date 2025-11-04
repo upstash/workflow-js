@@ -4,7 +4,7 @@ import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
 import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
-import { WorkflowNonRetryableError } from "./error";
+import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
 
 /**
  * Interface for Client with required methods
@@ -144,6 +144,10 @@ export type DetailedFinishCondition =
   | {
       condition: "non-retryable-error";
       result: WorkflowNonRetryableError;
+    }
+  | {
+      condition: "retry-after-error";
+      result: WorkflowRetryAfterError;
     }
   | {
       condition: "failure-callback";

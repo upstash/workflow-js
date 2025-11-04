@@ -27,7 +27,7 @@ import {
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
 import { WorkflowLogger } from "../logger";
 import { z } from "zod";
-import { WorkflowNonRetryableError } from "../error";
+import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "../error";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -908,6 +908,41 @@ describe("serve", () => {
         });
       },
       responseFields: { body: undefined, status: 489 },
+      receivesRequest: false,
+    });
+    expect(called).toBeTrue();
+  });
+
+  test("should call qstash to retry workflow on WorkflowRetryAfterError", async () => {
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-3", "my-payload", []);
+    let called = false;
+    const { handler: endpoint } = serve(
+      async (context) => {
+        called = true;
+        throw new WorkflowRetryAfterError("This is a retry-after error", 30);
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        verbose: true,
+      }
+    );
+
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+
+        expect(response.status).toBe(429);
+        expect(response.headers.get("Retry-After")).toBe("30");
+
+        const body = await response.json();
+        expect(body).toEqual({
+          error: "WorkflowRetryAfterError",
+          message: "This is a retry-after error",
+          stack: expect.any(String),
+        });
+      },
+      responseFields: { body: undefined, status: 429 },
       receivesRequest: false,
     });
     expect(called).toBeTrue();
