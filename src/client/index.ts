@@ -245,7 +245,6 @@ export class Client {
 
       const context = new WorkflowContext({
         qstashClient: this.client,
-        // @ts-expect-error header type mismatch because of bun
         headers: new Headers({
           ...(option.headers ?? {}),
           ...(option.label ? { [WORKFLOW_LABEL_HEADER]: option.label } : {}),

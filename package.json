@@ -88,7 +88,6 @@
     "@eslint/js": "^9.11.1",
     "@solidjs/start": "^1.0.8",
     "@sveltejs/kit": "^2.6.1",
-    "@tanstack/react-start": "^1.132.48",
     "@types/bun": "^1.1.10",
     "@types/express": "^5.0.3",
     "astro": "^4.16.7",
@@ -106,10 +105,12 @@
     "typescript-eslint": "^8.18.0"
   },
   "dependencies": {
-    "@upstash/qstash": "^2.8.2",
-    "zod": "^3.24.1"
+    "@upstash/qstash": "^2.8.4"
   },
   "directories": {
     "example": "examples"
+  },
+  "peerDependencies": {
+    "zod": "^3.25.0 || ^4.0.0"
   }
 }
