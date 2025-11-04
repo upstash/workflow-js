@@ -420,13 +420,6 @@ export type TriggerOptions = {
    */
   label?: string;
   /**
-   * Whether to apply the configuration (flow control,
-   * retries, failure url, retry delay) passed in trigger
-   *
-   * @default false
-   */
-  keepTriggerConfig?: boolean;
-  /**
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
    * Set `disableTelemetry` to disable this behavior.

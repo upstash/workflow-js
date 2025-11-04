@@ -127,7 +127,7 @@ describe("Workflow Requests", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-retries": "0",
@@ -1069,7 +1069,7 @@ describe("Workflow Requests", () => {
             "Upstash-Workflow-Init": "true",
             "Upstash-Workflow-RunId": workflowRunId,
             "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
-            "Upstash-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+            "Upstash-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
             [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
             "Upstash-Retries": "0",

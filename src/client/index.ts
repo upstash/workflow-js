@@ -266,7 +266,6 @@ export class Client {
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         delay: option.delay,
         notBefore: option.notBefore,
-        keepTriggerConfig: option.keepTriggerConfig,
       };
     });
     const result = await triggerFirstInvocation(invocations);
