@@ -83,7 +83,6 @@
   },
   "homepage": "https://github.com/upstash/workflow-ts#readme",
   "devDependencies": {
-    "@ai-sdk/anthropic": "^1.1.15",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@eslint/js": "^9.11.1",
@@ -107,9 +106,7 @@
     "typescript-eslint": "^8.18.0"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.2.1",
     "@upstash/qstash": "^2.8.2",
-    "ai": "^4.1.54",
     "zod": "^3.24.1"
   },
   "directories": {
