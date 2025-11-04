@@ -2,7 +2,6 @@ import { FlowControl, QstashError } from "@upstash/qstash";
 import {
   DEFAULT_CONTENT_TYPE,
   DEFAULT_RETRIES,
-  TELEMETRY_HEADER_AGENT,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
@@ -15,7 +14,6 @@ import {
 import { BaseLazyStep, LazyCallStep } from "../context/steps";
 import { Step, Telemetry } from "../types";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
-import { AGENT_NAME_HEADER } from "../agents/constants";
 
 export type WorkflowConfig = {
   retries?: number;
@@ -118,11 +116,6 @@ class WorkflowHeaders {
         (this.keepTriggerConfig ? ",WF_TriggerOnConfig" : ""),
       [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
       ...(this.workflowConfig.telemetry ? getTelemetryHeaders(this.workflowConfig.telemetry) : {}),
-      ...(this.workflowConfig.telemetry &&
-      this.stepInfo?.lazyStep instanceof LazyCallStep &&
-      this.stepInfo.lazyStep.headers[AGENT_NAME_HEADER]
-        ? { [TELEMETRY_HEADER_AGENT]: "true" }
-        : {}),
     };
 
     if (this.stepInfo?.lazyStep.stepType !== "Call") {
