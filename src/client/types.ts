@@ -427,34 +427,11 @@ export type TriggerOptions = {
    * @default false
    */
   disableTelemetry?: boolean;
-} & (
-  | {
-      /**
-       * URL to call if the first request to the workflow endpoint fails
-       */
-      failureUrl?: never;
-      /**
-       * Whether the workflow endpoint has a failure function
-       * defined to be invoked if the first request fails.
-       *
-       * If true, the failureUrl will be ignored.
-       */
-      useFailureFunction?: true;
-    }
-  | {
-      /**
-       * URL to call if the first request to the workflow endpoint fails
-       */
-      failureUrl?: string;
-      /**
-       * Whether the workflow endpoint has a failure function
-       * defined to be invoked if the first request fails.
-       *
-       * If true, the failureUrl will be ignored.
-       */
-      useFailureFunction?: never;
-    }
-);
+  /**
+   * URL to call if the first request to the workflow endpoint fails
+   */
+  failureUrl?: string;
+};
 
 export type DLQResumeRestartOptions<TDLQId extends string | string[] = string | string[]> = {
   dlqId: TDLQId;

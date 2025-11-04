@@ -240,7 +240,7 @@ export class Client {
     const options = isBatchInput ? params : [params];
 
     const invocations = options.map((option) => {
-      const failureUrl = option.useFailureFunction ? option.url : option.failureUrl;
+      const failureUrl = option.failureUrl ?? option.url;
       const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
 
       const context = new WorkflowContext({

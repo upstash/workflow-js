@@ -140,12 +140,10 @@ const checkIfLastOneIsDuplicate = async (
   debug?: WorkflowLogger
 ): Promise<boolean> => {
   // return false if the length is 0 or 1
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
   if (steps.length < 2) {
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const lastStep = steps.at(-1)!;
   const lastStepId = lastStep.stepId;
   const lastTargetStepId = lastStep.targetStep;
@@ -309,8 +307,9 @@ export const handleFailure = async <TInitialPayload>(
   debug?: WorkflowLogger
 ): Promise<
   | Ok<
-      | { result: "is-failure-callback"; response: string | void }
-      | { result: "not-failure-callback" },
+      | { result: "not-failure-callback" }
+      | { result: "failure-function-executed"; response: string | void }
+      | { result: "failure-function-undefined" },
       never
     >
   | Err<never, Error>
@@ -320,13 +319,7 @@ export const handleFailure = async <TInitialPayload>(
   }
 
   if (!failureFunction) {
-    return err(
-      new WorkflowError(
-        "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
-      )
-    );
+    return ok({ result: "failure-function-undefined" });
   }
 
   try {
@@ -390,7 +383,7 @@ export const handleFailure = async <TInitialPayload>(
     if (authCheck.isErr()) {
       // got error while running until first step
       await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
-      throw authCheck.error;
+      return err(authCheck.error);
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
@@ -404,7 +397,7 @@ export const handleFailure = async <TInitialPayload>(
       failHeaders: header,
       failStack,
     });
-    return ok({ result: "is-failure-callback", response: failureResponse });
+    return ok({ result: "failure-function-executed", response: failureResponse });
   } catch (error) {
     return err(error as Error);
   }

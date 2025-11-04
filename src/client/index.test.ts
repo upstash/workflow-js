@@ -108,7 +108,6 @@ describe("workflow client", () => {
       async () => {
         const { workflowRunId } = await liveClient.trigger({
           url: "http://requestcatcher.com",
-          useFailureFunction: true,
         });
 
         const cancel = await liveClient.cancel({
@@ -244,6 +243,18 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
+              "upstash-failure-callback-forward-upstash-label": "test-label",
+              "upstash-failure-callback": "https://requestcatcher.com/api",
+              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+              "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+              "upstash-failure-callback-forward-user-header": "user-header-value",
+              "upstash-failure-callback-retries": "15",
+              "upstash-failure-callback-retry-delay": "1000",
+              "upstash-failure-callback-workflow-calltype": "failureCall",
+              "upstash-failure-callback-workflow-init": "false",
+              "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
+              "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
             },
             body,
           },
@@ -277,7 +288,6 @@ describe("workflow client", () => {
             retries: 15,
             retryDelay: "2000",
             notBefore: new Date("2100-01-01T00:00:00Z").getTime() / 1000,
-            useFailureFunction: true,
           },
         ]);
         expect(result).toEqual([
@@ -312,6 +322,17 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
+              "upstash-failure-callback": "https://requestcatcher.com/api",
+              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+              "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+              "upstash-failure-callback-forward-user-header": "user-header-value",
+              "upstash-failure-callback-retries": "15",
+              "upstash-failure-callback-retry-delay": "1000",
+              "upstash-failure-callback-workflow-calltype": "failureCall",
+              "upstash-failure-callback-workflow-init": "false",
+              "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
+              "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
             },
             body,
           },
