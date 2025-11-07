@@ -10,7 +10,7 @@ const createWorkflowOpenAI = (context: WorkflowContext) => {
   return createOpenAI({
     apiKey: process.env.OPENAI_API_KEY ?? "",
     compatibility: "strict",
-    fetch: async (input, init) => {
+    fetch: (async (input, init) => {
       try {
         // Prepare headers from init.headers
         const headers = init?.headers
@@ -49,7 +49,7 @@ const createWorkflowOpenAI = (context: WorkflowContext) => {
           throw error; // Rethrow error for further handling
         }
       }
-    },
+    }) as typeof fetch,
   });
 };
 
