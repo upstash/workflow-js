@@ -248,7 +248,7 @@ export class Client {
         headers: new Headers({
           ...(option.headers ?? {}),
           ...(option.label ? { [WORKFLOW_LABEL_HEADER]: option.label } : {}),
-        }),
+        }) as Headers,
         initialPayload: option.body,
         steps: [],
         url: option.url,
