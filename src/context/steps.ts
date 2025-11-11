@@ -757,6 +757,11 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       userHeaders: context.headers,
       invokeCount,
     });
+
+    context.qstashClient.http.headers?.forEach((value, key) => {
+      invokerHeaders[key] = value;
+    });
+    
     invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
     let invokeBody: string;
