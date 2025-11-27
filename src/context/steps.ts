@@ -847,7 +847,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   }
 }
 
-type Webhook = {
+export type Webhook = {
   webhookUrl: string;
   eventId: string
 }

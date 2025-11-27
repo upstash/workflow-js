@@ -10,9 +10,10 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep } from "./steps";
+import type { BaseLazyStep, Webhook } from "./steps";
 import {
   LazyCallStep,
+  LazyCreateWebhookStep,
   LazyFunctionStep,
   LazyInvokeStep,
   LazyNotifyStep,
@@ -515,6 +516,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
     return await this.addStep(new LazyInvokeStep<TResult, TInitialPayload>(this, stepName, settings));
+  }
+
+  public async createWebhook(stepName: string): Promise<Webhook> {
+    return await this.addStep(new LazyCreateWebhookStep(this, stepName));
   }
 
   /**

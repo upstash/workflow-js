@@ -49,11 +49,13 @@ export function getUserIdFromToken(qstashClient: WorkflowClient): string {
   try {
     const token = (qstashClient as (WorkflowClient & {token: string})).token
     const decodedToken = decodeBase64(token);
-    const tokenPayload = JSON.parse(decodedToken) as { userId: string };
-    if (!tokenPayload.userId) {
+    const tokenPayload = JSON.parse(decodedToken) as { UserID: string };
+    const userId = tokenPayload.UserID;
+
+    if (!userId) {
       throw new WorkflowError("QStash token payload does not contain userId");
     }
-    return tokenPayload.userId;
+    return userId;
   } catch (error) {
     throw new WorkflowError(`Failed to decode QStash token while runing create webhook step: ${(error as Error).message}`)
   }
@@ -74,5 +76,5 @@ export function getQStashUrl(qstashClient: WorkflowClient): string {
 }
 
 export function getEventId(): string {
-  return `evt_${nanoid(10)}`;
+  return `evt_${nanoid(15)}`;
 }
