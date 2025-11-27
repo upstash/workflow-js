@@ -895,7 +895,7 @@ export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
     const [userId, workflowRunId, eventId] = out.split("/");
     const qstashUrl = getQStashUrl(this.context.qstashClient);
     return {
-      webhookUrl: `${qstashUrl}/v2/hooks/${userId}/${workflowRunId}/${eventId}`,
+      webhookUrl: `${qstashUrl}/v2/workflows/hooks/${userId}/${workflowRunId}/${eventId}`,
       eventId,
     };
   }
