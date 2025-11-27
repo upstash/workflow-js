@@ -47,7 +47,7 @@ export function decodeBase64(base64: string) {
 
 export function getUserIdFromToken(qstashClient: WorkflowClient): string {
   try {
-    const token = (qstashClient as (WorkflowClient & {token: string})).token
+    const token = (qstashClient as WorkflowClient & { token: string }).token;
     const decodedToken = decodeBase64(token);
     const tokenPayload = JSON.parse(decodedToken) as { UserID: string };
     const userId = tokenPayload.UserID;
@@ -57,21 +57,23 @@ export function getUserIdFromToken(qstashClient: WorkflowClient): string {
     }
     return userId;
   } catch (error) {
-    throw new WorkflowError(`Failed to decode QStash token while runing create webhook step: ${(error as Error).message}`)
+    throw new WorkflowError(
+      `Failed to decode QStash token while runing create webhook step: ${(error as Error).message}`
+    );
   }
 }
 
 export function getQStashUrl(qstashClient: WorkflowClient): string {
   try {
-    const requester = qstashClient.http
-    const baseUrl = (requester as typeof requester & { baseUrl: string }).baseUrl
+    const requester = qstashClient.http;
+    const baseUrl = (requester as typeof requester & { baseUrl: string }).baseUrl;
 
     if (!baseUrl) {
       throw new WorkflowError("QStash client does not have a baseUrl");
     }
     return baseUrl;
   } catch (error) {
-    throw new WorkflowError(`Failed to get QStash URL from client: ${(error as Error).message}`)
+    throw new WorkflowError(`Failed to get QStash URL from client: ${(error as Error).message}`);
   }
 }
 

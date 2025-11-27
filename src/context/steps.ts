@@ -45,10 +45,10 @@ export abstract class BaseLazyStep<TResult = unknown> {
   public readonly stepName;
   public abstract readonly stepType: StepType; // will be set in the subclasses
   protected abstract readonly allowUndefinedOut: boolean;
-  protected readonly context: WorkflowContext
+  protected readonly context: WorkflowContext;
 
   constructor(context: WorkflowContext, stepName: string) {
-    this.context = context
+    this.context = context;
     if (!stepName) {
       throw new WorkflowError(
         "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
@@ -619,7 +619,7 @@ export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepRespo
       timeoutHeaders,
       step: {
         stepId: step.stepId,
-        stepType: "Wait",
+        stepType: this.stepType,
         stepName: step.stepName,
         concurrent: step.concurrent,
         targetStep: step.targetStep,
@@ -644,7 +644,13 @@ export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepRespo
 export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
   stepType: StepType = "Notify";
 
-  constructor(context: WorkflowContext, stepName: string, eventId: string, eventData: unknown, requester: Client["http"]) {
+  constructor(
+    context: WorkflowContext,
+    stepName: string,
+    eventId: string,
+    eventData: unknown,
+    requester: Client["http"]
+  ) {
     super(context, stepName, async () => {
       const notifyResponse = await makeNotifyRequest(requester, eventId, eventData);
 
@@ -766,7 +772,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     context.qstashClient.http.headers?.forEach((value, key) => {
       invokerHeaders[key] = value;
     });
-    
+
     invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
 
     let invokeBody: string;
@@ -849,8 +855,8 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
 
 export type Webhook = {
   webhookUrl: string;
-  eventId: string
-}
+  eventId: string;
+};
 
 export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
   stepType: StepType = "CreateWebhook";
@@ -877,22 +883,36 @@ export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
   }
 
   getBody({ step, context }: GetBodyParams): string {
-    const userId = getUserIdFromToken(context.qstashClient)
-    const out = [userId, context.workflowRunId, getEventId()].join("/")
+    const userId = getUserIdFromToken(context.qstashClient);
+    const out = [userId, context.workflowRunId, getEventId()].join("/");
     return JSON.stringify({
       ...step,
       out,
     });
   }
 
-
-
   protected safeParseOut(out: string): Webhook {
     const [userId, workflowRunId, eventId] = out.split("/");
     const qstashUrl = getQStashUrl(this.context.qstashClient);
     return {
-      webhookUrl: `${qstashUrl}/hook/${userId}/${workflowRunId}/${eventId}`,
-      eventId
+      webhookUrl: `${qstashUrl}/v2/hooks/${userId}/${workflowRunId}/${eventId}`,
+      eventId,
     };
+  }
+}
+
+export type WebhookEventData = {
+  method: string;
+  url: string;
+  header: unknown;
+  body: unknown;
+};
+
+export class LazyWaitForWebhookStep extends LazyWaitForEventStep<WebhookEventData> {
+  stepType: StepType = "WaitForWebhook";
+  protected allowUndefinedOut = false;
+
+  constructor(context: WorkflowContext, stepName: string, webhook: Webhook, timeout: Duration) {
+    super(context, stepName, webhook.eventId, timeout);
   }
 }

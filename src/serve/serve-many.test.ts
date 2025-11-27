@@ -106,9 +106,9 @@ describe("serveMany", () => {
           token,
           enableTelemetry: false,
           headers: {
-            "x-vercel-protection-bypass": "testing"
-          }
-        })
+            "x-vercel-protection-bypass": "testing",
+          },
+        }),
       }
     );
 

@@ -10,7 +10,7 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep, Webhook } from "./steps";
+import type { BaseLazyStep, Webhook, WebhookEventData } from "./steps";
 import {
   LazyCallStep,
   LazyCreateWebhookStep,
@@ -20,6 +20,7 @@ import {
   LazySleepStep,
   LazySleepUntilStep,
   LazyWaitForEventStep,
+  LazyWaitForWebhookStep,
 } from "./steps";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
@@ -417,7 +418,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       } = settings;
 
       callStep = new LazyCallStep<TResult, typeof body>(
-        this, 
+        this,
         stepName,
         url,
         method,
@@ -477,7 +478,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
     const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
 
-    return await this.addStep(new LazyWaitForEventStep<TEventData>(this, stepName, eventId, timeoutStr));
+    return await this.addStep(
+      new LazyWaitForEventStep<TEventData>(this, stepName, eventId, timeoutStr)
+    );
   }
 
   /**
@@ -515,11 +518,21 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
-    return await this.addStep(new LazyInvokeStep<TResult, TInitialPayload>(this, stepName, settings));
+    return await this.addStep(
+      new LazyInvokeStep<TResult, TInitialPayload>(this, stepName, settings)
+    );
   }
 
   public async createWebhook(stepName: string): Promise<Webhook> {
     return await this.addStep(new LazyCreateWebhookStep(this, stepName));
+  }
+
+  public async waitForWebhook(
+    stepName: string,
+    webhook: Webhook,
+    timeout: Duration
+  ): Promise<WaitStepResponse<WebhookEventData>> {
+    return await this.addStep(new LazyWaitForWebhookStep(this, stepName, webhook, timeout));
   }
 
   /**
