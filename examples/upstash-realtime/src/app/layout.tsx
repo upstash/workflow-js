@@ -1,3 +1,7 @@
+"use client"
+
+import { RealtimeProvider } from "@upstash/realtime/client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -12,22 +16,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Upstash Realtime & Workflow Demo",
-  description: "A demo showcasing Upstash Realtime and Workflow capabilities",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <RealtimeProvider>{children}</RealtimeProvider>
       </body>
     </html>
   );
