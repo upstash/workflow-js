@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@upstash/realtime": "0.2.7",
+    "@upstash/realtime": "1.0.0",
     "@upstash/redis": "^1.35.6",
     "@upstash/workflow": "^0.2.21",
     "next": "15.5.6",
