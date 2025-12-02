@@ -98,7 +98,7 @@ const tests: TestConfig[] = [
     expectedLog: expect.objectContaining({
       failureFunction: expect.objectContaining({
         responseBody: "{}",
-        state: "DELIVERED"
+        state: "CALLBACK_SUCCESS"
       })
     })
   },
@@ -114,7 +114,7 @@ const tests: TestConfig[] = [
     expectedLog: expect.objectContaining({
       failureFunction: expect.objectContaining({
         responseBody: JSON.stringify({ result: "response" }),
-        state: "DELIVERED"
+        state: "CALLBACK_SUCCESS"
       })
     })
   }

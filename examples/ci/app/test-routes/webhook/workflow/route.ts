@@ -65,23 +65,24 @@ export const { POST, GET } = testServe(
 
       // Verify the webhook response contains expected data
       expect(webhookResponse.timeout, false);
-      expect(typeof webhookResponse.request, "object");
-      expect(webhookResponse.request.url, webhook.webhookUrl);
-      expect(webhookResponse.request.method, WEBHOOK_TEST_METHOD);
-      expect(typeof webhookResponse.request.headers, "object");
-      expect(webhookResponse.request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
+      const request = webhookResponse.request!;
+      expect(typeof request, "object");
+      expect(request.url, webhook.webhookUrl);
+      expect(request.method, WEBHOOK_TEST_METHOD);
+      expect(typeof request.headers, "object");
+      expect(request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
 
-      const eventData = await webhookResponse.request.json() as typeof WEBHOOK_TEST_BODY
+      const eventData = await request.json() as typeof WEBHOOK_TEST_BODY
       
       // Check method
-      expect(webhookResponse.request.method, WEBHOOK_TEST_METHOD);
+      expect(request.method, WEBHOOK_TEST_METHOD);
       
       // Check body
       expect(typeof eventData, "object");
       expect(eventData.test, WEBHOOK_TEST_BODY.test);
       
       // Check headers
-      expect(webhookResponse.request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
+      expect(request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
 
       // Step 4: Final verification step
       const result = await context.run("verify complete", () => {
