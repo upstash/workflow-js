@@ -102,7 +102,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
     const out = step.out;
     if (out === undefined) {
       if (this.allowUndefinedOut) {
-        return undefined as TResult;
+        return this.handleUndefinedOut(step) as TResult;
       } else {
         throw new WorkflowError(
           `Error while parsing output of ${this.stepType} step. Expected a string, but got: undefined`
@@ -130,6 +130,11 @@ export abstract class BaseLazyStep<TResult = unknown> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected safeParseOut(out: string, step: Step): TResult {
     return BaseLazyStep.tryParsing(out);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected handleUndefinedOut(step: Step): TResult {
+    return undefined as TResult;
   }
 
   protected static tryParsing(stepOut: unknown) {
@@ -892,10 +897,15 @@ export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
   }
 }
 
-export type WaitForWebhookResponse = {
-  timeout: boolean;
-  request: Request;
-};
+export type WaitForWebhookResponse =
+  | {
+      timeout: false;
+      request: Request;
+    }
+  | {
+      timeout: true;
+      request: undefined;
+    };
 
 type WaitForWebhookOut = {
   method: HTTPMethods;
@@ -908,13 +918,13 @@ type WaitForWebhookOut = {
 
 export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResponse> {
   stepType: StepType = "WaitForWebhook";
-  protected allowUndefinedOut = false;
+  protected allowUndefinedOut = true;
 
   constructor(context: WorkflowContext, stepName: string, webhook: Webhook, timeout: Duration) {
     super(context, stepName, webhook.eventId, timeout);
   }
 
-  protected safeParseOut(out: string, step: Step): WaitForWebhookResponse {
+  protected safeParseOut(out: string): WaitForWebhookResponse {
     const eventData = decodeBase64(out);
     const parsedEventData = BaseLazyStep.tryParsing(eventData) as WaitForWebhookOut;
 
@@ -932,7 +942,14 @@ export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResp
 
     return {
       request,
-      timeout: step.waitTimeout ?? false,
+      timeout: false,
+    };
+  }
+
+  protected handleUndefinedOut(): WaitForWebhookResponse {
+    return {
+      timeout: true,
+      request: undefined,
     };
   }
 }
@@ -941,14 +958,23 @@ export class LazyWaitForEventStep<TEventData> extends LazyWaitEventStep<
   WaitStepResponse<TEventData>
 > {
   stepType: StepType = "Wait";
+  protected allowUndefinedOut = true;
+
+  private parseWaitForEventOut(
+    out: string | undefined,
+    waitTimeout: boolean | undefined
+  ): WaitStepResponse<TEventData> {
+    return {
+      eventData: out ? BaseLazyStep.tryParsing(decodeBase64(out)) : undefined,
+      timeout: waitTimeout ?? false,
+    };
+  }
 
   protected safeParseOut(out: string, step: Step): WaitStepResponse<TEventData> {
-    const result = JSON.parse(out) as Step;
+    return this.parseWaitForEventOut(out, step.waitTimeout);
+  }
 
-    const eventData = result.out ? decodeBase64(result.out as string) : undefined;
-    return {
-      eventData: BaseLazyStep.tryParsing(eventData),
-      timeout: step.waitTimeout ?? false,
-    };
+  protected handleUndefinedOut(step: Step): WaitStepResponse<TEventData> {
+    return this.parseWaitForEventOut(undefined, step.waitTimeout);
   }
 }

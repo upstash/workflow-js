@@ -29,7 +29,7 @@ describe("context tests", () => {
     expect(context.label).toBe(label);
     expect(context.headers.get("upstash-label")).toBe(label);
   });
-  const token = nanoid();
+  const token = btoa(JSON.stringify({ UserID: nanoid() }));
   const qstashClient = new Client({
     baseUrl: MOCK_QSTASH_SERVER_URL,
     token,
@@ -954,6 +954,165 @@ describe("context tests", () => {
                 "upstash-method": method,
                 "upstash-retries": "0",
                 "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("webhook steps", () => {
+    test("should create webhook and return webhookUrl and eventId", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+        retryDelay: "1000",
+      });
+
+      await mockQStashServer({
+        execute: () => {
+          const throws = () => context.createWebhook("create-webhook-step");
+          expect(throws).toThrowError(
+            "Aborting workflow after executing step 'create-webhook-step'."
+          );
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: expect.stringMatching(
+                /"stepId":1,"stepName":"create-webhook-step","stepType":"CreateWebhook"/
+              ),
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-retries": "2",
+                "upstash-retry-delay": "1000",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should wait for webhook with timeout", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        retries: 2,
+        retryDelay: "1000",
+      });
+
+      const webhook = {
+        webhookUrl: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/hooks/user/wfr-id/evt-123`,
+        eventId: "evt-123",
+      };
+
+      await mockQStashServer({
+        execute: () => {
+          const throws = () => context.waitForWebhook("wait-webhook-step", webhook, "30s");
+          expect(throws).toThrowError(
+            "Aborting workflow after executing step 'wait-webhook-step'."
+          );
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/wait/evt-123`,
+          token,
+          body: {
+            step: {
+              concurrent: 1,
+              stepId: 1,
+              stepName: "wait-webhook-step",
+              stepType: "WaitForWebhook",
+            },
+            timeout: "30s",
+            timeoutHeaders: {
+              "content-type": ["application/json"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
+              [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
+              "Upstash-Workflow-CallType": ["step"],
+              [WORKFLOW_INIT_HEADER]: ["false"],
+              [WORKFLOW_ID_HEADER]: ["wfr-id"],
+              "Upstash-Workflow-Runid": ["wfr-id"],
+              [WORKFLOW_URL_HEADER]: [WORKFLOW_ENDPOINT],
+              "Upstash-Retries": ["2"],
+              "Upstash-Retry-Delay": ["1000"],
+            },
+            timeoutUrl: WORKFLOW_ENDPOINT,
+            url: WORKFLOW_ENDPOINT,
+          },
+        },
+      });
+    });
+
+    test("should create and wait for webhook in sequence", async () => {
+      const context = new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+      });
+
+      // First create webhook
+      await mockQStashServer({
+        execute: () => {
+          const throws = () => context.createWebhook("create-webhook");
+          expect(throws).toThrowError("Aborting workflow after executing step 'create-webhook'.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: expect.stringMatching(
+                /"stepId":1,"stepName":"create-webhook","stepType":"CreateWebhook"/
+              ),
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,

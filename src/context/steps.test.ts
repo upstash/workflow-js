@@ -6,6 +6,7 @@ import {
   LazySleepStep,
   LazySleepUntilStep,
   LazyWaitForEventStep,
+  LazyWaitForWebhookStep,
 } from "./steps";
 import { nanoid } from "../utils";
 import type { NotifyResponse, NotifyStepResponse, Step } from "../types";
@@ -360,6 +361,365 @@ describe("test steps", () => {
       // @ts-expect-error passing number for test purposes
       const throws = () => new LazyFunctionStep(mockContext, 1, () => {});
       expect(throws).toThrow(new WorkflowError("A workflow step name must be a string."));
+    });
+  });
+
+  describe("parseOut tests", () => {
+    const mockContext = createMockContext();
+
+    describe("LazyFunctionStep parseOut", () => {
+      test("should parse string result", () => {
+        const step = new LazyFunctionStep(mockContext, "test-step", () => "result");
+        const stepResult: Step<string> = {
+          stepId: 1,
+          stepName: "test-step",
+          stepType: "Run",
+          out: '"result"',
+          concurrent: 1,
+        };
+        expect(step.parseOut(stepResult)).toBe("result");
+      });
+
+      test("should parse object result", () => {
+        const resultObj = { key: "value", nested: { field: 123 } };
+        const step = new LazyFunctionStep(mockContext, "test-step", () => resultObj);
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "test-step",
+          stepType: "Run",
+          out: JSON.stringify(resultObj),
+          concurrent: 1,
+        };
+        expect(step.parseOut(stepResult)).toEqual(resultObj);
+      });
+
+      test("should handle undefined out", () => {
+        const step = new LazyFunctionStep(mockContext, "test-step", () => undefined);
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "test-step",
+          stepType: "Run",
+          out: undefined,
+          concurrent: 1,
+        };
+        expect(step.parseOut(stepResult)).toBeUndefined();
+      });
+    });
+
+    describe("LazySleepStep parseOut", () => {
+      test("should handle undefined out for sleep step", () => {
+        const step = new LazySleepStep(mockContext, "sleep-step", 10);
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "sleep-step",
+          stepType: "SleepFor",
+          sleepFor: 10,
+          concurrent: 1,
+          out: undefined,
+        };
+        expect(step.parseOut(stepResult)).toBeUndefined();
+      });
+    });
+
+    describe("LazySleepUntilStep parseOut", () => {
+      test("should return undefined for sleepUntil step", () => {
+        const step = new LazySleepUntilStep(mockContext, "sleep-until-step", 123456);
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "sleep-until-step",
+          stepType: "SleepUntil",
+          sleepUntil: 123456,
+          concurrent: 1,
+          out: undefined,
+        };
+        expect(step.parseOut(stepResult)).toBeUndefined();
+      });
+    });
+
+    describe("LazyCallStep parseOut", () => {
+      test("should parse successful call response with JSON body", () => {
+        const step = new LazyCallStep(
+          mockContext,
+          "call-step",
+          "https://api.example.com",
+          "POST",
+          { data: "test" },
+          {},
+          0,
+          undefined,
+          undefined,
+          undefined,
+          true
+        );
+
+        const responseBody = { message: "success", id: 123 };
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "call-step",
+          stepType: "Call",
+          out: JSON.stringify({
+            header: { "content-type": ["application/json"] },
+            status: 200,
+            body: JSON.stringify(responseBody),
+          }),
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.status).toBe(200);
+        expect(result.body).toEqual(responseBody);
+        expect(result.header["content-type"]).toEqual(["application/json"]);
+      });
+
+      test("should parse call response with non-JSON text body", () => {
+        const step = new LazyCallStep(
+          mockContext,
+          "call-step",
+          "https://api.example.com",
+          "GET",
+          undefined,
+          {},
+          0,
+          undefined,
+          undefined,
+          undefined,
+          true
+        );
+
+        const textBody = "plain text response";
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "call-step",
+          stepType: "Call",
+          out: JSON.stringify({
+            header: { "content-type": ["text/plain"] },
+            status: 200,
+            body: textBody,
+          }),
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.status).toBe(200);
+        expect(result.body).toBe(textBody);
+      });
+
+      test("should parse call response with binary body", () => {
+        const step = new LazyCallStep(
+          mockContext,
+          "call-step",
+          "https://api.example.com",
+          "GET",
+          undefined,
+          {},
+          0,
+          undefined,
+          undefined,
+          undefined,
+          true
+        );
+
+        const binaryBody = "binary-data";
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "call-step",
+          stepType: "Call",
+          out: JSON.stringify({
+            header: { "content-type": ["application/octet-stream"] },
+            status: 200,
+            body: binaryBody,
+          }),
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.status).toBe(200);
+        expect(result.body).toBe(binaryBody);
+      });
+
+      test("should handle error status codes", () => {
+        const step = new LazyCallStep(
+          mockContext,
+          "call-step",
+          "https://api.example.com",
+          "POST",
+          {},
+          {},
+          0,
+          undefined,
+          undefined,
+          undefined,
+          true
+        );
+
+        const errorBody = { error: "Not Found" };
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "call-step",
+          stepType: "Call",
+          out: JSON.stringify({
+            header: { "content-type": ["application/json"] },
+            status: 404,
+            body: JSON.stringify(errorBody),
+          }),
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.status).toBe(404);
+        expect(result.body).toEqual(errorBody);
+      });
+    });
+
+    describe("LazyWaitForEventStep parseOut", () => {
+      test("should parse wait event response with event data", () => {
+        const eventData = { userId: "123", action: "completed" };
+        const step = new LazyWaitForEventStep(mockContext, "wait-step", "event-id", "10s");
+
+        const encodedData = btoa(JSON.stringify(eventData));
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-step",
+          stepType: "Wait",
+          out: encodedData,
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.eventData).toEqual(eventData);
+        expect(result.timeout).toBe(false);
+      });
+
+      test("should parse wait event response with timeout", () => {
+        const step = new LazyWaitForEventStep(mockContext, "wait-step", "event-id", "10s");
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-step",
+          stepType: "Wait",
+          out: undefined,
+          concurrent: 1,
+          waitTimeout: true,
+          timeout: "30s",
+          waitEventId: "event-id",
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.eventData).toBeUndefined();
+        expect(result.timeout).toBe(true);
+      });
+    });
+
+    describe("LazyNotifyStep parseOut", () => {
+      test("should parse notify step response", () => {
+        const eventId = "event-123";
+        const eventData = { message: "notification data" };
+        const notifyResponse: NotifyResponse[] = [
+          {
+            error: "",
+            messageId: "msg-123",
+            waiter: {
+              deadline: 123456,
+              headers: { "x-custom": ["value"] },
+              timeoutBody: undefined,
+              timeoutHeaders: {},
+              timeoutUrl: "https://timeout.url",
+              url: "https://waiter.url",
+            },
+          },
+        ];
+
+        const token = nanoid();
+        const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+        const step = new LazyNotifyStep(
+          mockContext,
+          "notify-step",
+          eventId,
+          eventData,
+          client.http
+        );
+
+        const stepResponse: NotifyStepResponse = {
+          eventId,
+          eventData,
+          notifyResponse,
+        };
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "notify-step",
+          stepType: "Notify",
+          out: JSON.stringify(stepResponse),
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.eventId).toBe(eventId);
+        expect(result.eventData).toEqual(eventData);
+        expect(result.notifyResponse).toEqual(notifyResponse);
+      });
+    });
+
+    describe("LazyWaitForWebhookStep parseOut", () => {
+      test("should parse webhook wait response with request data", () => {
+        const webhook = {
+          webhookUrl: "https://qstash.upstash.io/v2/workflows/hooks/user/wfr/evt",
+          eventId: "evt-123",
+        };
+        const step = new LazyWaitForWebhookStep(mockContext, "wait-webhook-step", webhook, "30s");
+
+        const requestData = {
+          method: "POST" as const,
+          header: {
+            "content-type": ["application/json"],
+            "x-custom": ["value"],
+          },
+          body: btoa(JSON.stringify({ payload: "data" })),
+          proto: "https",
+          host: "example.com",
+          url: "/api/endpoint",
+        };
+
+        const encodedData = btoa(JSON.stringify(requestData));
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-webhook-step",
+          stepType: "WaitForWebhook",
+          out: encodedData,
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.timeout).toBe(false);
+        expect(result.request).toBeInstanceOf(Request);
+        expect(result.request && result.request.method).toBe("POST");
+        expect(result.request && result.request.url).toBe("https://example.com/api/endpoint");
+      });
+
+      test("should parse webhook wait response with timeout", () => {
+        const webhook = {
+          webhookUrl: "https://qstash.upstash.io/v2/workflows/hooks/user/wfr/evt",
+          eventId: "evt-123",
+        };
+        const step = new LazyWaitForWebhookStep(mockContext, "wait-webhook-step", webhook, "30s");
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-webhook-step",
+          stepType: "WaitForWebhook",
+          out: undefined,
+          concurrent: 1,
+          waitTimeout: true,
+          timeout: "30s",
+          waitEventId: "evt-123",
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.request).toBeUndefined();
+        expect(result.timeout).toBe(true);
+      });
     });
   });
 });

@@ -21,6 +21,18 @@ export const { POST, GET } = testServe(
 
       expect(context.headers.get(header)!, headerValue)
 
+      const timeoutWebhook = await context.createWebhook(
+        "timeout webhook",
+      );
+      // Wait for a webhook that will timeout
+      const timeoutResponse = await context.waitForWebhook(
+        "wait for timeout webhook",
+        timeoutWebhook,
+        "1s"
+      );
+      expect(timeoutResponse.timeout, true);
+      expect(timeoutResponse.request, undefined);
+
       // Step 1: Create a webhook
       const webhook = await context.createWebhook("create webhook");
       
@@ -57,6 +69,7 @@ export const { POST, GET } = testServe(
       expect(webhookResponse.request.url, webhook.webhookUrl);
       expect(webhookResponse.request.method, WEBHOOK_TEST_METHOD);
       expect(typeof webhookResponse.request.headers, "object");
+      expect(webhookResponse.request.headers.get(WEBHOOK_TEST_HEADER), WEBHOOK_TEST_HEADER_VALUE);
 
       const eventData = await webhookResponse.request.json() as typeof WEBHOOK_TEST_BODY
       
