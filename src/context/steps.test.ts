@@ -10,8 +10,27 @@ import {
 import { nanoid } from "../utils";
 import type { NotifyResponse, NotifyStepResponse, Step } from "../types";
 import { Client, FlowControl } from "@upstash/qstash";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { WorkflowError } from "../error";
+import { WorkflowContext } from "./context";
+
+// Helper to create a mock WorkflowContext for testing
+const createMockContext = () => {
+  const token = nanoid();
+  const qstashClient = new Client({
+    baseUrl: MOCK_QSTASH_SERVER_URL,
+    token,
+    enableTelemetry: false,
+  });
+  return new WorkflowContext({
+    qstashClient,
+    initialPayload: "test-payload",
+    steps: [],
+    url: WORKFLOW_ENDPOINT,
+    headers: new Headers() as Headers,
+    workflowRunId: "test-wfr-id",
+  });
+};
 
 describe("test steps", () => {
   const stepName = nanoid();
@@ -24,7 +43,8 @@ describe("test steps", () => {
     const stepFunction = () => {
       return result;
     };
-    const step = new LazyFunctionStep(stepName, stepFunction);
+    const mockContext = createMockContext();
+    const step = new LazyFunctionStep(mockContext, stepName, stepFunction);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -55,10 +75,11 @@ describe("test steps", () => {
 
   describe("sleep step", () => {
     const sleepAmount = 123_123;
-    const step = new LazySleepStep(stepName, sleepAmount);
+    const mockContext = createMockContext();
+    const step = new LazySleepStep(mockContext, stepName, sleepAmount);
 
     const sleepWithDuration = "90s";
-    const stepWithDuration = new LazySleepStep(stepName, sleepWithDuration);
+    const stepWithDuration = new LazySleepStep(mockContext, stepName, sleepWithDuration);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -109,7 +130,8 @@ describe("test steps", () => {
 
   describe("sleepUntil step", () => {
     const sleepUntilTime = 123_123;
-    const step = new LazySleepUntilStep(stepName, sleepUntilTime);
+    const mockContext = createMockContext();
+    const step = new LazySleepUntilStep(mockContext, stepName, sleepUntilTime);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -150,7 +172,9 @@ describe("test steps", () => {
       key: "my-key",
       parallelism: 3,
     };
+    const mockContext = createMockContext();
     const step = new LazyCallStep(
+      mockContext,
       stepName,
       callUrl,
       callMethod,
@@ -198,7 +222,8 @@ describe("test steps", () => {
   describe("wait step", () => {
     const eventId = "my-event-id";
     const timeout = "10s";
-    const step = new LazyWaitForEventStep(stepName, eventId, timeout);
+    const mockContext = createMockContext();
+    const step = new LazyWaitForEventStep(mockContext, stepName, eventId, timeout);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -235,8 +260,9 @@ describe("test steps", () => {
     // get client
     const token = nanoid();
     const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+    const mockContext = createMockContext();
 
-    const step = new LazyNotifyStep(stepName, eventId, eventData, client.http);
+    const step = new LazyNotifyStep(mockContext, stepName, eventId, eventData, client.http);
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -308,8 +334,9 @@ describe("test steps", () => {
 
   describe("stepName check", () => {
     test("should throw when step name is undefined", () => {
+      const mockContext = createMockContext();
       // @ts-expect-error allow undefined for test purposes
-      const throws = () => new LazySleepStep(undefined, 10);
+      const throws = () => new LazySleepStep(mockContext, undefined, 10);
       expect(throws).toThrow(
         new WorkflowError(
           "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
@@ -318,7 +345,8 @@ describe("test steps", () => {
     });
 
     test("should throw when step name is empty string", () => {
-      const throws = () => new LazyFunctionStep("", () => {});
+      const mockContext = createMockContext();
+      const throws = () => new LazyFunctionStep(mockContext, "", () => {});
       expect(throws).toThrow(
         new WorkflowError(
           "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
@@ -328,8 +356,9 @@ describe("test steps", () => {
 
     // will be enabled when the string check in BaseLazyStep constructor is updated
     test.skip("should throw when step name isn't string", () => {
+      const mockContext = createMockContext();
       // @ts-expect-error passing number for test purposes
-      const throws = () => new LazyFunctionStep(1, () => {});
+      const throws = () => new LazyFunctionStep(mockContext, 1, () => {});
       expect(throws).toThrow(new WorkflowError("A workflow step name must be a string."));
     });
   });
