@@ -16,7 +16,13 @@ import type {
 import { makeNotifyRequest } from "../client/utils";
 import type { Duration } from "../types";
 import { WorkflowError } from "../error";
-import { getEventId, getQStashUrl, getUserIdFromToken, getWorkflowRunId } from "../utils";
+import {
+  decodeBase64,
+  getEventId,
+  getQStashUrl,
+  getUserIdFromToken,
+  getWorkflowRunId,
+} from "../utils";
 import { WorkflowContext } from "./context";
 import { getHeaders, prepareFlowControl } from "../qstash/headers";
 import {
@@ -89,10 +95,11 @@ export abstract class BaseLazyStep<TResult = unknown> {
    *
    * will be called when returning the steps to the context from auto executor
    *
-   * @param out field of the step
+   * @param step step
    * @returns parsed out field
    */
-  public parseOut(out: unknown): TResult {
+  public parseOut(step: Step): TResult {
+    const out = step.out;
     if (out === undefined) {
       if (this.allowUndefinedOut) {
         return undefined as TResult;
@@ -104,18 +111,11 @@ export abstract class BaseLazyStep<TResult = unknown> {
     }
 
     if (typeof out === "object") {
-      if (this.stepType !== "Wait") {
-        // this is an error which should never happen.
-        console.warn(
-          `Error while parsing ${this.stepType} step output. Expected a string, but got object. Please reach out to Upstash Support.`
-        );
-        return out as TResult;
-      }
-
-      return {
-        ...out,
-        eventData: BaseLazyStep.tryParsing((out as WaitStepResponse).eventData),
-      } as TResult;
+      // this is an error which should never happen.
+      console.warn(
+        `Error while parsing ${this.stepType} step output. Expected a string, but got object. Please reach out to Upstash Support.`
+      );
+      return out as TResult;
     }
 
     if (typeof out !== "string") {
@@ -124,10 +124,11 @@ export abstract class BaseLazyStep<TResult = unknown> {
       );
     }
 
-    return this.safeParseOut(out);
+    return this.safeParseOut(out, step);
   }
 
-  protected safeParseOut(out: string): TResult {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected safeParseOut(out: string, step: Step): TResult {
     return BaseLazyStep.tryParsing(out);
   }
 
@@ -529,10 +530,9 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
   }
 }
 
-export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepResponse<TEventData>> {
+export abstract class LazyWaitEventStep<TResult> extends BaseLazyStep<TResult> {
   private readonly eventId: string;
   private readonly timeout: string;
-  stepType: StepType = "Wait";
   protected allowUndefinedOut = false;
 
   constructor(
@@ -558,10 +558,7 @@ export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepRespo
     };
   }
 
-  public async getResultStep(
-    concurrent: number,
-    stepId: number
-  ): Promise<Step<WaitStepResponse<TEventData>>> {
+  public async getResultStep(concurrent: number, stepId: number): Promise<Step<TResult>> {
     return await Promise.resolve({
       stepId,
       stepName: this.stepName,
@@ -572,13 +569,7 @@ export class LazyWaitForEventStep<TEventData> extends BaseLazyStep<WaitStepRespo
     });
   }
 
-  protected safeParseOut(out: string): WaitStepResponse<TEventData> {
-    const result = JSON.parse(out) as WaitStepResponse;
-    return {
-      ...result,
-      eventData: BaseLazyStep.tryParsing(result.eventData),
-    };
-  }
+  protected abstract safeParseOut(out: string, step: Step): TResult;
 
   public getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
     const headers = super.getHeaders({ context, telemetry, invokeCount, step });
@@ -901,18 +892,63 @@ export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
   }
 }
 
-export type WebhookEventData = {
-  method: string;
-  url: string;
-  header: unknown;
-  body: unknown;
+export type WaitForWebhookResponse = {
+  timeout: boolean;
+  request: Request;
 };
 
-export class LazyWaitForWebhookStep extends LazyWaitForEventStep<WebhookEventData> {
+type WaitForWebhookOut = {
+  method: HTTPMethods;
+  header: Record<string, string[]>;
+  body: string | undefined;
+  proto: string;
+  host: string;
+  url: string;
+};
+
+export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResponse> {
   stepType: StepType = "WaitForWebhook";
   protected allowUndefinedOut = false;
 
   constructor(context: WorkflowContext, stepName: string, webhook: Webhook, timeout: Duration) {
     super(context, stepName, webhook.eventId, timeout);
+  }
+
+  protected safeParseOut(out: string, step: Step): WaitForWebhookResponse {
+    const eventData = decodeBase64(out);
+    const parsedEventData = BaseLazyStep.tryParsing(eventData) as WaitForWebhookOut;
+
+    const body = parsedEventData.body;
+    const parsedBody = typeof body === "string" ? decodeBase64(body) : undefined;
+
+    const request = new Request(
+      `${parsedEventData.proto}://${parsedEventData.host}${parsedEventData.url}`,
+      {
+        method: parsedEventData.method,
+        headers: parsedEventData.header,
+        body: parsedBody,
+      }
+    );
+
+    return {
+      request,
+      timeout: step.waitTimeout ?? false,
+    };
+  }
+}
+
+export class LazyWaitForEventStep<TEventData> extends LazyWaitEventStep<
+  WaitStepResponse<TEventData>
+> {
+  stepType: StepType = "Wait";
+
+  protected safeParseOut(out: string, step: Step): WaitStepResponse<TEventData> {
+    const result = JSON.parse(out) as Step;
+
+    const eventData = result.out ? decodeBase64(result.out as string) : undefined;
+    return {
+      eventData: BaseLazyStep.tryParsing(eventData),
+      timeout: step.waitTimeout ?? false,
+    };
   }
 }

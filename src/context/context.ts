@@ -10,7 +10,7 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep, Webhook, WebhookEventData } from "./steps";
+import type { BaseLazyStep, WaitForWebhookResponse, Webhook } from "./steps";
 import {
   LazyCallStep,
   LazyCreateWebhookStep,
@@ -531,7 +531,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     webhook: Webhook,
     timeout: Duration
-  ): Promise<WaitStepResponse<WebhookEventData>> {
+  ): Promise<WaitForWebhookResponse> {
     return await this.addStep(new LazyWaitForWebhookStep(this, stepName, webhook, timeout));
   }
 
