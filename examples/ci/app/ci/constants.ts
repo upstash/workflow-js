@@ -108,6 +108,13 @@ export const TEST_ROUTES: Pick<TestConfig, "route" | "waitForSeconds">[] = [
   {
     route: "trigger-non-workflow/workflow",
     waitForSeconds: 10
+  },
+  {
+    // tests createWebhook and waitForWebhook
+    // creates a webhook, calls an endpoint with the webhook URL,
+    // endpoint calls the webhook URL, and workflow waits for and validates the webhook data
+    route: "webhook/workflow",
+    waitForSeconds: 15
   }
 
   /**
