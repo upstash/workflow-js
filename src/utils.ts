@@ -58,7 +58,7 @@ export function getUserIdFromToken(qstashClient: WorkflowClient): string {
     return userId;
   } catch (error) {
     throw new WorkflowError(
-      `Failed to decode QStash token while runing create webhook step: ${(error as Error).message}`
+      `Failed to decode QStash token while running create webhook step: ${(error as Error).message}`
     );
   }
 }
