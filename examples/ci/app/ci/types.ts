@@ -14,10 +14,6 @@ export type TestConfig<TPayload = unknown> = {
    */
   headers?: Record<string, string>,
   /**
-   * duration the test between initiating the workflow and checking the result
-   */
-  waitForSeconds: number
-  /**
    * number of times the endpoint is to be called in this test
    */
   expectedCallCount: number
