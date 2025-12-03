@@ -880,20 +880,17 @@ export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
 
   getBody({ step, context }: GetBodyParams): string {
     const userId = getUserIdFromToken(context.qstashClient);
-    const out = [userId, context.workflowRunId, getEventId()].join("/");
+    const workflowRunId = context.workflowRunId
+    const eventId = getEventId()
+    const qstashUrl = getQStashUrl(this.context.qstashClient);
+
     return JSON.stringify({
       ...step,
-      out,
+      out: JSON.stringify({
+        webhookUrl: `${qstashUrl}/v2/workflows/hooks/${userId}/${workflowRunId}/${eventId}`,
+        eventId,
+      }),
     });
-  }
-
-  protected safeParseOut(out: string): Webhook {
-    const [userId, workflowRunId, eventId] = out.split("/");
-    const qstashUrl = getQStashUrl(this.context.qstashClient);
-    return {
-      webhookUrl: `${qstashUrl}/v2/workflows/hooks/${userId}/${workflowRunId}/${eventId}`,
-      eventId,
-    };
   }
 }
 
