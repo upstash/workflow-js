@@ -1,5 +1,5 @@
 import { serve } from "@upstash/workflow/nextjs";
-import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
+import { TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { testServe, expect } from "app/ci/utils";
 import { 
   WEBHOOK_TEST_METHOD, 

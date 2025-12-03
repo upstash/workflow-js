@@ -68,7 +68,7 @@ describe("getUserIdFromToken", () => {
 
     expect(() => getUserIdFromToken(client)).toThrow(
       new WorkflowError(
-        "Failed to decode QStash token while runing create webhook step: QStash token payload does not contain userId"
+        "Failed to decode QStash token while running create webhook step: QStash token payload does not contain userId"
       )
     );
   });
@@ -83,7 +83,7 @@ describe("getUserIdFromToken", () => {
 
     const throws = () => getUserIdFromToken(client);
     expect(throws).toThrow(WorkflowError);
-    expect(throws).toThrow("Failed to decode QStash token while runing create webhook step:");
+    expect(throws).toThrow("Failed to decode QStash token while running create webhook step:");
   });
 });
 
