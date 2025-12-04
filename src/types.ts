@@ -36,6 +36,8 @@ export const StepTypes = [
   "Wait",
   "Notify",
   "Invoke",
+  "CreateWebhook",
+  "WaitForWebhook",
 ] as const;
 export type StepType = (typeof StepTypes)[number];
 

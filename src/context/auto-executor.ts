@@ -133,7 +133,7 @@ export class AutoExecutor {
         step,
         stepCount: this.stepCount,
       });
-      return lazyStep.parseOut(step.out);
+      return lazyStep.parseOut(step);
     }
 
     const resultStep = await submitSingleStep({
@@ -272,7 +272,7 @@ export class AutoExecutor {
         validateParallelSteps(parallelSteps, parallelResultSteps);
 
         return parallelResultSteps.map((step, index) =>
-          parallelSteps[index].parseOut(step.out)
+          parallelSteps[index].parseOut(step)
         ) as TResults;
       }
     }
@@ -309,7 +309,6 @@ export class AutoExecutor {
 
     if (remainingSteps.length === 0) {
       return "first";
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
     } else if (remainingSteps.length >= 2 * parallelStepCount) {
       // multipying by two since each step in parallel step will result in two
       // steps: one plan step and one result step. If there are 3 parallel steps
@@ -346,7 +345,6 @@ export class AutoExecutor {
    * @param index index of the current step
    * @returns result[index] if lazyStepList > 1, otherwise result
    */
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   private static getResult<TResult>(lazyStepList: BaseLazyStep[], result: unknown, index: number) {
     if (lazyStepList.length === 1) {
       return result as TResult;

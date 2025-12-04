@@ -1,3 +1,6 @@
+import { WorkflowError } from "./error";
+import { WorkflowClient } from "./types";
+
 const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 const NANOID_LENGTH = 21;
 
@@ -5,8 +8,8 @@ function getRandomInt() {
   return Math.floor(Math.random() * NANOID_CHARS.length);
 }
 
-export function nanoid() {
-  return Array.from({ length: NANOID_LENGTH })
+export function nanoid(length: number = NANOID_LENGTH): string {
+  return Array.from({ length })
     .map(() => NANOID_CHARS[getRandomInt()])
     .join("");
 }
@@ -40,4 +43,40 @@ export function decodeBase64(base64: string) {
     );
     return binString;
   }
+}
+
+export function getUserIdFromToken(qstashClient: WorkflowClient): string {
+  try {
+    const token = (qstashClient as WorkflowClient & { token: string }).token;
+    const decodedToken = decodeBase64(token);
+    const tokenPayload = JSON.parse(decodedToken) as { UserID: string };
+    const userId = tokenPayload.UserID;
+
+    if (!userId) {
+      throw new WorkflowError("QStash token payload does not contain userId");
+    }
+    return userId;
+  } catch (error) {
+    throw new WorkflowError(
+      `Failed to decode QStash token while running create webhook step: ${(error as Error).message}`
+    );
+  }
+}
+
+export function getQStashUrl(qstashClient: WorkflowClient): string {
+  try {
+    const requester = qstashClient.http;
+    const baseUrl = (requester as typeof requester & { baseUrl: string }).baseUrl;
+
+    if (!baseUrl) {
+      throw new WorkflowError("QStash client does not have a baseUrl");
+    }
+    return baseUrl;
+  } catch (error) {
+    throw new WorkflowError(`Failed to get QStash URL from client: ${(error as Error).message}`);
+  }
+}
+
+export function getEventId(): string {
+  return `evt_${nanoid(15)}`;
 }
