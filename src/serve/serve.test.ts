@@ -82,7 +82,7 @@ describe("serve", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-label": labelValue,
               "upstash-forward-upstash-label": labelValue,
               "upstash-flow-control-key": "my-key",
@@ -190,7 +190,8 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                  "upstash-feature-set":
+                    "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-retries": "2",

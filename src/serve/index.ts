@@ -148,12 +148,16 @@ export const serveBase = <
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
       throw failureCheck.error;
-    } else if (failureCheck.value.result === "is-failure-callback") {
+    } else if (failureCheck.value.result === "failure-function-executed") {
       // is a failure ballback.
       await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
-      return onStepFinish(workflowRunId, "failure-callback", {
-        condition: "failure-callback",
+      return onStepFinish(workflowRunId, "failure-callback-executed", {
+        condition: "failure-callback-executed",
         result: failureCheck.value.response,
+      });
+    } else if (failureCheck.value.result === "failure-function-undefined") {
+      return onStepFinish(workflowRunId, "failure-callback-undefined", {
+        condition: "failure-callback-undefined",
       });
     }
 

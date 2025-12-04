@@ -23,7 +23,6 @@ export const SDK_TELEMETRY = `@upstash/workflow@${VERSION}`;
 export const TELEMETRY_HEADER_SDK = "Upstash-Telemetry-Sdk" as const;
 export const TELEMETRY_HEADER_FRAMEWORK = "Upstash-Telemetry-Framework" as const;
 export const TELEMETRY_HEADER_RUNTIME = "Upstash-Telemetry-Runtime" as const;
-export const TELEMETRY_HEADER_AGENT = "Upstash-Telemetry-Agent" as const;
 
 export const MOCK_TELEMETRY: Telemetry = {
   framework: "mock",

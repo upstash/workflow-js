@@ -81,7 +81,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
           },
           status: 429,
         }) as TResponse;
-      } else if (detailedFinishCondition?.condition === "failure-callback") {
+      } else if (detailedFinishCondition?.condition === "failure-callback-executed") {
         return new Response(
           JSON.stringify({ result: detailedFinishCondition.result ?? undefined }),
           {
