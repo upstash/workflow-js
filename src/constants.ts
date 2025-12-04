@@ -17,13 +17,12 @@ export const NO_CONCURRENCY = 1;
 export const NOT_SET = "not-set";
 export const DEFAULT_RETRIES = 3;
 
-export const VERSION = "v0.2.22";
+export const VERSION = "v0.3.0-rc";
 export const SDK_TELEMETRY = `@upstash/workflow@${VERSION}`;
 
 export const TELEMETRY_HEADER_SDK = "Upstash-Telemetry-Sdk" as const;
 export const TELEMETRY_HEADER_FRAMEWORK = "Upstash-Telemetry-Framework" as const;
 export const TELEMETRY_HEADER_RUNTIME = "Upstash-Telemetry-Runtime" as const;
-export const TELEMETRY_HEADER_AGENT = "Upstash-Telemetry-Agent" as const;
 
 export const MOCK_TELEMETRY: Telemetry = {
   framework: "mock",

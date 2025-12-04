@@ -231,7 +231,6 @@ export type WorkflowServeOptions<
       | "cancel"
       | "api"
       | "invoke"
-      | "agents"
     >;
     failStatus: number;
     failResponse: string;
