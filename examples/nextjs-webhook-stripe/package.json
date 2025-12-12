@@ -11,7 +11,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.5.1",
     "@upstash/workflow": "^0.2.0",
-    "next": "15.1.6",
+    "next": "15.1.11",
     "react": "^19.0.0-rc-de68d2f4-20241204",
     "react-dom": "19.0.0-rc-de68d2f4-20241204",
     "resend": "^4.0.1",
