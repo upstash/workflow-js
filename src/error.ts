@@ -12,24 +12,18 @@ export class WorkflowError extends QstashError {
 }
 
 /**
- * Raised when the workflow executes a function successfully
- * and aborts to end the execution
+ * Base error for workflow abort scenarios
+ * Raised when a workflow step executes successfully.
  */
 export class WorkflowAbort extends Error {
-  public stepInfo?: Step;
   public stepName: string;
-  /**
-   * whether workflow is to be canceled on abort
-   */
-  public cancelWorkflow: boolean;
+  public stepInfo?: Step;
 
   /**
-   *
    * @param stepName name of the aborting step
    * @param stepInfo step information
-   * @param cancelWorkflow
    */
-  constructor(stepName: string, stepInfo?: Step, cancelWorkflow = false) {
+  constructor(stepName: string, stepInfo?: Step) {
     super(
       "This is an Upstash Workflow error thrown after a step executes. It is expected to be raised." +
         " Make sure that you await for each step. Also, if you are using try/catch blocks, you should not wrap context.run/sleep/sleepUntil/call methods with try/catch." +
@@ -38,7 +32,33 @@ export class WorkflowAbort extends Error {
     this.name = "WorkflowAbort";
     this.stepName = stepName;
     this.stepInfo = stepInfo;
-    this.cancelWorkflow = cancelWorkflow;
+  }
+}
+
+/**
+ * Raised during authorization/dry-run to indicate a step was found
+ */
+export class WorkflowAuthError extends WorkflowAbort {
+  /**
+   * @param stepName name of the step found during authorization
+   */
+  constructor(stepName: string) {
+    super(stepName);
+    this.name = "WorkflowAuthError";
+    this.message =
+      "This is an Upstash Workflow error thrown during authorization check." +
+      ` Found step '${stepName}' during dry-run.`;
+  }
+}
+
+/**
+ * Raised when user explicitly cancels the workflow via context.cancel()
+ */
+export class WorkflowCancelAbort extends WorkflowAbort {
+  constructor() {
+    super("cancel");
+    this.name = "WorkflowCancelAbort";
+    this.message = "Workflow has been canceled by user via context.cancel().";
   }
 }
 
@@ -50,23 +70,23 @@ export class WorkflowNonRetryableError extends WorkflowAbort {
    * @param message error message to be displayed
    */
   constructor(message?: string) {
-    super("fail", undefined, false);
+    super("non-retryable-error");
     this.name = "WorkflowNonRetryableError";
-    if (message) this.message = message;
+    this.message = message ?? "Workflow failed with non-retryable error.";
   }
 }
 
 export class WorkflowRetryAfterError extends WorkflowAbort {
   public retryAfter: number | Duration;
   /**
-   * @param retryAfter time in seconds after which the workflow should be retried
    * @param message error message to be displayed
+   * @param retryAfter time in seconds after which the workflow should be retried
    */
   constructor(message: string, retryAfter: number | Duration) {
-    super("retry", undefined, false);
+    super("retry-after-error");
     this.name = "WorkflowRetryAfterError";
+    this.message = message;
     this.retryAfter = retryAfter;
-    if (message) this.message = message;
   }
 }
 

@@ -3,6 +3,7 @@ import { err, ok } from "neverthrow";
 import {
   isInstanceOf,
   WorkflowAbort,
+  WorkflowCancelAbort,
   WorkflowError,
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
@@ -176,7 +177,7 @@ export const triggerRouteFunction = async <TResult = unknown>({
   | Err<never, Error>
 > => {
   try {
-    // When onStep completes successfully, it throws an exception named `WorkflowAbort`,
+    // When onStep completes successfully, it throws an exception named `WorkflowStepExecutionAbort`,
     // indicating that the step has been successfully executed.
     // This ensures that onCleanup is only called when no exception is thrown.
     const result = await onStep();
@@ -194,13 +195,13 @@ export const triggerRouteFunction = async <TResult = unknown>({
       isInstanceOf(error_, WorkflowRetryAfterError)
     ) {
       return ok(error_);
-    } else if (!isInstanceOf(error_, WorkflowAbort)) {
-      return err(error_);
-    } else if (error_.cancelWorkflow) {
+    } else if (isInstanceOf(error_, WorkflowCancelAbort)) {
       await onCancel();
       return ok("workflow-finished");
-    } else {
+    } else if (isInstanceOf(error_, WorkflowAbort)) {
       return ok("step-finished");
+    } else {
+      return err(error_);
     }
   }
 };

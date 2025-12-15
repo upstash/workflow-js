@@ -7,6 +7,8 @@ export * from "./client";
 export {
   WorkflowError,
   WorkflowAbort,
+  WorkflowAuthError,
+  WorkflowCancelAbort,
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "./error";
