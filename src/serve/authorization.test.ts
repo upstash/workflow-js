@@ -4,7 +4,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { WorkflowContext } from "../context";
 import { Client } from "@upstash/qstash";
 import { nanoid } from "../utils";
-import { WorkflowAbort } from "../error";
+import { WorkflowAbort, WorkflowAuthError } from "../error";
 import type { RouteFunction } from "../types";
 import { DisabledWorkflowContext } from "./authorization";
 
@@ -31,7 +31,7 @@ describe("disabled workflow context", () => {
           const throws = disabledContext.run("run-step", () => {
             return 1;
           });
-          expect(throws).rejects.toThrow(WorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAuthError);
           called = true;
         },
         responseFields: {
@@ -47,7 +47,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.sleep("sleep-step", 1);
-          expect(throws).rejects.toThrow(WorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAuthError);
           called = true;
         },
         responseFields: {
@@ -63,7 +63,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.sleepUntil("sleepUntil-step", 1);
-          expect(throws).rejects.toThrow(WorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAuthError);
           called = true;
         },
         responseFields: {
@@ -79,7 +79,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.call("call-step", { url: "some-url" });
-          expect(throws).rejects.toThrow(WorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAuthError);
           called = true;
         },
         responseFields: {
@@ -95,7 +95,7 @@ describe("disabled workflow context", () => {
       await mockQStashServer({
         execute: () => {
           const throws = disabledContext.cancel();
-          expect(throws).rejects.toThrow(WorkflowAbort);
+          expect(throws).rejects.toThrow(WorkflowAuthError);
           called = true;
         },
         responseFields: {

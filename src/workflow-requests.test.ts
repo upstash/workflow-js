@@ -319,7 +319,7 @@ describe("Workflow Requests", () => {
     const token = "myToken";
 
     const context = new WorkflowContext({
-      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
+      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token, retry: false }),
       workflowRunId: workflowRunId,
       initialPayload: undefined,
       headers: new Headers({}) as Headers,

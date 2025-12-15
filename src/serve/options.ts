@@ -48,7 +48,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
         baseUrl: environment.QSTASH_URL!,
         token: environment.QSTASH_TOKEN!,
       }),
-    onStepFinish: (workflowRunId, _finishCondition, detailedFinishCondition) => {
+    onStepFinish: (workflowRunId, detailedFinishCondition) => {
       if (detailedFinishCondition?.condition === "auth-fail") {
         console.error(AUTH_FAIL_MESSAGE);
         return new Response(

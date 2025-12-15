@@ -23,7 +23,7 @@ import {
   LazyWaitForWebhookStep,
 } from "./steps";
 import { DEFAULT_RETRIES } from "../constants";
-import { WorkflowAbort } from "../error";
+import { WorkflowCancelAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { FlowControl } from "@upstash/qstash";
@@ -533,12 +533,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
   /**
    * Cancel the current workflow run
    *
-   * Will throw WorkflowAbort to stop workflow execution.
+   * Will throw WorkflowCancelAbort to stop workflow execution.
    * Shouldn't be inside try/catch.
    */
   public async cancel() {
     // throw an abort which will make the workflow cancel
-    throw new WorkflowAbort("cancel", undefined, true);
+    throw new WorkflowCancelAbort();
   }
 
   /**

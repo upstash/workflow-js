@@ -339,7 +339,10 @@ describe("serve", () => {
         qstashClient,
         receiver: undefined,
         onStepFinish(workflowRunId, finishCondition) {
-          return new Response(JSON.stringify({ workflowRunId, finishCondition }), { status: 200 });
+          return new Response(
+            JSON.stringify({ workflowRunId, finishCondition: finishCondition.condition }),
+            { status: 200 }
+          );
         },
       }
     );
@@ -381,7 +384,10 @@ describe("serve", () => {
         qstashClient,
         receiver: undefined,
         onStepFinish(workflowRunId, finishCondition) {
-          return new Response(JSON.stringify({ workflowRunId, finishCondition }), { status: 200 });
+          return new Response(
+            JSON.stringify({ workflowRunId, finishCondition: finishCondition.condition }),
+            { status: 200 }
+          );
         },
       }
     );
@@ -1023,11 +1029,11 @@ describe("serve", () => {
             await context.sleep("first step", 2);
           },
           {
-            onStepFinish(finishRunId, finishCondition) {
+            onStepFinish(finishRunId, detailedFinishCondition) {
               console.log(finishRunId, workflowRunId);
 
               expect(finishRunId).toBe(workflowRunId);
-              expect(finishCondition).toBe("workflow-already-ended");
+              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
               called = true;
               return new Response(JSON.stringify({ finishRunId }), { status: 200 });
             },
@@ -1070,9 +1076,9 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, finishCondition) {
+            onStepFinish(finishRunId, detailedFinishCondition) {
               expect(finishRunId).toBe(workflowRunId);
-              expect(finishCondition).toBe("workflow-already-ended");
+              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
               called = true;
               return new Response(JSON.stringify({ finishRunId }), { status: 200 });
             },
@@ -1115,9 +1121,9 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, finishCondition) {
+            onStepFinish(finishRunId, detailedFinishCondition) {
               expect(finishRunId).toBe(workflowRunId);
-              expect(finishCondition).toBe("workflow-already-ended");
+              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
               called = true;
               return new Response(JSON.stringify({ finishRunId }), { status: 200 });
             },
