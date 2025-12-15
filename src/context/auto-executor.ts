@@ -2,7 +2,6 @@ import { isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
-import type { WorkflowLogger } from "../logger";
 import { QstashError } from "@upstash/qstash";
 import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
 
@@ -10,7 +9,6 @@ export class AutoExecutor {
   private context: WorkflowContext;
   private promises = new WeakMap<BaseLazyStep[], Promise<unknown>>();
   private activeLazyStepList?: BaseLazyStep[];
-  private debug?: WorkflowLogger;
 
   private readonly nonPlanStepCount: number;
   private readonly steps: Step[];
@@ -27,14 +25,12 @@ export class AutoExecutor {
     context: WorkflowContext,
     steps: Step[],
     telemetry?: Telemetry,
-    invokeCount?: number,
-    debug?: WorkflowLogger
+    invokeCount?: number
   ) {
     this.context = context;
     this.steps = steps;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
-    this.debug = debug;
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -128,11 +124,6 @@ export class AutoExecutor {
     if (this.stepCount < this.nonPlanStepCount) {
       const step = this.steps[this.stepCount + this.planStepCount];
       validateStep(lazyStep, step);
-      await this.debug?.log("INFO", "RUN_SINGLE", {
-        fromRequest: true,
-        step,
-        stepCount: this.stepCount,
-      });
       return lazyStep.parseOut(step);
     }
 
@@ -143,7 +134,6 @@ export class AutoExecutor {
       invokeCount: this.invokeCount,
       concurrency: 1,
       telemetry: this.telemetry,
-      debug: this.debug,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
   }
@@ -177,14 +167,6 @@ export class AutoExecutor {
       );
     }
 
-    await this.debug?.log("INFO", "RUN_PARALLEL", {
-      parallelCallState,
-      initialStepCount,
-      plannedParallelStepCount,
-      stepCount: this.stepCount,
-      planStepCount: this.planStepCount,
-    });
-
     switch (parallelCallState) {
       case "first": {
         await submitParallelSteps({
@@ -193,7 +175,6 @@ export class AutoExecutor {
           initialStepCount,
           invokeCount: this.invokeCount,
           telemetry: this.telemetry,
-          debug: this.debug,
         });
         break;
       }
@@ -231,7 +212,6 @@ export class AutoExecutor {
             invokeCount: this.invokeCount,
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
-            debug: this.debug,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/require-await */
 import { describe, expect, jest, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
@@ -25,7 +24,6 @@ import {
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
-import { WorkflowLogger } from "../logger";
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "../error";
 
@@ -48,7 +46,6 @@ describe("serve", () => {
       },
       {
         qstashClient,
-        verbose: true,
         receiver: undefined,
         schema: z.string(),
         flowControl: {
@@ -125,7 +122,6 @@ describe("serve", () => {
       },
       {
         qstashClient,
-        verbose: true,
         receiver: undefined,
         disableTelemetry: true,
         retries: 2,
@@ -316,7 +312,6 @@ describe("serve", () => {
     await mockQStashServer({
       execute: async () => {
         const response = await endpoint(request);
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         expect(response.status).toBe(500);
         expect(response.statusText).toBe("");
         const result = await response.json();
@@ -336,7 +331,6 @@ describe("serve", () => {
 
   test("should call onFinish with auth-fail if authentication fails", async () => {
     const { handler: endpoint } = serve(
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async (_context) => {
         // we call `return` when auth fails:
         return;
@@ -859,7 +853,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -890,7 +883,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -925,7 +917,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -1242,9 +1233,6 @@ describe("serve", () => {
 
     test("should not allow when not http:// or https://", async () => {
       const url = "localhost.com";
-      const verbose = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-
-      const logSpy = spyOn(verbose, "log");
 
       const { handler } = serve(
         async (context) => {
@@ -1255,7 +1243,6 @@ describe("serve", () => {
           baseUrl: undefined,
           qstashClient,
           receiver: undefined,
-          verbose,
         }
       );
 
@@ -1266,10 +1253,6 @@ describe("serve", () => {
         error: "WorkflowError",
         message: `Workflow URL should start with 'http://' or 'https://'. Recevied is '${url}'`,
         stack: expect.any(String),
-      });
-
-      expect(logSpy).toBeCalledWith("WARN", "ENDPOINT_START", {
-        message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${url}`,
       });
     });
   });

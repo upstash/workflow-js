@@ -2,7 +2,6 @@ import type { FlowControl, Receiver } from "@upstash/qstash";
 import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
-import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
 
@@ -183,14 +182,6 @@ export type WorkflowServeOptions<
    * If not set, url will be inferred from the request.
    */
   url?: string;
-  /**
-   * Verbose mode
-   *
-   * Disabled if not set. If set to true, a logger is created automatically.
-   *
-   * Alternatively, a WorkflowLogger can be passed.
-   */
-  verbose?: WorkflowLogger | true;
   /**
    * Receiver to verify *all* requests by checking if they come from QStash
    *

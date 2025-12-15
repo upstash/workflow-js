@@ -22,7 +22,6 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
@@ -218,7 +217,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     steps,
     url,
     failureUrl,
-    debug,
     initialPayload,
     env,
     retries,
@@ -234,7 +232,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     steps: Step[];
     url: string;
     failureUrl?: string;
-    debug?: WorkflowLogger;
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
     retries?: number;
@@ -257,7 +254,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.flowControl = flowControl;
     this.label = label;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
+    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount);
   }
 
   /**
@@ -330,7 +327,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } else {
       datetime = typeof datetime === "string" ? new Date(datetime) : datetime;
       // get unix seconds
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       time = Math.round(datetime.getTime() / 1000);
     }
     await this.addStep(new LazySleepUntilStep(this, stepName, time));

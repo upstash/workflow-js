@@ -17,7 +17,6 @@ import type {
   WorkflowClient,
   RouteFunction,
 } from "./types";
-import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
@@ -124,10 +123,7 @@ const deduplicateSteps = (steps: Step[]): Step[] => {
  * @param steps steps list to check
  * @returns boolean denoting whether the last one is duplicate
  */
-const checkIfLastOneIsDuplicate = async (
-  steps: Step[],
-  debug?: WorkflowLogger
-): Promise<boolean> => {
+const checkIfLastOneIsDuplicate = async (steps: Step[]): Promise<boolean> => {
   // return false if the length is 0 or 1
   if (steps.length < 2) {
     return false;
@@ -142,7 +138,6 @@ const checkIfLastOneIsDuplicate = async (
       const message =
         `Upstash Workflow: The step '${step.stepName}' with id '${step.stepId}'` +
         "  has run twice during workflow execution. Rest of the workflow will continue running as usual.";
-      await debug?.log("WARN", "RESPONSE_DEFAULT", message);
 
       console.warn(message);
       return true;
@@ -205,8 +200,7 @@ export const parseRequest = async (
   isFirstInvocation: boolean,
   workflowRunId: string,
   requester: Client["http"],
-  messageId?: string,
-  debug?: WorkflowLogger
+  messageId?: string
 ): Promise<
   | {
       rawInitialPayload: string;
@@ -233,16 +227,10 @@ export const parseRequest = async (
     let rawSteps: RawStep[];
 
     if (!requestPayload) {
-      await debug?.log(
-        "INFO",
-        "ENDPOINT_START",
-        "request payload is empty, steps will be fetched from QStash."
-      );
       const { steps: fetchedSteps, workflowRunEnded } = await getSteps(
         requester,
         workflowRunId,
-        messageId,
-        debug
+        messageId
       );
       if (workflowRunEnded) {
         return {
@@ -258,7 +246,7 @@ export const parseRequest = async (
     }
     const { rawInitialPayload, steps } = processRawSteps(rawSteps);
 
-    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
+    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps);
     const deduplicatedSteps = deduplicateSteps(steps);
 
     return {
@@ -292,8 +280,7 @@ export const handleFailure = async <TInitialPayload>(
   env: WorkflowServeOptions["env"],
   retries: WorkflowServeOptions["retries"],
   retryDelay: WorkflowServeOptions["retryDelay"],
-  flowControl: WorkflowServeOptions["flowControl"],
-  debug?: WorkflowLogger
+  flowControl: WorkflowServeOptions["flowControl"]
 ): Promise<
   | Ok<
       | { result: "not-failure-callback" }
@@ -355,7 +342,6 @@ export const handleFailure = async <TInitialPayload>(
       steps: [],
       url: url,
       failureUrl: url,
-      debug,
       env,
       retries,
       retryDelay,
@@ -371,7 +357,6 @@ export const handleFailure = async <TInitialPayload>(
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
       return err(authCheck.error);
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.

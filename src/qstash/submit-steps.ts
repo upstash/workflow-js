@@ -1,6 +1,5 @@
 import { NO_CONCURRENCY } from "../constants";
 import { WorkflowAbort } from "../error";
-import { WorkflowLogger } from "../logger";
 import { Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
@@ -12,25 +11,18 @@ export const submitParallelSteps = async ({
   initialStepCount,
   invokeCount,
   telemetry,
-  debug,
 }: {
   context: WorkflowContext;
   steps: BaseLazyStep[];
   initialStepCount: number;
   invokeCount: number;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
 }) => {
   const planSteps = steps.map((step, index) =>
     step.getPlanStep(steps.length, initialStepCount + index)
   );
 
-  await debug?.log("SUBMIT", "SUBMIT_STEP", {
-    length: planSteps.length,
-    steps: planSteps,
-  });
-
-  const result = (await context.qstashClient.batch(
+  await context.qstashClient.batch(
     planSteps.map((planStep) => {
       const { headers } = getHeaders({
         initHeaderValue: "false",
@@ -56,15 +48,7 @@ export const submitParallelSteps = async ({
         delay: planStep.sleepFor,
       };
     })
-  )) as { messageId: string }[];
-
-  await debug?.log("INFO", "SUBMIT_STEP", {
-    messageIds: result.map((message) => {
-      return {
-        message: message.messageId,
-      };
-    }),
-  });
+  );
 
   throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
 };
@@ -76,7 +60,6 @@ export const submitSingleStep = async ({
   invokeCount,
   concurrency,
   telemetry,
-  debug,
 }: {
   context: WorkflowContext;
   lazyStep: BaseLazyStep;
@@ -84,14 +67,8 @@ export const submitSingleStep = async ({
   invokeCount: number;
   concurrency: number;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
 }) => {
   const resultStep = await lazyStep.getResultStep(concurrency, stepId);
-  await debug?.log("INFO", "RUN_SINGLE", {
-    fromRequest: false,
-    step: resultStep,
-    stepCount: stepId,
-  });
 
   const { headers } = lazyStep.getHeaders({
     context,
@@ -107,12 +84,7 @@ export const submitSingleStep = async ({
     telemetry,
   });
 
-  await debug?.log("SUBMIT", "SUBMIT_STEP", {
-    length: 1,
-    steps: [resultStep],
-  });
-
-  const submitResult = await lazyStep.submitStep({
+  await lazyStep.submitStep({
     context,
     body,
     headers,
@@ -120,14 +92,6 @@ export const submitSingleStep = async ({
     invokeCount,
     step: resultStep,
     telemetry,
-  });
-
-  await debug?.log("INFO", "SUBMIT_STEP", {
-    messageIds: submitResult.map((message) => {
-      return {
-        message: message.messageId,
-      };
-    }),
   });
 
   return resultStep;

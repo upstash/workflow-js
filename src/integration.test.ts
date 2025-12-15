@@ -45,8 +45,6 @@
  * because network takes some time.
  */
 
-/* eslint-disable @typescript-eslint/no-magic-numbers */
-
 import { serve } from "bun";
 import { serve as workflowServe } from "../platforms/nextjs";
 import { expect, test, describe } from "bun:test";
@@ -127,7 +125,6 @@ const testEndpoint = async <TInitialPayload = unknown>({
   const { POST: endpoint } = workflowServe<TInitialPayload>(routeFunction, {
     qstashClient,
     url: `http://localhost:${port}`,
-    verbose: true,
     failureFunction,
     retries,
     retryDelay,
@@ -338,7 +335,6 @@ describe.skip("live serve tests", () => {
         waitFor: 4500,
         initialPayload: "my-payload",
         finishState,
-        // eslint-disable-next-line @typescript-eslint/require-await
         routeFunction: async (context) => {
           if (context.headers.get("authentication") !== "Bearer aDifferentPassword") {
             console.error("Authentication failed.");

@@ -1,6 +1,5 @@
 import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
-import { WorkflowLogger } from "../logger";
 import { isInstanceOf } from "../error";
 
 export const makeNotifyRequest = async (
@@ -57,8 +56,7 @@ export const makeCancelRequest = async (requester: Client["http"], workflowRunId
 export const getSteps = async (
   requester: Client["http"],
   workflowRunId: string,
-  messageId?: string,
-  debug?: WorkflowLogger
+  messageId?: string
 ): Promise<
   { steps: RawStep[]; workflowRunEnded: false } | { steps: undefined; workflowRunEnded: true }
 > => {
@@ -69,11 +67,6 @@ export const getSteps = async (
     })) as RawStep[];
 
     if (!messageId) {
-      await debug?.log("INFO", "ENDPOINT_START", {
-        message:
-          `Pulled ${steps.length} steps from QStash` +
-          `and returned them without filtering with messageId.`,
-      });
       return { steps, workflowRunEnded: false };
     } else {
       const index = steps.findIndex((item) => item.messageId === messageId);
@@ -84,20 +77,10 @@ export const getSteps = async (
       }
 
       const filteredSteps = steps.slice(0, index + 1);
-      await debug?.log("INFO", "ENDPOINT_START", {
-        message:
-          `Pulled ${steps.length} steps from QStash` +
-          ` and filtered them to ${filteredSteps.length} using messageId.`,
-      });
       return { steps: filteredSteps, workflowRunEnded: false };
     }
   } catch (error) {
     if (isInstanceOf(error, QstashError) && error.status === 404) {
-      await debug?.log("WARN", "ENDPOINT_START", {
-        message:
-          "Couldn't fetch workflow run steps. This can happen if the workflow run succesfully ends before some callback is executed.",
-        error: error,
-      });
       return { steps: undefined, workflowRunEnded: true };
     } else {
       throw error;

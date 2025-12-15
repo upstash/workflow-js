@@ -26,7 +26,6 @@ import type {
   WorkflowServeOptions,
 } from "./types";
 import { StepTypes } from "./types";
-import type { WorkflowLogger } from "./logger";
 import { FlowControl, PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
@@ -36,7 +35,6 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   workflowContext: WorkflowContext<TInitialPayload>;
   useJSONContent?: boolean;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
   invokeCount?: number;
   delay?: PublishRequest["delay"];
   notBefore?: PublishRequest["notBefore"];
@@ -113,23 +111,9 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      const invocationParams = firstInvocationParams[i];
       if (result.deduplicated) {
-        await invocationParams.debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
-          message: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
-          headers: invocationBatch[i].headers,
-          requestPayload: invocationParams.workflowContext.requestPayload,
-          url: invocationParams.workflowContext.url,
-          messageId: result.messageId,
-        });
         invocationStatuses.push("workflow-run-already-exists");
       } else {
-        await invocationParams.debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-          headers: invocationBatch[i].headers,
-          requestPayload: invocationParams.workflowContext.requestPayload,
-          url: invocationParams.workflowContext.url,
-          messageId: result.messageId,
-        });
         invocationStatuses.push("success");
       }
     }
@@ -153,12 +137,10 @@ export const triggerRouteFunction = async ({
   onCleanup,
   onStep,
   onCancel,
-  debug,
 }: {
   onStep: () => Promise<unknown>;
   onCleanup: (result: unknown) => Promise<void>;
   onCancel: () => Promise<void>;
-  debug?: WorkflowLogger;
 }): Promise<
   | Ok<
       | "workflow-finished"
@@ -180,11 +162,6 @@ export const triggerRouteFunction = async ({
   } catch (error) {
     const error_ = error as Error;
     if (isInstanceOf(error, QstashError) && error.status === 400) {
-      await debug?.log("WARN", "RESPONSE_WORKFLOW", {
-        message: `tried to append to a cancelled workflow. exiting without publishing.`,
-        name: error.name,
-        errorMessage: error.message,
-      });
       return ok("workflow-was-finished");
     } else if (
       isInstanceOf(error_, WorkflowNonRetryableError) ||
@@ -205,23 +182,14 @@ export const triggerRouteFunction = async ({
 export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   result: unknown,
-  debug?: WorkflowLogger,
   cancel = false
 ): Promise<void> => {
-  await debug?.log("SUBMIT", "SUBMIT_CLEANUP", {
-    deletedWorkflowRunId: workflowContext.workflowRunId,
-  });
   await workflowContext.qstashClient.http.request({
     path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
     method: "DELETE",
     parseResponseAsJson: false,
     body: JSON.stringify(result),
   });
-  await debug?.log(
-    "SUBMIT",
-    "SUBMIT_CLEANUP",
-    `workflow run ${workflowContext.workflowRunId} deleted.`
-  );
 };
 
 /**
@@ -288,7 +256,6 @@ export const handleThirdPartyCallResult = async ({
   retryDelay,
   telemetry,
   flowControl,
-  debug,
 }: {
   request: Request;
   requestPayload: string;
@@ -299,7 +266,6 @@ export const handleThirdPartyCallResult = async ({
   retryDelay?: string;
   telemetry?: Telemetry;
   flowControl?: FlowControl;
-  debug?: WorkflowLogger;
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
   | Err<never, Error>
@@ -317,12 +283,7 @@ export const handleThirdPartyCallResult = async ({
           throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
         if (!messageId) throw new WorkflowError("message id missing in context.call lazy fetch.");
 
-        const { steps, workflowRunEnded } = await getSteps(
-          client.http,
-          workflowRunId,
-          messageId,
-          debug
-        );
+        const { steps, workflowRunEnded } = await getSteps(client.http, workflowRunId, messageId);
         if (workflowRunEnded) {
           return ok("workflow-ended");
         }
@@ -347,16 +308,11 @@ export const handleThirdPartyCallResult = async ({
         header: Record<string, string[]>;
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       if (
         !(callbackMessage.status >= 200 && callbackMessage.status < 300) &&
         callbackMessage.maxRetries &&
         callbackMessage.retried !== callbackMessage.maxRetries
       ) {
-        await debug?.log("WARN", "SUBMIT_THIRD_PARTY_RESULT", {
-          status: callbackMessage.status,
-          body: atob(callbackMessage.body ?? ""),
-        });
         // this callback will be retried by the QStash, we just ignore it
         console.warn(
           `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
@@ -428,21 +384,11 @@ export const handleThirdPartyCallResult = async ({
         concurrent: Number(concurrentString),
       };
 
-      await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
-        step: callResultStep,
-        headers: requestHeaders,
-        url: workflowUrl,
-      });
-
-      const result = await client.publishJSON({
+      await client.publishJSON({
         headers: requestHeaders,
         method: "POST",
         body: callResultStep,
         url: workflowUrl,
-      });
-
-      await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
-        messageId: result.messageId,
       });
 
       return ok("is-call-return");

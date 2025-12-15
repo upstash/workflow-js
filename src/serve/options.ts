@@ -6,7 +6,6 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
 import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
-import { WorkflowLogger } from "../logger";
 import { formatWorkflowError, WorkflowError } from "../error";
 
 /**
@@ -26,7 +25,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): RequiredExceptFields<
   WorkflowServeOptions<TResponse, TInitialPayload>,
-  | "verbose"
   | "receiver"
   | "url"
   | "failureFunction"
@@ -154,8 +152,7 @@ export const determineUrls = async <TInitialPayload = unknown>(
   url: string | undefined,
   baseUrl: string | undefined,
   failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
-  failureUrl: string | undefined,
-  debug: WorkflowLogger | undefined
+  failureUrl: string | undefined
 ) => {
   const initialWorkflowUrl = url ?? request.url;
   const workflowUrl = baseUrl
@@ -164,23 +161,8 @@ export const determineUrls = async <TInitialPayload = unknown>(
       })
     : initialWorkflowUrl;
 
-  // log workflow url change
-  if (workflowUrl !== initialWorkflowUrl) {
-    await debug?.log("WARN", "ENDPOINT_START", {
-      warning: `Upstash Workflow: replacing the base of the url with "${baseUrl}" and using it as workflow endpoint.`,
-      originalURL: initialWorkflowUrl,
-      updatedURL: workflowUrl,
-    });
-  }
-
   // set url to call in case of failure
   const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
-
-  if (workflowUrl.includes("localhost")) {
-    await debug?.log("WARN", "ENDPOINT_START", {
-      message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
-    });
-  }
 
   if (!(workflowUrl.startsWith("http://") || workflowUrl.startsWith("https://"))) {
     throw new WorkflowError(

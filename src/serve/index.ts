@@ -13,7 +13,6 @@ import {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "../error";
-import { WorkflowLogger } from "../logger";
 import {
   ExclusiveValidationOptions,
   RouteFunction,
@@ -30,7 +29,7 @@ import {
   verifyRequest,
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
-import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
+import { determineUrls, processOptions } from "./options";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -63,7 +62,6 @@ export const serveBase = <
     onStepFinish,
     initialPayloadParser,
     url,
-    verbose,
     receiver,
     failureUrl,
     failureFunction,
@@ -77,7 +75,6 @@ export const serveBase = <
     onError,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
-  const debug = WorkflowLogger.getLogger(verbose);
 
   /**
    * Handles the incoming request, triggering the appropriate workflow steps.
@@ -89,15 +86,12 @@ export const serveBase = <
    * @returns A promise that resolves to a response.
    */
   const handler = async (request: TRequest) => {
-    await debug?.log("INFO", "ENDPOINT_START");
-
     const { workflowUrl, workflowFailureUrl } = await determineUrls(
       request,
       url,
       baseUrl,
       failureFunction,
-      failureUrl,
-      debug
+      failureUrl
     );
 
     // get payload as raw string
@@ -106,7 +100,6 @@ export const serveBase = <
 
     // validation & parsing
     const { isFirstInvocation, workflowRunId } = validateRequest(request);
-    debug?.setWorkflowRunId(workflowRunId);
 
     // parse steps
     const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
@@ -114,8 +107,7 @@ export const serveBase = <
       isFirstInvocation,
       workflowRunId,
       qstashClient.http,
-      request.headers.get("upstash-message-id")!,
-      debug
+      request.headers.get("upstash-message-id")!
     );
 
     if (workflowRunEnded) {
@@ -142,15 +134,13 @@ export const serveBase = <
       env,
       retries,
       retryDelay,
-      flowControl,
-      debug
+      flowControl
     );
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
       throw failureCheck.error;
     } else if (failureCheck.value.result === "failure-function-executed") {
       // is a failure ballback.
-      await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
       return onStepFinish(workflowRunId, "failure-callback-executed", {
         condition: "failure-callback-executed",
         result: failureCheck.value.response,
@@ -173,7 +163,6 @@ export const serveBase = <
       steps,
       url: workflowUrl,
       failureUrl: workflowFailureUrl,
-      debug,
       env,
       retries,
       retryDelay,
@@ -190,12 +179,10 @@ export const serveBase = <
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
       throw authCheck.error;
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
-      await debug?.log("ERROR", "ERROR", { error: AUTH_FAIL_MESSAGE });
       return onStepFinish(
         isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId,
         "auth-fail",
@@ -214,13 +201,9 @@ export const serveBase = <
       retryDelay,
       flowControl,
       telemetry,
-      debug,
     });
     if (callReturnCheck.isErr()) {
       // error while checking
-      await debug?.log("ERROR", "SUBMIT_THIRD_PARTY_RESULT", {
-        error: callReturnCheck.error.message,
-      });
       throw callReturnCheck.error;
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
@@ -229,18 +212,16 @@ export const serveBase = <
             workflowContext,
             useJSONContent,
             telemetry,
-            debug,
             invokeCount,
           })
         : await triggerRouteFunction({
             onStep: async () => routeFunction(workflowContext),
             onCleanup: async (result) => {
-              await triggerWorkflowDelete(workflowContext, result, debug);
+              await triggerWorkflowDelete(workflowContext, result);
             },
             onCancel: async () => {
               await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
             },
-            debug,
           });
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
@@ -259,12 +240,10 @@ export const serveBase = <
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
-        await debug?.log("ERROR", "ERROR", { error: result.error.message });
         throw result.error;
       }
 
       // Returns a Response with `workflowRunId` at the end of each step.
-      await debug?.log("INFO", "RESPONSE_WORKFLOW");
       return onStepFinish(workflowContext.workflowRunId, "success", {
         condition: "success",
       });
@@ -274,7 +253,6 @@ export const serveBase = <
       });
     }
     // response to QStash in call cases
-    await debug?.log("INFO", "RESPONSE_DEFAULT");
     return onStepFinish("no-workflow-id", "fromCallback", {
       condition: "fromCallback",
     });
