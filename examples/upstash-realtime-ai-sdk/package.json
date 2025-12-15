@@ -3,7 +3,16 @@
   "version": "0.1.0",
   "description": "An example repository showing how to use Upstash Realtime with the AI SDK and workflows to create a durable chat application with human in the loop.",
   "author": "Upstash",
-  "keywords": ["upstash", "realtime", "ai", "sdk", "workflows", "chat", "durable", "human in the loop"],
+  "keywords": [
+    "upstash",
+    "realtime",
+    "ai",
+    "sdk",
+    "workflows",
+    "chat",
+    "durable",
+    "human in the loop"
+  ],
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -29,7 +38,7 @@
     "dotenv": "^17.2.3",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
-    "next": "15.5.4",
+    "next": "15.5.9",
     "nuqs": "^2.7.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",

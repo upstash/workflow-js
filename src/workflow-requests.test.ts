@@ -585,8 +585,16 @@ describe("Workflow Requests", () => {
     test("should create headers with a result step", async () => {
       const stepId = 3;
       const stepName = "some step";
+      const mockContext = new WorkflowContext({
+        qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
+        workflowRunId: "test-run-id",
+        headers: new Headers() as Headers,
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        initialPayload: undefined,
+      });
 
-      const lazyStep = new LazyFunctionStep(stepName, () => {});
+      const lazyStep = new LazyFunctionStep(mockContext, stepName, () => {});
       const { headers } = getHeaders({
         initHeaderValue: "false",
         workflowConfig: {
@@ -627,7 +635,22 @@ describe("Workflow Requests", () => {
       };
       const callBody = undefined;
 
+      const mockContext = new WorkflowContext({
+        qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
+        workflowRunId,
+        headers: new Headers() as Headers,
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        initialPayload: undefined,
+        flowControl: {
+          key: "regular-flow-key",
+          rate: 3,
+          parallelism: 4,
+          period: "1m",
+        },
+      });
       const lazyStep = new LazyCallStep(
+        mockContext,
         stepName,
         callUrl,
         callMethod,
@@ -645,20 +668,7 @@ describe("Workflow Requests", () => {
         true
       );
       const { headers } = lazyStep.getHeaders({
-        context: new WorkflowContext({
-          qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
-          workflowRunId,
-          headers: new Headers() as Headers,
-          steps: [],
-          url: WORKFLOW_ENDPOINT,
-          initialPayload: undefined,
-          flowControl: {
-            key: "regular-flow-key",
-            rate: 3,
-            parallelism: 4,
-            period: "1m",
-          },
-        }),
+        context: mockContext,
         invokeCount: 3,
         step: await lazyStep.getResultStep(1, stepId),
       });
@@ -739,9 +749,6 @@ describe("Workflow Requests", () => {
     });
 
     test("should return timeout headers for wait step", async () => {
-      const lazyStep = new LazyWaitForEventStep("waiting-step-name", "wait event id", "20s");
-
-      const step = await lazyStep.getResultStep(1, 1);
       const context = new WorkflowContext({
         headers: new Headers() as Headers,
         initialPayload: undefined,
@@ -754,6 +761,14 @@ describe("Workflow Requests", () => {
           parallelism: 2,
         },
       });
+      const lazyStep = new LazyWaitForEventStep(
+        context,
+        "waiting-step-name",
+        "wait event id",
+        "20s"
+      );
+
+      const step = await lazyStep.getResultStep(1, 1);
       const { headers } = lazyStep.getHeaders({
         context,
         step,

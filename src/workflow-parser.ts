@@ -15,7 +15,6 @@ import type {
   Step,
   WorkflowServeOptions,
   WorkflowClient,
-  WaitStepResponse,
   RouteFunction,
 } from "./types";
 import type { WorkflowLogger } from "./logger";
@@ -72,16 +71,6 @@ const processRawSteps = (rawSteps: RawStep[]) => {
   // decode & parse other steps:
   const otherSteps = stepsToDecode.map((rawStep) => {
     const step = JSON.parse(decodeBase64(rawStep.body)) as Step;
-
-    // if event is a wait event, overwrite the out with WaitStepResponse:
-    if (step.waitEventId) {
-      const newOut: WaitStepResponse = {
-        eventData: step.out ? decodeBase64(step.out as string) : undefined,
-        timeout: step.waitTimeout ?? false,
-      };
-      step.out = newOut;
-    }
-
     return step;
   });
 

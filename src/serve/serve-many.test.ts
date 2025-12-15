@@ -100,6 +100,15 @@ describe("serveMany", () => {
           parallelism: 4,
           ratePerSecond: 6,
         },
+        // use a QStash client with custom headers to test header merging
+        qstashClient: new Client({
+          baseUrl: MOCK_QSTASH_SERVER_URL,
+          token,
+          enableTelemetry: false,
+          headers: {
+            "x-vercel-protection-bypass": "testing",
+          },
+        }),
       }
     );
 
@@ -199,6 +208,7 @@ describe("serveMany", () => {
               "Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-two"],
               "content-type": ["application/json"],
+              "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflow-two",
@@ -254,6 +264,7 @@ describe("serveMany", () => {
               "Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-two"],
               "content-type": ["application/json"],
+              "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflow-two",

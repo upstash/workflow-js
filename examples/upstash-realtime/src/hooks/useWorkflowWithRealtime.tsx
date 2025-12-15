@@ -1,107 +1,54 @@
 "use client";
 
-import { useRealtime } from "@upstash/realtime/client";
-import { useState, useCallback, useEffect, useRef } from "react";
-import type { RealtimeEvents } from "@/lib/realtime";
+import { useRealtime } from "@/lib/realtime-client";
+import { useState, useCallback } from "react";
 
 interface WorkflowStep {
   stepName: string;
-  status: "running" | "completed" | "failed";
-  timestamp: number;
-  error?: string;
   result?: unknown;
 }
 
 interface WaitingState {
   eventId: string;
   message: string;
-  timestamp: number;
 }
 
-interface UseWorkflowWithRealtimeProps {
-  workflowType: "basic" | "human-in-loop";
-}
-
-export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtimeProps) {
+export function useWorkflowWithRealtime({ workflowType }: { workflowType: "basic" | "human-in-loop" }) {
   const [workflowRunId, setWorkflowRunId] = useState<string | null>(null);
   const [steps, setSteps] = useState<WorkflowStep[]>([]);
   const [waitingState, setWaitingState] = useState<WaitingState | null>(null);
   const [isTriggering, setIsTriggering] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<"connected" | "connecting" | "disconnected">("disconnected");
-  const [runStatus, setRunStatus] = useState<null | { status: "running" | "success" | "failed"; startedAt?: number; finishedAt?: number; error?: string }>(null);
-  const resolvedEventIdsRef = useRef<Set<string>>(new Set());
+  const [isRunFinished, setIsRunFinished] = useState(false);
 
-  // On mount, read query params and auto-connect if present
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const paramName = workflowType === "basic" ? "basicRunId" : "humanRunId";
-    const id = url.searchParams.get(paramName);
-    if (id && !workflowRunId) {
-      setWorkflowRunId(id);
-      setConnectionStatus("connecting");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useRealtime<RealtimeEvents>({
+  useRealtime({
     enabled: !!workflowRunId,
     channels: workflowRunId ? [workflowRunId] : [],
-    event: "workflow.update",
-    history: true,
-    onData(data) {
-      setConnectionStatus("connected");
-      if (data.type === "runStart") {
-        setRunStatus({ status: "running", startedAt: data.timestamp });
-      } else if (data.type === "runFinish") {
-        setRunStatus({
-          status: data.status,
-          finishedAt: data.timestamp,
-          error: data.error,
-        });
-      } else if (data.type === "inputResolved") {
-        // Clear waiting state and ignore any prior waitingForInput from history
-        resolvedEventIdsRef.current.add(data.eventId);
-        setWaitingState((prev) => {
-          if (prev && prev.eventId === data.eventId) {
-            return null;
-          }
-          return prev;
-        });
-      } else if (data.type === "stepStart") {
+    events: [
+      "workflow.stepFinish",
+      "workflow.runFinish",
+      "workflow.waitingForInput",
+      "workflow.inputResolved",
+    ],
+    onData({ event, data }) {
+      if (event === "workflow.stepFinish") {
         setSteps((prev) => [
           ...prev,
           {
             stepName: data.stepName,
-            status: "running",
-            timestamp: data.timestamp,
+            result: data.result,
           },
         ]);
-      } else if (data.type === "stepFinish") {
-        setSteps((prev) =>
-          prev.map((step) =>
-            step.stepName === data.stepName
-              ? { ...step, status: "completed", result: data.result }
-              : step
-          )
+      } else if (event === "workflow.runFinish") {
+        setIsRunFinished(true);
+      } else if (event === "workflow.inputResolved") {
+        // Clear waiting state if it matches
+        setWaitingState((prev) => 
+          prev?.eventId === data.eventId ? null : prev
         );
-      } else if (data.type === "stepFail") {
-        setSteps((prev) =>
-          prev.map((step) =>
-            step.stepName === data.stepName
-              ? { ...step, status: "failed", error: data.error }
-              : step
-          )
-        );
-      } else if (data.type === "waitingForInput") {
-        // Ignore if already resolved (from history or live)
-        if (resolvedEventIdsRef.current.has(data.eventId)) {
-          return;
-        }
+      } else if (event === "workflow.waitingForInput") {
         setWaitingState({
           eventId: data.eventId,
           message: data.message,
-          timestamp: data.timestamp,
         });
       }
     },
@@ -111,37 +58,20 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
     setIsTriggering(true);
     setSteps([]);
     setWaitingState(null);
-    setRunStatus(null);
+    setIsRunFinished(false);
 
-    try {
-      const response = await fetch("/api/trigger", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workflowType }),
-      });
+    const response = await fetch("/api/trigger", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workflowType }),
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to trigger workflow");
-      }
-
-      const data = await response.json();
-      const id = data.workflowRunId as string;
-      setWorkflowRunId(id);
-      // Write to query params
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        const paramName = workflowType === "basic" ? "basicRunId" : "humanRunId";
-        url.searchParams.set(paramName, id);
-        window.history.replaceState({}, "", url.toString());
-      }
-    } catch (error) {
-      console.error("Error triggering workflow:", error);
-    } finally {
-      setIsTriggering(false);
-    }
+    const data = await response.json();
+    setWorkflowRunId(data.workflowRunId);
+    setIsTriggering(false);
   }, [workflowType]);
 
-  const reset = useCallback(() => {
+    const reset = useCallback(() => {
     // Clear URL param
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -152,9 +82,8 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
     // Clear local state
     setWorkflowRunId(null);
     setSteps([]);
+    setIsRunFinished(false)
     setWaitingState(null);
-    setRunStatus(null);
-    setConnectionStatus("disconnected");
   }, [workflowType]);
 
   const continueWorkflow = useCallback(
@@ -163,29 +92,23 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
         throw new Error("No workflow waiting for input");
       }
 
-      try {
-        const response = await fetch("/api/notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            eventId: waitingState.eventId,
-            eventData: data,
-          }),
-        });
+      const response = await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: waitingState.eventId,
+          eventData: data,
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error("Failed to notify workflow");
-        }
-
-        setWaitingState(null);
-      } catch (error) {
-        console.error("Error continuing workflow:", error);
-        throw error;
+      if (!response.ok) {
+        throw new Error("Failed to notify workflow");
       }
+
+      // The waiting state will be cleared when we receive inputResolved event
     },
     [waitingState]
   );
-
   const Component = () => (
     <div className="space-y-4 p-6 bg-zinc-800 text-zinc-200 rounded-lg border border-zinc-700">
       <div className="flex items-center justify-between">
@@ -198,18 +121,6 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
           )}
         </h3>
         <div className="flex items-center gap-3">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              connectionStatus === "connected"
-                ? "bg-green-500"
-                : connectionStatus === "connecting"
-                ? "bg-yellow-500"
-                : "bg-red-500"
-            }`}
-          />
-          <span className="text-sm text-zinc-400 capitalize">
-            {connectionStatus}
-          </span>
           <button
             type="button"
             onClick={reset}
@@ -222,19 +133,10 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
       </div>
 
       {/* Run status */}
-      {runStatus && connectionStatus !== "connecting" && (
-        <div className={`p-3 rounded border ${
-          runStatus.status === "running"
-            ? "bg-blue-900/20 border-blue-500"
-            : runStatus.status === "success"
-            ? "bg-green-900/20 border-green-500"
-            : "bg-red-900/20 border-red-500"
-        }`}>
+      {isRunFinished && (
+        <div className="p-3 rounded border bg-green-900/20 border-green-500">
           <div className="text-sm text-zinc-200">
-            Run status: <strong className="capitalize text-zinc-100">{runStatus.status}</strong>
-            {runStatus.error && (
-              <span className="ml-2 text-red-400">({runStatus.error})</span>
-            )}
+            Run status: <strong className="capitalize text-zinc-100">finished</strong>
           </div>
         </div>
       )}
@@ -250,36 +152,14 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
           {steps.map((step, index) => (
             <div
               key={`${step.stepName}-${index}`}
-              className={`p-4 rounded-md border-l-4 ${
-                step.status === "running"
-                  ? "bg-blue-900/20 border-blue-500"
-                  : step.status === "completed"
-                  ? "bg-green-900/20 border-green-500"
-                  : "bg-red-900/20 border-red-500"
-              }`}
+              className="p-4 rounded-md border-l-4 bg-green-900/20 border-green-500"
             >
               <div className="flex items-center justify-between">
                 <div className="font-medium text-zinc-100">{step.stepName}</div>
-                <div className="flex items-center gap-2">
-                  {step.status === "running" && (
-                    <div className="animate-spin h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full" />
-                  )}
-                  <span
-                    className={`text-sm px-2 py-1 rounded ${
-                      step.status === "running"
-                        ? "bg-blue-900/40 text-blue-200"
-                        : step.status === "completed"
-                        ? "bg-green-900/40 text-green-200"
-                        : "bg-red-900/40 text-red-200"
-                    }`}
-                  >
-                    {step.status}
-                  </span>
-                </div>
+                <span className="text-sm px-2 py-1 rounded bg-green-900/40 text-green-200">
+                  completed
+                </span>
               </div>
-              {step.error && (
-                <div className="mt-2 text-sm text-red-400">{step.error}</div>
-              )}
               {Boolean(step.result) && (
                 <div className="mt-2 text-sm text-zinc-300">
                   Result: {JSON.stringify(step.result as Record<string, unknown>)}
@@ -317,12 +197,11 @@ export function useWorkflowWithRealtime({ workflowType }: UseWorkflowWithRealtim
   return {
     Component,
     trigger,
-    reset,
+    continueWorkflow,
     isTriggering,
     workflowRunId,
     steps,
     waitingState,
-    continueWorkflow,
-    runStatus,
+    isRunFinished,
   };
 }

@@ -20,7 +20,7 @@ export const nanoid = () => {
  */
 export const testServe = (
   serveResult: ReturnType<typeof serve>,
-  testConfig: Omit<TestConfig, "route" | "waitForSeconds">
+  testConfig: Omit<TestConfig, "route">
 ) => {
 
   const handler = async (request: Request) => {

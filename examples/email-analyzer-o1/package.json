@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@upstash/workflow": "^0.2.4",
-    "next": "15.1.5",
+    "next": "15.1.11",
     "nodemailer": "^6.9.16",
     "openai": "^4.79.1",
     "pdf-parse": "^1.1.1",

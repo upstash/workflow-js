@@ -10,15 +10,17 @@ import type {
 } from "../types";
 import { type StepFunction, type Step } from "../types";
 import { AutoExecutor } from "./auto-executor";
-import type { BaseLazyStep } from "./steps";
+import type { BaseLazyStep, WaitForWebhookResponse, Webhook } from "./steps";
 import {
   LazyCallStep,
+  LazyCreateWebhookStep,
   LazyFunctionStep,
   LazyInvokeStep,
   LazyNotifyStep,
   LazySleepStep,
   LazySleepUntilStep,
   LazyWaitForEventStep,
+  LazyWaitForWebhookStep,
 } from "./steps";
 import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
@@ -291,7 +293,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   ): Promise<TResult> {
     const wrappedStepFunction = (() =>
       this.executor.wrapStep(stepName, stepFunction)) as StepFunction<TResult>;
-    return await this.addStep<TResult>(new LazyFunctionStep(stepName, wrappedStepFunction));
+    return await this.addStep<TResult>(new LazyFunctionStep(this, stepName, wrappedStepFunction));
   }
 
   /**
@@ -306,7 +308,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @returns undefined
    */
   public async sleep(stepName: string, duration: number | Duration): Promise<void> {
-    await this.addStep(new LazySleepStep(stepName, duration));
+    await this.addStep(new LazySleepStep(this, stepName, duration));
   }
 
   /**
@@ -331,7 +333,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       time = Math.round(datetime.getTime() / 1000);
     }
-    await this.addStep(new LazySleepUntilStep(stepName, time));
+    await this.addStep(new LazySleepUntilStep(this, stepName, time));
   }
 
   /**
@@ -389,6 +391,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
 
       callStep = new LazyCallStep<{ workflowRunId: string }, typeof settings.body>(
+        this,
         stepName,
         url,
         "POST",
@@ -414,6 +417,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       } = settings;
 
       callStep = new LazyCallStep<TResult, typeof body>(
+        this,
         stepName,
         url,
         method,
@@ -473,7 +477,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
     const timeoutStr = typeof timeout === "string" ? timeout : `${timeout}s`;
 
-    return await this.addStep(new LazyWaitForEventStep<TEventData>(stepName, eventId, timeoutStr));
+    return await this.addStep(
+      new LazyWaitForEventStep<TEventData>(this, stepName, eventId, timeoutStr)
+    );
   }
 
   /**
@@ -503,7 +509,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     eventData: unknown
   ): Promise<NotifyStepResponse> {
     return await this.addStep(
-      new LazyNotifyStep(stepName, eventId, eventData, this.qstashClient.http)
+      new LazyNotifyStep(this, stepName, eventId, eventData, this.qstashClient.http)
     );
   }
 
@@ -511,7 +517,21 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
-    return await this.addStep(new LazyInvokeStep<TResult, TInitialPayload>(stepName, settings));
+    return await this.addStep(
+      new LazyInvokeStep<TResult, TInitialPayload>(this, stepName, settings)
+    );
+  }
+
+  public async createWebhook(stepName: string): Promise<Webhook> {
+    return await this.addStep(new LazyCreateWebhookStep(this, stepName));
+  }
+
+  public async waitForWebhook(
+    stepName: string,
+    webhook: Webhook,
+    timeout: Duration
+  ): Promise<WaitForWebhookResponse> {
+    return await this.addStep(new LazyWaitForWebhookStep(this, stepName, webhook, timeout));
   }
 
   /**
