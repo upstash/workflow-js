@@ -803,7 +803,7 @@ describe("Workflow Parser", () => {
       expect(calledFailureFunction).toBeTrue();
     });
 
-    test("should throw WorkflowError if header is set but function is not passed", async () => {
+    test("should not throw if failure callback but there is no failure function", async () => {
       let called = false;
       const routeFunction = async (context: WorkflowContext) => {
         called = true;
@@ -822,14 +822,9 @@ describe("Workflow Parser", () => {
         undefined,
         undefined
       );
-      expect(result.isErr()).toBeTrue();
-      expect(result.isErr() && result.error.name).toBe(WorkflowError.name);
-      expect(result.isErr() && result.error.message).toBe(
-        "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
-      );
-      expect(called).toBeFalse(); // not called since we threw before auth check
+      expect(result.isOk()).toBeTrue();
+      expect(result.isOk() && result.value.result === "failure-function-undefined").toBeTrue();
+      expect(called).toBeFalse(); // not called since we returned before auth check
     });
 
     test("should return error when the failure function throws an error", async () => {
@@ -894,7 +889,7 @@ describe("Workflow Parser", () => {
 
       expect(result.isOk()).toBeTrue();
       expect(result.isOk() && result.value).toEqual({
-        result: "is-failure-callback",
+        result: "failure-function-executed",
         response: failureFunctionResponse,
       });
       expect(called).toBeTrue();

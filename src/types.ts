@@ -134,13 +134,14 @@ export type FinishCondition =
   | "duplicate-step"
   | "fromCallback"
   | "auth-fail"
-  | "failure-callback"
+  | "failure-callback-executed"
+  | "failure-callback-undefined"
   | "workflow-already-ended"
   | WorkflowNonRetryableError;
 
 export type DetailedFinishCondition =
   | {
-      condition: Exclude<FinishCondition, WorkflowNonRetryableError | "failure-callback">;
+      condition: Exclude<FinishCondition, WorkflowNonRetryableError | "failure-callback-executed">;
       result?: never;
     }
   | {
@@ -152,7 +153,7 @@ export type DetailedFinishCondition =
       result: WorkflowRetryAfterError;
     }
   | {
-      condition: "failure-callback";
+      condition: "failure-callback-executed";
       result: string | void;
     };
 
@@ -231,7 +232,6 @@ export type WorkflowServeOptions<
       | "cancel"
       | "api"
       | "invoke"
-      | "agents"
     >;
     failStatus: number;
     failResponse: string;
