@@ -1020,7 +1020,6 @@ describe("Workflow Requests", () => {
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultTwo.value).toBe("workflow-run-already-exists");
-
         const deleteResult = await triggerWorkflowDelete(context, "result");
         expect(deleteResult).toEqual(undefined);
 
