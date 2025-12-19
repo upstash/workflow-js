@@ -22,7 +22,6 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
@@ -219,7 +218,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     steps,
     url,
     failureUrl,
-    debug,
     initialPayload,
     env,
     retries,
@@ -236,7 +234,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     steps: Step[];
     url: string;
     failureUrl?: string;
-    debug?: WorkflowLogger;
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
     retries?: number;
@@ -260,7 +257,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.flowControl = flowControl;
     this.label = label;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug, middlewares);
+    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, middlewares);
   }
 
   /**

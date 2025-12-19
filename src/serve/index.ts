@@ -13,7 +13,6 @@ import {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "../error";
-import { WorkflowLogger } from "../logger";
 import { runMiddlewares } from "../middleware/middleware";
 import {
   ExclusiveValidationOptions,
@@ -64,7 +63,6 @@ export const serveBase = <
     onStepFinish,
     initialPayloadParser,
     url,
-    verbose,
     receiver,
     failureUrl,
     failureFunction,
@@ -75,11 +73,9 @@ export const serveBase = <
     useJSONContent,
     disableTelemetry,
     flowControl,
-    onError,
     middlewares,
   } = processOptions<TResponse, TInitialPayload>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
-  const debug = WorkflowLogger.getLogger(verbose);
 
   /**
    * Handles the incoming request, triggering the appropriate workflow steps.
@@ -91,7 +87,10 @@ export const serveBase = <
    * @returns A promise that resolves to a response.
    */
   const handler = async (request: TRequest) => {
-    await debug?.log("INFO", "ENDPOINT_START");
+    await runMiddlewares(middlewares, "onInfo", {
+      workflowRunId: "unknown",
+      info: `Received request for workflow execution.`,
+    });
 
     const { workflowUrl, workflowFailureUrl } = await determineUrls(
       request,
@@ -99,7 +98,7 @@ export const serveBase = <
       baseUrl,
       failureFunction,
       failureUrl,
-      debug
+      middlewares
     );
 
     // get payload as raw string
@@ -108,7 +107,15 @@ export const serveBase = <
 
     // validation & parsing
     const { isFirstInvocation, workflowRunId } = validateRequest(request);
-    debug?.setWorkflowRunId(workflowRunId);
+
+    await runMiddlewares(middlewares, "onInfo", {
+      workflowRunId: workflowRunId,
+      info:
+        `Request identified as ` +
+        (isFirstInvocation
+          ? "first invocation of a new workflow."
+          : `invocation of existing workflow.`),
+    });
 
     // parse steps
     const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
@@ -117,7 +124,7 @@ export const serveBase = <
       workflowRunId,
       qstashClient.http,
       request.headers.get("upstash-message-id")!,
-      debug
+      middlewares
     );
 
     if (workflowRunEnded) {
@@ -145,19 +152,26 @@ export const serveBase = <
       retries,
       retryDelay,
       flowControl,
-      debug
+      middlewares
     );
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
       throw failureCheck.error;
     } else if (failureCheck.value.result === "failure-function-executed") {
       // is a failure ballback.
-      await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
+      await runMiddlewares(middlewares, "onInfo", {
+        workflowRunId: workflowRunId,
+        info: `Handled failure callback.`,
+      });
       return onStepFinish(workflowRunId, "failure-callback-executed", {
         condition: "failure-callback-executed",
         result: failureCheck.value.response,
       });
     } else if (failureCheck.value.result === "failure-function-undefined") {
+      await runMiddlewares(middlewares, "onInfo", {
+        workflowRunId: workflowRunId,
+        info: `Failure callback invoked but no failure function defined.`,
+      });
       return onStepFinish(workflowRunId, "failure-callback-undefined", {
         condition: "failure-callback-undefined",
       });
@@ -175,7 +189,6 @@ export const serveBase = <
       steps,
       url: workflowUrl,
       failureUrl: workflowFailureUrl,
-      debug,
       env,
       retries,
       retryDelay,
@@ -193,12 +206,18 @@ export const serveBase = <
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
+      await runMiddlewares(middlewares, "onError", {
+        workflowRunId,
+        error: authCheck.error,
+      });
       throw authCheck.error;
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
-      await debug?.log("ERROR", "ERROR", { error: AUTH_FAIL_MESSAGE });
+      await runMiddlewares(middlewares, "onError", {
+        workflowRunId,
+        error: new Error(AUTH_FAIL_MESSAGE),
+      });
       return onStepFinish(
         isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId,
         "auth-fail",
@@ -217,12 +236,13 @@ export const serveBase = <
       retryDelay,
       flowControl,
       telemetry,
-      debug,
+      middlewares,
     });
     if (callReturnCheck.isErr()) {
       // error while checking
-      await debug?.log("ERROR", "SUBMIT_THIRD_PARTY_RESULT", {
-        error: callReturnCheck.error.message,
+      await runMiddlewares(middlewares, "onError", {
+        workflowRunId,
+        error: callReturnCheck.error,
       });
       throw callReturnCheck.error;
     } else if (callReturnCheck.value === "continue-workflow") {
@@ -232,7 +252,6 @@ export const serveBase = <
             workflowContext,
             useJSONContent,
             telemetry,
-            debug,
             invokeCount,
           })
         : await triggerRouteFunction({
@@ -249,12 +268,11 @@ export const serveBase = <
                 workflowRunId: workflowContext.workflowRunId,
                 result,
               });
-              await triggerWorkflowDelete(workflowContext, result, debug);
+              await triggerWorkflowDelete(workflowContext, result, middlewares);
             },
             onCancel: async () => {
               await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
             },
-            debug,
           });
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
@@ -273,12 +291,18 @@ export const serveBase = <
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
-        await debug?.log("ERROR", "ERROR", { error: result.error.message });
+        await runMiddlewares(middlewares, "onError", {
+          workflowRunId,
+          error: result.error,
+        });
         throw result.error;
       }
 
       // Returns a Response with `workflowRunId` at the end of each step.
-      await debug?.log("INFO", "RESPONSE_WORKFLOW");
+      await runMiddlewares(middlewares, "onInfo", {
+        workflowRunId: workflowContext.workflowRunId,
+        info: `Workflow endpoint execution completed successfully.`,
+      });
       return onStepFinish(workflowContext.workflowRunId, "success", {
         condition: "success",
       });
@@ -288,7 +312,11 @@ export const serveBase = <
       });
     }
     // response to QStash in call cases
-    await debug?.log("INFO", "RESPONSE_DEFAULT");
+
+    await runMiddlewares(middlewares, "onInfo", {
+      workflowRunId: workflowContext.workflowRunId,
+      info: `Handled third party call result.`,
+    });
     return onStepFinish("no-workflow-id", "fromCallback", {
       condition: "fromCallback",
     });
@@ -299,22 +327,10 @@ export const serveBase = <
       return await handler(request);
     } catch (error) {
       const formattedError = formatWorkflowError(error);
-      try {
-        onError?.(error as Error);
-      } catch (onErrorError) {
-        const formattedOnErrorError = formatWorkflowError(onErrorError);
-        const errorMessage =
-          `Error while running onError callback: '${formattedOnErrorError.message}'.` +
-          `\nOriginal error: '${formattedError.message}'`;
-
-        console.error(errorMessage);
-        return new Response(JSON.stringify({ error: errorMessage }), {
-          status: 500,
-          headers: {
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          },
-        }) as TResponse;
-      }
+      await runMiddlewares(middlewares, "onError", {
+        workflowRunId: "unknown",
+        error: isInstanceOf(error, Error) ? error : new Error(formattedError.message),
+      });
       return new Response(JSON.stringify(formattedError), {
         status: 500,
         headers: {

@@ -1,6 +1,5 @@
 import { NO_CONCURRENCY } from "../constants";
 import { WorkflowAbort } from "../error";
-import { WorkflowLogger } from "../logger";
 import { Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
@@ -14,22 +13,22 @@ export const submitParallelSteps = async ({
   initialStepCount,
   invokeCount,
   telemetry,
-  debug,
+  middlewares,
 }: {
   context: WorkflowContext;
   steps: BaseLazyStep[];
   initialStepCount: number;
   invokeCount: number;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
+  middlewares?: WorkflowMiddleware[];
 }) => {
   const planSteps = steps.map((step, index) =>
     step.getPlanStep(steps.length, initialStepCount + index)
   );
 
-  await debug?.log("SUBMIT", "SUBMIT_STEP", {
-    length: planSteps.length,
-    steps: planSteps,
+  await runMiddlewares(middlewares, "onInfo", {
+    workflowRunId: context.workflowRunId,
+    info: `Submitting ${planSteps.length} parallel steps.`,
   });
 
   const result = (await context.qstashClient.batch(
@@ -60,13 +59,15 @@ export const submitParallelSteps = async ({
     })
   )) as { messageId: string }[];
 
-  await debug?.log("INFO", "SUBMIT_STEP", {
-    messageIds: result.map((message) => {
-      return {
-        message: message.messageId,
-      };
-    }),
-  });
+  if (result && result.length > 0) {
+    await runMiddlewares(middlewares, "onInfo", {
+      workflowRunId: context.workflowRunId,
+      info: `Submitted ${planSteps.length} parallel steps. messageIds: ${result
+        .filter((r) => r)
+        .map((r) => r.messageId)
+        .join(", ")}.`,
+    });
+  }
 
   throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
 };
@@ -78,7 +79,6 @@ export const submitSingleStep = async ({
   invokeCount,
   concurrency,
   telemetry,
-  debug,
   middlewares,
 }: {
   context: WorkflowContext;
@@ -87,18 +87,12 @@ export const submitSingleStep = async ({
   invokeCount: number;
   concurrency: number;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
   middlewares?: WorkflowMiddleware[];
 }) => {
   const resultStep = await lazyStep.getResultStep(concurrency, stepId);
   await runMiddlewares(middlewares, "beforeExecution", {
     workflowRunId: context.workflowRunId,
     stepName: resultStep.stepName,
-  });
-  await debug?.log("INFO", "RUN_SINGLE", {
-    fromRequest: false,
-    step: resultStep,
-    stepCount: stepId,
   });
 
   const { headers } = lazyStep.getHeaders({
@@ -115,11 +109,6 @@ export const submitSingleStep = async ({
     telemetry,
   });
 
-  await debug?.log("SUBMIT", "SUBMIT_STEP", {
-    length: 1,
-    steps: [resultStep],
-  });
-
   const submitResult = await lazyStep.submitStep({
     context,
     body,
@@ -130,13 +119,12 @@ export const submitSingleStep = async ({
     telemetry,
   });
 
-  await debug?.log("INFO", "SUBMIT_STEP", {
-    messageIds: submitResult.map((message) => {
-      return {
-        message: message.messageId,
-      };
-    }),
-  });
+  if (submitResult && submitResult[0]) {
+    await runMiddlewares(middlewares, "onInfo", {
+      workflowRunId: context.workflowRunId,
+      info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
+    });
+  }
 
   return resultStep;
 };

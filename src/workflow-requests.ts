@@ -26,20 +26,20 @@ import type {
   WorkflowServeOptions,
 } from "./types";
 import { StepTypes } from "./types";
-import type { WorkflowLogger } from "./logger";
 import { FlowControl, PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
+import { runMiddlewares } from "./middleware/middleware";
 
 type TriggerFirstInvocationParams<TInitialPayload> = {
   workflowContext: WorkflowContext<TInitialPayload>;
   useJSONContent?: boolean;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
   invokeCount?: number;
   delay?: PublishRequest["delay"];
   notBefore?: PublishRequest["notBefore"];
+  middlewares?: WorkflowServeOptions["middlewares"];
 };
 
 export const triggerFirstInvocation = async <TInitialPayload>(
@@ -115,20 +115,15 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       const result = results[i];
       const invocationParams = firstInvocationParams[i];
       if (result.deduplicated) {
-        await invocationParams.debug?.log("WARN", "SUBMIT_FIRST_INVOCATION", {
-          message: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
-          headers: invocationBatch[i].headers,
-          requestPayload: invocationParams.workflowContext.requestPayload,
-          url: invocationParams.workflowContext.url,
-          messageId: result.messageId,
+        await runMiddlewares(invocationParams.middlewares, "onWarning", {
+          workflowRunId: invocationParams.workflowContext.workflowRunId,
+          warning: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
         });
         invocationStatuses.push("workflow-run-already-exists");
       } else {
-        await invocationParams.debug?.log("SUBMIT", "SUBMIT_FIRST_INVOCATION", {
-          headers: invocationBatch[i].headers,
-          requestPayload: invocationParams.workflowContext.requestPayload,
-          url: invocationParams.workflowContext.url,
-          messageId: result.messageId,
+        await runMiddlewares(invocationParams.middlewares, "onInfo", {
+          workflowRunId: invocationParams.workflowContext.workflowRunId,
+          info: `Workflow run ${invocationParams.workflowContext.workflowRunId} has been started successfully with URL ${invocationParams.workflowContext.url}.`,
         });
         invocationStatuses.push("success");
       }
@@ -153,12 +148,12 @@ export const triggerRouteFunction = async ({
   onCleanup,
   onStep,
   onCancel,
-  debug,
+  middlewares,
 }: {
   onStep: () => Promise<unknown>;
   onCleanup: (result: unknown) => Promise<void>;
   onCancel: () => Promise<void>;
-  debug?: WorkflowLogger;
+  middlewares?: WorkflowServeOptions["middlewares"];
 }): Promise<
   | Ok<
       | "workflow-finished"
@@ -180,10 +175,9 @@ export const triggerRouteFunction = async ({
   } catch (error) {
     const error_ = error as Error;
     if (isInstanceOf(error, QstashError) && error.status === 400) {
-      await debug?.log("WARN", "RESPONSE_WORKFLOW", {
-        message: `tried to append to a cancelled workflow. exiting without publishing.`,
-        name: error.name,
-        errorMessage: error.message,
+      await runMiddlewares(middlewares, "onWarning", {
+        workflowRunId: "unknown",
+        warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error.message}`,
       });
       return ok("workflow-was-finished");
     } else if (
@@ -205,11 +199,14 @@ export const triggerRouteFunction = async ({
 export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   result: unknown,
-  debug?: WorkflowLogger,
+  middlewares?: WorkflowServeOptions["middlewares"],
   cancel = false
 ): Promise<void> => {
-  await debug?.log("SUBMIT", "SUBMIT_CLEANUP", {
-    deletedWorkflowRunId: workflowContext.workflowRunId,
+  await runMiddlewares(middlewares, "onInfo", {
+    workflowRunId: workflowContext.workflowRunId,
+    info:
+      `Deleting workflow run ${workflowContext.workflowRunId} from QStash` +
+      (cancel ? " with cancel=true." : "."),
   });
   await workflowContext.qstashClient.http.request({
     path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
@@ -217,11 +214,10 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     parseResponseAsJson: false,
     body: JSON.stringify(result),
   });
-  await debug?.log(
-    "SUBMIT",
-    "SUBMIT_CLEANUP",
-    `workflow run ${workflowContext.workflowRunId} deleted.`
-  );
+  await runMiddlewares(middlewares, "onInfo", {
+    workflowRunId: workflowContext.workflowRunId,
+    info: `Workflow run ${workflowContext.workflowRunId} deleted from QStash successfully.`,
+  });
 };
 
 /**
@@ -288,7 +284,7 @@ export const handleThirdPartyCallResult = async ({
   retryDelay,
   telemetry,
   flowControl,
-  debug,
+  middlewares,
 }: {
   request: Request;
   requestPayload: string;
@@ -299,7 +295,7 @@ export const handleThirdPartyCallResult = async ({
   retryDelay?: string;
   telemetry?: Telemetry;
   flowControl?: FlowControl;
-  debug?: WorkflowLogger;
+  middlewares?: WorkflowServeOptions["middlewares"];
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
   | Err<never, Error>
@@ -321,7 +317,7 @@ export const handleThirdPartyCallResult = async ({
           client.http,
           workflowRunId,
           messageId,
-          debug
+          middlewares
         );
         if (workflowRunEnded) {
           return ok("workflow-ended");
@@ -347,22 +343,19 @@ export const handleThirdPartyCallResult = async ({
         header: Record<string, string[]>;
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       if (
         !(callbackMessage.status >= 200 && callbackMessage.status < 300) &&
         callbackMessage.maxRetries &&
         callbackMessage.retried !== callbackMessage.maxRetries
       ) {
-        await debug?.log("WARN", "SUBMIT_THIRD_PARTY_RESULT", {
-          status: callbackMessage.status,
-          body: atob(callbackMessage.body ?? ""),
+        await runMiddlewares(middlewares, "onWarning", {
+          workflowRunId: request.headers.get(WORKFLOW_ID_HEADER) ?? "unknown",
+          warning:
+            `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
+            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
+            ` Error Message:\n${atob(callbackMessage.body ?? "")}`,
         });
         // this callback will be retried by the QStash, we just ignore it
-        console.warn(
-          `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-            ` Error Message:\n${atob(callbackMessage.body ?? "")}`
-        );
         return ok("call-will-retry");
       }
 
@@ -428,21 +421,18 @@ export const handleThirdPartyCallResult = async ({
         concurrent: Number(concurrentString),
       };
 
-      await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
-        step: callResultStep,
-        headers: requestHeaders,
-        url: workflowUrl,
+      await runMiddlewares(middlewares, "onInfo", {
+        workflowRunId,
+        info:
+          `Submitting call result for step "${stepName}" ` +
+          `of workflow run "${workflowRunId}" with status ${callResponse.status}.`,
       });
 
-      const result = await client.publishJSON({
+      await client.publishJSON({
         headers: requestHeaders,
         method: "POST",
         body: callResultStep,
         url: workflowUrl,
-      });
-
-      await debug?.log("SUBMIT", "SUBMIT_THIRD_PARTY_RESULT", {
-        messageId: result.messageId,
       });
 
       return ok("is-call-return");

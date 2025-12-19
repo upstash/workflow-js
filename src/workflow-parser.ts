@@ -17,13 +17,13 @@ import type {
   WorkflowClient,
   RouteFunction,
 } from "./types";
-import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
 import { getSteps } from "./client/utils";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
+import { runMiddlewares } from "./middleware/middleware";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -126,7 +126,7 @@ const deduplicateSteps = (steps: Step[]): Step[] => {
  */
 const checkIfLastOneIsDuplicate = async (
   steps: Step[],
-  debug?: WorkflowLogger
+  middlewares?: WorkflowServeOptions["middlewares"]
 ): Promise<boolean> => {
   // return false if the length is 0 or 1
   if (steps.length < 2) {
@@ -142,9 +142,11 @@ const checkIfLastOneIsDuplicate = async (
       const message =
         `Upstash Workflow: The step '${step.stepName}' with id '${step.stepId}'` +
         "  has run twice during workflow execution. Rest of the workflow will continue running as usual.";
-      await debug?.log("WARN", "RESPONSE_DEFAULT", message);
 
-      console.warn(message);
+      await runMiddlewares(middlewares, "onWarning", {
+        workflowRunId: "unknown",
+        warning: message,
+      });
       return true;
     }
   }
@@ -206,7 +208,7 @@ export const parseRequest = async (
   workflowRunId: string,
   requester: Client["http"],
   messageId?: string,
-  debug?: WorkflowLogger
+  middlewares?: WorkflowServeOptions["middlewares"]
 ): Promise<
   | {
       rawInitialPayload: string;
@@ -233,16 +235,16 @@ export const parseRequest = async (
     let rawSteps: RawStep[];
 
     if (!requestPayload) {
-      await debug?.log(
-        "INFO",
-        "ENDPOINT_START",
-        "request payload is empty, steps will be fetched from QStash."
-      );
+      await runMiddlewares(middlewares, "onInfo", {
+        workflowRunId,
+        info: "request payload is empty, steps will be fetched from QStash.",
+      });
+
       const { steps: fetchedSteps, workflowRunEnded } = await getSteps(
         requester,
         workflowRunId,
         messageId,
-        debug
+        middlewares
       );
       if (workflowRunEnded) {
         return {
@@ -258,7 +260,7 @@ export const parseRequest = async (
     }
     const { rawInitialPayload, steps } = processRawSteps(rawSteps);
 
-    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
+    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, middlewares);
     const deduplicatedSteps = deduplicateSteps(steps);
 
     return {
@@ -293,7 +295,7 @@ export const handleFailure = async <TInitialPayload>(
   retries: WorkflowServeOptions["retries"],
   retryDelay: WorkflowServeOptions["retryDelay"],
   flowControl: WorkflowServeOptions["flowControl"],
-  debug?: WorkflowLogger
+  middlewares?: WorkflowServeOptions["middlewares"]
 ): Promise<
   | Ok<
       | { result: "not-failure-callback" }
@@ -355,13 +357,13 @@ export const handleFailure = async <TInitialPayload>(
       steps: [],
       url: url,
       failureUrl: url,
-      debug,
       env,
       retries,
       retryDelay,
       flowControl,
       telemetry: undefined, // not going to make requests in authentication check
       label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,
+      middlewares,
     });
 
     // attempt running routeFunction until the first step
@@ -371,7 +373,10 @@ export const handleFailure = async <TInitialPayload>(
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
+      await runMiddlewares(middlewares, "onError", {
+        workflowRunId,
+        error: authCheck.error,
+      });
       return err(authCheck.error);
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.

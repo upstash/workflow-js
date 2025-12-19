@@ -2,7 +2,6 @@ import { isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
-import type { WorkflowLogger } from "../logger";
 import { QstashError } from "@upstash/qstash";
 import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
 import { WorkflowMiddleware } from "../middleware";
@@ -12,7 +11,6 @@ export class AutoExecutor {
   private context: WorkflowContext;
   private promises = new WeakMap<BaseLazyStep[], Promise<unknown>>();
   private activeLazyStepList?: BaseLazyStep[];
-  private debug?: WorkflowLogger;
 
   private readonly nonPlanStepCount: number;
   private readonly steps: Step[];
@@ -31,14 +29,12 @@ export class AutoExecutor {
     steps: Step[],
     telemetry?: Telemetry,
     invokeCount?: number,
-    debug?: WorkflowLogger,
     middlewares?: WorkflowMiddleware[]
   ) {
     this.context = context;
     this.steps = steps;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
-    this.debug = debug;
     this.middlewares = middlewares;
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
@@ -133,11 +129,6 @@ export class AutoExecutor {
     if (this.stepCount < this.nonPlanStepCount) {
       const step = this.steps[this.stepCount + this.planStepCount];
       validateStep(lazyStep, step);
-      await this.debug?.log("INFO", "RUN_SINGLE", {
-        fromRequest: true,
-        step,
-        stepCount: this.stepCount,
-      });
       const parsedOut = lazyStep.parseOut(step);
 
       const isLastMemoized =
@@ -161,7 +152,6 @@ export class AutoExecutor {
       invokeCount: this.invokeCount,
       concurrency: 1,
       telemetry: this.telemetry,
-      debug: this.debug,
       middlewares: this.middlewares,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
@@ -196,12 +186,17 @@ export class AutoExecutor {
       );
     }
 
-    await this.debug?.log("INFO", "RUN_PARALLEL", {
-      parallelCallState,
-      initialStepCount,
-      plannedParallelStepCount,
-      stepCount: this.stepCount,
-      planStepCount: this.planStepCount,
+    await runMiddlewares(this.middlewares, "onInfo", {
+      workflowRunId: this.context.workflowRunId,
+      info:
+        `Executing parallel steps with: ` +
+        JSON.stringify({
+          parallelCallState,
+          initialStepCount,
+          plannedParallelStepCount,
+          stepCount: this.stepCount,
+          planStepCount: this.planStepCount,
+        }),
     });
 
     switch (parallelCallState) {
@@ -212,7 +207,7 @@ export class AutoExecutor {
           initialStepCount,
           invokeCount: this.invokeCount,
           telemetry: this.telemetry,
-          debug: this.debug,
+          middlewares: this.middlewares,
         });
         break;
       }
@@ -250,7 +245,6 @@ export class AutoExecutor {
             invokeCount: this.invokeCount,
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
-            debug: this.debug,
             middlewares: this.middlewares,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);

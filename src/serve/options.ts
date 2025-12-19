@@ -6,8 +6,9 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
 import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
-import { WorkflowLogger } from "../logger";
 import { formatWorkflowError, WorkflowError } from "../error";
+import { WorkflowMiddleware } from "../middleware";
+import { runMiddlewares } from "../middleware/middleware";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -26,7 +27,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   options?: WorkflowServeOptions<TResponse, TInitialPayload>
 ): RequiredExceptFields<
   WorkflowServeOptions<TResponse, TInitialPayload>,
-  | "verbose"
   | "receiver"
   | "url"
   | "failureFunction"
@@ -131,7 +131,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     retries: DEFAULT_RETRIES,
     useJSONContent: false,
     disableTelemetry: false,
-    onError: console.error,
     ...options,
   };
 };
@@ -147,7 +146,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
  *    the beginning of the final URLs before returning.
  * @param failureFunction failureFunction. failureUrl will be workflow url if set.
  * @param failureUrl used as failureUrl if failureFunction isn't passed.
- * @param debug logger
  * @returns
  */
 export const determineUrls = async <TInitialPayload = unknown>(
@@ -156,7 +154,7 @@ export const determineUrls = async <TInitialPayload = unknown>(
   baseUrl: string | undefined,
   failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
   failureUrl: string | undefined,
-  debug: WorkflowLogger | undefined
+  middlewares: WorkflowMiddleware[] | undefined
 ) => {
   const initialWorkflowUrl = url ?? request.url;
   const workflowUrl = baseUrl
@@ -165,12 +163,10 @@ export const determineUrls = async <TInitialPayload = unknown>(
       })
     : initialWorkflowUrl;
 
-  // log workflow url change
   if (workflowUrl !== initialWorkflowUrl) {
-    await debug?.log("WARN", "ENDPOINT_START", {
-      warning: `Upstash Workflow: replacing the base of the url with "${baseUrl}" and using it as workflow endpoint.`,
-      originalURL: initialWorkflowUrl,
-      updatedURL: workflowUrl,
+    await runMiddlewares(middlewares, "onWarning", {
+      workflowRunId: "unknown",
+      warning: `The workflow URL's base URL has been replaced with the provided baseUrl. Original URL: ${initialWorkflowUrl}, New URL: ${workflowUrl}`,
     });
   }
 
@@ -178,8 +174,9 @@ export const determineUrls = async <TInitialPayload = unknown>(
   const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
 
   if (workflowUrl.includes("localhost")) {
-    await debug?.log("WARN", "ENDPOINT_START", {
-      message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
+    await runMiddlewares(middlewares, "onWarning", {
+      workflowRunId: "unknown",
+      warning: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
     });
   }
 

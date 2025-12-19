@@ -2,7 +2,6 @@ import type { FlowControl, Receiver } from "@upstash/qstash";
 import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
-import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
 import { WorkflowMiddleware } from "./middleware";
@@ -185,14 +184,6 @@ export type WorkflowServeOptions<
    */
   url?: string;
   /**
-   * Verbose mode
-   *
-   * Disabled if not set. If set to true, a logger is created automatically.
-   *
-   * Alternatively, a WorkflowLogger can be passed.
-   */
-  verbose?: WorkflowLogger | true;
-  /**
    * Receiver to verify *all* requests by checking if they come from QStash
    *
    * By default, a receiver is created from the env variables
@@ -204,13 +195,6 @@ export type WorkflowServeOptions<
    */
   failureUrl?: string;
 
-  /**
-   * Error handler called when an error occurs in the workflow. This is
-   * different from `failureFunction` in that it is called when an error
-   * occurs in the workflow, while `failureFunction` is called when QStash
-   * retries are exhausted.
-   */
-  onError?: (error: Error) => void;
   /**
    * Failure function called when QStash retries are exhausted while executing
    * the workflow. Will overwrite `failureUrl` parameter with the workflow
@@ -630,9 +614,23 @@ export type MiddlewareCallbacks = {
   }) => Promise<void> | void;
   runStarted?: (params: { workflowRunId: string }) => Promise<void> | void;
   runCompleted?: (params: { workflowRunId: string; result: unknown }) => Promise<void> | void;
+  onError?: (params: { workflowRunId: string; error: Error }) => Promise<void> | void;
+  onWarning?: (params: { workflowRunId: string; warning: string }) => Promise<void> | void;
+  onInfo?: (params: { workflowRunId: string; info: string }) => Promise<void> | void;
 };
+
+export type MiddlewareInitCallbacks = (params: {
+  workflowRunId: string;
+}) => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
+
+export type MiddlewareCallbackConfig =
+  | {
+      init: MiddlewareInitCallbacks;
+    }
+  | {
+      callbacks: MiddlewareCallbacks;
+    };
 
 export type MiddlewareParameters = {
   name: string;
-  init: (params: { workflowRunId: string }) => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
-};
+} & MiddlewareCallbackConfig;

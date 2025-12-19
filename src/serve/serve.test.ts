@@ -25,9 +25,10 @@ import {
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
-import { WorkflowLogger } from "../logger";
+
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "../error";
+import { WorkflowMiddleware } from "../middleware";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -48,7 +49,6 @@ describe("serve", () => {
       },
       {
         qstashClient,
-        verbose: true,
         receiver: undefined,
         schema: z.string(),
         flowControl: {
@@ -125,7 +125,6 @@ describe("serve", () => {
       },
       {
         qstashClient,
-        verbose: true,
         receiver: undefined,
         disableTelemetry: true,
         retries: 2,
@@ -303,11 +302,18 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        onError(error) {
-          expect(error).toBeInstanceOf(Error);
-          expect(error.message).toBe("some-error");
-          onErrorCalled = true;
-        },
+        middlewares: [
+          new WorkflowMiddleware({
+            name: "test-error-handler",
+            callbacks: {
+              onError({ error }) {
+                expect(error).toBeInstanceOf(Error);
+                expect(error.message).toBe("some-error");
+                onErrorCalled = true;
+              },
+            },
+          }),
+        ],
       }
     );
 
@@ -859,7 +865,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -890,7 +895,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -925,7 +929,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -1242,9 +1245,8 @@ describe("serve", () => {
 
     test("should not allow when not http:// or https://", async () => {
       const url = "localhost.com";
-      const verbose = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
 
-      const logSpy = spyOn(verbose, "log");
+      const warnSpy = spyOn(console, "warn");
 
       const { handler } = serve(
         async (context) => {
@@ -1255,7 +1257,6 @@ describe("serve", () => {
           baseUrl: undefined,
           qstashClient,
           receiver: undefined,
-          verbose,
         }
       );
 
@@ -1268,9 +1269,12 @@ describe("serve", () => {
         stack: expect.any(String),
       });
 
-      expect(logSpy).toBeCalledWith("WARN", "ENDPOINT_START", {
-        message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${url}`,
-      });
+      expect(warnSpy).toHaveBeenCalled();
+      const warnCalls = warnSpy.mock.calls;
+      const localhostWarning = warnCalls.find((call: string[]) =>
+        call[0]?.includes(`Workflow URL contains localhost`)
+      );
+      expect(localhostWarning).toBeDefined();
     });
   });
 
