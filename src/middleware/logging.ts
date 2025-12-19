@@ -1,21 +1,22 @@
-import { onErrorWithConsole, onWarningWithConsole, WorkflowMiddleware } from "./middleware";
+import { onErrorWithConsole, onInfoWithConsole, onWarningWithConsole, WorkflowMiddleware } from "./middleware";
 
 export const loggingMiddleware = new WorkflowMiddleware({
   name: "logging",
   callbacks: {
     afterExecution(params) {
-      console.log("Step executed:", params);
+      console.log("  [Upstash Workflow]: Step executed:", params);
     },
     beforeExecution(params) {
-      console.log("Step execution started:", params);
+      console.log("  [Upstash Workflow]: Step execution started:", params);
     },
     runStarted(params) {
-      console.log("Workflow run started:", params);
+      console.log("  [Upstash Workflow]: Workflow run started:", params);
     },
     runCompleted(params) {
-      console.log("Workflow run completed:", params);
+      console.log("  [Upstash Workflow]: Workflow run completed:", params);
     },
     onError: onErrorWithConsole,
     onWarning: onWarningWithConsole,
+    onInfo: onInfoWithConsole,
   },
 });

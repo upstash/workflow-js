@@ -89,11 +89,13 @@ export const submitSingleStep = async ({
   telemetry?: Telemetry;
   middlewares?: WorkflowMiddleware[];
 }) => {
-  const resultStep = await lazyStep.getResultStep(concurrency, stepId);
+
   await runMiddlewares(middlewares, "beforeExecution", {
     workflowRunId: context.workflowRunId,
-    stepName: resultStep.stepName,
+    stepName: lazyStep.stepName,
   });
+
+  const resultStep = await lazyStep.getResultStep(concurrency, stepId);
 
   const { headers } = lazyStep.getHeaders({
     context,

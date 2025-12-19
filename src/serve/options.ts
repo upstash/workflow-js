@@ -7,7 +7,7 @@ import {
 } from "../constants";
 import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { formatWorkflowError, WorkflowError } from "../error";
-import { WorkflowMiddleware } from "../middleware";
+import { loggingMiddleware, WorkflowMiddleware } from "../middleware";
 import { runMiddlewares } from "../middleware/middleware";
 
 /**
@@ -36,6 +36,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
   | "flowControl"
   | "retryDelay"
   | "middlewares"
+  | "verbose"
 > => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
@@ -132,6 +133,8 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     useJSONContent: false,
     disableTelemetry: false,
     ...options,
+    // merge middlewares
+    middlewares: [(options?.middlewares ?? []), (options?.verbose ? [loggingMiddleware] : [])].flat(),
   };
 };
 
@@ -174,9 +177,9 @@ export const determineUrls = async <TInitialPayload = unknown>(
   const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
 
   if (workflowUrl.includes("localhost")) {
-    await runMiddlewares(middlewares, "onWarning", {
+    await runMiddlewares(middlewares, "onInfo", {
       workflowRunId: "unknown",
-      warning: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
+      info: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
     });
   }
 

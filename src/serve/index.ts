@@ -111,10 +111,7 @@ export const serveBase = <
     await runMiddlewares(middlewares, "onInfo", {
       workflowRunId: workflowRunId,
       info:
-        `Request identified as ` +
-        (isFirstInvocation
-          ? "first invocation of a new workflow."
-          : `invocation of existing workflow.`),
+        `Run id identified.`,
     });
 
     // parse steps
@@ -261,9 +258,9 @@ export const serveBase = <
                   workflowRunId: workflowContext.workflowRunId,
                 });
               }
-              await routeFunction(workflowContext);
+              return await routeFunction(workflowContext);
             },
-            onCleanup: async (result) => {
+            onCleanup: async (result) => {              
               await runMiddlewares(middlewares, "runCompleted", {
                 workflowRunId: workflowContext.workflowRunId,
                 result,

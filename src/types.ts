@@ -304,6 +304,10 @@ export type WorkflowServeOptions<
    * List of workflow middlewares to use
    */
   middlewares?: WorkflowMiddleware[];
+  /**
+   * Whether to enable verbose logging for debugging purposes
+   */
+  verbose?: boolean
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {

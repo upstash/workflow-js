@@ -5,14 +5,21 @@ export const onErrorWithConsole: Required<MiddlewareCallbacks>["onError"] = asyn
   workflowRunId,
   error,
 }) => {
-  console.error(`Error in workflow run ${workflowRunId}: ` + error);
+  console.error(`  [Upstash Workflow]: Error in workflow run ${workflowRunId}: ` + error);
 };
 
 export const onWarningWithConsole: Required<MiddlewareCallbacks>["onWarning"] = async ({
   workflowRunId,
   warning,
 }) => {
-  console.warn(`Warning in workflow run ${workflowRunId}: ` + warning);
+  console.warn(`  [Upstash Workflow]: Warning in workflow run ${workflowRunId}: ` + warning);
+};
+
+export const onInfoWithConsole: Required<MiddlewareCallbacks>["onInfo"] = async ({
+  workflowRunId,
+  info,
+}) => {
+  console.info(`  [Upstash Workflow]: Info in workflow run ${workflowRunId}: ` + info);
 };
 
 export class WorkflowMiddleware {
