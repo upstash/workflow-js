@@ -307,7 +307,7 @@ export type WorkflowServeOptions<
   /**
    * Whether to enable verbose logging for debugging purposes
    */
-  verbose?: boolean
+  verbose?: boolean;
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {

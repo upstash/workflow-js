@@ -1,4 +1,9 @@
-import { onErrorWithConsole, onInfoWithConsole, onWarningWithConsole, WorkflowMiddleware } from "./middleware";
+import {
+  onErrorWithConsole,
+  onInfoWithConsole,
+  onWarningWithConsole,
+  WorkflowMiddleware,
+} from "./middleware";
 
 export const loggingMiddleware = new WorkflowMiddleware({
   name: "logging",

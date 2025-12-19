@@ -110,8 +110,7 @@ export const serveBase = <
 
     await runMiddlewares(middlewares, "onInfo", {
       workflowRunId: workflowRunId,
-      info:
-        `Run id identified.`,
+      info: `Run id identified.`,
     });
 
     // parse steps
@@ -260,7 +259,7 @@ export const serveBase = <
               }
               return await routeFunction(workflowContext);
             },
-            onCleanup: async (result) => {              
+            onCleanup: async (result) => {
               await runMiddlewares(middlewares, "runCompleted", {
                 workflowRunId: workflowContext.workflowRunId,
                 result,

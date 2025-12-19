@@ -134,7 +134,7 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
     disableTelemetry: false,
     ...options,
     // merge middlewares
-    middlewares: [(options?.middlewares ?? []), (options?.verbose ? [loggingMiddleware] : [])].flat(),
+    middlewares: [options?.middlewares ?? [], options?.verbose ? [loggingMiddleware] : []].flat(),
   };
 };
 

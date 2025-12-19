@@ -89,7 +89,6 @@ export const submitSingleStep = async ({
   telemetry?: Telemetry;
   middlewares?: WorkflowMiddleware[];
 }) => {
-
   await runMiddlewares(middlewares, "beforeExecution", {
     workflowRunId: context.workflowRunId,
     stepName: lazyStep.stepName,
