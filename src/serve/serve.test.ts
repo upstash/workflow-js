@@ -1246,7 +1246,7 @@ describe("serve", () => {
     test("should not allow when not http:// or https://", async () => {
       const url = "localhost.com";
 
-      const warnSpy = spyOn(console, "warn");
+      const infoSpy = spyOn(console, "info");
 
       const { handler } = serve(
         async (context) => {
@@ -1257,6 +1257,7 @@ describe("serve", () => {
           baseUrl: undefined,
           qstashClient,
           receiver: undefined,
+          verbose: true,
         }
       );
 
@@ -1269,8 +1270,8 @@ describe("serve", () => {
         stack: expect.any(String),
       });
 
-      expect(warnSpy).toHaveBeenCalled();
-      const warnCalls = warnSpy.mock.calls;
+      expect(infoSpy).toHaveBeenCalled();
+      const warnCalls = infoSpy.mock.calls;
       const localhostWarning = warnCalls.find((call: string[]) =>
         call[0]?.includes(`Workflow URL contains localhost`)
       );
