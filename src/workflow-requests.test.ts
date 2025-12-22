@@ -29,6 +29,7 @@ import {
 import { FinishState } from "./integration.test";
 import { getHeaders } from "./qstash/headers";
 import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
+import { MiddlewareManager } from "./middleware/manager";
 
 describe("Workflow Requests", () => {
   test("should preserve WORKFLOW_LABEL_HEADER in recreateUserHeaders", () => {
@@ -60,6 +61,7 @@ describe("Workflow Requests", () => {
       retries: 0,
       retryDelay: "1000 * retried",
       label,
+      middlewareManager: new MiddlewareManager(),
     });
 
     expect(context.label).toBe(label);
@@ -673,6 +675,7 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
+          middlewareManager: new MiddlewareManager(),
         });
 
         expect(result.isOk()).toBeTrue();
@@ -829,6 +832,7 @@ describe("Workflow Requests", () => {
         const resultTwo = await triggerFirstInvocation({
           workflowContext: noRetryContext,
           useJSONContent: false,
+          middlewareManager: new MiddlewareManager(),
         });
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk

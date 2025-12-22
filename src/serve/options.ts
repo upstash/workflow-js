@@ -7,8 +7,8 @@ import {
 } from "../constants";
 import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { formatWorkflowError, WorkflowError } from "../error";
-import { loggingMiddleware, WorkflowMiddleware } from "../middleware";
-import { runMiddlewares } from "../middleware/middleware";
+import { loggingMiddleware } from "../middleware";
+import { DispatchDebug } from "../middleware/types";
 
 /**
  * Fills the options with default values if they are not provided.
@@ -23,10 +23,14 @@ import { runMiddlewares } from "../middleware/middleware";
  * @param options options including the client, onFinish and initialPayloadParser
  * @returns
  */
-export const processOptions = <TResponse extends Response = Response, TInitialPayload = unknown>(
-  options?: WorkflowServeOptions<TResponse, TInitialPayload>
+export const processOptions = <
+  TResponse extends Response = Response,
+  TInitialPayload = unknown,
+  TResult = unknown,
+>(
+  options?: WorkflowServeOptions<TResponse, TInitialPayload, TResult>
 ): RequiredExceptFields<
-  WorkflowServeOptions<TResponse, TInitialPayload>,
+  WorkflowServeOptions<TResponse, TInitialPayload, TResult>,
   | "receiver"
   | "url"
   | "failureFunction"
@@ -54,7 +58,6 @@ export const processOptions = <TResponse extends Response = Response, TInitialPa
       }),
     onStepFinish: (workflowRunId, _finishCondition, detailedFinishCondition) => {
       if (detailedFinishCondition?.condition === "auth-fail") {
-        console.error(AUTH_FAIL_MESSAGE);
         return new Response(
           JSON.stringify({
             message: AUTH_FAIL_MESSAGE,
@@ -157,7 +160,7 @@ export const determineUrls = async <TInitialPayload = unknown>(
   baseUrl: string | undefined,
   failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
   failureUrl: string | undefined,
-  middlewares: WorkflowMiddleware[] | undefined
+  dispatchDebug: DispatchDebug
 ) => {
   const initialWorkflowUrl = url ?? request.url;
   const workflowUrl = baseUrl
@@ -167,7 +170,7 @@ export const determineUrls = async <TInitialPayload = unknown>(
     : initialWorkflowUrl;
 
   if (workflowUrl !== initialWorkflowUrl) {
-    await runMiddlewares(middlewares, "onWarning", {
+    await dispatchDebug("onWarning", {
       warning: `The workflow URL's base URL has been replaced with the provided baseUrl. Original URL: ${initialWorkflowUrl}, New URL: ${workflowUrl}`,
     });
   }
@@ -176,7 +179,7 @@ export const determineUrls = async <TInitialPayload = unknown>(
   const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
 
   if (workflowUrl.includes("localhost")) {
-    await runMiddlewares(middlewares, "onInfo", {
+    await dispatchDebug("onInfo", {
       info: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
     });
   }

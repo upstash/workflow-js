@@ -14,11 +14,12 @@ import {
   TELEMETRY_HEADER_SDK,
   WORKFLOW_LABEL_HEADER,
 } from "./constants";
-import type { Telemetry, WorkflowReceiver, WorkflowServeOptions } from "./types";
+import type { Telemetry, WorkflowReceiver } from "./types";
 import { PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
-import { runMiddlewares } from "./middleware/middleware";
+import { DispatchDebug } from "./middleware/types";
+import { MiddlewareManager } from "./middleware/manager";
 
 type TriggerFirstInvocationParams<TInitialPayload> = {
   workflowContext: WorkflowContext<TInitialPayload>;
@@ -27,7 +28,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   invokeCount?: number;
   delay?: PublishRequest["delay"];
   notBefore?: PublishRequest["notBefore"];
-  middlewares?: WorkflowServeOptions["middlewares"];
+  middlewareManager?: MiddlewareManager;
 };
 
 export const triggerFirstInvocation = async <TInitialPayload>(
@@ -102,13 +103,16 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const invocationParams = firstInvocationParams[i];
+
+      invocationParams.middlewareManager?.assignContext(invocationParams.workflowContext);
+
       if (result.deduplicated) {
-        await runMiddlewares(invocationParams.middlewares, "onWarning", {
+        await invocationParams.middlewareManager?.dispatchDebug("onWarning", {
           warning: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
         });
         invocationStatuses.push("workflow-run-already-exists");
       } else {
-        await runMiddlewares(invocationParams.middlewares, "onInfo", {
+        await invocationParams.middlewareManager?.dispatchDebug("onInfo", {
           info: `Workflow run ${invocationParams.workflowContext.workflowRunId} has been started successfully with URL ${invocationParams.workflowContext.url}.`,
         });
         invocationStatuses.push("success");
@@ -130,16 +134,16 @@ export const triggerFirstInvocation = async <TInitialPayload>(
   }
 };
 
-export const triggerRouteFunction = async ({
+export const triggerRouteFunction = async <TResult = unknown>({
   onCleanup,
   onStep,
   onCancel,
-  middlewares,
+  middlewareManager,
 }: {
-  onStep: () => Promise<unknown>;
-  onCleanup: (result: unknown) => Promise<void>;
+  onStep: () => Promise<TResult>;
+  onCleanup: (result: TResult) => Promise<void>;
   onCancel: () => Promise<void>;
-  middlewares?: WorkflowServeOptions["middlewares"];
+  middlewareManager?: MiddlewareManager;
 }): Promise<
   | Ok<
       | "workflow-finished"
@@ -161,7 +165,7 @@ export const triggerRouteFunction = async ({
   } catch (error) {
     const error_ = error as Error;
     if (isInstanceOf(error, QstashError) && error.status === 400) {
-      await runMiddlewares(middlewares, "onWarning", {
+      await middlewareManager?.dispatchDebug("onWarning", {
         warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error.message}`,
       });
       return ok("workflow-was-finished");
@@ -184,10 +188,10 @@ export const triggerRouteFunction = async ({
 export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   result: unknown,
-  middlewares?: WorkflowServeOptions["middlewares"],
-  cancel = false
+  cancel = false,
+  dispatchDebug?: DispatchDebug
 ): Promise<void> => {
-  await runMiddlewares(middlewares, "onInfo", {
+  await dispatchDebug?.("onInfo", {
     info:
       `Deleting workflow run ${workflowContext.workflowRunId} from QStash` +
       (cancel ? " with cancel=true." : "."),
@@ -198,7 +202,7 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     parseResponseAsJson: false,
     body: JSON.stringify(result),
   });
-  await runMiddlewares(middlewares, "onInfo", {
+  await dispatchDebug?.("onInfo", {
     info: `Workflow run ${workflowContext.workflowRunId} deleted from QStash successfully.`,
   });
 };

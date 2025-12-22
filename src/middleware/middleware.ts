@@ -1,39 +1,17 @@
 import { WorkflowError } from "../error";
-import { MiddlewareCallbacks, MiddlewareInitCallbacks, MiddlewareParameters } from "../types";
+import { MiddlewareCallbacks, MiddlewareInitCallbacks, MiddlewareParameters } from "./types";
 
-export const onErrorWithConsole: Required<MiddlewareCallbacks>["onError"] = async ({
-  workflowRunId,
-  error,
-}) => {
-  console.error(`  [Upstash Workflow]: Error in workflow run ${workflowRunId}: ` + error);
-};
-
-export const onWarningWithConsole: Required<MiddlewareCallbacks>["onWarning"] = async ({
-  workflowRunId,
-  warning,
-}) => {
-  console.warn(`  [Upstash Workflow]: Warning in workflow run ${workflowRunId}: ` + warning);
-};
-
-export const onInfoWithConsole: Required<MiddlewareCallbacks>["onInfo"] = async ({
-  workflowRunId,
-  info,
-}) => {
-  console.info(`  [Upstash Workflow]: Info in workflow run ${workflowRunId}: ` + info);
-};
-
-export class WorkflowMiddleware {
+export class WorkflowMiddleware<TInitialPayload = unknown, TResult = unknown> {
   public readonly name: string;
-  public workflowRunId: string | undefined;
-  private initCallbacks?: MiddlewareInitCallbacks;
+  private initCallbacks?: MiddlewareInitCallbacks<TInitialPayload, TResult>;
   /**
    * Callback functions
    *
    * Initially set to undefined, will be populated after init is called
    */
-  private middlewareCallbacks?: MiddlewareCallbacks = undefined;
+  private middlewareCallbacks?: MiddlewareCallbacks<TInitialPayload, TResult> = undefined;
 
-  constructor(parameters: MiddlewareParameters) {
+  constructor(parameters: MiddlewareParameters<TInitialPayload, TResult>) {
     this.name = parameters.name;
 
     if ("init" in parameters) {
@@ -43,45 +21,7 @@ export class WorkflowMiddleware {
     }
   }
 
-  async runCallback<K extends keyof MiddlewareCallbacks>(
-    callback: K,
-    parameters: Omit<Parameters<NonNullable<MiddlewareCallbacks[K]>>[0], "workflowRunId">
-  ): Promise<boolean> {
-    await this.ensureInit();
-    const cb = this.middlewareCallbacks?.[callback];
-
-    const parametersWithRunId = {
-      ...parameters,
-      workflowRunId: this.workflowRunId,
-    };
-
-    if (cb) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await cb(parametersWithRunId as any);
-      } catch (error) {
-        try {
-          const onErrorCallback = this.middlewareCallbacks?.onError ?? onErrorWithConsole;
-          await onErrorCallback({
-            workflowRunId: parametersWithRunId.workflowRunId,
-            error: error as Error,
-          });
-        } catch (onErrorError) {
-          console.error(
-            `Failed while executing "onError" of middleware "${this.name}", falling back to logging the error to console. Error: ${onErrorError}`
-          );
-          onErrorWithConsole({
-            workflowRunId: parametersWithRunId.workflowRunId,
-            error: error as Error,
-          });
-        }
-      }
-      return true;
-    }
-    return false;
-  }
-
-  private async ensureInit() {
+  async ensureInit() {
     if (!this.middlewareCallbacks) {
       if (!this.initCallbacks) {
         throw new WorkflowError(`Middleware "${this.name}" has no callbacks or init defined.`);
@@ -89,39 +29,10 @@ export class WorkflowMiddleware {
       this.middlewareCallbacks = await this.initCallbacks();
     }
   }
+
+  getCallback<K extends keyof MiddlewareCallbacks<TInitialPayload, TResult>>(
+    callback: K
+  ): MiddlewareCallbacks<TInitialPayload, TResult>[K] | undefined {
+    return this.middlewareCallbacks?.[callback];
+  }
 }
-
-export const runMiddlewares = async <K extends keyof MiddlewareCallbacks>(
-  middlewares: WorkflowMiddleware[] | undefined,
-  callback: K,
-  parameters: Omit<Parameters<NonNullable<MiddlewareCallbacks[K]>>[0], "workflowRunId">
-) => {
-  let executedCount = 0;
-
-  if (middlewares && middlewares.length > 0) {
-    const middlewareExecuted = await Promise.all(
-      middlewares.map(async (m) => {
-        return await m.runCallback(callback, parameters);
-      })
-    );
-    executedCount = middlewareExecuted.filter((executed) => executed).length;
-  }
-
-  // if no middleware handled the onError or onWarning, log to console as a fallback
-  if (executedCount === 0) {
-    if (callback === "onError") {
-      onErrorWithConsole(parameters as { workflowRunId: string; error: Error });
-    } else if (callback === "onWarning") {
-      onWarningWithConsole(parameters as { workflowRunId: string; warning: string });
-    }
-  }
-};
-
-export const setWorkflowRunIdToMiddlewares = async (
-  middlewares: WorkflowMiddleware[] | undefined,
-  workflowRunId: string
-) => {
-  middlewares?.forEach((m) => {
-    m.workflowRunId = workflowRunId;
-  });
-};

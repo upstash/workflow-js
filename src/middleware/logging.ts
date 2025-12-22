@@ -1,11 +1,7 @@
-import {
-  onErrorWithConsole,
-  onInfoWithConsole,
-  onWarningWithConsole,
-  WorkflowMiddleware,
-} from "./middleware";
+import { onErrorWithConsole, onInfoWithConsole, onWarningWithConsole } from "./default-callbacks";
+import { WorkflowMiddleware } from "./middleware";
 
-export const loggingMiddleware = new WorkflowMiddleware({
+export const loggingMiddleware = new WorkflowMiddleware<unknown>({
   name: "logging",
   callbacks: {
     afterExecution(params) {

@@ -1,5 +1,5 @@
 import { describe, test, expect, jest } from "bun:test";
-import { setWorkflowRunIdToMiddlewares, WorkflowMiddleware } from "./middleware";
+import { WorkflowMiddleware } from "./middleware";
 import { Client } from "@upstash/qstash";
 import { getRequest } from "../test-utils";
 import { nanoid } from "../utils";
@@ -15,16 +15,20 @@ const createLoggingMiddleware = () => {
 
       return {
         afterExecution(params) {
-          accumulator.push(["afterExecution", params]);
+          const { context, ...rest } = params;
+          accumulator.push(["afterExecution", { ...rest, workflowRunId: context.workflowRunId }]);
         },
         beforeExecution(params) {
-          accumulator.push(["beforeExecution", params]);
+          const { context, ...rest } = params;
+          accumulator.push(["beforeExecution", { ...rest, workflowRunId: context.workflowRunId }]);
         },
         runStarted(params) {
-          accumulator.push(["runStarted", params]);
+          const { context, ...rest } = params;
+          accumulator.push(["runStarted", { ...rest, workflowRunId: context.workflowRunId }]);
         },
         runCompleted(params) {
-          accumulator.push(["runCompleted", params]);
+          const { context, ...rest } = params;
+          accumulator.push(["runCompleted", { ...rest, workflowRunId: context.workflowRunId }]);
         },
       };
     },
@@ -41,60 +45,6 @@ describe("middleware", () => {
   });
 
   describe("runCallback method", () => {
-    test("should call init and callbacks", async () => {
-      const { middleware, accumulator } = createLoggingMiddleware();
-      setWorkflowRunIdToMiddlewares([middleware], "wfr-id");
-      const stepName = `step-${nanoid()}`;
-
-      await middleware.runCallback("runStarted", { workflowRunId: "wfr-id" });
-      expect(accumulator).toEqual([["init"], ["runStarted", { workflowRunId: "wfr-id" }]]);
-
-      await middleware.runCallback("beforeExecution", {
-        stepName: stepName,
-      });
-      expect(accumulator).toEqual([
-        ["init"],
-        ["runStarted", { workflowRunId: "wfr-id" }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-      ]);
-
-      await middleware.runCallback("beforeExecution", {
-        stepName: stepName,
-      });
-      expect(accumulator).toEqual([
-        ["init"],
-        ["runStarted", { workflowRunId: "wfr-id" }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-      ]);
-
-      const result = "some-result";
-      await middleware.runCallback("afterExecution", {
-        stepName: stepName,
-        result,
-      });
-      expect(accumulator).toEqual([
-        ["init"],
-        ["runStarted", { workflowRunId: "wfr-id" }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["afterExecution", { workflowRunId: "wfr-id", stepName, result }],
-      ]);
-
-      const finishResult = "finished-result";
-      await middleware.runCallback("runCompleted", {
-        result: finishResult,
-      });
-      expect(accumulator).toEqual([
-        ["init"],
-        ["runStarted", { workflowRunId: "wfr-id" }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["beforeExecution", { workflowRunId: "wfr-id", stepName }],
-        ["afterExecution", { workflowRunId: "wfr-id", stepName, result }],
-        ["runCompleted", { workflowRunId: "wfr-id", result: finishResult }],
-      ]);
-    });
-
     describe("with context", () => {
       const stepOneName = `step-one-${nanoid()}`;
       const stepTwoName = `step-two-${nanoid()}`;

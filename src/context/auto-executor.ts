@@ -4,8 +4,7 @@ import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types"
 import { type BaseLazyStep } from "./steps";
 import { QstashError } from "@upstash/qstash";
 import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
-import { WorkflowMiddleware } from "../middleware";
-import { runMiddlewares } from "../middleware/middleware";
+import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -17,7 +16,8 @@ export class AutoExecutor {
   private indexInCurrentList = 0;
   private readonly invokeCount: number;
   private readonly telemetry?: Telemetry;
-  private readonly middlewares?: WorkflowMiddleware[];
+  private readonly dispatchDebug: DispatchDebug;
+  private readonly dispatchLifecycle: DispatchLifecycle;
 
   public stepCount = 0;
   public planStepCount = 0;
@@ -27,15 +27,17 @@ export class AutoExecutor {
   constructor(
     context: WorkflowContext,
     steps: Step[],
+    dispatchDebug: DispatchDebug,
+    dispatchLifecycle: DispatchLifecycle,
     telemetry?: Telemetry,
-    invokeCount?: number,
-    middlewares?: WorkflowMiddleware[]
+    invokeCount?: number
   ) {
     this.context = context;
     this.steps = steps;
+    this.dispatchDebug = dispatchDebug;
+    this.dispatchLifecycle = dispatchLifecycle;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
-    this.middlewares = middlewares;
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -135,7 +137,7 @@ export class AutoExecutor {
         this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
 
       if (isLastMemoized) {
-        runMiddlewares(this.middlewares, "afterExecution", {
+        this.dispatchLifecycle("afterExecution", {
           stepName: lazyStep.stepName,
           result: parsedOut,
         });
@@ -151,7 +153,8 @@ export class AutoExecutor {
       invokeCount: this.invokeCount,
       concurrency: 1,
       telemetry: this.telemetry,
-      middlewares: this.middlewares,
+      dispatchDebug: this.dispatchDebug,
+      dispatchLifecycle: this.dispatchLifecycle,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
   }
@@ -185,7 +188,7 @@ export class AutoExecutor {
       );
     }
 
-    await runMiddlewares(this.middlewares, "onInfo", {
+    await this.dispatchDebug("onInfo", {
       info:
         `Executing parallel steps with: ` +
         JSON.stringify({
@@ -205,7 +208,7 @@ export class AutoExecutor {
           initialStepCount,
           invokeCount: this.invokeCount,
           telemetry: this.telemetry,
-          middlewares: this.middlewares,
+          dispatchDebug: this.dispatchDebug,
         });
         break;
       }
@@ -243,7 +246,8 @@ export class AutoExecutor {
             invokeCount: this.invokeCount,
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
-            middlewares: this.middlewares,
+            dispatchDebug: this.dispatchDebug,
+            dispatchLifecycle: this.dispatchLifecycle,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {
@@ -269,18 +273,16 @@ export class AutoExecutor {
          * running will finish and call QStash eventually.
          */
 
-        if (this.middlewares) {
-          const resultStep = this.steps.at(-1)!;
-          const lazyStep = parallelSteps.find(
-            (planStep, index) => resultStep.stepId - index === initialStepCount
-          );
+        const resultStep = this.steps.at(-1)!;
+        const lazyStep = parallelSteps.find(
+          (planStep, index) => resultStep.stepId - index === initialStepCount
+        );
 
-          if (lazyStep) {
-            runMiddlewares(this.middlewares, "afterExecution", {
-              stepName: lazyStep.stepName,
-              result: lazyStep.parseOut(resultStep),
-            });
-          }
+        if (lazyStep) {
+          this.dispatchLifecycle("afterExecution", {
+            stepName: lazyStep.stepName,
+            result: lazyStep.parseOut(resultStep),
+          });
         }
 
         throw new WorkflowAbort("discarded parallel");
@@ -298,20 +300,18 @@ export class AutoExecutor {
 
         validateParallelSteps(parallelSteps, parallelResultSteps);
 
-        if (this.middlewares) {
-          const isLastMemoized =
-            this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
-          if (isLastMemoized) {
-            const resultStep = this.steps.at(-1)!;
-            const lazyStep = parallelSteps.find(
-              (planStep, index) => resultStep.stepId - index === initialStepCount
-            )!;
+        const isLastMemoized =
+          this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
+        if (isLastMemoized) {
+          const resultStep = this.steps.at(-1)!;
+          const lazyStep = parallelSteps.find(
+            (planStep, index) => resultStep.stepId - index === initialStepCount
+          )!;
 
-            runMiddlewares(this.middlewares, "afterExecution", {
-              stepName: lazyStep.stepName,
-              result: lazyStep.parseOut(resultStep),
-            });
-          }
+          this.dispatchLifecycle("afterExecution", {
+            stepName: lazyStep.stepName,
+            result: lazyStep.parseOut(resultStep),
+          });
         }
 
         return parallelResultSteps.map((step, index) =>

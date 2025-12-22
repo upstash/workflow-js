@@ -157,9 +157,25 @@ export type DetailedFinishCondition =
       result: string | void;
     };
 
+type WorkflowContextWithoutMethods<TInitialPayload> = Omit<
+  WorkflowContext<TInitialPayload>,
+  | "run"
+  | "sleepUntil"
+  | "sleep"
+  | "call"
+  | "waitForEvent"
+  | "notify"
+  | "cancel"
+  | "api"
+  | "invoke"
+  | "createWebhook"
+  | "waitForWebhook"
+>;
+
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
+  TResult = unknown,
 > = ValidationOptions<TInitialPayload> & {
   /**
    * QStash client
@@ -206,18 +222,7 @@ export type WorkflowServeOptions<
    * @returns void
    */
   failureFunction?: (failureData: {
-    context: Omit<
-      WorkflowContext<TInitialPayload>,
-      | "run"
-      | "sleepUntil"
-      | "sleep"
-      | "call"
-      | "waitForEvent"
-      | "notify"
-      | "cancel"
-      | "api"
-      | "invoke"
-    >;
+    context: WorkflowContextWithoutMethods<TInitialPayload>;
     failStatus: number;
     failResponse: string;
     failHeaders: Record<string, string[]>;
@@ -303,7 +308,7 @@ export type WorkflowServeOptions<
   /**
    * List of workflow middlewares to use
    */
-  middlewares?: WorkflowMiddleware[];
+  middlewares?: WorkflowMiddleware<TInitialPayload, TResult>[];
   /**
    * Whether to enable verbose logging for debugging purposes
    */
@@ -608,31 +613,3 @@ export type InvokableWorkflow<TInitialPayload, TResult> = {
   options: WorkflowServeOptions<Response, TInitialPayload>;
   workflowId?: string;
 };
-
-export type MiddlewareCallbacks = {
-  beforeExecution?: (params: { workflowRunId: string; stepName: string }) => Promise<void> | void;
-  afterExecution?: (params: {
-    workflowRunId: string;
-    stepName: string;
-    result: unknown;
-  }) => Promise<void> | void;
-  runStarted?: (params: { workflowRunId: string }) => Promise<void> | void;
-  runCompleted?: (params: { workflowRunId: string; result: unknown }) => Promise<void> | void;
-  onError?: (params: { workflowRunId?: string; error: Error }) => Promise<void> | void;
-  onWarning?: (params: { workflowRunId?: string; warning: string }) => Promise<void> | void;
-  onInfo?: (params: { workflowRunId?: string; info: string }) => Promise<void> | void;
-};
-
-export type MiddlewareInitCallbacks = () => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
-
-export type MiddlewareCallbackConfig =
-  | {
-      init: MiddlewareInitCallbacks;
-    }
-  | {
-      callbacks: MiddlewareCallbacks;
-    };
-
-export type MiddlewareParameters = {
-  name: string;
-} & MiddlewareCallbackConfig;

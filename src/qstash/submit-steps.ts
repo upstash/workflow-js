@@ -4,8 +4,7 @@ import { Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
 import { getHeaders } from "./headers";
-import { WorkflowMiddleware } from "../middleware";
-import { runMiddlewares } from "../middleware/middleware";
+import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
 export const submitParallelSteps = async ({
   context,
@@ -13,20 +12,20 @@ export const submitParallelSteps = async ({
   initialStepCount,
   invokeCount,
   telemetry,
-  middlewares,
+  dispatchDebug,
 }: {
   context: WorkflowContext;
   steps: BaseLazyStep[];
   initialStepCount: number;
   invokeCount: number;
   telemetry?: Telemetry;
-  middlewares?: WorkflowMiddleware[];
+  dispatchDebug: DispatchDebug;
 }) => {
   const planSteps = steps.map((step, index) =>
     step.getPlanStep(steps.length, initialStepCount + index)
   );
 
-  await runMiddlewares(middlewares, "onInfo", {
+  await dispatchDebug("onInfo", {
     info: `Submitting ${planSteps.length} parallel steps.`,
   });
 
@@ -59,7 +58,7 @@ export const submitParallelSteps = async ({
   )) as { messageId: string }[];
 
   if (result && result.length > 0) {
-    await runMiddlewares(middlewares, "onInfo", {
+    await dispatchDebug("onInfo", {
       info: `Submitted ${planSteps.length} parallel steps. messageIds: ${result
         .filter((r) => r)
         .map((r) => r.messageId)
@@ -77,7 +76,8 @@ export const submitSingleStep = async ({
   invokeCount,
   concurrency,
   telemetry,
-  middlewares,
+  dispatchDebug,
+  dispatchLifecycle,
 }: {
   context: WorkflowContext;
   lazyStep: BaseLazyStep;
@@ -85,9 +85,10 @@ export const submitSingleStep = async ({
   invokeCount: number;
   concurrency: number;
   telemetry?: Telemetry;
-  middlewares?: WorkflowMiddleware[];
+  dispatchDebug: DispatchDebug;
+  dispatchLifecycle: DispatchLifecycle;
 }) => {
-  await runMiddlewares(middlewares, "beforeExecution", {
+  await dispatchLifecycle("beforeExecution", {
     stepName: lazyStep.stepName,
   });
 
@@ -118,7 +119,7 @@ export const submitSingleStep = async ({
   });
 
   if (submitResult && submitResult[0]) {
-    await runMiddlewares(middlewares, "onInfo", {
+    await dispatchDebug("onInfo", {
       info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
     });
   }

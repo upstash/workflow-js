@@ -28,7 +28,7 @@ import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { FlowControl } from "@upstash/qstash";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
-import { WorkflowMiddleware } from "../middleware";
+import { MiddlewareManager } from "../middleware/manager";
 
 /**
  * Upstash Workflow context
@@ -226,7 +226,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     invokeCount,
     flowControl,
     label,
-    middlewares,
+    middlewareManager,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -242,7 +242,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     invokeCount?: number;
     flowControl?: FlowControl;
     label?: string;
-    middlewares?: WorkflowMiddleware[];
+    middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -257,7 +257,18 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.flowControl = flowControl;
     this.label = label;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, middlewares);
+    const middlewareManagerInstance =
+      middlewareManager ?? new MiddlewareManager<TInitialPayload, unknown>([]);
+    middlewareManagerInstance.assignContext(this);
+
+    this.executor = new AutoExecutor(
+      this,
+      this.steps,
+      middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
+      middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
+      telemetry,
+      invokeCount
+    );
   }
 
   /**
@@ -330,7 +341,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } else {
       datetime = typeof datetime === "string" ? new Date(datetime) : datetime;
       // get unix seconds
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       time = Math.round(datetime.getTime() / 1000);
     }
     await this.addStep(new LazySleepUntilStep(this, stepName, time));
