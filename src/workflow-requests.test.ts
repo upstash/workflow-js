@@ -2,6 +2,7 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
 import {
+  handleThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
@@ -30,6 +31,7 @@ import { FinishState } from "./integration.test";
 import { getHeaders } from "./qstash/headers";
 import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
 import { MiddlewareManager } from "./middleware/manager";
+import { Step, StepType } from "./types";
 
 describe("Workflow Requests", () => {
   test("should preserve WORKFLOW_LABEL_HEADER in recreateUserHeaders", () => {
@@ -346,6 +348,210 @@ describe("Workflow Requests", () => {
 
     expect(newHeaders.get("Upstash-Workflow-Other-Header")).toBe(null);
     expect(newHeaders.get("My-Header")).toBe("value2");
+  });
+
+  describe("handleThirdPartyCallResult", () => {
+    test("should POST third party call results in is-call-return case", async () => {
+      // request parameters
+      const thirdPartyCallResult = "third-party-call-result";
+      const requestPayload = { status: 200, body: btoa(thirdPartyCallResult) };
+      const stepName = "test step";
+      const stepType: StepType = "Run";
+      const workflowRunId = nanoid();
+
+      // create client
+      const token = nanoid();
+      const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+
+      // create the request which will be received by the serve method:
+      const request = new Request(WORKFLOW_ENDPOINT, {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+        headers: new Headers({
+          "Upstash-Workflow-Callback": "true",
+          "Upstash-Workflow-StepId": "3",
+          "Upstash-Workflow-StepName": stepName,
+          "Upstash-Workflow-StepType": stepType,
+          "Upstash-Workflow-Concurrent": "1",
+          "Upstash-Workflow-ContentType": "application/json",
+          [WORKFLOW_ID_HEADER]: workflowRunId,
+        }),
+      });
+
+      // create mock server and run the code
+      await mockQStashServer({
+        execute: async () => {
+          const result = await handleThirdPartyCallResult({
+            request,
+            requestPayload: await request.text(),
+            client,
+            workflowUrl: WORKFLOW_ENDPOINT,
+            failureUrl: WORKFLOW_ENDPOINT,
+            retries: 2,
+            retryDelay: "1000",
+            telemetry: {
+              framework: "some-platform",
+              sdk: "some-sdk",
+            },
+          });
+          expect(result.isOk()).toBeTrue();
+          // @ts-expect-error value will be set since stepFinish isOk
+          expect(result.value).toBe("is-call-return");
+        },
+        responseFields: {
+          body: { messageId: "msgId" },
+          status: 200,
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          body: {
+            stepId: 3,
+            stepName: stepName,
+            stepType: stepType,
+            out: '{"status":200,"body":"third-party-call-result"}',
+            concurrent: 1,
+          },
+          headers: {
+            "upstash-retries": "2",
+            "upstash-retry-delay": "1000",
+            "upstash-failure-callback": WORKFLOW_ENDPOINT,
+          },
+        },
+      });
+    });
+
+    test("should do nothing in call-will-retry case", async () => {
+      // in this test, the SDK receives a request with "Upstash-Workflow-Callback": "true"
+      // but the status is not OK, so we have to do nothing return `call-will-retry`
+
+      // request parameters
+      const thirdPartyCallResult = "third-party-call-result";
+
+      // status set to 404 which should make QStash retry. workflow sdk should do nothing
+      // in this case
+      const requestPayload = {
+        status: 404,
+        body: btoa(thirdPartyCallResult),
+        maxRetries: 3,
+        retried: 1,
+      };
+      const stepName = "test step";
+      const stepType: StepType = "Run";
+      const workflowRunId = nanoid();
+
+      // create client
+      const token = "myToken";
+      const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
+
+      // create the request which will be received by the serve method:
+      const request = new Request(WORKFLOW_ENDPOINT, {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+        headers: new Headers({
+          "Upstash-Workflow-Callback": "true",
+          "Upstash-Workflow-StepId": "3",
+          "Upstash-Workflow-StepName": stepName,
+          "Upstash-Workflow-StepType": stepType,
+          "Upstash-Workflow-Concurrent": "1",
+          "Upstash-Workflow-ContentType": "application/json",
+          [WORKFLOW_ID_HEADER]: workflowRunId,
+        }),
+      });
+
+      const spy = spyOn(client, "publishJSON");
+      const result = await handleThirdPartyCallResult({
+        request,
+        requestPayload: await request.text(),
+        client,
+        workflowUrl: WORKFLOW_ENDPOINT,
+        failureUrl: WORKFLOW_ENDPOINT,
+        retries: 3,
+        retryDelay: "1000",
+        telemetry: {
+          framework: "some-platform",
+          sdk: "some-sdk",
+        },
+      });
+      expect(result.isOk()).toBeTrue();
+      // @ts-expect-error value will be set since stepFinish isOk
+      expect(result.value).toBe("call-will-retry");
+      expect(spy).toHaveBeenCalledTimes(0);
+    });
+
+    test("should do nothing in continue-workflow case", async () => {
+      // payload is a list of steps
+      const initialPayload = "my-payload";
+      const requestPayload: Step[] = [
+        {
+          stepId: 1,
+          stepName: "step name",
+          stepType: "Run",
+          concurrent: 1,
+        },
+      ];
+      const workflowRunId = nanoid();
+
+      // create client
+      const token = "myToken";
+      const client = new Client({ baseUrl: MOCK_SERVER_URL, token });
+
+      // create the request which will be received by the serve method:
+      const initialRequest = new Request(WORKFLOW_ENDPOINT, {
+        method: "POST",
+        body: initialPayload,
+        headers: new Headers({}),
+      });
+
+      const workflowRequest = new Request(WORKFLOW_ENDPOINT, {
+        method: "POST",
+        body: JSON.stringify([initialPayload, requestPayload]),
+        headers: new Headers({
+          [WORKFLOW_INIT_HEADER]: "false",
+          [WORKFLOW_ID_HEADER]: workflowRunId,
+          [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
+          [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
+        }),
+      });
+
+      const spy = spyOn(client, "publishJSON");
+      const initialResult = await handleThirdPartyCallResult({
+        request: initialRequest,
+        requestPayload: await initialRequest.text(),
+        client,
+        workflowUrl: WORKFLOW_ENDPOINT,
+        failureUrl: WORKFLOW_ENDPOINT,
+        retries: 5,
+        retryDelay: "1000",
+        telemetry: {
+          framework: "some-platform",
+          sdk: "some-sdk",
+        },
+      });
+      expect(initialResult.isOk()).toBeTrue();
+      // @ts-expect-error value will be set since stepFinish isOk
+      expect(initialResult.value).toBe("continue-workflow");
+      expect(spy).toHaveBeenCalledTimes(0);
+
+      // second call
+      const result = await handleThirdPartyCallResult({
+        request: workflowRequest,
+        requestPayload: await workflowRequest.text(),
+        client,
+        workflowUrl: WORKFLOW_ENDPOINT,
+        failureUrl: WORKFLOW_ENDPOINT,
+        retries: 0,
+        telemetry: {
+          framework: "some-platform",
+          sdk: "some-sdk",
+        },
+      });
+      expect(result.isOk()).toBeTrue();
+      // @ts-expect-error value will be set since stepFinish isOk
+      expect(result.value).toBe("continue-workflow");
+      expect(spy).toHaveBeenCalledTimes(0);
+    });
   });
 
   describe("getHeaders", () => {
