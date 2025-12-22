@@ -113,7 +113,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         invocationStatuses.push("workflow-run-already-exists");
       } else {
         await invocationParams.middlewareManager?.dispatchDebug("onInfo", {
-          info: `Workflow run ${invocationParams.workflowContext.workflowRunId} has been started successfully with URL ${invocationParams.workflowContext.url}.`,
+          info: `Workflow run started successfully with URL ${invocationParams.workflowContext.url}.`,
         });
         invocationStatuses.push("success");
       }
