@@ -5,16 +5,32 @@ export const loggingMiddleware = new WorkflowMiddleware<unknown>({
   name: "logging",
   callbacks: {
     afterExecution(params) {
-      console.log("  [Upstash Workflow]: Step executed:", params);
+      const { context, ...rest } = params;
+      console.log("  [Upstash Workflow]: Step executed:", {
+        workflowRunId: context.workflowRunId,
+        ...rest,
+      });
     },
     beforeExecution(params) {
-      console.log("  [Upstash Workflow]: Step execution started:", params);
+      const { context, ...rest } = params;
+      console.log("  [Upstash Workflow]: Step execution started:", {
+        workflowRunId: context.workflowRunId,
+        ...rest,
+      });
     },
     runStarted(params) {
-      console.log("  [Upstash Workflow]: Workflow run started:", params);
+      const { context, ...rest } = params;
+      console.log("  [Upstash Workflow]: Workflow run started:", {
+        workflowRunId: context.workflowRunId,
+        ...rest,
+      });
     },
     runCompleted(params) {
-      console.log("  [Upstash Workflow]: Workflow run completed:", params);
+      const { context, ...rest } = params;
+      console.log("  [Upstash Workflow]: Workflow run completed:", {
+        workflowRunId: context.workflowRunId,
+        ...rest,
+      });
     },
     onError: onErrorWithConsole,
     onWarning: onWarningWithConsole,

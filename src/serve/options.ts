@@ -170,8 +170,8 @@ export const determineUrls = async <TInitialPayload = unknown>(
     : initialWorkflowUrl;
 
   if (workflowUrl !== initialWorkflowUrl) {
-    await dispatchDebug("onWarning", {
-      warning: `The workflow URL's base URL has been replaced with the provided baseUrl. Original URL: ${initialWorkflowUrl}, New URL: ${workflowUrl}`,
+    await dispatchDebug("onInfo", {
+      info: `The workflow URL's base URL has been replaced with the provided baseUrl. Original URL: ${initialWorkflowUrl}, New URL: ${workflowUrl}`,
     });
   }
 
