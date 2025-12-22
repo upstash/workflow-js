@@ -126,6 +126,7 @@ const deduplicateSteps = (steps: Step[]): Step[] => {
  */
 const checkIfLastOneIsDuplicate = async (
   steps: Step[],
+  workflowRunId: string,
   middlewares?: WorkflowServeOptions["middlewares"]
 ): Promise<boolean> => {
   // return false if the length is 0 or 1
@@ -144,7 +145,6 @@ const checkIfLastOneIsDuplicate = async (
         "  has run twice during workflow execution. Rest of the workflow will continue running as usual.";
 
       await runMiddlewares(middlewares, "onWarning", {
-        workflowRunId: "unknown",
         warning: message,
       });
       return true;
@@ -236,7 +236,6 @@ export const parseRequest = async (
 
     if (!requestPayload) {
       await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId,
         info: "request payload is empty, steps will be fetched from QStash.",
       });
 
@@ -260,7 +259,7 @@ export const parseRequest = async (
     }
     const { rawInitialPayload, steps } = processRawSteps(rawSteps);
 
-    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, middlewares);
+    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, workflowRunId, middlewares);
     const deduplicatedSteps = deduplicateSteps(steps);
 
     return {
@@ -374,7 +373,6 @@ export const handleFailure = async <TInitialPayload>(
     if (authCheck.isErr()) {
       // got error while running until first step
       await runMiddlewares(middlewares, "onError", {
-        workflowRunId,
         error: authCheck.error,
       });
       return err(authCheck.error);

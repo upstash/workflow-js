@@ -136,7 +136,6 @@ export class AutoExecutor {
 
       if (isLastMemoized) {
         runMiddlewares(this.middlewares, "afterExecution", {
-          workflowRunId: this.context.workflowRunId,
           stepName: lazyStep.stepName,
           result: parsedOut,
         });
@@ -187,7 +186,6 @@ export class AutoExecutor {
     }
 
     await runMiddlewares(this.middlewares, "onInfo", {
-      workflowRunId: this.context.workflowRunId,
       info:
         `Executing parallel steps with: ` +
         JSON.stringify({
@@ -279,7 +277,6 @@ export class AutoExecutor {
 
           if (lazyStep) {
             runMiddlewares(this.middlewares, "afterExecution", {
-              workflowRunId: this.context.workflowRunId,
               stepName: lazyStep.stepName,
               result: lazyStep.parseOut(resultStep),
             });
@@ -311,7 +308,6 @@ export class AutoExecutor {
             )!;
 
             runMiddlewares(this.middlewares, "afterExecution", {
-              workflowRunId: this.context.workflowRunId,
               stepName: lazyStep.stepName,
               result: lazyStep.parseOut(resultStep),
             });

@@ -12,22 +12,10 @@ import {
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
   TELEMETRY_HEADER_SDK,
-  WORKFLOW_ID_HEADER,
-  WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
 } from "./constants";
-import type {
-  CallResponse,
-  Step,
-  StepType,
-  Telemetry,
-  WorkflowClient,
-  WorkflowReceiver,
-  WorkflowServeOptions,
-} from "./types";
-import { StepTypes } from "./types";
-import { FlowControl, PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
-import { getSteps } from "./client/utils";
+import type { Telemetry, WorkflowReceiver, WorkflowServeOptions } from "./types";
+import { PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
 import { runMiddlewares } from "./middleware/middleware";
@@ -116,13 +104,11 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       const invocationParams = firstInvocationParams[i];
       if (result.deduplicated) {
         await runMiddlewares(invocationParams.middlewares, "onWarning", {
-          workflowRunId: invocationParams.workflowContext.workflowRunId,
           warning: `Workflow run ${invocationParams.workflowContext.workflowRunId} already exists. A new one isn't created.`,
         });
         invocationStatuses.push("workflow-run-already-exists");
       } else {
         await runMiddlewares(invocationParams.middlewares, "onInfo", {
-          workflowRunId: invocationParams.workflowContext.workflowRunId,
           info: `Workflow run ${invocationParams.workflowContext.workflowRunId} has been started successfully with URL ${invocationParams.workflowContext.url}.`,
         });
         invocationStatuses.push("success");
@@ -176,7 +162,6 @@ export const triggerRouteFunction = async ({
     const error_ = error as Error;
     if (isInstanceOf(error, QstashError) && error.status === 400) {
       await runMiddlewares(middlewares, "onWarning", {
-        workflowRunId: "unknown",
         warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error.message}`,
       });
       return ok("workflow-was-finished");
@@ -203,7 +188,6 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
   cancel = false
 ): Promise<void> => {
   await runMiddlewares(middlewares, "onInfo", {
-    workflowRunId: workflowContext.workflowRunId,
     info:
       `Deleting workflow run ${workflowContext.workflowRunId} from QStash` +
       (cancel ? " with cancel=true." : "."),
@@ -215,7 +199,6 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     body: JSON.stringify(result),
   });
   await runMiddlewares(middlewares, "onInfo", {
-    workflowRunId: workflowContext.workflowRunId,
     info: `Workflow run ${workflowContext.workflowRunId} deleted from QStash successfully.`,
   });
 };
@@ -253,198 +236,6 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
   }
 
   return filteredHeaders as Headers;
-};
-
-/**
- * Checks if the request is from a third party call result. If so,
- * calls QStash to add the result to the ongoing workflow.
- *
- * Otherwise, does nothing.
- *
- * ### How third party calls work
- *
- * In third party calls, we publish a message to the third party API.
- * the result is then returned back to the workflow endpoint.
- *
- * Whenever the workflow endpoint receives a request, we first check
- * if the incoming request is a third party call result coming from QStash.
- * If so, we send back the result to QStash as a result step.
- *
- * @param request Incoming request
- * @param client QStash client
- * @returns
- */
-export const handleThirdPartyCallResult = async ({
-  request,
-  requestPayload,
-  client,
-  workflowUrl,
-  failureUrl,
-  retries,
-  retryDelay,
-  telemetry,
-  flowControl,
-  middlewares,
-}: {
-  request: Request;
-  requestPayload: string;
-  client: WorkflowClient;
-  workflowUrl: string;
-  failureUrl: WorkflowServeOptions["failureUrl"];
-  retries: number;
-  retryDelay?: string;
-  telemetry?: Telemetry;
-  flowControl?: FlowControl;
-  middlewares?: WorkflowServeOptions["middlewares"];
-}): Promise<
-  | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
-  | Err<never, Error>
-> => {
-  try {
-    if (request.headers.get("Upstash-Workflow-Callback")) {
-      let callbackPayload: string;
-      if (requestPayload) {
-        callbackPayload = requestPayload;
-      } else {
-        const workflowRunId = request.headers.get("upstash-workflow-runid");
-        const messageId = request.headers.get("upstash-message-id");
-
-        if (!workflowRunId)
-          throw new WorkflowError("workflow run id missing in context.call lazy fetch.");
-        if (!messageId) throw new WorkflowError("message id missing in context.call lazy fetch.");
-
-        const { steps, workflowRunEnded } = await getSteps(
-          client.http,
-          workflowRunId,
-          messageId,
-          middlewares
-        );
-        if (workflowRunEnded) {
-          return ok("workflow-ended");
-        }
-        const failingStep = steps.find((step) => step.messageId === messageId);
-
-        if (!failingStep)
-          throw new WorkflowError(
-            "Failed to submit the context.call. " +
-              (steps.length === 0
-                ? "No steps found."
-                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
-          );
-
-        callbackPayload = atob(failingStep.body);
-      }
-
-      const callbackMessage = JSON.parse(callbackPayload) as {
-        status: number;
-        body?: string;
-        retried?: number; // only set after the first try
-        maxRetries: number;
-        header: Record<string, string[]>;
-      };
-
-      if (
-        !(callbackMessage.status >= 200 && callbackMessage.status < 300) &&
-        callbackMessage.maxRetries &&
-        callbackMessage.retried !== callbackMessage.maxRetries
-      ) {
-        await runMiddlewares(middlewares, "onWarning", {
-          workflowRunId: request.headers.get(WORKFLOW_ID_HEADER) ?? "unknown",
-          warning:
-            `Workflow Warning: "context.call" failed with status ${callbackMessage.status}` +
-            ` and will retry (retried ${callbackMessage.retried ?? 0} out of ${callbackMessage.maxRetries} times).` +
-            ` Error Message:\n${atob(callbackMessage.body ?? "")}`,
-        });
-        // this callback will be retried by the QStash, we just ignore it
-        return ok("call-will-retry");
-      }
-
-      const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
-      const stepIdString = request.headers.get("Upstash-Workflow-StepId");
-      const stepName = request.headers.get("Upstash-Workflow-StepName");
-      const stepType = request.headers.get("Upstash-Workflow-StepType") as StepType;
-      const concurrentString = request.headers.get("Upstash-Workflow-Concurrent");
-      const contentType = request.headers.get("Upstash-Workflow-ContentType");
-      const invokeCount = request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER);
-
-      if (
-        !(
-          (
-            workflowRunId &&
-            stepIdString &&
-            stepName &&
-            StepTypes.includes(stepType) &&
-            concurrentString &&
-            contentType
-          )
-          // not adding invokeCount to required for backwards compatibility.
-        )
-      ) {
-        throw new Error(
-          `Missing info in callback message source header: ${JSON.stringify({
-            workflowRunId,
-            stepIdString,
-            stepName,
-            stepType,
-            concurrentString,
-            contentType,
-          })}`
-        );
-      }
-
-      const userHeaders = recreateUserHeaders(request.headers as Headers);
-      const { headers: requestHeaders } = getHeaders({
-        initHeaderValue: "false",
-        workflowConfig: {
-          workflowRunId,
-          workflowUrl,
-          failureUrl,
-          retries,
-          retryDelay,
-          telemetry,
-          flowControl,
-        },
-        userHeaders,
-        invokeCount: Number(invokeCount),
-      });
-
-      const callResponse: CallResponse = {
-        status: callbackMessage.status,
-        body: atob(callbackMessage.body ?? ""),
-        header: callbackMessage.header,
-      };
-      const callResultStep: Step<string> = {
-        stepId: Number(stepIdString),
-        stepName,
-        stepType,
-        out: JSON.stringify(callResponse),
-        concurrent: Number(concurrentString),
-      };
-
-      await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId,
-        info:
-          `Submitting call result for step "${stepName}" ` +
-          `of workflow run "${workflowRunId}" with status ${callResponse.status}.`,
-      });
-
-      await client.publishJSON({
-        headers: requestHeaders,
-        method: "POST",
-        body: callResultStep,
-        url: workflowUrl,
-      });
-
-      return ok("is-call-return");
-    } else {
-      return ok("continue-workflow");
-    }
-  } catch (error) {
-    const isCallReturn = request.headers.get("Upstash-Workflow-Callback");
-    return err(
-      new WorkflowError(`Error when handling call return (isCallReturn=${isCallReturn}): ${error}`)
-    );
-  }
 };
 
 export type HeadersResponse = {

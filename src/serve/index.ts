@@ -13,7 +13,7 @@ import {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "../error";
-import { runMiddlewares } from "../middleware/middleware";
+import { runMiddlewares, setWorkflowRunIdToMiddlewares } from "../middleware/middleware";
 import {
   ExclusiveValidationOptions,
   RouteFunction,
@@ -22,7 +22,6 @@ import {
 } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
-  handleThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
@@ -88,7 +87,6 @@ export const serveBase = <
    */
   const handler = async (request: TRequest) => {
     await runMiddlewares(middlewares, "onInfo", {
-      workflowRunId: "unknown",
       info: `Received request for workflow execution.`,
     });
 
@@ -108,8 +106,8 @@ export const serveBase = <
     // validation & parsing
     const { isFirstInvocation, workflowRunId } = validateRequest(request);
 
+    setWorkflowRunIdToMiddlewares(middlewares, workflowRunId);
     await runMiddlewares(middlewares, "onInfo", {
-      workflowRunId: workflowRunId,
       info: `Run id identified.`,
     });
 
@@ -156,7 +154,6 @@ export const serveBase = <
     } else if (failureCheck.value.result === "failure-function-executed") {
       // is a failure ballback.
       await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId: workflowRunId,
         info: `Handled failure callback.`,
       });
       return onStepFinish(workflowRunId, "failure-callback-executed", {
@@ -165,7 +162,6 @@ export const serveBase = <
       });
     } else if (failureCheck.value.result === "failure-function-undefined") {
       await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId: workflowRunId,
         info: `Failure callback invoked but no failure function defined.`,
       });
       return onStepFinish(workflowRunId, "failure-callback-undefined", {
@@ -203,7 +199,6 @@ export const serveBase = <
     if (authCheck.isErr()) {
       // got error while running until first step
       await runMiddlewares(middlewares, "onError", {
-        workflowRunId,
         error: authCheck.error,
       });
       throw authCheck.error;
@@ -211,7 +206,6 @@ export const serveBase = <
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
       await runMiddlewares(middlewares, "onError", {
-        workflowRunId,
         error: new Error(AUTH_FAIL_MESSAGE),
       });
       return onStepFinish(
@@ -221,100 +215,63 @@ export const serveBase = <
       );
     }
 
-    // check if request is a third party call result
-    const callReturnCheck = await handleThirdPartyCallResult({
-      request,
-      requestPayload: rawInitialPayload,
-      client: qstashClient,
-      workflowUrl,
-      failureUrl: workflowFailureUrl,
-      retries,
-      retryDelay,
-      flowControl,
-      telemetry,
-      middlewares,
-    });
-    if (callReturnCheck.isErr()) {
-      // error while checking
-      await runMiddlewares(middlewares, "onError", {
-        workflowRunId,
-        error: callReturnCheck.error,
-      });
-      throw callReturnCheck.error;
-    } else if (callReturnCheck.value === "continue-workflow") {
-      // request is not third party call. Continue workflow as usual
-      const result = isFirstInvocation
-        ? await triggerFirstInvocation({
-            workflowContext,
-            useJSONContent,
-            telemetry,
-            invokeCount,
-          })
-        : await triggerRouteFunction({
-            onStep: async () => {
-              if (steps.length === 1) {
-                await runMiddlewares(middlewares, "runStarted", {
-                  workflowRunId: workflowContext.workflowRunId,
-                });
-              }
-              return await routeFunction(workflowContext);
-            },
-            onCleanup: async (result) => {
-              await runMiddlewares(middlewares, "runCompleted", {
+    const result = isFirstInvocation
+      ? await triggerFirstInvocation({
+          workflowContext,
+          useJSONContent,
+          telemetry,
+          invokeCount,
+          middlewares,
+        })
+      : await triggerRouteFunction({
+          onStep: async () => {
+            if (steps.length === 1) {
+              await runMiddlewares(middlewares, "runStarted", {
                 workflowRunId: workflowContext.workflowRunId,
-                result,
               });
-              await triggerWorkflowDelete(workflowContext, result, middlewares);
-            },
-            onCancel: async () => {
-              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-            },
-          });
-
-      if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
-        return onStepFinish(workflowRunId, result.value, {
-          condition: "non-retryable-error",
-          result: result.value,
+            }
+            return await routeFunction(workflowContext);
+          },
+          onCleanup: async (result) => {
+            await runMiddlewares(middlewares, "runCompleted", {
+              result,
+            });
+            await triggerWorkflowDelete(workflowContext, result, middlewares);
+          },
+          onCancel: async () => {
+            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+          },
+          middlewares,
         });
-      }
 
-      if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
-        return onStepFinish(workflowRunId, result.value, {
-          condition: "retry-after-error",
-          result: result.value,
-        });
-      }
-
-      if (result.isErr()) {
-        // error while running the workflow or when cleaning up
-        await runMiddlewares(middlewares, "onError", {
-          workflowRunId,
-          error: result.error,
-        });
-        throw result.error;
-      }
-
-      // Returns a Response with `workflowRunId` at the end of each step.
-      await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId: workflowContext.workflowRunId,
-        info: `Workflow endpoint execution completed successfully.`,
-      });
-      return onStepFinish(workflowContext.workflowRunId, "success", {
-        condition: "success",
-      });
-    } else if (callReturnCheck.value === "workflow-ended") {
-      return onStepFinish(workflowContext.workflowRunId, "workflow-already-ended", {
-        condition: "workflow-already-ended",
+    if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
+      return onStepFinish(workflowRunId, result.value, {
+        condition: "non-retryable-error",
+        result: result.value,
       });
     }
-    // response to QStash in call cases
 
+    if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
+      return onStepFinish(workflowRunId, result.value, {
+        condition: "retry-after-error",
+        result: result.value,
+      });
+    }
+
+    if (result.isErr()) {
+      // error while running the workflow or when cleaning up
+      await runMiddlewares(middlewares, "onError", {
+        error: result.error,
+      });
+      throw result.error;
+    }
+
+    // Returns a Response with `workflowRunId` at the end of each step.
     await runMiddlewares(middlewares, "onInfo", {
-      workflowRunId: workflowContext.workflowRunId,
-      info: `Handled third party call result.`,
+      info: `Workflow endpoint execution completed successfully.`,
     });
-    return onStepFinish("no-workflow-id", "fromCallback", {
-      condition: "fromCallback",
+    return onStepFinish(workflowContext.workflowRunId, "success", {
+      condition: "success",
     });
   };
 
@@ -324,7 +281,6 @@ export const serveBase = <
     } catch (error) {
       const formattedError = formatWorkflowError(error);
       await runMiddlewares(middlewares, "onError", {
-        workflowRunId: "unknown",
         error: isInstanceOf(error, Error) ? error : new Error(formattedError.message),
       });
       return new Response(JSON.stringify(formattedError), {

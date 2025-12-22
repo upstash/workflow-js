@@ -71,7 +71,6 @@ export const getSteps = async (
 
     if (!messageId) {
       await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId,
         info:
           `Pulled ${steps.length} steps from QStash` +
           `and returned them without filtering with messageId.`,
@@ -87,7 +86,6 @@ export const getSteps = async (
 
       const filteredSteps = steps.slice(0, index + 1);
       await runMiddlewares(middlewares, "onInfo", {
-        workflowRunId,
         info:
           `Pulled ${steps.length} steps from QStash` +
           ` and filtered them to ${filteredSteps.length} using messageId.`,
@@ -97,7 +95,6 @@ export const getSteps = async (
   } catch (error) {
     if (isInstanceOf(error, QstashError) && error.status === 404) {
       await runMiddlewares(middlewares, "onWarning", {
-        workflowRunId,
         warning:
           "Couldn't fetch workflow run steps. This can happen if the workflow run succesfully ends before some callback is executed.",
       });

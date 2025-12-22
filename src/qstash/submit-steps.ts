@@ -27,7 +27,6 @@ export const submitParallelSteps = async ({
   );
 
   await runMiddlewares(middlewares, "onInfo", {
-    workflowRunId: context.workflowRunId,
     info: `Submitting ${planSteps.length} parallel steps.`,
   });
 
@@ -61,7 +60,6 @@ export const submitParallelSteps = async ({
 
   if (result && result.length > 0) {
     await runMiddlewares(middlewares, "onInfo", {
-      workflowRunId: context.workflowRunId,
       info: `Submitted ${planSteps.length} parallel steps. messageIds: ${result
         .filter((r) => r)
         .map((r) => r.messageId)
@@ -90,7 +88,6 @@ export const submitSingleStep = async ({
   middlewares?: WorkflowMiddleware[];
 }) => {
   await runMiddlewares(middlewares, "beforeExecution", {
-    workflowRunId: context.workflowRunId,
     stepName: lazyStep.stepName,
   });
 
@@ -122,7 +119,6 @@ export const submitSingleStep = async ({
 
   if (submitResult && submitResult[0]) {
     await runMiddlewares(middlewares, "onInfo", {
-      workflowRunId: context.workflowRunId,
       info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
     });
   }

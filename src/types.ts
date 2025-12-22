@@ -618,14 +618,12 @@ export type MiddlewareCallbacks = {
   }) => Promise<void> | void;
   runStarted?: (params: { workflowRunId: string }) => Promise<void> | void;
   runCompleted?: (params: { workflowRunId: string; result: unknown }) => Promise<void> | void;
-  onError?: (params: { workflowRunId: string; error: Error }) => Promise<void> | void;
-  onWarning?: (params: { workflowRunId: string; warning: string }) => Promise<void> | void;
-  onInfo?: (params: { workflowRunId: string; info: string }) => Promise<void> | void;
+  onError?: (params: { workflowRunId?: string; error: Error }) => Promise<void> | void;
+  onWarning?: (params: { workflowRunId?: string; warning: string }) => Promise<void> | void;
+  onInfo?: (params: { workflowRunId?: string; info: string }) => Promise<void> | void;
 };
 
-export type MiddlewareInitCallbacks = (params: {
-  workflowRunId: string;
-}) => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
+export type MiddlewareInitCallbacks = () => Promise<MiddlewareCallbacks> | MiddlewareCallbacks;
 
 export type MiddlewareCallbackConfig =
   | {

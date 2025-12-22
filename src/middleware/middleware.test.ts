@@ -1,5 +1,5 @@
 import { describe, test, expect, jest } from "bun:test";
-import { WorkflowMiddleware } from "./middleware";
+import { setWorkflowRunIdToMiddlewares, WorkflowMiddleware } from "./middleware";
 import { Client } from "@upstash/qstash";
 import { getRequest } from "../test-utils";
 import { nanoid } from "../utils";
@@ -43,13 +43,13 @@ describe("middleware", () => {
   describe("runCallback method", () => {
     test("should call init and callbacks", async () => {
       const { middleware, accumulator } = createLoggingMiddleware();
+      setWorkflowRunIdToMiddlewares([middleware], "wfr-id");
       const stepName = `step-${nanoid()}`;
 
       await middleware.runCallback("runStarted", { workflowRunId: "wfr-id" });
       expect(accumulator).toEqual([["init"], ["runStarted", { workflowRunId: "wfr-id" }]]);
 
       await middleware.runCallback("beforeExecution", {
-        workflowRunId: "wfr-id",
         stepName: stepName,
       });
       expect(accumulator).toEqual([
@@ -59,7 +59,6 @@ describe("middleware", () => {
       ]);
 
       await middleware.runCallback("beforeExecution", {
-        workflowRunId: "wfr-id",
         stepName: stepName,
       });
       expect(accumulator).toEqual([
@@ -71,7 +70,6 @@ describe("middleware", () => {
 
       const result = "some-result";
       await middleware.runCallback("afterExecution", {
-        workflowRunId: "wfr-id",
         stepName: stepName,
         result,
       });
@@ -85,7 +83,6 @@ describe("middleware", () => {
 
       const finishResult = "finished-result";
       await middleware.runCallback("runCompleted", {
-        workflowRunId: "wfr-id",
         result: finishResult,
       });
       expect(accumulator).toEqual([

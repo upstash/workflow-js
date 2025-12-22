@@ -22,7 +22,6 @@ import {
 } from "./test-utils";
 import { Client } from "@upstash/qstash";
 import {
-  DEFAULT_CONTENT_TYPE,
   WORKFLOW_ID_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
@@ -224,119 +223,6 @@ describe("receiver", () => {
               body: JSON.stringify(body),
             },
           ],
-        },
-      });
-      expect(called).toBeTrue();
-    });
-  });
-
-  describe("third party result", () => {
-    test("should block request without signature", async () => {
-      const thirdPartyRequestWithoutHeader = new Request(WORKFLOW_ENDPOINT, {
-        method: "POST",
-        body: randomBody,
-        headers: {
-          "Upstash-Workflow-Callback": "true",
-          [WORKFLOW_ID_HEADER]: "wfr-23",
-          "Upstash-Workflow-StepId": "4",
-          "Upstash-Workflow-StepName": "my-step",
-          "Upstash-Workflow-StepType": "Run",
-          "Upstash-Workflow-Concurrent": "1",
-          "Upstash-Workflow-ContentType": DEFAULT_CONTENT_TYPE,
-        },
-      });
-
-      await mockQStashServer({
-        execute: async () => {
-          const response = await endpoint(thirdPartyRequestWithoutHeader);
-          expect(response.status).toBe(500);
-          const body = (await response.json()) as FailureFunctionPayload;
-          expect(body.message).toBe(
-            "Failed to verify that the Workflow request comes from QStash: Error: `Upstash-Signature` header is not passed.\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
-          );
-        },
-        responseFields: { body: "msgId", status: 200 },
-        receivesRequest: false,
-      });
-    });
-
-    test("should block request with invalid signature", async () => {
-      const thirdPartyRequestWithoutHeader = new Request(WORKFLOW_ENDPOINT, {
-        method: "POST",
-        body: randomBody,
-        headers: {
-          "Upstash-Workflow-Callback": "true",
-          [WORKFLOW_ID_HEADER]: "wfr-23",
-          "Upstash-Signature": "incorrect-signature",
-          "Upstash-Workflow-StepId": "4",
-          "Upstash-Workflow-StepName": "my-step",
-          "Upstash-Workflow-StepType": "Run",
-          "Upstash-Workflow-Concurrent": "1",
-          "Upstash-Workflow-ContentType": DEFAULT_CONTENT_TYPE,
-        },
-      });
-
-      await mockQStashServer({
-        execute: async () => {
-          const response = await endpoint(thirdPartyRequestWithoutHeader);
-          expect(response.status).toBe(500);
-          const body = (await response.json()) as FailureFunctionPayload;
-          expect(body.message).toBe(
-            "Failed to verify that the Workflow request comes from QStash: SignatureError: Invalid Compact JWS\n\nIf signature is missing, trigger the workflow endpoint by publishing your request to QStash instead of calling it directly.\n\nIf you want to disable QStash Verification, you should clear env variables QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY"
-          );
-        },
-        responseFields: { body: "msgId", status: 200 },
-        receivesRequest: false,
-      });
-    });
-
-    test("should allow request with signature", async () => {
-      const header = { myHeader: ["my-value"] };
-      const body = JSON.stringify({
-        status: 200,
-        body: randomBody,
-        header,
-        otherField: 1,
-      });
-      const thirdPartyRequestWithHeader = await createSignedRequest({
-        url: WORKFLOW_ENDPOINT,
-        method: "POST",
-        body,
-        key: currentSigningKey,
-        headers: {
-          "Upstash-Workflow-Callback": "true",
-          [WORKFLOW_ID_HEADER]: "wfr-23",
-          "Upstash-Workflow-StepId": "4",
-          "Upstash-Workflow-StepName": "my-step",
-          "Upstash-Workflow-StepType": "Run",
-          "Upstash-Workflow-Concurrent": "1",
-          "Upstash-Workflow-ContentType": DEFAULT_CONTENT_TYPE,
-        },
-      });
-
-      let called = false;
-      await mockQStashServer({
-        execute: async () => {
-          called = true;
-          const response = await endpoint(thirdPartyRequestWithHeader);
-          expect(response.status).toBe(200);
-        },
-        responseFields: { body: "msgId", status: 200 },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
-          token,
-          body: {
-            stepId: 4,
-            stepName: "my-step",
-            stepType: "Run",
-            out: JSON.stringify({
-              status: 200,
-              body: randomBodyRaw,
-              header,
-            }),
-            concurrent: 1,
-          },
         },
       });
       expect(called).toBeTrue();

@@ -168,7 +168,6 @@ export const determineUrls = async <TInitialPayload = unknown>(
 
   if (workflowUrl !== initialWorkflowUrl) {
     await runMiddlewares(middlewares, "onWarning", {
-      workflowRunId: "unknown",
       warning: `The workflow URL's base URL has been replaced with the provided baseUrl. Original URL: ${initialWorkflowUrl}, New URL: ${workflowUrl}`,
     });
   }
@@ -178,7 +177,6 @@ export const determineUrls = async <TInitialPayload = unknown>(
 
   if (workflowUrl.includes("localhost")) {
     await runMiddlewares(middlewares, "onInfo", {
-      workflowRunId: "unknown",
       info: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
     });
   }

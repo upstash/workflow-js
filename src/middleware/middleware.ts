@@ -24,6 +24,7 @@ export const onInfoWithConsole: Required<MiddlewareCallbacks>["onInfo"] = async 
 
 export class WorkflowMiddleware {
   public readonly name: string;
+  public workflowRunId: string | undefined;
   private initCallbacks?: MiddlewareInitCallbacks;
   /**
    * Callback functions
@@ -44,23 +45,35 @@ export class WorkflowMiddleware {
 
   async runCallback<K extends keyof MiddlewareCallbacks>(
     callback: K,
-    parameters: Parameters<NonNullable<MiddlewareCallbacks[K]>>[0]
+    parameters: Omit<Parameters<NonNullable<MiddlewareCallbacks[K]>>[0], "workflowRunId">
   ): Promise<boolean> {
-    await this.ensureInit(parameters.workflowRunId);
+    await this.ensureInit();
     const cb = this.middlewareCallbacks?.[callback];
+
+    const parametersWithRunId = {
+      ...parameters,
+      workflowRunId: this.workflowRunId,
+    };
+
     if (cb) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await cb(parameters as any);
+        await cb(parametersWithRunId as any);
       } catch (error) {
         try {
           const onErrorCallback = this.middlewareCallbacks?.onError ?? onErrorWithConsole;
-          await onErrorCallback({ workflowRunId: parameters.workflowRunId, error: error as Error });
+          await onErrorCallback({
+            workflowRunId: parametersWithRunId.workflowRunId,
+            error: error as Error,
+          });
         } catch (onErrorError) {
           console.error(
             `Failed while executing "onError" of middleware "${this.name}", falling back to logging the error to console. Error: ${onErrorError}`
           );
-          onErrorWithConsole({ workflowRunId: parameters.workflowRunId, error: error as Error });
+          onErrorWithConsole({
+            workflowRunId: parametersWithRunId.workflowRunId,
+            error: error as Error,
+          });
         }
       }
       return true;
@@ -68,12 +81,12 @@ export class WorkflowMiddleware {
     return false;
   }
 
-  private async ensureInit(workflowRunId: string) {
+  private async ensureInit() {
     if (!this.middlewareCallbacks) {
       if (!this.initCallbacks) {
         throw new WorkflowError(`Middleware "${this.name}" has no callbacks or init defined.`);
       }
-      this.middlewareCallbacks = await this.initCallbacks({ workflowRunId });
+      this.middlewareCallbacks = await this.initCallbacks();
     }
   }
 }
@@ -81,7 +94,7 @@ export class WorkflowMiddleware {
 export const runMiddlewares = async <K extends keyof MiddlewareCallbacks>(
   middlewares: WorkflowMiddleware[] | undefined,
   callback: K,
-  parameters: Parameters<NonNullable<MiddlewareCallbacks[K]>>[0]
+  parameters: Omit<Parameters<NonNullable<MiddlewareCallbacks[K]>>[0], "workflowRunId">
 ) => {
   let executedCount = 0;
 
@@ -102,4 +115,13 @@ export const runMiddlewares = async <K extends keyof MiddlewareCallbacks>(
       onWarningWithConsole(parameters as { workflowRunId: string; warning: string });
     }
   }
+};
+
+export const setWorkflowRunIdToMiddlewares = async (
+  middlewares: WorkflowMiddleware[] | undefined,
+  workflowRunId: string
+) => {
+  middlewares?.forEach((m) => {
+    m.workflowRunId = workflowRunId;
+  });
 };
