@@ -1,7 +1,6 @@
 import { WorkflowContext } from "../context";
 import { DisabledWorkflowContext } from "./authorization";
 
-
 /**
  * Checks if a context is a DisabledWorkflowContext.
  *

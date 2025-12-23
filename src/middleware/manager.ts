@@ -39,7 +39,7 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
 
   /**
    * Assign context - required for lifecycle events
-   * 
+   *
    * also assigns workflowRunId from context
    *
    * @param context workflow context to assign

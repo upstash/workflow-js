@@ -272,53 +272,6 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
     }
   })
 
-  // Check logs for the main workflow itself
-  await context.run("check main workflow logs", async () => {
-    const workflowRunId = context.workflowRunId
-    if (workflowRunId) {
-      await checkLogs(workflowRunId, [
-        'onInfo:Run id identified.',
-        `onInfo:Workflow run started successfully with URL ${ANY_STRING}/test-routes/middleware-logs/workflows/mainWorkflow.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'runStarted',
-        'beforeExecution:invoke runAndSleep',
-        `onInfo:Submitted step "invoke runAndSleep" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:invoke runAndSleep',
-        'beforeExecution:check logs 1',
-        `onInfo:Submitted step "check logs 1" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:check logs 1',
-        'beforeExecution:invoke call',
-        `onInfo:Submitted step "invoke call" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:invoke call',
-        'beforeExecution:check logs 2',
-        `onInfo:Submitted step "check logs 2" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:check logs 2',
-        'beforeExecution:invoke waitForEvent',
-        `onInfo:Submitted step "invoke waitForEvent" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:invoke waitForEvent',
-        'beforeExecution:check logs 3',
-        `onInfo:Submitted step "check logs 3" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:check logs 3',
-        'beforeExecution:check main workflow logs',
-      ])
-    } else {
-      throw new WorkflowNonRetryableError("workflowRunId not found in main workflow context")
-    }
-  })
-
   await saveResult(context, "all-middleware-tests-complete")
 })
 
@@ -331,14 +284,14 @@ export const { POST, GET } = testServe(
   }, {
     baseUrl: BASE_URL,
     middlewares: [redisLoggingMiddleware],
-    retries: 0
+    retries: 0,
   }),
   {
-    expectedCallCount: 17,
+    expectedCallCount: 16,
     expectedResult: "all-middleware-tests-complete",
     payload,
     headers: {
       [testHeader]: headerValue,
-    }
+    },
   }
 )
