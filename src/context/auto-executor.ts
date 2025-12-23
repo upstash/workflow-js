@@ -137,7 +137,7 @@ export class AutoExecutor {
         this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
 
       if (isLastMemoized) {
-        this.dispatchLifecycle("afterExecution", {
+        await this.dispatchLifecycle("afterExecution", {
           stepName: lazyStep.stepName,
           result: parsedOut,
         });
@@ -279,7 +279,7 @@ export class AutoExecutor {
         );
 
         if (lazyStep) {
-          this.dispatchLifecycle("afterExecution", {
+          await this.dispatchLifecycle("afterExecution", {
             stepName: lazyStep.stepName,
             result: lazyStep.parseOut(resultStep),
           });
@@ -308,7 +308,7 @@ export class AutoExecutor {
             (planStep, index) => resultStep.stepId - index === initialStepCount
           )!;
 
-          this.dispatchLifecycle("afterExecution", {
+          await this.dispatchLifecycle("afterExecution", {
             stepName: lazyStep.stepName,
             result: lazyStep.parseOut(resultStep),
           });

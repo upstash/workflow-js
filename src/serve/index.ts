@@ -202,9 +202,6 @@ export const serveBase = <
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await middlewareManager.dispatchDebug("onError", {
-        error: authCheck.error,
-      });
       throw authCheck.error;
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
@@ -284,9 +281,6 @@ export const serveBase = <
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
-        await middlewareManager.dispatchDebug("onError", {
-          error: result.error,
-        });
         throw result.error;
       }
 

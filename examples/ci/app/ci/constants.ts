@@ -94,6 +94,9 @@ export const TEST_ROUTES: Pick<TestConfig, "route">[] = [
   },
   {
     route: "webhook/workflow",
+  },
+  {
+    route: "middleware-logs/workflows/mainWorkflow",
   }
 
   /**

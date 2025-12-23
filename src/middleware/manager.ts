@@ -45,11 +45,8 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
    */
   private async executeMiddlewares<K extends DebugEvent | LifeCycleEvent>(
     event: K,
-    params: unknown,
-    shouldFallbackToConsole: boolean = true
+    params: unknown
   ): Promise<void> {
-    let executedCount = 0;
-
     // Initialize all middlewares first
     await Promise.all(this.middlewares.map((m) => m.ensureInit()));
 
@@ -61,7 +58,6 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await callback(params as any);
-            executedCount++;
           } catch (error) {
             try {
               const onErrorCallback = middleware.getCallback("onError") ?? onErrorWithConsole;
@@ -83,19 +79,16 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
       })
     );
 
-    // Fallback to console if no middleware handled it
-    if (shouldFallbackToConsole && executedCount === 0) {
-      if (event === "onError") {
-        onErrorWithConsole({
-          workflowRunId: this.workflowRunId,
-          ...(params as DebugEventParameters["onError"]),
-        });
-      } else if (event === "onWarning") {
-        onWarningWithConsole({
-          workflowRunId: this.workflowRunId,
-          ...(params as DebugEventParameters["onWarning"]),
-        });
-      }
+    if (event === "onError") {
+      onErrorWithConsole({
+        workflowRunId: this.workflowRunId,
+        ...(params as DebugEventParameters["onError"]),
+      });
+    } else if (event === "onWarning") {
+      onWarningWithConsole({
+        workflowRunId: this.workflowRunId,
+        ...(params as DebugEventParameters["onWarning"]),
+      });
     }
   }
 
@@ -111,7 +104,7 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
       workflowRunId: this.workflowRunId,
     };
 
-    await this.executeMiddlewares(event, paramsWithRunId, true);
+    await this.executeMiddlewares(event, paramsWithRunId);
   }
 
   /**
@@ -132,6 +125,6 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
       context: this.context,
     };
 
-    await this.executeMiddlewares(event, paramsWithContext, false);
+    await this.executeMiddlewares(event, paramsWithContext);
   }
 }
