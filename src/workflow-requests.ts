@@ -177,8 +177,8 @@ export const triggerRouteFunction = async <TResult = unknown>({
   | Err<never, Error>
 > => {
   try {
-    // When onStep completes successfully, it throws an exception named `WorkflowStepExecutionAbort`,
-    // indicating that the step has been successfully executed.
+    // When onStep completes successfully, it can throw a `WorkflowAbort` (or a subclass such as
+    // `WorkflowCancelAbort`) to signal that the step has finished and control flow should abort.
     // This ensures that onCleanup is only called when no exception is thrown.
     const result = await onStep();
     await onCleanup(result);
