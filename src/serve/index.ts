@@ -13,7 +13,7 @@ import {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "../error";
-import { WorkflowLogger } from "../logger";
+import { MiddlewareManager } from "../middleware/manager";
 import {
   ExclusiveValidationOptions,
   RouteFunction,
@@ -52,7 +52,7 @@ export const serveBase = <
 >(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   telemetry?: Telemetry,
-  options?: WorkflowServeOptions<TResponse, TInitialPayload>
+  options?: WorkflowServeOptions<TResponse, TInitialPayload, TResult>
 ): {
   handler: (request: TRequest) => Promise<TResponse>;
 } => {
@@ -63,7 +63,6 @@ export const serveBase = <
     onStepFinish,
     initialPayloadParser,
     url,
-    verbose,
     receiver,
     failureUrl,
     failureFunction,
@@ -74,10 +73,9 @@ export const serveBase = <
     useJSONContent,
     disableTelemetry,
     flowControl,
-    onError,
-  } = processOptions<TResponse, TInitialPayload>(options);
+    middlewares,
+  } = processOptions<TResponse, TInitialPayload, TResult>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
-  const debug = WorkflowLogger.getLogger(verbose);
 
   /**
    * Handles the incoming request, triggering the appropriate workflow steps.
@@ -88,8 +86,13 @@ export const serveBase = <
    * @param request - The incoming request to handle.
    * @returns A promise that resolves to a response.
    */
-  const handler = async (request: TRequest) => {
-    await debug?.log("INFO", "ENDPOINT_START");
+  const handler = async (
+    request: TRequest,
+    middlewareManager: MiddlewareManager<TInitialPayload, TResult>
+  ) => {
+    await middlewareManager.dispatchDebug("onInfo", {
+      info: `Received request for workflow execution.`,
+    });
 
     const { workflowUrl, workflowFailureUrl } = await determineUrls(
       request,
@@ -97,7 +100,7 @@ export const serveBase = <
       baseUrl,
       failureFunction,
       failureUrl,
-      debug
+      middlewareManager.dispatchDebug.bind(middlewareManager)
     );
 
     // get payload as raw string
@@ -106,7 +109,11 @@ export const serveBase = <
 
     // validation & parsing
     const { isFirstInvocation, workflowRunId } = validateRequest(request);
-    debug?.setWorkflowRunId(workflowRunId);
+
+    middlewareManager.assignWorkflowRunId(workflowRunId);
+    await middlewareManager.dispatchDebug("onInfo", {
+      info: `Run id identified.`,
+    });
 
     // parse steps
     const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
@@ -115,7 +122,7 @@ export const serveBase = <
       workflowRunId,
       qstashClient.http,
       request.headers.get("upstash-message-id")!,
-      debug
+      middlewareManager.dispatchDebug.bind(middlewareManager)
     );
 
     if (workflowRunEnded) {
@@ -143,19 +150,24 @@ export const serveBase = <
       retries,
       retryDelay,
       flowControl,
-      debug
+      middlewareManager.dispatchDebug.bind(middlewareManager)
     );
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
       throw failureCheck.error;
     } else if (failureCheck.value.result === "failure-function-executed") {
       // is a failure ballback.
-      await debug?.log("WARN", "RESPONSE_DEFAULT", "failureFunction executed");
+      await middlewareManager.dispatchDebug("onInfo", {
+        info: `Handled failure callback.`,
+      });
       return onStepFinish(workflowRunId, "failure-callback-executed", {
         condition: "failure-callback-executed",
         result: failureCheck.value.response,
       });
     } else if (failureCheck.value.result === "failure-function-undefined") {
+      await middlewareManager.dispatchDebug("onInfo", {
+        info: `Failure callback invoked but no failure function defined.`,
+      });
       return onStepFinish(workflowRunId, "failure-callback-undefined", {
         condition: "failure-callback-undefined",
       });
@@ -173,7 +185,6 @@ export const serveBase = <
       steps,
       url: workflowUrl,
       failureUrl: workflowFailureUrl,
-      debug,
       env,
       retries,
       retryDelay,
@@ -181,6 +192,7 @@ export const serveBase = <
       invokeCount,
       flowControl,
       label,
+      middlewareManager,
     });
 
     // attempt running routeFunction until the first step
@@ -190,12 +202,13 @@ export const serveBase = <
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
       throw authCheck.error;
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
-      await debug?.log("ERROR", "ERROR", { error: AUTH_FAIL_MESSAGE });
+      await middlewareManager.dispatchDebug("onError", {
+        error: new Error(AUTH_FAIL_MESSAGE),
+      });
       return onStepFinish(
         isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId,
         "auth-fail",
@@ -214,13 +227,9 @@ export const serveBase = <
       retryDelay,
       flowControl,
       telemetry,
-      debug,
+      middlewareManager,
     });
     if (callReturnCheck.isErr()) {
-      // error while checking
-      await debug?.log("ERROR", "SUBMIT_THIRD_PARTY_RESULT", {
-        error: callReturnCheck.error.message,
-      });
       throw callReturnCheck.error;
     } else if (callReturnCheck.value === "continue-workflow") {
       // request is not third party call. Continue workflow as usual
@@ -229,18 +238,31 @@ export const serveBase = <
             workflowContext,
             useJSONContent,
             telemetry,
-            debug,
             invokeCount,
+            middlewareManager,
           })
         : await triggerRouteFunction({
-            onStep: async () => routeFunction(workflowContext),
+            onStep: async () => {
+              if (steps.length === 1) {
+                await middlewareManager.dispatchLifecycle("runStarted", {});
+              }
+              return await routeFunction(workflowContext);
+            },
             onCleanup: async (result) => {
-              await triggerWorkflowDelete(workflowContext, result, debug);
+              await middlewareManager.dispatchLifecycle("runCompleted", {
+                result,
+              });
+              await triggerWorkflowDelete(
+                workflowContext,
+                result,
+                false,
+                middlewareManager.dispatchDebug.bind(middlewareManager)
+              );
             },
             onCancel: async () => {
               await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
             },
-            debug,
+            middlewareManager,
           });
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
@@ -259,12 +281,13 @@ export const serveBase = <
 
       if (result.isErr()) {
         // error while running the workflow or when cleaning up
-        await debug?.log("ERROR", "ERROR", { error: result.error.message });
         throw result.error;
       }
 
       // Returns a Response with `workflowRunId` at the end of each step.
-      await debug?.log("INFO", "RESPONSE_WORKFLOW");
+      await middlewareManager.dispatchDebug("onInfo", {
+        info: `Workflow endpoint execution completed successfully.`,
+      });
       return onStepFinish(workflowContext.workflowRunId, "success", {
         condition: "success",
       });
@@ -274,33 +297,22 @@ export const serveBase = <
       });
     }
     // response to QStash in call cases
-    await debug?.log("INFO", "RESPONSE_DEFAULT");
     return onStepFinish("no-workflow-id", "fromCallback", {
       condition: "fromCallback",
     });
   };
 
   const safeHandler = async (request: TRequest) => {
+    // Create middleware manager for this request
+    const middlewareManager = new MiddlewareManager<TInitialPayload, TResult>(middlewares);
+
     try {
-      return await handler(request);
+      return await handler(request, middlewareManager);
     } catch (error) {
       const formattedError = formatWorkflowError(error);
-      try {
-        onError?.(error as Error);
-      } catch (onErrorError) {
-        const formattedOnErrorError = formatWorkflowError(onErrorError);
-        const errorMessage =
-          `Error while running onError callback: '${formattedOnErrorError.message}'.` +
-          `\nOriginal error: '${formattedError.message}'`;
-
-        console.error(errorMessage);
-        return new Response(JSON.stringify({ error: errorMessage }), {
-          status: 500,
-          headers: {
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          },
-        }) as TResponse;
-      }
+      await middlewareManager.dispatchDebug("onError", {
+        error: isInstanceOf(error, Error) ? error : new Error(formattedError.message),
+      });
       return new Response(JSON.stringify(formattedError), {
         status: 500,
         headers: {
@@ -329,7 +341,7 @@ export const serve = <
 >(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: Omit<
-    WorkflowServeOptions<TResponse, TInitialPayload>,
+    WorkflowServeOptions<TResponse, TInitialPayload, TResult>,
     "useJSONContent" | "schema" | "initialPayloadParser"
   > &
     ExclusiveValidationOptions<TInitialPayload>

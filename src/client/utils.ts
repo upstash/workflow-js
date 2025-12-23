@@ -1,8 +1,15 @@
 import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
-import { WorkflowLogger } from "../logger";
 import { isInstanceOf } from "../error";
+import { DispatchDebug } from "../middleware/types";
 
+/**
+ * Makes a request to notify waiting workflows.
+ *
+ * @param requester QStash HTTP requester
+ * @param eventId event ID to notify
+ * @param eventData optional event data to send
+ */
 export const makeNotifyRequest = async (
   requester: Client["http"],
   eventId: string,
@@ -17,6 +24,12 @@ export const makeNotifyRequest = async (
   return result;
 };
 
+/**
+ * Gets waiters for a specific event.
+ *
+ * @param requester QStash HTTP requester
+ * @param eventId event ID to check waiters for
+ */
 export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string
@@ -58,7 +71,7 @@ export const getSteps = async (
   requester: Client["http"],
   workflowRunId: string,
   messageId?: string,
-  debug?: WorkflowLogger
+  dispatchDebug?: DispatchDebug
 ): Promise<
   { steps: RawStep[]; workflowRunEnded: false } | { steps: undefined; workflowRunEnded: true }
 > => {
@@ -69,8 +82,8 @@ export const getSteps = async (
     })) as RawStep[];
 
     if (!messageId) {
-      await debug?.log("INFO", "ENDPOINT_START", {
-        message:
+      await dispatchDebug?.("onInfo", {
+        info:
           `Pulled ${steps.length} steps from QStash` +
           `and returned them without filtering with messageId.`,
       });
@@ -84,8 +97,8 @@ export const getSteps = async (
       }
 
       const filteredSteps = steps.slice(0, index + 1);
-      await debug?.log("INFO", "ENDPOINT_START", {
-        message:
+      await dispatchDebug?.("onInfo", {
+        info:
           `Pulled ${steps.length} steps from QStash` +
           ` and filtered them to ${filteredSteps.length} using messageId.`,
       });
@@ -93,10 +106,9 @@ export const getSteps = async (
     }
   } catch (error) {
     if (isInstanceOf(error, QstashError) && error.status === 404) {
-      await debug?.log("WARN", "ENDPOINT_START", {
-        message:
+      await dispatchDebug?.("onWarning", {
+        warning:
           "Couldn't fetch workflow run steps. This can happen if the workflow run succesfully ends before some callback is executed.",
-        error: error,
       });
       return { steps: undefined, workflowRunEnded: true };
     } else {

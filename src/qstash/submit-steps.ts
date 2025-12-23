@@ -1,33 +1,42 @@
 import { NO_CONCURRENCY } from "../constants";
 import { WorkflowAbort } from "../error";
-import { WorkflowLogger } from "../logger";
 import { Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
 import { getHeaders } from "./headers";
+import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
+/**
+ * Submits parallel steps to QStash.
+ *
+ * @param context workflow context
+ * @param steps list of lazy steps to submit
+ * @param initialStepCount initial step count
+ * @param invokeCount current invoke count
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ */
 export const submitParallelSteps = async ({
   context,
   steps,
   initialStepCount,
   invokeCount,
   telemetry,
-  debug,
+  dispatchDebug,
 }: {
   context: WorkflowContext;
   steps: BaseLazyStep[];
   initialStepCount: number;
   invokeCount: number;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
+  dispatchDebug: DispatchDebug;
 }) => {
   const planSteps = steps.map((step, index) =>
     step.getPlanStep(steps.length, initialStepCount + index)
   );
 
-  await debug?.log("SUBMIT", "SUBMIT_STEP", {
-    length: planSteps.length,
-    steps: planSteps,
+  await dispatchDebug("onInfo", {
+    info: `Submitting ${planSteps.length} parallel steps.`,
   });
 
   const result = (await context.qstashClient.batch(
@@ -58,17 +67,30 @@ export const submitParallelSteps = async ({
     })
   )) as { messageId: string }[];
 
-  await debug?.log("INFO", "SUBMIT_STEP", {
-    messageIds: result.map((message) => {
-      return {
-        message: message.messageId,
-      };
-    }),
-  });
+  if (result && result.length > 0) {
+    await dispatchDebug("onInfo", {
+      info: `Submitted ${planSteps.length} parallel steps. messageIds: ${result
+        .filter((r) => r)
+        .map((r) => r.messageId)
+        .join(", ")}.`,
+    });
+  }
 
   throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
 };
 
+/**
+ * Submits a single step to QStash.
+ *
+ * @param context workflow context
+ * @param lazyStep lazy step to submit
+ * @param stepId step ID
+ * @param invokeCount current invoke count
+ * @param concurrency concurrency level
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ * @param dispatchLifecycle lifecycle event dispatcher
+ */
 export const submitSingleStep = async ({
   context,
   lazyStep,
@@ -76,7 +98,8 @@ export const submitSingleStep = async ({
   invokeCount,
   concurrency,
   telemetry,
-  debug,
+  dispatchDebug,
+  dispatchLifecycle,
 }: {
   context: WorkflowContext;
   lazyStep: BaseLazyStep;
@@ -84,14 +107,14 @@ export const submitSingleStep = async ({
   invokeCount: number;
   concurrency: number;
   telemetry?: Telemetry;
-  debug?: WorkflowLogger;
+  dispatchDebug: DispatchDebug;
+  dispatchLifecycle: DispatchLifecycle;
 }) => {
-  const resultStep = await lazyStep.getResultStep(concurrency, stepId);
-  await debug?.log("INFO", "RUN_SINGLE", {
-    fromRequest: false,
-    step: resultStep,
-    stepCount: stepId,
+  await dispatchLifecycle("beforeExecution", {
+    stepName: lazyStep.stepName,
   });
+
+  const resultStep = await lazyStep.getResultStep(concurrency, stepId);
 
   const { headers } = lazyStep.getHeaders({
     context,
@@ -107,11 +130,6 @@ export const submitSingleStep = async ({
     telemetry,
   });
 
-  await debug?.log("SUBMIT", "SUBMIT_STEP", {
-    length: 1,
-    steps: [resultStep],
-  });
-
   const submitResult = await lazyStep.submitStep({
     context,
     body,
@@ -122,13 +140,11 @@ export const submitSingleStep = async ({
     telemetry,
   });
 
-  await debug?.log("INFO", "SUBMIT_STEP", {
-    messageIds: submitResult.map((message) => {
-      return {
-        message: message.messageId,
-      };
-    }),
-  });
+  if (submitResult && submitResult[0]) {
+    await dispatchDebug("onInfo", {
+      info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
+    });
+  }
 
   return resultStep;
 };

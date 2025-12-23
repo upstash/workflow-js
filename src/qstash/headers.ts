@@ -71,6 +71,9 @@ class WorkflowHeaders {
   private headers: WorkflowHeaderGroups;
   private keepTriggerConfig?: boolean;
 
+  /**
+   * @param params workflow header parameters
+   */
   constructor({
     userHeaders,
     workflowConfig,
@@ -258,6 +261,12 @@ class WorkflowHeaders {
   }
 }
 
+/**
+ * Adds a prefix to all header keys.
+ *
+ * @param headers headers to prefix
+ * @param prefix prefix to add
+ */
 function addPrefixToHeaders(headers: Record<string, string>, prefix: string) {
   const prefixedHeaders: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
@@ -266,6 +275,11 @@ function addPrefixToHeaders(headers: Record<string, string>, prefix: string) {
   return prefixedHeaders;
 }
 
+/**
+ * Prepares flow control headers from FlowControl object.
+ *
+ * @param flowControl flow control configuration
+ */
 export const prepareFlowControl = (flowControl: FlowControl) => {
   const parallelism = flowControl.parallelism?.toString();
   const rate = (flowControl.rate ?? flowControl.ratePerSecond)?.toString();
@@ -288,6 +302,11 @@ export const prepareFlowControl = (flowControl: FlowControl) => {
   };
 };
 
+/**
+ * Gets headers for workflow requests.
+ *
+ * @param params workflow header parameters
+ */
 export const getHeaders = (params: WorkflowHeaderParams) => {
   const workflowHeaders = new WorkflowHeaders(params);
   return workflowHeaders.getHeaders();

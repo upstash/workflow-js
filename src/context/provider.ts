@@ -5,7 +5,7 @@ import { WorkflowError } from "../error";
  * copies and updates the request by removing the api field and adding url & headers.
  *
  * @param api api field of PublishRequest
- * @returns updated request
+ * @returns updated request with provider info
  */
 export const getProviderInfo = (api: Required<PublishRequest>["api"]) => {
   if (!api.provider) {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-magic-numbers */
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
@@ -13,7 +12,6 @@ import { WorkflowAbort, WorkflowNonRetryableError, WorkflowRetryAfterError } fro
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "./client";
-import type { Step, StepType } from "./types";
 import {
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
@@ -29,10 +27,11 @@ import {
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
-import { WorkflowLogger } from "./logger";
 import { FinishState } from "./integration.test";
 import { getHeaders } from "./qstash/headers";
 import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
+import { MiddlewareManager } from "./middleware/manager";
+import { Step, StepType } from "./types";
 
 describe("Workflow Requests", () => {
   test("should preserve WORKFLOW_LABEL_HEADER in recreateUserHeaders", () => {
@@ -64,6 +63,7 @@ describe("Workflow Requests", () => {
       retries: 0,
       retryDelay: "1000 * retried",
       label,
+      middlewareManager: new MiddlewareManager(),
     });
 
     expect(context.label).toBe(label);
@@ -840,17 +840,9 @@ describe("Workflow Requests", () => {
         });
 
         await triggerFirstInvocation({ workflowContext: context });
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
 
-        const firstDelete = await triggerWorkflowDelete(context, "hello world", debug);
+        const firstDelete = await triggerWorkflowDelete(context, "hello world");
         expect(firstDelete).toEqual(undefined);
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith(
-          "SUBMIT",
-          "SUBMIT_CLEANUP",
-          `workflow run ${workflowRunId} deleted.`
-        );
       },
       {
         timeout: 10000,
@@ -870,15 +862,12 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
         await triggerFirstInvocation({
           workflowContext: context,
           useJSONContent: false,
-          debug,
         });
-        expect(spy).toHaveBeenCalledTimes(1);
+
+        const warnSpy = spyOn(console, "warn");
 
         await workflowClient.cancel({ ids: [workflowRunId] });
 
@@ -892,20 +881,19 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
-          debug,
+          middlewareManager: new MiddlewareManager(),
         });
 
         expect(result.isOk()).toBeTrue();
         // @ts-expect-error value will be set since stepFinish isOk
         expect(result.value).toBe("workflow-was-finished");
 
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
-          message: "tried to append to a cancelled workflow. exiting without publishing.",
-          name: "QstashError",
-          errorMessage:
-            '[{"error":"failed to publish to url: can not append to a a cancelled workflow"}]',
-        });
+        expect(warnSpy).toHaveBeenCalled();
+        const warnCalls = warnSpy.mock.calls;
+        const cancelledWarning = warnCalls.find((call: string[]) =>
+          call[0]?.includes("Tried to append to a cancelled workflow")
+        );
+        expect(cancelledWarning).toBeDefined();
       },
       {
         timeout: 10000,
@@ -925,15 +913,10 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
         await triggerFirstInvocation({
           workflowContext: context,
           useJSONContent: false,
-          debug,
         });
-        expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
 
@@ -947,19 +930,11 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
-          debug,
         });
 
         expect(result.isOk()).toBeTrue();
         // @ts-expect-error value will be set since stepFinish isOk
         expect(result.value).toBe("workflow-was-finished");
-
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
-          message: "tried to append to a cancelled workflow. exiting without publishing.",
-          name: "QstashError",
-          errorMessage: `[{"error":"failed to publish to url: can not append to a a cancelled workflow"},{"error":"failed to publish to url: can not append to a a cancelled workflow"}]`,
-        });
       },
       {
         timeout: 10000,
@@ -994,13 +969,11 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
-        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false, debug });
-        expect(spy).toHaveBeenCalledTimes(1);
+        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false });
 
         await workflowClient.cancel({ ids: [workflowRunId] });
+
+        const warnSpy = spyOn(console, "warn");
 
         const result = await triggerRouteFunction({
           onStep: async () => {
@@ -1012,20 +985,18 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
-          debug,
         });
 
         expect(result.isOk()).toBeTrue();
         // @ts-expect-error value will be set since stepFinish isOk
         expect(result.value).toBe("workflow-was-finished");
 
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
-          message: "tried to append to a cancelled workflow. exiting without publishing.",
-          name: "QstashError",
-          errorMessage:
-            '[{"error":"failed to publish to url: can not append to a a cancelled workflow"}]',
-        });
+        expect(warnSpy).toHaveBeenCalled();
+        const warnCalls = warnSpy.mock.calls;
+        const cancelledWarning = warnCalls.find((call) =>
+          call[0]?.includes("Tried to append to a cancelled workflow")
+        );
+        expect(cancelledWarning).toBeDefined();
       },
       {
         timeout: 10000,
@@ -1045,19 +1016,15 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
         const resultOne = await triggerFirstInvocation({
           workflowContext: context,
           useJSONContent: false,
-          debug,
         });
         expect(resultOne.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultOne.value).toBe("success");
 
-        expect(spy).toHaveBeenCalledTimes(1);
+        const warnSpy = spyOn(console, "warn");
 
         const noRetryContext = new WorkflowContext({
           qstashClient,
@@ -1071,34 +1038,23 @@ describe("Workflow Requests", () => {
         const resultTwo = await triggerFirstInvocation({
           workflowContext: noRetryContext,
           useJSONContent: false,
-          debug,
+          middlewareManager: new MiddlewareManager(),
         });
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultTwo.value).toBe("workflow-run-already-exists");
 
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "SUBMIT_FIRST_INVOCATION", {
-          message: `Workflow run ${workflowRunId} already exists. A new one isn't created.`,
-          headers: {
-            "Upstash-Workflow-Init": "true",
-            "Upstash-Workflow-RunId": workflowRunId,
-            "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
-            "Upstash-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-            "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
-            "Upstash-Retries": "0",
-            "content-type": "application/json",
-          },
-          requestPayload: undefined,
-          url: WORKFLOW_ENDPOINT,
-          messageId: expect.any(String),
-        });
+        expect(warnSpy).toHaveBeenCalled();
+        const warnCalls = warnSpy.mock.calls;
+        const duplicateWarning = warnCalls.find((call) =>
+          call[0]?.includes(`Workflow run ${workflowRunId} already exists`)
+        );
+        expect(duplicateWarning).toBeDefined();
 
-        const deleteResult = await triggerWorkflowDelete(context, debug);
+        const deleteResult = await triggerWorkflowDelete(context, undefined);
         expect(deleteResult).toEqual(undefined);
 
-        const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, debug);
+        const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, undefined);
         expect(deleteResultSecond).toEqual(undefined);
       },
       {

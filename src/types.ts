@@ -2,9 +2,9 @@ import type { FlowControl, Receiver } from "@upstash/qstash";
 import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
-import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
+import { WorkflowMiddleware } from "./middleware";
 
 /**
  * Interface for Client with required methods
@@ -157,9 +157,25 @@ export type DetailedFinishCondition =
       result: string | void;
     };
 
+type WorkflowContextWithoutMethods<TInitialPayload> = Omit<
+  WorkflowContext<TInitialPayload>,
+  | "run"
+  | "sleepUntil"
+  | "sleep"
+  | "call"
+  | "waitForEvent"
+  | "notify"
+  | "cancel"
+  | "api"
+  | "invoke"
+  | "createWebhook"
+  | "waitForWebhook"
+>;
+
 export type WorkflowServeOptions<
   TResponse extends Response = Response,
   TInitialPayload = unknown,
+  TResult = unknown,
 > = ValidationOptions<TInitialPayload> & {
   /**
    * QStash client
@@ -184,14 +200,6 @@ export type WorkflowServeOptions<
    */
   url?: string;
   /**
-   * Verbose mode
-   *
-   * Disabled if not set. If set to true, a logger is created automatically.
-   *
-   * Alternatively, a WorkflowLogger can be passed.
-   */
-  verbose?: WorkflowLogger | true;
-  /**
    * Receiver to verify *all* requests by checking if they come from QStash
    *
    * By default, a receiver is created from the env variables
@@ -204,13 +212,6 @@ export type WorkflowServeOptions<
   failureUrl?: string;
 
   /**
-   * Error handler called when an error occurs in the workflow. This is
-   * different from `failureFunction` in that it is called when an error
-   * occurs in the workflow, while `failureFunction` is called when QStash
-   * retries are exhausted.
-   */
-  onError?: (error: Error) => void;
-  /**
    * Failure function called when QStash retries are exhausted while executing
    * the workflow. Will overwrite `failureUrl` parameter with the workflow
    * endpoint if passed.
@@ -221,18 +222,7 @@ export type WorkflowServeOptions<
    * @returns void
    */
   failureFunction?: (failureData: {
-    context: Omit<
-      WorkflowContext<TInitialPayload>,
-      | "run"
-      | "sleepUntil"
-      | "sleep"
-      | "call"
-      | "waitForEvent"
-      | "notify"
-      | "cancel"
-      | "api"
-      | "invoke"
-    >;
+    context: WorkflowContextWithoutMethods<TInitialPayload>;
     failStatus: number;
     failResponse: string;
     failHeaders: Record<string, string[]>;
@@ -315,6 +305,14 @@ export type WorkflowServeOptions<
    * and number of requests per second with the same key.
    */
   flowControl?: FlowControl;
+  /**
+   * List of workflow middlewares to use
+   */
+  middlewares?: WorkflowMiddleware<TInitialPayload, TResult>[];
+  /**
+   * Whether to enable verbose logging for debugging purposes
+   */
+  verbose?: boolean;
 } & ValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {

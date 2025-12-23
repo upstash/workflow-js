@@ -22,13 +22,13 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import type { WorkflowLogger } from "../logger";
 import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { FlowControl } from "@upstash/qstash";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
+import { MiddlewareManager } from "../middleware/manager";
 
 /**
  * Upstash Workflow context
@@ -218,7 +218,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     steps,
     url,
     failureUrl,
-    debug,
     initialPayload,
     env,
     retries,
@@ -227,6 +226,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     invokeCount,
     flowControl,
     label,
+    middlewareManager,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -234,7 +234,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     steps: Step[];
     url: string;
     failureUrl?: string;
-    debug?: WorkflowLogger;
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
     retries?: number;
@@ -243,6 +242,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     invokeCount?: number;
     flowControl?: FlowControl;
     label?: string;
+    middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -257,7 +257,18 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.flowControl = flowControl;
     this.label = label;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
+    const middlewareManagerInstance =
+      middlewareManager ?? new MiddlewareManager<TInitialPayload, unknown>([]);
+    middlewareManagerInstance.assignContext(this);
+
+    this.executor = new AutoExecutor(
+      this,
+      this.steps,
+      middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
+      middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
+      telemetry,
+      invokeCount
+    );
   }
 
   /**
@@ -330,7 +341,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } else {
       datetime = typeof datetime === "string" ? new Date(datetime) : datetime;
       // get unix seconds
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       time = Math.round(datetime.getTime() / 1000);
     }
     await this.addStep(new LazySleepUntilStep(this, stepName, time));
