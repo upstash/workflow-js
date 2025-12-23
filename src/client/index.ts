@@ -7,14 +7,8 @@ import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
 import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
-import { DispatchDebug } from "../middleware/types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
-
-// No-op dispatch function for client-side workflow triggering
-const noOpDispatchDebug: DispatchDebug = async () => {
-  // Client doesn't need to dispatch debug events
-};
 
 /**
  * Workflow client for canceling & notifying workflows and getting waiters of an
@@ -272,7 +266,6 @@ export class Client {
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         delay: option.delay,
         notBefore: option.notBefore,
-        dispatchDebug: noOpDispatchDebug,
       };
     });
     const result = await triggerFirstInvocation(invocations);
