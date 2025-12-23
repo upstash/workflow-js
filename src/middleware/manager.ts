@@ -21,12 +21,17 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
   private workflowRunId: string | undefined;
   private context: WorkflowContext<TInitialPayload> | undefined;
 
+  /**
+   * @param middlewares list of workflow middlewares
+   */
   constructor(middlewares: WorkflowMiddleware<TInitialPayload, TResult>[] = []) {
     this.middlewares = middlewares;
   }
 
   /**
    * Assign workflow run ID - will be passed to debug events
+   *
+   * @param workflowRunId workflow run id to assign
    */
   assignWorkflowRunId(workflowRunId: string) {
     this.workflowRunId = workflowRunId;
@@ -34,6 +39,10 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
 
   /**
    * Assign context - required for lifecycle events
+   * 
+   * also assigns workflowRunId from context
+   *
+   * @param context workflow context to assign
    */
   assignContext(context: WorkflowContext<TInitialPayload>) {
     this.context = context;
@@ -42,6 +51,9 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
 
   /**
    * Internal method to execute middlewares with common error handling logic
+   *
+   * @param event event name to dispatch
+   * @param params event parameters
    */
   private async executeMiddlewares<K extends DebugEvent | LifeCycleEvent>(
     event: K,
@@ -94,6 +106,9 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
 
   /**
    * Dispatch a debug event (onError, onWarning, onInfo)
+   *
+   * @param event debug event name
+   * @param params event parameters
    */
   async dispatchDebug<K extends DebugEvent>(
     event: K,
@@ -109,6 +124,9 @@ export class MiddlewareManager<TInitialPayload = any, TResult = any> {
 
   /**
    * Dispatch a lifecycle event (beforeExecution, afterExecution, runStarted, runCompleted)
+   *
+   * @param event lifecycle event name
+   * @param params event parameters
    */
   async dispatchLifecycle<K extends LifeCycleEvent>(
     event: K,

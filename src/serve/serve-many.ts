@@ -8,6 +8,11 @@ export type OmitOptionsInServeMany<TOptions> = Omit<
   "env" | "url" | "schema" | "initialPayloadParser"
 >;
 
+/**
+ * Extracts workflow ID from URL.
+ *
+ * @param url URL to extract workflow ID from
+ */
 const getWorkflowId = (url: string) => {
   const components = url.split("/");
   const lastComponent = components[components.length - 1];
@@ -98,6 +103,12 @@ export const serveManyBase = <
   };
 };
 
+/**
+ * Creates a new URL by replacing the last path segment with a workflow ID.
+ *
+ * @param url base URL
+ * @param workflowId workflow ID to use in the URL
+ */
 export const getNewUrlFromWorkflowId = (url: string, workflowId?: string) => {
   if (!workflowId) {
     throw new WorkflowError("You can only call workflow which has a workflowId");

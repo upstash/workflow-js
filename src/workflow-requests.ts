@@ -146,6 +146,14 @@ export const triggerFirstInvocation = async <TInitialPayload>(
   }
 };
 
+/**
+ * Triggers the route function and handles cleanup and cancellation.
+ *
+ * @param onStep function to execute the step
+ * @param onCleanup function to call after successful step execution
+ * @param onCancel function to call when workflow is cancelled
+ * @param middlewareManager optional middleware manager
+ */
 export const triggerRouteFunction = async <TResult = unknown>({
   onCleanup,
   onStep,
@@ -197,6 +205,14 @@ export const triggerRouteFunction = async <TResult = unknown>({
   }
 };
 
+/**
+ * Deletes a workflow run from QStash.
+ *
+ * @param workflowContext workflow context
+ * @param result result to send with the delete request
+ * @param cancel whether to cancel the workflow
+ * @param dispatchDebug optional debug dispatcher
+ */
 export const triggerWorkflowDelete = async <TInitialPayload>(
   workflowContext: WorkflowContext<TInitialPayload>,
   result: unknown,
@@ -453,6 +469,11 @@ export type HeadersResponse = {
   contentType: string;
 };
 
+/**
+ * Converts telemetry object to headers.
+ *
+ * @param telemetry telemetry object with SDK, framework, and runtime info
+ */
 export const getTelemetryHeaders = (telemetry: Telemetry) => {
   return {
     [TELEMETRY_HEADER_SDK]: telemetry.sdk,
@@ -461,6 +482,13 @@ export const getTelemetryHeaders = (telemetry: Telemetry) => {
   };
 };
 
+/**
+ * Verifies that a request comes from QStash using signature verification.
+ *
+ * @param body request body
+ * @param signature signature from the header
+ * @param verifier optional workflow receiver for verification
+ */
 export const verifyRequest = async (
   body: string,
   signature: string | null,

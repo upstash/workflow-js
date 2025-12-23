@@ -24,6 +24,14 @@ export class AutoExecutor {
 
   protected executingStep: string | false = false;
 
+  /**
+   * @param context workflow context
+   * @param steps list of steps
+   * @param dispatchDebug debug event dispatcher
+   * @param dispatchLifecycle lifecycle event dispatcher
+   * @param telemetry optional telemetry information
+   * @param invokeCount optional invoke count
+   */
   constructor(
     context: WorkflowContext,
     steps: Step[],
@@ -121,7 +129,7 @@ export class AutoExecutor {
   /**
    * Executes a step:
    * - If the step result is available in the steps, returns the result
-   * - If the result is not avaiable, runs the function
+   * - If the result is not available, runs the function
    * - Sends the result to QStash
    *
    * @param lazyStep lazy step to execute
@@ -162,8 +170,7 @@ export class AutoExecutor {
   /**
    * Runs steps in parallel.
    *
-   * @param stepName parallel step name
-   * @param stepFunctions list of async functions to run in parallel
+   * @param parallelSteps list of lazy steps to run in parallel
    * @returns results of the functions run in parallel
    */
   protected async runParallel<TResults extends unknown[]>(parallelSteps: {

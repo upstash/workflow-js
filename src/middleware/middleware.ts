@@ -30,6 +30,11 @@ export class WorkflowMiddleware<TInitialPayload = unknown, TResult = unknown> {
     }
   }
 
+  /**
+   * Gets a callback function by name.
+   *
+   * @param callback name of the callback to retrieve
+   */
   getCallback<K extends keyof MiddlewareCallbacks<TInitialPayload, TResult>>(
     callback: K
   ): MiddlewareCallbacks<TInitialPayload, TResult>[K] | undefined {

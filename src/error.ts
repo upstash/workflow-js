@@ -73,8 +73,8 @@ export class WorkflowRetryAfterError extends WorkflowAbort {
 /**
  * Formats an unknown error to match the FailureFunctionPayload format
  *
- * @param error
- * @returns
+ * @param error error to format
+ * @returns formatted error payload
  */
 export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
   return error instanceof Error
@@ -91,6 +91,12 @@ export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
       };
 };
 
+/**
+ * Gets the constructor name of an object.
+ *
+ * @param obj object to get constructor name from
+ * @returns constructor name or null
+ */
 function getConstructorName(obj: unknown): string | null {
   if (obj === null || obj === undefined) {
     return null;
@@ -102,6 +108,12 @@ function getConstructorName(obj: unknown): string | null {
   return ctor.name;
 }
 
+/**
+ * Gets all constructor names in the prototype chain.
+ *
+ * @param obj object to get constructor names from
+ * @returns array of constructor names
+ */
 function getConstructorNames(obj: unknown): string[] {
   const proto = Object.getPrototypeOf(obj);
   const name = getConstructorName(proto);
@@ -111,6 +123,13 @@ function getConstructorNames(obj: unknown): string[] {
   return [name, ...getConstructorNames(proto)];
 }
 
+/**
+ * Checks if a value is an instance of a specific class.
+ *
+ * @param v value to check
+ * @param c class constructor to check against
+ * @returns true if v is an instance of c
+ */
 export function isInstanceOf<T>(
   v: unknown,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

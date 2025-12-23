@@ -152,7 +152,8 @@ export const processOptions = <
  *    the beginning of the final URLs before returning.
  * @param failureFunction failureFunction. failureUrl will be workflow url if set.
  * @param failureUrl used as failureUrl if failureFunction isn't passed.
- * @returns
+ * @param dispatchDebug debug event dispatcher
+ * @returns workflow URL and failure URL
  */
 export const determineUrls = async <TInitialPayload = unknown>(
   request: Request,

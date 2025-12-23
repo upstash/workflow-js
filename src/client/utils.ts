@@ -3,6 +3,13 @@ import { NotifyResponse, RawStep, Waiter } from "../types";
 import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
 
+/**
+ * Makes a request to notify waiting workflows.
+ *
+ * @param requester QStash HTTP requester
+ * @param eventId event ID to notify
+ * @param eventData optional event data to send
+ */
 export const makeNotifyRequest = async (
   requester: Client["http"],
   eventId: string,
@@ -17,6 +24,12 @@ export const makeNotifyRequest = async (
   return result;
 };
 
+/**
+ * Gets waiters for a specific event.
+ *
+ * @param requester QStash HTTP requester
+ * @param eventId event ID to check waiters for
+ */
 export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string

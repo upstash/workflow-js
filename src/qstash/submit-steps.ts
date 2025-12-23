@@ -6,6 +6,16 @@ import { BaseLazyStep } from "../context/steps";
 import { getHeaders } from "./headers";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
+/**
+ * Submits parallel steps to QStash.
+ *
+ * @param context workflow context
+ * @param steps list of lazy steps to submit
+ * @param initialStepCount initial step count
+ * @param invokeCount current invoke count
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ */
 export const submitParallelSteps = async ({
   context,
   steps,
@@ -69,6 +79,18 @@ export const submitParallelSteps = async ({
   throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
 };
 
+/**
+ * Submits a single step to QStash.
+ *
+ * @param context workflow context
+ * @param lazyStep lazy step to submit
+ * @param stepId step ID
+ * @param invokeCount current invoke count
+ * @param concurrency concurrency level
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ * @param dispatchLifecycle lifecycle event dispatcher
+ */
 export const submitSingleStep = async ({
   context,
   lazyStep,

@@ -49,8 +49,8 @@ export const getPayload = async (request: Request) => {
  * When returning steps, we add the initial payload as initial step. This is to make it simpler
  * in the rest of the code.
  *
- * @param rawSteps body of the request as a string as explained above
- * @returns intiial payload and list of steps
+ * @param rawSteps list of raw steps from QStash
+ * @returns initial payload and list of steps
  */
 const processRawSteps = (rawSteps: RawStep[]) => {
   const [encodedInitialPayload, ...encodedSteps] = rawSteps;
@@ -91,7 +91,7 @@ const processRawSteps = (rawSteps: RawStep[]) => {
  * 2. Two plan steps with equal targetStep fields.
  *
  * @param steps steps with possible duplicates
- * @returns
+ * @returns deduplicated steps
  */
 const deduplicateSteps = (steps: Step[]): Step[] => {
   const targetStepIds: number[] = [];
@@ -122,6 +122,7 @@ const deduplicateSteps = (steps: Step[]): Step[] => {
  * this call.
  *
  * @param steps steps list to check
+ * @param dispatchDebug optional debug dispatcher
  * @returns boolean denoting whether the last one is duplicate
  */
 const checkIfLastOneIsDuplicate = async (
@@ -198,8 +199,13 @@ export const validateRequest = (
  * - Returns the steps. If it's the first invocation, steps are empty.
  *   Otherwise, steps are generated from the request body.
  *
- * @param request Request received
- * @returns raw intial payload and the steps
+ * @param requestPayload payload from the request
+ * @param isFirstInvocation whether this is the first invocation
+ * @param workflowRunId workflow run id
+ * @param requester QStash client HTTP requester
+ * @param messageId optional message id
+ * @param dispatchDebug optional debug dispatcher
+ * @returns raw initial payload and the steps
  */
 export const parseRequest = async (
   requestPayload: string | undefined,
@@ -278,7 +284,16 @@ export const parseRequest = async (
  * WorkflowError.
  *
  * @param request incoming request
+ * @param requestPayload payload from the request
+ * @param qstashClient QStash client
+ * @param initialPayloadParser parser for the initial payload
+ * @param routeFunction route function to run
  * @param failureFunction function to handle the failure
+ * @param env environment variables
+ * @param retries number of retries
+ * @param retryDelay delay between retries
+ * @param flowControl flow control settings
+ * @param dispatchDebug optional debug dispatcher
  */
 export const handleFailure = async <TInitialPayload>(
   request: Request,
