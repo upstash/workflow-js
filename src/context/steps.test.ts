@@ -359,7 +359,9 @@ describe("test steps", () => {
       const mockContext = createMockContext();
       // @ts-expect-error passing number for test purposes
       const throws = () => new LazyFunctionStep(mockContext, 1, () => {});
-      expect(throws).toThrow(new WorkflowError('A workflow step name must be a string. Received "1" (number).'));
+      expect(throws).toThrow(
+        new WorkflowError('A workflow step name must be a string. Received "1" (number).')
+      );
     });
   });
 
