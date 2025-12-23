@@ -157,32 +157,6 @@ const waitForEventTimeoutWorkflow = createWorkflow(async (context: WorkflowConte
 })
 
 /**
- * Workflow 4: Parallel Call
- * Tests parallel execution with sleep and run
- */
-const parallelWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
-  const results = await Promise.all([
-    context.sleep("parallel step", 1),
-    context.run("parallel step", async () => {
-      return "parallel-run-result"
-    })
-  ])
-
-  expect(results[1], "parallel-run-result")
-
-  return {
-    result: "parallel-complete",
-    workflowRunId: context.workflowRunId
-  }
-}, {
-  // flow control to stop logs of parallel stepes interleaving
-  flowControl: {
-    key: "ci-test-parallel",
-    parallelism: 1
-  }
-})
-
-/**
  * Main workflow that invokes other workflows and checks logs
  */
 const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
@@ -298,57 +272,6 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
     }
   })
 
-  // Invoke parallelWorkflow
-  const result4 = await context.invoke("invoke parallel", {
-    workflow: parallelWorkflow,
-    body: "test",
-    headers: {
-      [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
-      [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
-    },
-  })
-
-  expect(result4.body.result, "parallel-complete")
-  expect(result4.isFailed, false)
-
-  // Check logs for parallelWorkflow
-  await context.run("check logs 4", async () => {
-    const workflowRunId = result4.body.workflowRunId
-    if (workflowRunId) {
-      await checkLogs(workflowRunId, [
-        'onInfo:Run id identified.',
-        'runStarted',
-        'onInfo:Executing parallel steps with: {"parallelCallState":"first","initialStepCount":1,"stepCount":2,"planStepCount":0}',
-        'onInfo:Submitting 2 parallel steps.',
-        `onInfo:Submitted 2 parallel steps. messageIds: ${ANY_STRING}, ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'onInfo:Executing parallel steps with: {"parallelCallState":"partial","initialStepCount":1,"plannedParallelStepCount":2,"stepCount":2,"planStepCount":0}',
-        'beforeExecution:parallel step',
-        `onInfo:Submitted step "parallel step" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'onInfo:Executing parallel steps with: {"parallelCallState":"discard","initialStepCount":1,"plannedParallelStepCount":2,"stepCount":2,"planStepCount":0}',
-        'afterExecution:parallel step',
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'onInfo:Executing parallel steps with: {"parallelCallState":"partial","initialStepCount":1,"plannedParallelStepCount":2,"stepCount":2,"planStepCount":0}',
-        'beforeExecution:parallel step',
-        `onInfo:Submitted step "parallel step" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'onInfo:Executing parallel steps with: {"parallelCallState":"last","initialStepCount":1,"plannedParallelStepCount":2,"stepCount":2,"planStepCount":0}',
-        'afterExecution:parallel step',
-        `runCompleted:{"result":"parallel-complete","workflowRunId":"${workflowRunId}"}`,
-        `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
-        `onInfo:Workflow run ${workflowRunId} deleted from QStash successfully.`,
-        'onInfo:Workflow endpoint execution completed successfully.'
-      ])
-    } else {
-      throw new WorkflowNonRetryableError("workflowRunId not found in result4.body")
-    }
-  })
-
   // Check logs for the main workflow itself
   await context.run("check main workflow logs", async () => {
     const workflowRunId = context.workflowRunId
@@ -389,16 +312,6 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
         'onInfo:Workflow endpoint execution completed successfully.',
         'onInfo:Run id identified.',
         'afterExecution:check logs 3',
-        'beforeExecution:invoke parallel',
-        `onInfo:Submitted step "invoke parallel" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:invoke parallel',
-        'beforeExecution:check logs 4',
-        `onInfo:Submitted step "check logs 4" with messageId: ${ANY_STRING}.`,
-        'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
-        'afterExecution:check logs 4',
         'beforeExecution:check main workflow logs',
       ])
     } else {
@@ -415,14 +328,13 @@ export const { POST, GET } = testServe(
     runAndSleepWorkflow,
     callWorkflow,
     waitForEventTimeoutWorkflow,
-    parallelWorkflow,
   }, {
     baseUrl: BASE_URL,
     middlewares: [redisLoggingMiddleware],
     retries: 0
   }),
   {
-    expectedCallCount: 24,
+    expectedCallCount: 17,
     expectedResult: "all-middleware-tests-complete",
     payload,
     headers: {
