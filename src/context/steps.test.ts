@@ -355,12 +355,11 @@ describe("test steps", () => {
       );
     });
 
-    // will be enabled when the string check in BaseLazyStep constructor is updated
-    test.skip("should throw when step name isn't string", () => {
+    test("should throw when step name isn't string", () => {
       const mockContext = createMockContext();
       // @ts-expect-error passing number for test purposes
       const throws = () => new LazyFunctionStep(mockContext, 1, () => {});
-      expect(throws).toThrow(new WorkflowError("A workflow step name must be a string."));
+      expect(throws).toThrow(new WorkflowError('A workflow step name must be a string. Received "1" (number).'));
     });
   });
 

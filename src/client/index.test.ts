@@ -668,7 +668,7 @@ describe("workflow client", () => {
                 failResponse: "400 Bad Request",
                 failStatus: 400,
                 url: "https://httpstat.us/400",
-                state: "DELIVERED",
+                state: "CALLBACK_SUCCESS",
                 failHeaders: expect.any(Object),
                 dlqId: expect.any(String),
               },

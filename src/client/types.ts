@@ -1,4 +1,4 @@
-import { FlowControl, HTTPMethods, PublishRequest, State } from "@upstash/qstash";
+import { FlowControl, HTTPMethods, PublishRequest } from "@upstash/qstash";
 import { RawStep, StepType } from "../types";
 
 type BaseStepLog = {
@@ -224,7 +224,7 @@ type FailureFunctionLog = {
   /**
    * State of the message published for failure
    */
-  state: State;
+  state: "CALLBACK_INPROGRESS" | "CALLBACK_SUCCESS" | "CALLBACK_FAIL";
   /**
    * Headers received from the step which caused the workflow to fail
    */
