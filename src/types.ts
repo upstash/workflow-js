@@ -185,13 +185,12 @@ export type WorkflowServeOptions<
    * Function called to return a response after each step execution
    *
    * @param workflowRunId
+   * @param detailedFinishCondition
    * @returns response
    */
   onStepFinish?: (
     workflowRunId: string,
-    finishCondition: FinishCondition,
-    // made optional to be backwards compatible:
-    detailedFinishCondition?: DetailedFinishCondition
+    detailedFinishCondition: DetailedFinishCondition
   ) => TResponse;
   /**
    * Url of the endpoint where the workflow is set up.

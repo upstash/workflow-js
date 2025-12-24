@@ -56,7 +56,7 @@ export const processOptions = <
         baseUrl: environment.QSTASH_URL!,
         token: environment.QSTASH_TOKEN!,
       }),
-    onStepFinish: (workflowRunId, _finishCondition, detailedFinishCondition) => {
+    onStepFinish: (workflowRunId, detailedFinishCondition) => {
       if (detailedFinishCondition?.condition === "auth-fail") {
         return new Response(
           JSON.stringify({

@@ -126,14 +126,14 @@ export const serveBase = <
     );
 
     if (workflowRunEnded) {
-      return onStepFinish(workflowRunId, "workflow-already-ended", {
+      return onStepFinish(workflowRunId, {
         condition: "workflow-already-ended",
       });
     }
 
     // terminate current call if it's a duplicate branch
     if (isLastDuplicate) {
-      return onStepFinish(workflowRunId, "duplicate-step", {
+      return onStepFinish(workflowRunId, {
         condition: "duplicate-step",
       });
     }
@@ -160,7 +160,7 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onInfo", {
         info: `Handled failure callback.`,
       });
-      return onStepFinish(workflowRunId, "failure-callback-executed", {
+      return onStepFinish(workflowRunId, {
         condition: "failure-callback-executed",
         result: failureCheck.value.response,
       });
@@ -168,7 +168,7 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onInfo", {
         info: `Failure callback invoked but no failure function defined.`,
       });
-      return onStepFinish(workflowRunId, "failure-callback-undefined", {
+      return onStepFinish(workflowRunId, {
         condition: "failure-callback-undefined",
       });
     }
@@ -209,11 +209,9 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onError", {
         error: new Error(AUTH_FAIL_MESSAGE),
       });
-      return onStepFinish(
-        isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId,
-        "auth-fail",
-        { condition: "auth-fail" }
-      );
+      return onStepFinish(isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId, {
+        condition: "auth-fail",
+      });
     }
 
     // check if request is a third party call result
@@ -266,14 +264,14 @@ export const serveBase = <
           });
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
-        return onStepFinish(workflowRunId, result.value, {
+        return onStepFinish(workflowRunId, {
           condition: "non-retryable-error",
           result: result.value,
         });
       }
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
-        return onStepFinish(workflowRunId, result.value, {
+        return onStepFinish(workflowRunId, {
           condition: "retry-after-error",
           result: result.value,
         });
@@ -288,16 +286,16 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onInfo", {
         info: `Workflow endpoint execution completed successfully.`,
       });
-      return onStepFinish(workflowContext.workflowRunId, "success", {
+      return onStepFinish(workflowContext.workflowRunId, {
         condition: "success",
       });
     } else if (callReturnCheck.value === "workflow-ended") {
-      return onStepFinish(workflowContext.workflowRunId, "workflow-already-ended", {
+      return onStepFinish(workflowContext.workflowRunId, {
         condition: "workflow-already-ended",
       });
     }
     // response to QStash in call cases
-    return onStepFinish("no-workflow-id", "fromCallback", {
+    return onStepFinish("no-workflow-id", {
       condition: "fromCallback",
     });
   };
