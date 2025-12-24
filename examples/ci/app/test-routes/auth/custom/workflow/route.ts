@@ -133,7 +133,6 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
     }
   ), {
     expectedCallCount: 8,
@@ -142,6 +141,9 @@ export const { POST, GET } = testServe(
     headers: {
       [ header ]: headerValue,
       "authentication": authentication
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

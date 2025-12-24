@@ -30,9 +30,6 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
-      failureUrl: thirdPartyEndpoint
-      // failureUrl: `${TEST_ROUTE_PREFIX}/call/workflow-with-failureUrl`
     }
   ), {
     expectedCallCount: 4,
@@ -40,6 +37,10 @@ export const { POST, GET } = testServe(
     payload,
     headers: {
       [ testHeader ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
+      failureUrl: thirdPartyEndpoint
     }
   }
 )

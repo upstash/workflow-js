@@ -28,7 +28,6 @@ export const { POST, GET } = testServe(
       });
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
       failureFunction: async ({ context, failStatus, failResponse }) => {
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
@@ -55,6 +54,9 @@ export const { POST, GET } = testServe(
        * client trigger sets this header
        */
       [`upstash-forward-${WORKFLOW_LABEL_HEADER}`]: label
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

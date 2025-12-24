@@ -32,7 +32,6 @@ export const { POST, GET } = testServe(
       await fail(context);
     }, {
     baseUrl: BASE_URL,
-    retries: 0,
     async failureFunction({ context, failStatus, failResponse }) {
       expect(failStatus, 400)
       expect(failResponse, `Failed to authenticate Workflow request. If this is unexpected, see the caveat https://upstash.com/docs/workflow/basics/caveats#avoid-non-deterministic-code-outside-context-run`)
@@ -46,5 +45,8 @@ export const { POST, GET } = testServe(
   expectedCallCount: 3,
   expectedResult: secret,
   payload: undefined,
+  triggerConfig: {
+    retries: 0,
+  }
 }
 )

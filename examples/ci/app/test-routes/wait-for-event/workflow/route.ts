@@ -70,9 +70,10 @@ export const { POST, GET } = testServe(
         context.call<{ workflowRunId: string }>(
           "start notifying workflow",
           {
-            url: `${TEST_ROUTE_PREFIX}/wait-for-event/notifier-workflow`,
+            url: `${TEST_ROUTE_PREFIX}/${NOTIFIER_WORKFLOW_ROUTE}`,
             method: "POST",
             body: config,
+            retries: 0
           }
         ),
         context.waitForEvent("wait text", config.textEventId, {
@@ -118,7 +119,6 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0
     }
   ), {
     expectedCallCount: 17,
@@ -126,6 +126,9 @@ export const { POST, GET } = testServe(
     payload,
     headers: {
       [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 )

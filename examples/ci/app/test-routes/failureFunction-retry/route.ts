@@ -30,7 +30,6 @@ export const { POST, GET } = testServe(
       });
     }, {
       baseUrl: BASE_URL,
-      retries: 1,
       failureFunction: async ({ context, failStatus, failResponse }) => {
         expect(failStatus, 500);
         expect(failResponse, errorMessage);
@@ -62,6 +61,9 @@ export const { POST, GET } = testServe(
     headers: {
       [ header ]: headerValue,
       "authentication": authHeaderValue
+    },
+    triggerConfig: {
+      retries: 1,
     }
   }
 )

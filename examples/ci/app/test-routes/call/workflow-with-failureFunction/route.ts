@@ -31,7 +31,6 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
       async failureFunction({ context }) {
         await fail(context as WorkflowContext)
       },
@@ -42,6 +41,9 @@ export const { POST, GET } = testServe(
     payload,
     headers: {
       [ testHeader ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

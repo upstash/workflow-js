@@ -50,6 +50,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
       [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
       [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
     },
+    retries: 0
   })
 
   expect(typeof result.body.workflowRunId, "string")
@@ -134,14 +135,10 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
     fail(context)
   }
   throw new Error("what")
-}, {
-  retries: 0
 })
 
 const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
   await context.run("mock", () => {})
-}, {
-  retries: 0
 })
 
 /**

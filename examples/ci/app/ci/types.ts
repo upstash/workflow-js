@@ -1,3 +1,12 @@
+import { FlowControl } from "@upstash/qstash"
+
+export type TriggerConfig = {
+  retries?: number,
+  retryDelay?: number,
+  flowControl?: FlowControl,
+  failureUrl?: string,
+}
+
 export type TestConfig<TPayload = unknown> = {
   /**
    * path of the workflow endpoint
@@ -27,7 +36,16 @@ export type TestConfig<TPayload = unknown> = {
    * @default true
    */
   shouldWorkflowStart?: boolean
+  /**
+   * run trigger config
+   */
+  triggerConfig?: TriggerConfig
 }
+
+/**
+ * configs derived from the test endpoints instead of the constants file
+ */
+export type RouteConfigs = "route"
 
 export type RedisResult = {
   /**

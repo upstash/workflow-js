@@ -284,7 +284,6 @@ export const { POST, GET } = testServe(
   }, {
     baseUrl: BASE_URL,
     middlewares: [redisLoggingMiddleware],
-    retries: 0,
   }),
   {
     expectedCallCount: 16,
@@ -293,5 +292,8 @@ export const { POST, GET } = testServe(
     headers: {
       [testHeader]: headerValue,
     },
+    triggerConfig: {
+      retries: 0,
+    }
   }
 )

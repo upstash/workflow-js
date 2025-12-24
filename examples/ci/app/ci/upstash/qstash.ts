@@ -1,8 +1,10 @@
 import { Client, QstashError } from "@upstash/qstash"
+import { Client as WorkflowClient } from "@upstash/workflow"
 import { TEST_ROUTE_PREFIX, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants"
 import { TestConfig } from "../types"
 
 const client = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
+const workflowClient = new WorkflowClient({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
 
 /**
  * starts a workflow run given the config
@@ -12,16 +14,20 @@ const client = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.
  * @returns 
  */
 export const startWorkflow = async (
-  testConfig: Pick<TestConfig, "route" | "headers" | "payload">,
+  testConfig: Pick<TestConfig, "route" | "headers" | "payload" | "triggerConfig">,
   randomTestId: string
-): Promise<{ messageId: string }> => {
-  const result = await client.publishJSON({
+): Promise<{ workflowRunId: string }> => {
+  const result = await workflowClient.trigger({
     url: `${TEST_ROUTE_PREFIX}/${testConfig.route}`,
     headers: {
       [ CI_RANDOM_ID_HEADER ]: randomTestId,
       [ CI_ROUTE_HEADER ]: testConfig.route,
       ...testConfig.headers
     },
+    delay: testConfig.triggerConfig?.retryDelay,
+    retries: testConfig.triggerConfig?.retries,
+    flowControl: testConfig.triggerConfig?.flowControl,
+    failureUrl: testConfig.triggerConfig?.failureUrl,
     body: testConfig.payload
   })
   return result
@@ -33,19 +39,13 @@ export const startWorkflow = async (
  * @param messageId 
  * @returns 
  */
-export const checkWorkflowStart = async (messageId: string) => {
+export const checkWorkflowStart = async (workflowRunId: string) => {
 
-  try {
-    const { events } = await client.events({ filter: { messageId }})
-    const startMessageDelivered = Boolean(events.find(event => event.state === "DELIVERED"))
-    if (!startMessageDelivered) {
-      await client.messages.delete(messageId)
-      throw new Error(`Couldn't verify that workflow has begun. Number of events: ${events.length}`)
-    }
-  } catch (error) {
-    if (error instanceof QstashError && error.message.includes(`message ${messageId} not found`)) {
-      return
-    }
-    throw error
+  const results = await workflowClient.logs({ workflowRunId })
+  const firstRun = results.runs[0]
+  const startMessageDelivered = firstRun && firstRun.steps.length > 1
+  if (!startMessageDelivered) {
+    await workflowClient.cancel({ ids: [ workflowRunId ] })
+    throw new Error(firstRun ? `Couldn't verify that workflow has begun. Number of steps: ${firstRun.steps.length}` : "No runs found")
   }
 }
