@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-magic-numbers */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, test, expect } from "bun:test";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { WorkflowContext } from "../context";
@@ -141,7 +141,6 @@ describe("disabled workflow context", () => {
     });
 
     test("should return run-ended on return", async () => {
-      // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
       const endpoint: RouteFunction<string, unknown> = async (_context) => {
         return;
       };
@@ -164,7 +163,6 @@ describe("disabled workflow context", () => {
     });
 
     test("should get error on error", async () => {
-      // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
       const endpoint: RouteFunction<string, unknown> = async (_context) => {
         throw new Error("my-error");
       };
@@ -195,7 +193,6 @@ describe("disabled workflow context", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
-        retries: 0,
       });
 
       let called = false;
@@ -227,11 +224,10 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
-                "upstash-retries": "0",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -251,7 +247,6 @@ describe("disabled workflow context", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
-        retries: 0,
       });
 
       let called = false;
@@ -283,11 +278,10 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
-                "upstash-retries": "0",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -340,7 +334,7 @@ describe("disabled workflow context", () => {
               destination: WORKFLOW_ENDPOINT,
               headers: {
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-forward-upstash-workflow-invoke-count": "4",
                 "upstash-workflow-sdk-version": "1",

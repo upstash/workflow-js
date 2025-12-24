@@ -47,19 +47,10 @@ describe("serveMany", () => {
       enableTelemetry: false,
     });
 
-    const workflowOne = createWorkflow(
-      async (context: WorkflowContext<number>) => {
-        const a = context.requestPayload + 2;
-        return `result ${a}`;
-      },
-      {
-        flowControl: {
-          key: "workflowOneFlowControl",
-          parallelism: 2,
-          ratePerSecond: 10,
-        },
-      }
-    );
+    const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
+      const a = context.requestPayload + 2;
+      return `result ${a}`;
+    });
 
     const workflowTwo = createWorkflow(
       async (context: WorkflowContext<string>) => {
@@ -95,11 +86,6 @@ describe("serveMany", () => {
         console.log(_secondBody, _secondIsCanceled, _secondIsFailed);
       },
       {
-        flowControl: {
-          key: "workflowTwoFlowControl",
-          parallelism: 4,
-          ratePerSecond: 6,
-        },
         // use a QStash client with custom headers to test header merging
         qstashClient: new Client({
           baseUrl: MOCK_QSTASH_SERVER_URL,
@@ -112,27 +98,18 @@ describe("serveMany", () => {
       }
     );
 
-    const workflowThree = createWorkflow(
-      async (context: WorkflowContext<string>) => {
-        const result = await context.call("call other workflow", {
-          workflow: workflowOne,
-          body: 2,
-        });
+    const workflowThree = createWorkflow(async (context: WorkflowContext<string>) => {
+      const result = await context.call("call other workflow", {
+        workflow: workflowOne,
+        body: 2,
+      });
 
-        const _body = result.body;
-        const _header = result.header;
-        const _status = result.status;
+      const _body = result.body;
+      const _header = result.header;
+      const _status = result.status;
 
-        console.log(_body, _header, _status);
-      },
-      {
-        flowControl: {
-          key: "workflowThreeFlowControl",
-          parallelism: 4,
-          ratePerSecond: 6,
-        },
-      }
-    );
+      console.log(_body, _header, _status);
+    });
 
     const workflowFour = createWorkflow(async (context) => {
       await context.invoke("invoke workflow two", {
@@ -195,9 +172,7 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
-              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
-              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
@@ -250,10 +225,8 @@ describe("serveMany", () => {
           body: {
             body: "2",
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
-              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
-              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
@@ -310,11 +283,8 @@ describe("serveMany", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api/workflow-three",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-callback-flow-control-key": "workflowThreeFlowControl",
-                "upstash-callback-flow-control-value": "parallelism=4, rate=6",
-                "upstash-flow-control-key": "workflowOneFlowControl",
-                "upstash-flow-control-value": "parallelism=2, rate=10",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -366,7 +336,7 @@ describe("serveMany", () => {
           body: {
             body: "hello world",
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
@@ -412,7 +382,7 @@ describe("serveMany", () => {
           body: {
             body: '"hello world"',
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],

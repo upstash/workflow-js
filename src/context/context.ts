@@ -22,11 +22,9 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import { DEFAULT_RETRIES } from "../constants";
 import { WorkflowCancelAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
-import { FlowControl } from "@upstash/qstash";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 import { MiddlewareManager } from "../middleware/manager";
 
@@ -79,25 +77,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ```
    */
   public readonly url: string;
-  /**
-   * URL to call in case of workflow failure with QStash failure callback
-   *
-   * https://upstash.com/docs/qstash/features/callbacks#what-is-a-failure-callback
-   *
-   * Can be overwritten by passing a `failureUrl` parameter in `serve`:
-   *
-   * ```ts
-   * export const POST = serve(
-   *   async (context) => {
-   *     ...
-   *   },
-   *   {
-   *     failureUrl: "new-url-value"
-   *   }
-   * )
-   * ```
-   */
-  public readonly failureUrl?: string;
   /**
    * Payload of the request which started the workflow.
    *
@@ -153,46 +132,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Default value is set to `process.env`.
    */
   public readonly env: Record<string, string | undefined>;
-  /**
-   * Number of retries
-   */
-  public readonly retries: number;
-  /**
-   * Delay between retries.
-   *
-   * By default, the `retryDelay` is exponential backoff.
-   * More details can be found in: https://upstash.com/docs/qstash/features/retry.
-   *
-   * The `retryDelay` option allows you to customize the delay (in milliseconds) between retry attempts when message delivery fails.
-   *
-   * You can use mathematical expressions and the following built-in functions to calculate the delay dynamically.
-   * The special variable `retried` represents the current retry attempt count (starting from 0).
-   *
-   * Supported functions:
-   * - `pow`
-   * - `sqrt`
-   * - `abs`
-   * - `exp`
-   * - `floor`
-   * - `ceil`
-   * - `round`
-   * - `min`
-   * - `max`
-   *
-   * Examples of valid `retryDelay` values:
-   * ```ts
-   * 1000 // 1 second
-   * 1000 * (1 + retried)  // 1 second multiplied by the current retry attempt
-   * pow(2, retried) // 2 to the power of the current retry attempt
-   * max(10, pow(2, retried)) // The greater of 10 or 2^retried
-   * ```
-   */
-  public readonly retryDelay?: string;
-  /**
-   * Settings for controlling the number of active requests
-   * and number of requests per second with the same key.
-   */
-  public readonly flowControl?: FlowControl;
 
   /**
    * Label to apply to the workflow run.
@@ -217,14 +156,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
     headers,
     steps,
     url,
-    failureUrl,
     initialPayload,
     env,
-    retries,
-    retryDelay,
     telemetry,
     invokeCount,
-    flowControl,
     label,
     middlewareManager,
   }: {
@@ -233,14 +168,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
     headers: Headers;
     steps: Step[];
     url: string;
-    failureUrl?: string;
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
-    retries?: number;
-    retryDelay?: string;
     telemetry?: Telemetry;
     invokeCount?: number;
-    flowControl?: FlowControl;
     label?: string;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {
@@ -248,13 +179,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.workflowRunId = workflowRunId;
     this.steps = steps;
     this.url = url;
-    this.failureUrl = failureUrl;
     this.headers = headers;
     this.requestPayload = initialPayload;
     this.env = env ?? {};
-    this.retries = retries ?? DEFAULT_RETRIES;
-    this.retryDelay = retryDelay;
-    this.flowControl = flowControl;
     this.label = label;
 
     const middlewareManagerInstance =
@@ -410,7 +337,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
         settings.retries || 0,
         settings.retryDelay,
         settings.timeout,
-        settings.flowControl ?? settings.workflow.options.flowControl,
+        settings.flowControl,
         settings.stringifyBody ?? true
       );
     } else {

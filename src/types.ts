@@ -205,10 +205,6 @@ export type WorkflowServeOptions<
    * QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY if they are set.
    */
   receiver?: WorkflowReceiver;
-  /**
-   * Url to call if QStash retries are exhausted while executing the workflow
-   */
-  failureUrl?: string;
 
   /**
    * Failure function called when QStash retries are exhausted while executing
@@ -248,43 +244,6 @@ export type WorkflowServeOptions<
    */
   env?: Record<string, string | undefined>;
   /**
-   * Number of retries to use in workflow requests
-   *
-   * @default 3
-   */
-  retries?: number;
-  /**
-   * Delay between retries.
-   *
-   * By default, the `retryDelay` is exponential backoff.
-   * More details can be found in: https://upstash.com/docs/qstash/features/retry.
-   *
-   * The `retryDelay` option allows you to customize the delay (in milliseconds) between retry attempts when message delivery fails.
-   *
-   * You can use mathematical expressions and the following built-in functions to calculate the delay dynamically.
-   * The special variable `retried` represents the current retry attempt count (starting from 0).
-   *
-   * Supported functions:
-   * - `pow`
-   * - `sqrt`
-   * - `abs`
-   * - `exp`
-   * - `floor`
-   * - `ceil`
-   * - `round`
-   * - `min`
-   * - `max`
-   *
-   * Examples of valid `retryDelay` values:
-   * ```ts
-   * 1000 // 1 second
-   * 1000 * (1 + retried)  // 1 second multiplied by the current retry attempt
-   * pow(2, retried) // 2 to the power of the current retry attempt
-   * max(10, pow(2, retried)) // The greater of 10 or 2^retried
-   * ```
-   */
-  retryDelay?: string;
-  /**
    * Whether the framework should use `content-type: application/json`
    * in `triggerFirstInvocation`.
    *
@@ -299,11 +258,6 @@ export type WorkflowServeOptions<
    * @default false
    */
   disableTelemetry?: boolean;
-  /**
-   * Settings for controlling the number of active requests
-   * and number of requests per second with the same key.
-   */
-  flowControl?: FlowControl;
   /**
    * List of workflow middlewares to use
    */
@@ -495,18 +449,6 @@ export type HeaderParams = {
    */
   userHeaders?: Headers;
   /**
-   * failure url to call incase of failure
-   */
-  failureUrl?: WorkflowServeOptions["failureUrl"];
-  /**
-   * retry setting of requests except context.call
-   */
-  retries?: number;
-  /**
-   * retry delay to include in headers.
-   */
-  retryDelay?: string;
-  /**
    * telemetry to include in timeoutHeaders.
    *
    * Only needed/used when the step is a waitForEvent step
@@ -516,11 +458,6 @@ export type HeaderParams = {
    * invoke count to include in headers
    */
   invokeCount?: number;
-  /**
-   * Settings for controlling the number of active requests
-   * and number of requests per second with the same key.
-   */
-  flowControl?: FlowControl;
 } & (
   | {
       /**

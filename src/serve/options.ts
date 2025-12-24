@@ -1,10 +1,6 @@
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
-import {
-  DEFAULT_RETRIES,
-  WORKFLOW_PROTOCOL_VERSION,
-  WORKFLOW_PROTOCOL_VERSION_HEADER,
-} from "../constants";
+import { WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
 import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { formatWorkflowError, WorkflowError } from "../error";
 import { loggingMiddleware } from "../middleware";
@@ -31,16 +27,7 @@ export const processOptions = <
   options?: WorkflowServeOptions<TResponse, TInitialPayload, TResult>
 ): RequiredExceptFields<
   WorkflowServeOptions<TResponse, TInitialPayload, TResult>,
-  | "receiver"
-  | "url"
-  | "failureFunction"
-  | "failureUrl"
-  | "baseUrl"
-  | "schema"
-  | "flowControl"
-  | "retryDelay"
-  | "middlewares"
-  | "verbose"
+  "receiver" | "url" | "failureFunction" | "baseUrl" | "schema" | "middlewares" | "verbose"
 > => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
@@ -132,7 +119,6 @@ export const processOptions = <
       : undefined,
     baseUrl: environment.UPSTASH_WORKFLOW_URL,
     env: environment,
-    retries: DEFAULT_RETRIES,
     useJSONContent: false,
     disableTelemetry: false,
     ...options,
@@ -155,12 +141,10 @@ export const processOptions = <
  * @param dispatchDebug debug event dispatcher
  * @returns workflow URL and failure URL
  */
-export const determineUrls = async <TInitialPayload = unknown>(
+export const determineUrls = async (
   request: Request,
   url: string | undefined,
   baseUrl: string | undefined,
-  failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
-  failureUrl: string | undefined,
   dispatchDebug: DispatchDebug
 ) => {
   const initialWorkflowUrl = url ?? request.url;
@@ -176,9 +160,6 @@ export const determineUrls = async <TInitialPayload = unknown>(
     });
   }
 
-  // set url to call in case of failure
-  const workflowFailureUrl = failureFunction ? workflowUrl : failureUrl;
-
   if (workflowUrl.includes("localhost")) {
     await dispatchDebug("onInfo", {
       info: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${workflowUrl}`,
@@ -193,7 +174,6 @@ export const determineUrls = async <TInitialPayload = unknown>(
 
   return {
     workflowUrl,
-    workflowFailureUrl,
   };
 };
 

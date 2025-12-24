@@ -60,8 +60,6 @@ describe("Workflow Requests", () => {
       headers: new Headers({ "upstash-label": label }) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
-      retries: 0,
-      retryDelay: "1000 * retried",
       label,
       middlewareManager: new MiddlewareManager(),
     });
@@ -105,8 +103,6 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
-      retries: 0,
-      retryDelay: "1000 * retried",
     });
 
     await mockQStashServer({
@@ -130,8 +126,6 @@ describe("Workflow Requests", () => {
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
-              "upstash-retries": "0",
-              "upstash-retry-delay": "1000 * retried",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
               "upstash-workflow-init": "true",
@@ -386,9 +380,6 @@ describe("Workflow Requests", () => {
             requestPayload: await request.text(),
             client,
             workflowUrl: WORKFLOW_ENDPOINT,
-            failureUrl: WORKFLOW_ENDPOINT,
-            retries: 2,
-            retryDelay: "1000",
             telemetry: {
               framework: "some-platform",
               sdk: "some-sdk",
@@ -413,11 +404,7 @@ describe("Workflow Requests", () => {
             out: '{"status":200,"body":"third-party-call-result"}',
             concurrent: 1,
           },
-          headers: {
-            "upstash-retries": "2",
-            "upstash-retry-delay": "1000",
-            "upstash-failure-callback": WORKFLOW_ENDPOINT,
-          },
+          headers: {},
         },
       });
     });
@@ -466,9 +453,6 @@ describe("Workflow Requests", () => {
         requestPayload: await request.text(),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
-        failureUrl: WORKFLOW_ENDPOINT,
-        retries: 3,
-        retryDelay: "1000",
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -521,9 +505,6 @@ describe("Workflow Requests", () => {
         requestPayload: await initialRequest.text(),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
-        failureUrl: WORKFLOW_ENDPOINT,
-        retries: 5,
-        retryDelay: "1000",
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -540,8 +521,6 @@ describe("Workflow Requests", () => {
         requestPayload: await workflowRequest.text(),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
-        failureUrl: WORKFLOW_ENDPOINT,
-        retries: 0,
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -573,7 +552,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         "content-type": "application/json",
@@ -616,7 +595,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         "content-type": "application/json",
@@ -642,12 +621,6 @@ describe("Workflow Requests", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: undefined,
-        flowControl: {
-          key: "regular-flow-key",
-          rate: 3,
-          parallelism: 4,
-          period: "1m",
-        },
       });
       const lazyStep = new LazyCallStep(
         mockContext,
@@ -680,7 +653,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Forward-Upstash-Workflow-Invoke-Count": "3",
         "Upstash-Forward-Upstash-Workflow-Invoke-Count": "3",
-        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
@@ -697,8 +670,6 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-CallType": "toCallback",
         "content-type": "application/json",
         // flow control:
-        "Upstash-Callback-Flow-Control-Key": "regular-flow-key",
-        "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3, period=1m",
         "Upstash-Flow-Control-Key": "call-flow-key",
         "Upstash-Flow-Control-Value": "parallelism=6, rate=5, period=30s",
       });
@@ -725,8 +696,9 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
-        "Upstash-Failure-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+        "Upstash-Failure-Callback-Feature-Set":
+          "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
@@ -756,10 +728,6 @@ describe("Workflow Requests", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         workflowRunId,
-        flowControl: {
-          key: "wait-key",
-          parallelism: 2,
-        },
       });
       const lazyStep = new LazyWaitForEventStep(
         context,
@@ -785,12 +753,10 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
         "content-type": "application/json",
-        "Upstash-Flow-Control-Key": "wait-key",
-        "Upstash-Flow-Control-Value": "parallelism=2",
       });
       expect(typeof body).toBe("string");
       expect(JSON.parse(body)).toEqual({
@@ -801,12 +767,10 @@ describe("Workflow Requests", () => {
           "Upstash-Workflow-Init": ["false"],
           "Upstash-Workflow-RunId": [workflowRunId],
           "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
-          [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody,WF_DetectTrigger"],
+          [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
           "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
           "content-type": ["application/json"],
-          "Upstash-Flow-Control-Key": ["wait-key"],
-          "Upstash-Flow-Control-Value": ["parallelism=2"],
           "Upstash-Workflow-CallType": ["step"],
           "Upstash-Workflow-Runid": [workflowRunId],
         },
@@ -1033,7 +997,6 @@ describe("Workflow Requests", () => {
           headers: new Headers({}) as Headers,
           steps: [],
           url: WORKFLOW_ENDPOINT,
-          retries: 0,
         });
         const resultTwo = await triggerFirstInvocation({
           workflowContext: noRetryContext,

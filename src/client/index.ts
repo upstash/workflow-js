@@ -253,11 +253,7 @@ export class Client {
         steps: [],
         url: option.url,
         workflowRunId: finalWorkflowRunId,
-        retries: option.retries,
-        retryDelay: option.retryDelay,
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
-        flowControl: option.flowControl,
-        failureUrl,
         label: option.label,
       });
 
@@ -266,6 +262,10 @@ export class Client {
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         delay: option.delay,
         notBefore: option.notBefore,
+        failureUrl,
+        retries: option.retries,
+        retryDelay: option.retryDelay,
+        flowControl: option.flowControl,
       };
     });
     const result = await triggerFirstInvocation(invocations);

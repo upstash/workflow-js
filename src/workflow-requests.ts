@@ -24,15 +24,15 @@ import type {
   Telemetry,
   WorkflowClient,
   WorkflowReceiver,
-  WorkflowServeOptions,
 } from "./types";
 import { StepTypes } from "./types";
-import { FlowControl, PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
+import { PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
 import { DispatchDebug } from "./middleware/types";
 import { MiddlewareManager } from "./middleware/manager";
+import { TriggerOptions } from "./client/types";
 
 type TriggerFirstInvocationParams<TInitialPayload> = {
   workflowContext: WorkflowContext<TInitialPayload>;
@@ -41,6 +41,10 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   invokeCount?: number;
   delay?: PublishRequest["delay"];
   notBefore?: PublishRequest["notBefore"];
+  failureUrl?: TriggerOptions["failureUrl"];
+  retries?: TriggerOptions["retries"];
+  retryDelay?: TriggerOptions["retryDelay"];
+  flowControl?: TriggerOptions["flowControl"];
   middlewareManager?: MiddlewareManager;
 };
 
@@ -53,22 +57,32 @@ export const triggerFirstInvocation = async <TInitialPayload>(
   const workflowContextClient = firstInvocationParams[0].workflowContext.qstashClient;
 
   const invocationBatch = firstInvocationParams.map(
-    ({ workflowContext, useJSONContent, telemetry, invokeCount, delay, notBefore }) => {
+    ({
+      workflowContext,
+      useJSONContent,
+      telemetry,
+      invokeCount,
+      delay,
+      notBefore,
+      failureUrl,
+      retries,
+      retryDelay,
+      flowControl,
+    }) => {
       const { headers } = getHeaders({
         initHeaderValue: "true",
         workflowConfig: {
           workflowRunId: workflowContext.workflowRunId,
           workflowUrl: workflowContext.url,
-          failureUrl: workflowContext.failureUrl,
-          retries: workflowContext.retries,
-          retryDelay: workflowContext.retryDelay,
+          failureUrl,
+          retries,
+          retryDelay,
           telemetry: telemetry,
-          flowControl: workflowContext.flowControl,
+          flowControl,
           useJSONContent: useJSONContent ?? false,
         },
         invokeCount: invokeCount ?? 0,
         userHeaders: workflowContext.headers,
-        keepTriggerConfig: true,
       });
 
       // QStash doesn't forward content-type when passed in `upstash-forward-content-type`
@@ -295,22 +309,14 @@ export const handleThirdPartyCallResult = async ({
   requestPayload,
   client,
   workflowUrl,
-  failureUrl,
-  retries,
-  retryDelay,
   telemetry,
-  flowControl,
   middlewareManager,
 }: {
   request: Request;
   requestPayload: string;
   client: WorkflowClient;
   workflowUrl: string;
-  failureUrl: WorkflowServeOptions["failureUrl"];
-  retries: number;
-  retryDelay?: string;
   telemetry?: Telemetry;
-  flowControl?: FlowControl;
   middlewareManager?: MiddlewareManager;
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
@@ -415,11 +421,7 @@ export const handleThirdPartyCallResult = async ({
         workflowConfig: {
           workflowRunId,
           workflowUrl,
-          failureUrl,
-          retries,
-          retryDelay,
           telemetry,
-          flowControl,
         },
         userHeaders,
         invokeCount: Number(invokeCount),
