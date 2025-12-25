@@ -100,7 +100,7 @@ export const { POST, GET } = testServe(
     }
   ),
   {
-    expectedCallCount: 9,
+    expectedCallCount: 8,
     expectedResult: getResult,
     headers: {
       [header]: headerValue,

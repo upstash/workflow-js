@@ -286,7 +286,7 @@ export const { POST, GET } = testServe(
     middlewares: [redisLoggingMiddleware],
   }),
   {
-    expectedCallCount: 16,
+    expectedCallCount: 15,
     expectedResult: "all-middleware-tests-complete",
     payload,
     headers: {

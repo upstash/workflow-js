@@ -121,7 +121,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 17,
+    expectedCallCount: 16,
     expectedResult: `${TEXT_EVENT_DATA} - ${JSON.stringify(OBJECT_EVENT_DATA)}`,
     payload,
     headers: {

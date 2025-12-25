@@ -36,7 +36,7 @@ export const { POST, GET } = testServe(
       },
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: PATCH_RESULT.toString(),
     payload,
     headers: {

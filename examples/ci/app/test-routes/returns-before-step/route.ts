@@ -18,12 +18,9 @@ export const { POST, GET } = testServe(
       const count = await redis.incr(redisKey)
 
       if (count === 1) {
-        // allow in the first encounter
-        await context.run("mock step", () => { })
-      } else if (count === 2) {
         // return after the step, which should return 400
         return
-      } else if (count === 3) {
+      } else if (count === 2) {
         // coming back for failureFunction. put a mock step to allow it
         await context.run("mock step", () => { })
       }
@@ -42,7 +39,7 @@ export const { POST, GET } = testServe(
     }
   }
   ), {
-  expectedCallCount: 3,
+  expectedCallCount: 2,
   expectedResult: secret,
   payload: undefined,
   triggerConfig: {

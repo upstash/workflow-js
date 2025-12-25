@@ -58,7 +58,7 @@ export const { POST, GET } = testServe(
   }, {
     baseUrl: BASE_URL,
   }), {
-  expectedCallCount: 5,
+  expectedCallCount: 4,
   expectedResult: NON_WORKFLOW_ROUTE_RESPONSE,
   payload: NON_WORKFLOW_ROUTE_RESPONSE,
   headers: {

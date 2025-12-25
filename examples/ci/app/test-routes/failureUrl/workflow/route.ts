@@ -20,7 +20,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 2,
+    expectedCallCount: 1,
     expectedResult: `{"error":"Error","message":"${ERROR_MESSAGE}","stack":${ANY_STRING}}`,
     payload: PAYLOAD,
     headers: {

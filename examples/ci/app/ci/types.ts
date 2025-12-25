@@ -2,9 +2,10 @@ import { FlowControl } from "@upstash/qstash"
 
 export type TriggerConfig = {
   retries?: number,
-  retryDelay?: number,
+  retryDelay?: string,
   flowControl?: FlowControl,
   failureUrl?: string,
+  label?: string
 }
 
 export type TestConfig<TPayload = unknown> = {

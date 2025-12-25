@@ -40,7 +40,7 @@ export const { POST, GET } = testServe(
       },
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: `super secret`,
     payload,
     headers: {

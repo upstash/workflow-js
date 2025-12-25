@@ -48,7 +48,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 10,
+    expectedCallCount: 9,
     expectedResult: `${largeObjectLength} - ${largeObjectLength}`,
     payload,
     headers: {

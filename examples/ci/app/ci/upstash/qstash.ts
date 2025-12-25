@@ -1,9 +1,7 @@
-import { Client, QstashError } from "@upstash/qstash"
 import { Client as WorkflowClient } from "@upstash/workflow"
 import { TEST_ROUTE_PREFIX, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "../constants"
 import { TestConfig } from "../types"
 
-const client = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
 const workflowClient = new WorkflowClient({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
 
 /**
@@ -24,11 +22,12 @@ export const startWorkflow = async (
       [ CI_ROUTE_HEADER ]: testConfig.route,
       ...testConfig.headers
     },
-    delay: testConfig.triggerConfig?.retryDelay,
+    retryDelay: testConfig.triggerConfig?.retryDelay,
     retries: testConfig.triggerConfig?.retries,
     flowControl: testConfig.triggerConfig?.flowControl,
     failureUrl: testConfig.triggerConfig?.failureUrl,
-    body: testConfig.payload
+    label: testConfig.triggerConfig?.label,
+    body: testConfig.payload,
   })
   return result
 }

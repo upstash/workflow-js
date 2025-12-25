@@ -80,7 +80,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 13,
+    expectedCallCount: 12,
     expectedResult: "foobar",
     payload,
     headers: {

@@ -32,7 +32,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: PATCH_RESULT.toString(),
     payload,
     headers: {

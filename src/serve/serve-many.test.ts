@@ -198,6 +198,10 @@ describe("serveMany", () => {
             [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
             "Upstash-Flow-Control-Key": "customFlowControl",
             "Upstash-Flow-Control-Value": "parallelism=4",
+            "upstash-forward-x-vercel-protection-bypass": "testing",
+            "upstash-workflow-init": "true",
+            "upstash-workflow-invoke": "true",
+            "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
           },
         },
       });

@@ -59,7 +59,8 @@ export const { POST, GET } = testServe(
         url: thirdPartyEndpoint,
         headers: getHeader,
         method: "PATCH",
-        retries: 1
+        retries: 1,
+        retryDelay: "1000"
       });
 
       expect(status, 401)
@@ -102,7 +103,8 @@ export const { POST, GET } = testServe(
     [testHeader]: headerValue,
   },
   triggerConfig: {
-    retries: 0
+    retries: 0,
+    retryDelay: "1000"
   }
 }
 ) 

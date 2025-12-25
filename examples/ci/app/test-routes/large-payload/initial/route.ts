@@ -45,7 +45,7 @@ export const { POST, GET } = testServe(
       },
     }
   ), {
-    expectedCallCount: 5,
+    expectedCallCount: 4,
     expectedResult: throws,
     payload: largeObject,
     headers: {

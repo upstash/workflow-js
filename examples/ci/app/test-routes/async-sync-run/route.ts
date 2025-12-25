@@ -42,7 +42,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 5,
+    expectedCallCount: 4,
     expectedResult: `result1 result2 result3`,
     payload,
     headers: {

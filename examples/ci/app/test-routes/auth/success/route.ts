@@ -46,7 +46,7 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: "processed 'processed 'my-payload''",
     payload,
     headers: {
