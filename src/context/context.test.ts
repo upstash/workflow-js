@@ -133,8 +133,6 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
-      retries: 2,
-      retryDelay: "1000",
       invokeCount: 5,
     });
 
@@ -161,12 +159,10 @@ describe("context tests", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-forward-upstash-workflow-invoke-count": "5",
               "upstash-method": "POST",
-              "upstash-retries": "2",
-              "upstash-retry-delay": "1000",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-id",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -213,7 +209,7 @@ describe("context tests", () => {
             timeout: "7d", // default timeout
             timeoutHeaders: {
               "content-type": ["application/json"],
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
               [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
               "Upstash-Workflow-CallType": ["step"],
@@ -266,7 +262,7 @@ describe("context tests", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-method": "POST",
@@ -281,7 +277,7 @@ describe("context tests", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-method": "POST",
@@ -310,7 +306,6 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 7,
-        retryDelay: "1000 * retried",
       });
       await mockQStashServer({
         execute: () => {
@@ -349,7 +344,8 @@ describe("context tests", () => {
                 "content-type": "application/x-www-form-urlencoded",
                 "upstash-forward-content-type": "application/x-www-form-urlencoded",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype":
@@ -368,7 +364,6 @@ describe("context tests", () => {
                 "upstash-method": "PATCH",
                 "upstash-retries": retries.toString(),
                 "upstash-retry-delay": retryDelay,
-                "upstash-callback-retry-delay": "1000 * retried",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
@@ -417,7 +412,8 @@ describe("context tests", () => {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -479,7 +475,8 @@ describe("context tests", () => {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -561,8 +558,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
       });
 
       await mockQStashServer({
@@ -592,8 +587,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
       });
 
       await mockQStashServer({
@@ -624,8 +617,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
       });
 
       const openAIToken = `hello-there`;
@@ -670,15 +661,14 @@ describe("context tests", () => {
                 "upstash-timeout": timeout,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "2",
-                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -707,8 +697,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
         invokeCount: 5,
       });
 
@@ -755,7 +743,8 @@ describe("context tests", () => {
                 "upstash-timeout": timeout,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -764,8 +753,6 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "2",
-                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -794,8 +781,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
       });
 
       const resendToken = `hello-there`;
@@ -838,15 +823,14 @@ describe("context tests", () => {
                 "upstash-timeout": timeout,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "2",
-                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -875,9 +859,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
         invokeCount: 3,
-        retryDelay: "1000",
       });
 
       const anthropicToken = `hello-there`;
@@ -930,7 +912,8 @@ describe("context tests", () => {
                 [`upstash-forward-${header}`]: headerValue,
                 "content-type": "application/json",
                 "upstash-callback": WORKFLOW_ENDPOINT,
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -939,8 +922,6 @@ describe("context tests", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": stepName,
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "2",
-                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-id",
@@ -972,8 +953,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
       });
 
       await mockQStashServer({
@@ -1000,11 +979,9 @@ describe("context tests", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
-                "upstash-retries": "2",
-                "upstash-retry-delay": "1000",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
@@ -1023,8 +1000,6 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
-        retries: 2,
-        retryDelay: "1000",
       });
 
       const webhook = {
@@ -1057,7 +1032,7 @@ describe("context tests", () => {
             timeout: "30s",
             timeoutHeaders: {
               "content-type": ["application/json"],
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: ["1"],
               [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
               "Upstash-Workflow-CallType": ["step"],
@@ -1065,8 +1040,6 @@ describe("context tests", () => {
               [WORKFLOW_ID_HEADER]: ["wfr-id"],
               "Upstash-Workflow-Runid": ["wfr-id"],
               [WORKFLOW_URL_HEADER]: [WORKFLOW_ENDPOINT],
-              "Upstash-Retries": ["2"],
-              "Upstash-Retry-Delay": ["1000"],
             },
             timeoutUrl: WORKFLOW_ENDPOINT,
             url: WORKFLOW_ENDPOINT,
@@ -1108,7 +1081,7 @@ describe("context tests", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",

@@ -108,8 +108,6 @@ const testEndpoint = async <TInitialPayload = unknown>({
   routeFunction,
   finishState,
   failureFunction,
-  retries,
-  retryDelay,
   port = WORKFLOW_PORT,
 }: {
   finalCount?: number;
@@ -128,8 +126,6 @@ const testEndpoint = async <TInitialPayload = unknown>({
     qstashClient,
     url: `http://localhost:${port}`,
     failureFunction,
-    retries,
-    retryDelay,
   });
 
   const server = serve({

@@ -64,15 +64,11 @@ export const serveBase = <
     initialPayloadParser,
     url,
     receiver,
-    failureUrl,
     failureFunction,
     baseUrl,
     env,
-    retries,
-    retryDelay,
     useJSONContent,
     disableTelemetry,
-    flowControl,
     middlewares,
   } = processOptions<TResponse, TInitialPayload, TResult>(options);
   telemetry = disableTelemetry ? undefined : telemetry;
@@ -94,12 +90,10 @@ export const serveBase = <
       info: `Received request for workflow execution.`,
     });
 
-    const { workflowUrl, workflowFailureUrl } = await determineUrls(
+    const { workflowUrl } = await determineUrls(
       request,
       url,
       baseUrl,
-      failureFunction,
-      failureUrl,
       middlewareManager.dispatchDebug.bind(middlewareManager)
     );
 
@@ -139,7 +133,7 @@ export const serveBase = <
     }
 
     // check if the request is a failure callback
-    const failureCheck = await handleFailure<TInitialPayload>(
+    const failureCheck = await handleFailure<TInitialPayload>({
       request,
       requestPayload,
       qstashClient,
@@ -147,11 +141,8 @@ export const serveBase = <
       routeFunction,
       failureFunction,
       env,
-      retries,
-      retryDelay,
-      flowControl,
-      middlewareManager.dispatchDebug.bind(middlewareManager)
-    );
+      dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
+    });
     if (failureCheck.isErr()) {
       // unexpected error during handleFailure
       throw failureCheck.error;
@@ -184,13 +175,9 @@ export const serveBase = <
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
       url: workflowUrl,
-      failureUrl: workflowFailureUrl,
       env,
-      retries,
-      retryDelay,
       telemetry,
       invokeCount,
-      flowControl,
       label,
       middlewareManager,
     });
@@ -220,10 +207,6 @@ export const serveBase = <
       requestPayload: rawInitialPayload,
       client: qstashClient,
       workflowUrl,
-      failureUrl: workflowFailureUrl,
-      retries,
-      retryDelay,
-      flowControl,
       telemetry,
       middlewareManager,
     });

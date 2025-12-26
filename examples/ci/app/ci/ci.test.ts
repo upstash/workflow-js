@@ -7,7 +7,7 @@ describe("workflow integration tests", () => {
     test(
       testConfig.route,
       async () => {
-        await initiateTest(testConfig.route)
+        await initiateTest(testConfig)
       },
       TEST_TIMEOUT_DURATION
     )

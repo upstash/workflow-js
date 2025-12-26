@@ -48,7 +48,6 @@ const { handler } = servePagesRouter<unknown>(
     }
   },
   {
-    retries: 0,
     async failureFunction({ failResponse, context }) {
       if (context.headers.get(CI_FAIL_HEADER) !== "true") {
         throw new Error("didn't receive the expected failure header")

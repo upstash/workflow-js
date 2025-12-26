@@ -290,26 +290,29 @@ export const parseRequest = async (
  * @param routeFunction route function to run
  * @param failureFunction function to handle the failure
  * @param env environment variables
- * @param retries number of retries
- * @param retryDelay delay between retries
- * @param flowControl flow control settings
  * @param dispatchDebug optional debug dispatcher
  */
-export const handleFailure = async <TInitialPayload>(
-  request: Request,
-  requestPayload: string,
-  qstashClient: WorkflowClient,
+export const handleFailure = async <TInitialPayload>({
+  request,
+  requestPayload,
+  qstashClient,
+  initialPayloadParser,
+  routeFunction,
+  failureFunction,
+  env,
+  dispatchDebug,
+}: {
+  request: Request;
+  requestPayload: string;
+  qstashClient: WorkflowClient;
   initialPayloadParser: Required<
     WorkflowServeOptions<Response, TInitialPayload>
-  >["initialPayloadParser"],
-  routeFunction: RouteFunction<TInitialPayload>,
-  failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
-  env: WorkflowServeOptions["env"],
-  retries: WorkflowServeOptions["retries"],
-  retryDelay: WorkflowServeOptions["retryDelay"],
-  flowControl: WorkflowServeOptions["flowControl"],
-  dispatchDebug?: DispatchDebug
-): Promise<
+  >["initialPayloadParser"];
+  routeFunction: RouteFunction<TInitialPayload>;
+  failureFunction?: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"];
+  env: WorkflowServeOptions["env"];
+  dispatchDebug?: DispatchDebug;
+}): Promise<
   | Ok<
       | { result: "not-failure-callback" }
       | { result: "failure-function-executed"; response: string | void }
@@ -369,11 +372,7 @@ export const handleFailure = async <TInitialPayload>(
       headers: userHeaders,
       steps: [],
       url: url,
-      failureUrl: url,
       env,
-      retries,
-      retryDelay,
-      flowControl,
       telemetry: undefined, // not going to make requests in authentication check
       label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,
       middlewareManager: undefined,

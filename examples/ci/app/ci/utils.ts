@@ -1,4 +1,4 @@
-import { type TestConfig } from "./types"
+import { RouteConfigs, TriggerConfig, type TestConfig } from "./types"
 import { CHECK_WF_AFTER_INIT_DURATION, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "./constants"
 import { serve } from "@upstash/workflow/nextjs"
 import * as redis from "./upstash/redis"
@@ -20,7 +20,7 @@ export const nanoid = () => {
  */
 export const testServe = (
   serveResult: ReturnType<typeof serve>,
-  testConfig: Omit<TestConfig, "route">
+  testConfig: Omit<TestConfig, RouteConfigs>
 ) => {
 
   const handler = async (request: Request) => {
@@ -62,17 +62,18 @@ export const getTestConfig = async (route: string) => {
   return testConfig
 }
 
-export const initiateTest = async (route: string) => {
+export const initiateTest = async (params: Pick<TestConfig, "route">) => {
   const randomTestId = nanoid()
-  const { headers, payload, expectedCallCount, expectedResult, shouldWorkflowStart = true } = await getTestConfig(route)
+  const { route } = params
+  const { headers, payload, expectedCallCount, expectedResult, triggerConfig, shouldWorkflowStart = true } = await getTestConfig(route)
 
-  const { messageId } = await qstash.startWorkflow({ route, headers, payload }, randomTestId)
+  const { workflowRunId } = await qstash.startWorkflow({ route, headers, payload, triggerConfig }, randomTestId)
 
   // sleep for 4 secs and check that message is delivered
   await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
   try {
-    await qstash.checkWorkflowStart(messageId);
+    await qstash.checkWorkflowStart(workflowRunId);
   } catch (error) {
     console.error(error);
     if (shouldWorkflowStart) {

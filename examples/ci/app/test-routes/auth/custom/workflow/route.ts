@@ -133,15 +133,17 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
     }
   ), {
-    expectedCallCount: 8,
+    expectedCallCount: 7,
     expectedResult: "not authorized for failure",
     payload,
     headers: {
       [ header ]: headerValue,
       "authentication": authentication
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

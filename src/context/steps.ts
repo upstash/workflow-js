@@ -153,12 +153,8 @@ export abstract class BaseLazyStep<TResult = unknown> {
       workflowConfig: {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
-        failureUrl: context.failureUrl,
-        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
-        retryDelay: context.retryDelay,
         useJSONContent: false,
         telemetry,
-        flowControl: context.flowControl,
       },
       userHeaders: context.headers,
       invokeCount,
@@ -175,9 +171,6 @@ export abstract class BaseLazyStep<TResult = unknown> {
         body,
         headers,
         method: "POST",
-        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
-        retryDelay: context.retryDelay,
-        flowControl: context.flowControl,
         url: context.url,
       },
     ])) as { messageId: string }[];
@@ -264,9 +257,6 @@ export class LazySleepStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
-        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
-        retryDelay: context.retryDelay,
-        flowControl: context.flowControl,
         delay: isParallel ? undefined : this.sleep,
       },
     ])) as { messageId: string }[];
@@ -318,9 +308,6 @@ export class LazySleepUntilStep extends BaseLazyStep {
         headers,
         method: "POST",
         url: context.url,
-        retries: DEFAULT_RETRIES === context.retries ? undefined : context.retries,
-        retryDelay: context.retryDelay,
-        flowControl: context.flowControl,
         notBefore: isParallel ? undefined : this.sleepUntil,
       },
     ])) as { messageId: string }[];
@@ -490,7 +477,7 @@ export class LazyCallStep<TResult = unknown, TBody = unknown> extends BaseLazySt
         "Upstash-Callback-Workflow-CallType": "fromCallback",
         "Upstash-Callback-Workflow-Init": "false",
         "Upstash-Callback-Workflow-Url": context.url,
-        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
 
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
         "Upstash-Callback-Forward-Upstash-Workflow-StepId": step.stepId.toString(),
@@ -751,11 +738,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       workflowConfig: {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
-        failureUrl: context.failureUrl,
-        retries: context.retries,
-        retryDelay: context.retryDelay,
         telemetry,
-        flowControl: context.flowControl,
         useJSONContent: false,
       },
       userHeaders: context.headers,
@@ -805,25 +788,18 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     } = this.params;
     const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
 
-    const {
-      retries: workflowRetries,
-      retryDelay: workflowRetryDelay,
-      failureFunction,
-      failureUrl,
-      useJSONContent,
-      flowControl: workflowFlowControl,
-    } = workflow.options;
+    const { useJSONContent } = workflow.options;
 
     const { headers: triggerHeaders, contentType } = getHeaders({
       initHeaderValue: "true",
       workflowConfig: {
         workflowRunId: workflowRunId,
         workflowUrl: newUrl,
-        retries: retries ?? workflowRetries,
-        retryDelay: retryDelay ?? workflowRetryDelay,
+        retries,
+        retryDelay,
         telemetry,
-        failureUrl: failureFunction ? newUrl : failureUrl,
-        flowControl: flowControl ?? workflowFlowControl,
+        failureUrl: newUrl,
+        flowControl,
         useJSONContent: useJSONContent ?? false,
       },
       invokeCount: invokeCount + 1,

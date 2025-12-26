@@ -1,4 +1,4 @@
-import { TestConfig } from "./types"
+import { RouteConfigs, TestConfig } from "./types"
 
 export const RETRY_COUNT = 20
 export const RETRY_INTERVAL_DURATION = 2000
@@ -26,7 +26,7 @@ export const BASE_URL = process.env.VERCEL_URL
 
 export const TEST_ROUTE_PREFIX = `${BASE_URL}/test-routes`
 
-export const TEST_ROUTES: Pick<TestConfig, "route">[] = [
+export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   {
     // tests a very basic endpoint with 2 context run statements
     // payload has unicode chars

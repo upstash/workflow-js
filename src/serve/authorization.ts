@@ -86,12 +86,8 @@ export class DisabledWorkflowContext<
       headers: context.headers,
       steps: [],
       url: context.url,
-      failureUrl: context.failureUrl,
       initialPayload: context.requestPayload,
       env: context.env,
-      retries: context.retries,
-      retryDelay: context.retryDelay,
-      flowControl: context.flowControl,
       label: context.label,
     });
 

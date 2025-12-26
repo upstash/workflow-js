@@ -245,7 +245,8 @@ describe("workflow client", () => {
               "upstash-workflow-sdk-version": "1",
               "upstash-failure-callback-forward-upstash-label": "test-label",
               "upstash-failure-callback": "https://requestcatcher.com/api",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-feature-set":
+                "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
               "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
               "upstash-failure-callback-forward-user-header": "user-header-value",
@@ -323,7 +324,8 @@ describe("workflow client", () => {
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
               "upstash-failure-callback": "https://requestcatcher.com/api",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-feature-set":
+                "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
               "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
               "upstash-failure-callback-forward-user-header": "user-header-value",
@@ -355,7 +357,8 @@ describe("workflow client", () => {
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
               "upstash-failure-callback": "https://requestcatcher.com/api",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-feature-set":
+                "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
               "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
               "upstash-failure-callback-forward-user-header": "user-header-value",
@@ -387,6 +390,12 @@ describe("workflow client", () => {
           retryDelay: "1000",
           delay: 1,
           failureUrl: "https://requestcatcher.com/some-failure-callback",
+          flowControl: {
+            key: "failure-flow-key",
+            rate: 5,
+            parallelism: 2,
+            period: "1m",
+          },
         });
       },
       responseFields: {
@@ -413,7 +422,8 @@ describe("workflow client", () => {
               "upstash-failure-callback": "https://requestcatcher.com/some-failure-callback",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-failure-callback-feature-set":
+                "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
               "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
               "upstash-failure-callback-forward-user-header": "user-header-value",
@@ -427,6 +437,10 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
+              "upstash-flow-control-key": "failure-flow-key",
+              "upstash-flow-control-value": "parallelism=2, rate=5, period=1m",
+              "upstash-failure-callback-flow-control-key": "failure-flow-key",
+              "upstash-failure-callback-flow-control-value": "parallelism=2, rate=5, period=1m",
             },
             body,
           },
@@ -642,9 +656,9 @@ describe("workflow client", () => {
             workflowRunId,
             steps: [],
             url: "https://httpstat.us/400",
-            failureUrl: "https://400check.requestcatcher.com/",
-            retries: 0,
           }),
+          failureUrl: "https://400check.requestcatcher.com/",
+          retries: 0,
         });
         expect(result.isOk()).toBe(true);
 

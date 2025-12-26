@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/require-await */
 import { describe, expect, jest, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
@@ -51,10 +50,6 @@ describe("serve", () => {
         qstashClient,
         receiver: undefined,
         schema: z.string(),
-        flowControl: {
-          key: "my-key",
-          parallelism: 1,
-        },
       }
     );
 
@@ -85,13 +80,11 @@ describe("serve", () => {
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-label": labelValue,
               "upstash-forward-upstash-label": labelValue,
-              "upstash-flow-control-key": "my-key",
-              "upstash-flow-control-value": "parallelism=1",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": expect.stringMatching(/^wfr_/),
               "upstash-workflow-sdk-version": "1",
@@ -105,13 +98,8 @@ describe("serve", () => {
   });
 
   test("path endpoint", async () => {
-    const flowControl = {
-      key: "my-key",
-      ratePerSecond: 3,
-    };
     const { handler: endpoint } = serve<string>(
       async (context) => {
-        expect(context.flowControl).toEqual(flowControl);
         const input = context.requestPayload;
 
         const result1 = await context.run("step1", async () => {
@@ -127,9 +115,6 @@ describe("serve", () => {
         qstashClient,
         receiver: undefined,
         disableTelemetry: true,
-        retries: 2,
-        retryDelay: "1000",
-        flowControl,
       }
     );
 
@@ -193,13 +178,9 @@ describe("serve", () => {
                     "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
-                  "upstash-retries": "2",
-                  "upstash-retry-delay": "1000",
                   "upstash-method": "POST",
                   "upstash-workflow-init": "true",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                  "upstash-flow-control-key": "my-key",
-                  "upstash-flow-control-value": "rate=3",
                   "upstash-workflow-runid": expect.stringMatching(/^wfr/),
                   "upstash-forward-upstash-label": labelValue,
                   "upstash-label": labelValue,
@@ -226,17 +207,14 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                  "upstash-retries": "2",
-                  "upstash-retry-delay": "1000",
+                  "upstash-feature-set":
+                    "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                  "upstash-flow-control-key": "my-key",
-                  "upstash-flow-control-value": "rate=3",
                   "upstash-forward-upstash-label": labelValue,
                 },
               },
@@ -259,17 +237,14 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                  "upstash-retries": "2",
-                  "upstash-retry-delay": "1000",
+                  "upstash-feature-set":
+                    "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                  "upstash-flow-control-key": "my-key",
-                  "upstash-flow-control-value": "rate=3",
                   "upstash-forward-upstash-label": labelValue,
                 },
                 body: JSON.stringify(steps[1]),
@@ -322,7 +297,6 @@ describe("serve", () => {
     await mockQStashServer({
       execute: async () => {
         const response = await endpoint(request);
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         expect(response.status).toBe(500);
         expect(response.statusText).toBe("");
         const result = await response.json();
@@ -342,7 +316,6 @@ describe("serve", () => {
 
   test("should call onFinish with auth-fail if authentication fails", async () => {
     const { handler: endpoint } = serve(
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       async (_context) => {
         // we call `return` when auth fails:
         return;
@@ -461,7 +434,7 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
@@ -469,7 +442,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
               },
               body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
@@ -509,7 +482,7 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -518,7 +491,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -534,7 +507,6 @@ describe("serve", () => {
       const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
-        failureUrl: myFailureEndpoint,
       });
       let called = false;
       await mockQStashServer({
@@ -554,24 +526,16 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                "upstash-failure-callback": myFailureEndpoint,
-                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-                "upstash-failure-callback-workflow-calltype": "failureCall",
-                "upstash-failure-callback-workflow-init": "false",
-                "upstash-failure-callback-workflow-runid": "wfr-bar",
-                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -609,24 +573,16 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                "upstash-failure-callback": WORKFLOW_ENDPOINT,
-                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-                "upstash-failure-callback-workflow-calltype": "failureCall",
-                "upstash-failure-callback-workflow-init": "false",
-                "upstash-failure-callback-workflow-runid": "wfr-bar",
-                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -661,9 +617,6 @@ describe("serve", () => {
       const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
-        failureUrl: "some-failure-url",
-        retries: 2,
-        retryDelay: "1000",
       });
       await mockQStashServer({
         execute: async () => {
@@ -682,23 +635,10 @@ describe("serve", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api",
-                "upstash-callback-failure-callback-feature-set":
-                  "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-callback-failure-callback": "some-failure-url",
-                "upstash-callback-failure-callback-forward-upstash-workflow-failure-callback":
-                  "true",
-                "upstash-callback-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-callback-failure-callback-retries": "2",
-                "upstash-callback-failure-callback-retry-delay": "1000",
-                "upstash-callback-failure-callback-workflow-calltype": "failureCall",
-                "upstash-callback-failure-callback-workflow-init": "false",
-                "upstash-callback-failure-callback-workflow-runid": "wfr-foo",
-                "upstash-callback-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 // invoke counts:
-                "upstash-callback-failure-callback-forward-upstash-workflow-invoke-count": "2",
-                "upstash-failure-callback-forward-upstash-workflow-invoke-count": "2",
                 "upstash-callback-forward-upstash-workflow-invoke-count": "2",
                 "upstash-forward-upstash-workflow-invoke-count": "2",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
@@ -706,21 +646,10 @@ describe("serve", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "call step",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "2",
-                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
                 "upstash-callback-workflow-url": "https://requestcatcher.com/api",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-failure-callback-retries": "2",
-                "upstash-failure-callback-retry-delay": "1000",
-                "upstash-failure-callback-workflow-calltype": "failureCall",
-                "upstash-failure-callback-workflow-init": "false",
-                "upstash-failure-callback-workflow-runid": "wfr-foo",
-                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-test": "headers",
                 "upstash-method": "PATCH",
@@ -728,7 +657,7 @@ describe("serve", () => {
                 "upstash-retry-delay": "2000",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
                 "upstash-timeout": "10",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
@@ -967,12 +896,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        retries: 2,
-        retryDelay: "1000",
-        flowControl: {
-          key: "fc-key",
-          ratePerSecond: 2,
-        },
       }
     );
     let called = false;
@@ -998,12 +921,8 @@ describe("serve", () => {
           timeoutHeaders: {
             "Upstash-Workflow-Sdk-Version": ["1"],
             "content-type": ["application/json"],
-            "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+            "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-            "Upstash-Retries": ["2"],
-            "Upstash-Retry-Delay": ["1000"],
-            "Upstash-Flow-Control-Key": ["fc-key"],
-            "Upstash-Flow-Control-Value": ["rate=2"],
             "Upstash-Workflow-CallType": ["step"],
             "Upstash-Workflow-Init": ["false"],
             "Upstash-Workflow-RunId": ["wfr-bar"],
@@ -1011,7 +930,7 @@ describe("serve", () => {
             "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
             "Upstash-Telemetry-Framework": ["unknown"],
             "Upstash-Telemetry-Runtime": ["unknown"],
-            "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+            "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.3\./)],
           },
           timeoutUrl: WORKFLOW_ENDPOINT,
           url: WORKFLOW_ENDPOINT,
@@ -1330,25 +1249,17 @@ describe("serve", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-delay": "1s",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
-              "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-              "upstash-failure-callback-workflow-calltype": "failureCall",
-              "upstash-failure-callback-workflow-init": "false",
-              "upstash-failure-callback-workflow-runid": "wfr-bar",
-              "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-bar",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
-              "upstash-failure-callback": WORKFLOW_ENDPOINT,
-              "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
               "upstash-forward-test-header": headerValue,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
             },
             body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
           },
