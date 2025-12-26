@@ -290,9 +290,6 @@ export const parseRequest = async (
  * @param routeFunction route function to run
  * @param failureFunction function to handle the failure
  * @param env environment variables
- * @param retries number of retries
- * @param retryDelay delay between retries
- * @param flowControl flow control settings
  * @param dispatchDebug optional debug dispatcher
  */
 export const handleFailure = async <TInitialPayload>({

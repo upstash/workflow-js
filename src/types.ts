@@ -208,8 +208,7 @@ export type WorkflowServeOptions<
 
   /**
    * Failure function called when QStash retries are exhausted while executing
-   * the workflow. Will overwrite `failureUrl` parameter with the workflow
-   * endpoint if passed.
+   * the workflow.
    *
    * @param context workflow context at the moment of error
    * @param failStatus error status

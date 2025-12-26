@@ -136,8 +136,6 @@ export const processOptions = <
  * @param url user passed url (which also has the full route)
  * @param baseUrl UPSTASH_WORKFLOW_URL env var or the user passed baseUrl. Used to replace
  *    the beginning of the final URLs before returning.
- * @param failureFunction failureFunction. failureUrl will be workflow url if set.
- * @param failureUrl used as failureUrl if failureFunction isn't passed.
  * @param dispatchDebug debug event dispatcher
  * @returns workflow URL and failure URL
  */
