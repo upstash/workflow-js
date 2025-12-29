@@ -405,7 +405,7 @@ describe("context tests", () => {
           token,
           body: [
             {
-              body: 'request-body',
+              body: "request-body",
               destination: url,
               headers: {
                 "upstash-workflow-sdk-version": "1",
