@@ -41,7 +41,7 @@ export const { POST, GET } = testServe(
       expect(postStatus, 201)
 
       expect(postResult as string,
-        "called POST 'third-party-result' 'post-header-value-x' '\"post-payload\"'"
+        "called POST 'third-party-result' 'post-header-value-x' 'post-payload'"
       );
 
       await context.sleep("sleep 1", 2);
@@ -96,7 +96,7 @@ export const { POST, GET } = testServe(
     baseUrl: BASE_URL,
   }
   ), {
-  expectedCallCount: 12,
+  expectedCallCount: 13,
   expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
   payload,
   headers: {

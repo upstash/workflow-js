@@ -49,7 +49,7 @@ export const { POST, GET } = testServe(
           {
             url: `${TEST_ROUTE_PREFIX}/wait-for-event/notifier`,
             method: "POST",
-            body: config,
+            body: JSON.stringify(config),
             headers: { authorization: `Bearer ${NOTIFIER_SECRET}` }
           }
         ),
@@ -72,7 +72,7 @@ export const { POST, GET } = testServe(
           {
             url: `${TEST_ROUTE_PREFIX}/${NOTIFIER_WORKFLOW_ROUTE}`,
             method: "POST",
-            body: config,
+            body: JSON.stringify(config),
             retries: 0
           }
         ),

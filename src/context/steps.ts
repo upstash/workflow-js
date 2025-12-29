@@ -721,14 +721,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   }
 
   getHeaders({ context, telemetry, invokeCount }: GetHeaderParams): HeadersResponse {
-    const {
-      workflow,
-      headers = {},
-      workflowRunId = getWorkflowRunId(),
-      retries,
-      retryDelay,
-      flowControl,
-    } = this.params;
+    const { workflow, headers = {}, workflowRunId, retries, retryDelay, flowControl } = this.params;
     const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
 
     const { useJSONContent } = workflow.options;
@@ -736,7 +729,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     const { headers: triggerHeaders, contentType } = getHeaders({
       initHeaderValue: "true",
       workflowConfig: {
-        workflowRunId: workflowRunId,
+        workflowRunId: getWorkflowRunId(workflowRunId),
         workflowUrl: newUrl,
         retries,
         retryDelay,
