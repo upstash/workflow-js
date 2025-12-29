@@ -27,7 +27,7 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
   const { body } = await context.call("get-data", {
     url: `${process.env.UPSTASH_WORKFLOW_URL ?? "http://localhost:3001"}/get-data`,
     method: "GET",
-    body: { message: result1 }
+    body: JSON.stringify({ message: result1 })
   })
 
   await context.run('step2', async () => {
