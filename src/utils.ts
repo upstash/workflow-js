@@ -92,3 +92,13 @@ export function getQStashUrl(qstashClient: WorkflowClient): string {
 export function getEventId(): string {
   return `evt_${nanoid(15)}`;
 }
+
+export function stringifyBody(body: unknown): string | undefined {
+  if (body === undefined) {
+    return undefined;
+  }
+  if (typeof body === "string") {
+    return body;
+  }
+  return JSON.stringify(body);
+}

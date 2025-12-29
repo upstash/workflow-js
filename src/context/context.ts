@@ -306,9 +306,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *     header: Record<string, string[]>
    *   }
    */
-  public async call<TResult = unknown, TBody = unknown>(
+  public async call<TResult = unknown>(
     stepName: string,
-    settings: CallSettings<TBody>
+    settings: CallSettings
   ): Promise<CallResponse<TResult>>;
   public async call<
     TResult extends { workflowRunId: string } = { workflowRunId: string },
@@ -319,53 +319,43 @@ export class WorkflowContext<TInitialPayload = unknown> {
   ): Promise<CallResponse<TResult>>;
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
-    settings:
-      | CallSettings<TBody>
-      | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
+    settings: CallSettings | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
   ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
-    let callStep: LazyCallStep<TResult | { workflowRunId: string }, typeof settings.body>;
+    let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
     if ("workflow" in settings) {
       const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
+      const stringBody =
+        typeof settings.body === "string"
+          ? settings.body
+          : settings.body === undefined // leave body as undefined if it's undefined
+            ? undefined
+            : JSON.stringify(settings.body);
 
-      callStep = new LazyCallStep<{ workflowRunId: string }, typeof settings.body>(
-        this,
+      callStep = new LazyCallStep<{ workflowRunId: string }>({
+        context: this,
         stepName,
         url,
-        "POST",
-        settings.body,
-        settings.headers || {},
-        settings.retries || 0,
-        settings.retryDelay,
-        settings.timeout,
-        settings.flowControl,
-        settings.stringifyBody ?? true
-      );
+        method: "POST",
+        body: stringBody,
+        headers: settings.headers || {},
+        retries: settings.retries || 0,
+        retryDelay: settings.retryDelay,
+        timeout: settings.timeout,
+        flowControl: settings.flowControl,
+      });
     } else {
-      const {
-        url,
-        method = "GET",
-        body,
-        headers = {},
-        retries = 0,
-        retryDelay,
-        timeout,
-        flowControl,
-        stringifyBody = true,
-      } = settings;
-
-      callStep = new LazyCallStep<TResult, typeof body>(
-        this,
+      callStep = new LazyCallStep<TResult>({
+        context: this,
         stepName,
-        url,
-        method,
-        body,
-        headers,
-        retries,
-        retryDelay,
-        timeout,
-        flowControl,
-        stringifyBody
-      );
+        url: settings.url,
+        method: settings.method ?? "GET",
+        body: settings.body,
+        headers: settings.headers ?? {},
+        retries: settings.retries ?? 0,
+        retryDelay: settings.retryDelay,
+        timeout: settings.timeout,
+        flowControl: settings.flowControl,
+      });
     }
 
     return await this.addStep(callStep);

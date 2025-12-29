@@ -337,7 +337,7 @@ describe("context tests", () => {
           },
           body: [
             {
-              body: '"request-body"',
+              body: "request-body",
               destination: url,
               headers: {
                 "upstash-workflow-sdk-version": "1",
@@ -392,7 +392,6 @@ describe("context tests", () => {
               url,
               body,
               headers: { "my-header": "my-value" },
-              method: "PATCH",
             });
           expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
         },
@@ -406,7 +405,7 @@ describe("context tests", () => {
           token,
           body: [
             {
-              body: '"request-body"',
+              body: 'request-body',
               destination: url,
               headers: {
                 "upstash-workflow-sdk-version": "1",
@@ -426,7 +425,7 @@ describe("context tests", () => {
                 "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-my-header": "my-value",
-                "upstash-method": "PATCH",
+                "upstash-method": "GET",
                 "upstash-retries": "0",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
@@ -438,7 +437,7 @@ describe("context tests", () => {
         },
       });
     });
-    test("should send context.call without parsing body if stringifyBody is false", async () => {
+    test("should send context.call without parsing body", async () => {
       const context = new WorkflowContext({
         qstashClient,
         initialPayload: "my-payload",
@@ -455,7 +454,6 @@ describe("context tests", () => {
               body,
               headers: { "my-header": "my-value" },
               method: "PATCH",
-              stringifyBody: false,
             });
           expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
         },
@@ -500,32 +498,6 @@ describe("context tests", () => {
           ],
         },
       });
-    });
-
-    test("should throw error if stringifyBody is false and body is object", async () => {
-      const context = new WorkflowContext({
-        qstashClient,
-        initialPayload: "my-payload",
-        steps: [],
-        url: WORKFLOW_ENDPOINT,
-        headers: new Headers() as Headers,
-        workflowRunId: "wfr-id",
-      });
-
-      const throws = () =>
-        context.call("my-step", {
-          url,
-          body: { foo: "bar" },
-          headers: { "my-header": "my-value" },
-          method: "PATCH",
-          // @ts-expect-error testing error case
-          stringifyBody: false,
-        });
-      expect(throws).toThrowError(
-        new WorkflowError(
-          `When stringifyBody is false, body must be a string. Please check the body type of your call step.`
-        )
-      );
     });
   });
 

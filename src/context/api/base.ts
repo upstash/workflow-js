@@ -3,10 +3,9 @@ import { WorkflowContext } from "../context";
 import { getProviderInfo } from "../provider";
 
 export type ApiCallSettings<TBody = unknown, TFields extends object = object> = Omit<
-  CallSettings<TBody>,
-  "url"
-> &
-  TFields;
+  CallSettings,
+  "url" | "body"
+> & { body: TBody } & TFields;
 
 export abstract class BaseWorkflowApi {
   protected context: WorkflowContext;
@@ -37,10 +36,10 @@ export abstract class BaseWorkflowApi {
     const { url, appendHeaders, method } = getProviderInfo(settings.api);
     const { method: userMethod, body, headers = {}, retries = 0, retryDelay, timeout } = settings;
 
-    return await this.context.call<TResult, TBody>(stepName, {
+    return await this.context.call<TResult>(stepName, {
       url,
       method: userMethod ?? method,
-      body,
+      body: typeof body === "string" ? body : JSON.stringify(body),
       headers: {
         ...appendHeaders,
         ...headers,

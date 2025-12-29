@@ -665,7 +665,7 @@ describe("serve", () => {
                 "upstash-workflow-sdk-version": "1",
                 "upstash-workflow-url": "https://requestcatcher.com/api",
               },
-              body: '"body"',
+              body: "body",
             },
           ],
         },

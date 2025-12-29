@@ -404,30 +404,15 @@ export interface WaitEventOptions {
   timeout?: number | Duration;
 }
 
-export type StringifyBody<TBody = unknown> = TBody extends string ? boolean : true;
-
-export type CallSettings<TBody = unknown> = {
+export type CallSettings = {
   url: string;
   method?: HTTPMethods;
-  /**
-   * Request body.
-   *
-   * By default, the body is stringified with `JSON.stringify`. If you want
-   * to send a string body without stringifying it, you need to set
-   * `stringifyBody` to false.
-   */
-  body?: TBody;
+  body?: string;
   headers?: Record<string, string>;
   retries?: number;
   retryDelay?: string;
   timeout?: Duration | number;
   flowControl?: FlowControl;
-  /**
-   * Whether the body field should be stringified when making the request.
-   *
-   * @default true
-   */
-  stringifyBody?: StringifyBody<TBody>;
 };
 
 export type HeaderParams = {
@@ -522,7 +507,7 @@ export type InvokeWorkflowRequest = {
   workflowRunId: string;
   headers: Record<string, string[]>;
   step: Step;
-  body: string;
+  body?: string;
 };
 
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
@@ -530,12 +515,9 @@ export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
     InvokableWorkflow<TInitiaPayload, TResult>,
     "routeFunction" | "workflowId" | "options"
   >;
-  body: TInitiaPayload; // tried to make this optional but didn't work so nicely
   workflowRunId?: string;
-} & Pick<
-  CallSettings<TInitiaPayload>,
-  "retries" | "headers" | "flowControl" | "retryDelay" | "stringifyBody"
->;
+} & Pick<CallSettings, "retries" | "headers" | "flowControl" | "retryDelay"> &
+  (TInitiaPayload extends undefined ? { body?: undefined } : { body: TInitiaPayload });
 
 export type InvokeStepResponse<TBody> = {
   body: TBody;
