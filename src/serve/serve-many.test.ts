@@ -49,16 +49,18 @@ describe("serveMany", () => {
 
     // 1. Workflow: (context: WorkflowContext<{ count: number }>)
     //    - Purpose: Base workflow, does nothing, used for invocation/call by others.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const workflowOne = createWorkflow(async (context: WorkflowContext<{ count: number }>) => {
-      // This workflow is a base workflow for testing. It does nothing.
-      // Used to test invocation/call from other workflows.
-      return;
-    });
+    const workflowOne = createWorkflow<{ count: number }, unknown>(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      async (context: WorkflowContext<{ count: number }>) => {
+        // This workflow is a base workflow for testing. It does nothing.
+        // Used to test invocation/call from other workflows.
+        return;
+      }
+    );
 
     // 2. Workflow: (context: WorkflowContext<string>)
     //    - Purpose: Invokes workflowOne
-    const workflowTwo = createWorkflow(
+    const workflowTwo = createWorkflow<string, unknown>(
       async (context: WorkflowContext<string>) => {
         await context.invoke("invoke workflow one", {
           workflow: workflowOne,
@@ -84,7 +86,7 @@ describe("serveMany", () => {
 
     // 3. Workflow: (context)
     //    - Purpose: Calls workflowOne
-    const workflowThree = createWorkflow(async (context: WorkflowContext) => {
+    const workflowThree = createWorkflow<undefined, unknown>(async (context: WorkflowContext) => {
       await context.call("call workflow one", {
         workflow: workflowOne,
         body: { count: 99 },
@@ -93,16 +95,18 @@ describe("serveMany", () => {
 
     // 4. Workflow: (context: WorkflowContext<undefined>)
     //    - Purpose: Calls workflowTwo, checks that string is not stringified.
-    const workflowFour = createWorkflow(async (context: WorkflowContext<undefined>) => {
-      await context.call("call workflow two", {
-        workflow: workflowTwo,
-        body: "hello world",
-      });
-    });
+    const workflowFour = createWorkflow<undefined, unknown>(
+      async (context: WorkflowContext<undefined>) => {
+        await context.call("call workflow two", {
+          workflow: workflowTwo,
+          body: "hello world",
+        });
+      }
+    );
 
     // 5. Workflow: (context)
     //    - Purpose: Invokes workflowTwo, checks that string is not stringified.
-    const workflowFive = createWorkflow(async (context) => {
+    const workflowFive = createWorkflow<undefined, unknown>(async (context) => {
       await context.invoke("invoke workflow two", {
         workflow: workflowTwo,
         body: "hello world",
@@ -111,7 +115,7 @@ describe("serveMany", () => {
 
     // 6. Workflow: (context)
     //    - Purpose: Invokes workflowThree, passes body undefined
-    const workflowSix = createWorkflow(async (context) => {
+    const workflowSix = createWorkflow<undefined, unknown>(async (context) => {
       await context.invoke("invoke workflow three", {
         workflow: workflowThree,
         body: undefined,
@@ -120,7 +124,7 @@ describe("serveMany", () => {
 
     // 7. Workflow: (context)
     //    - Purpose: Calls workflowFour, passes no body
-    const workflowSeven = createWorkflow(async (context) => {
+    const workflowSeven = createWorkflow<undefined, unknown>(async (context) => {
       await context.call("call workflow three", {
         workflow: workflowFour,
       });

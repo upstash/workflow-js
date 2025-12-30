@@ -14,12 +14,7 @@ import {
   WorkflowRetryAfterError,
 } from "../error";
 import { MiddlewareManager } from "../middleware/manager";
-import {
-  ExclusiveValidationOptions,
-  RouteFunction,
-  Telemetry,
-  WorkflowServeOptions,
-} from "../types";
+import { RouteFunction, Telemetry, WorkflowServeOptions } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
@@ -30,7 +25,13 @@ import {
   verifyRequest,
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
-import { AUTH_FAIL_MESSAGE, determineUrls, processOptions } from "./options";
+import {
+  AUTH_FAIL_MESSAGE,
+  createResponseData,
+  determineUrls,
+  processOptions,
+  InternalServeOptions,
+} from "./options";
 
 /**
  * Creates an async method that handles incoming requests and runs the provided
@@ -52,7 +53,8 @@ export const serveBase = <
 >(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   telemetry?: Telemetry,
-  options?: WorkflowServeOptions<TResponse, TInitialPayload, TResult>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>,
+  internalOptions?: Partial<InternalServeOptions<TResponse>>
 ): {
   handler: (request: TRequest) => Promise<TResponse>;
 } => {
@@ -60,18 +62,19 @@ export const serveBase = <
 
   const {
     qstashClient,
-    onStepFinish,
     initialPayloadParser,
     url,
     receiver,
     failureFunction,
     baseUrl,
     env,
-    useJSONContent,
     disableTelemetry,
     middlewares,
-  } = processOptions<TResponse, TInitialPayload, TResult>(options);
+    internal,
+  } = processOptions<TInitialPayload, TResult, TResponse>(options, internalOptions);
   telemetry = disableTelemetry ? undefined : telemetry;
+
+  const { generateResponse: responseGenerator, useJSONContent } = internal;
 
   /**
    * Handles the incoming request, triggering the appropriate workflow steps.
@@ -120,16 +123,20 @@ export const serveBase = <
     );
 
     if (workflowRunEnded) {
-      return onStepFinish(workflowRunId, {
-        condition: "workflow-already-ended",
-      });
+      return responseGenerator(
+        createResponseData(workflowRunId, {
+          condition: "workflow-already-ended",
+        })
+      );
     }
 
     // terminate current call if it's a duplicate branch
     if (isLastDuplicate) {
-      return onStepFinish(workflowRunId, {
-        condition: "duplicate-step",
-      });
+      return responseGenerator(
+        createResponseData(workflowRunId, {
+          condition: "duplicate-step",
+        })
+      );
     }
 
     // check if the request is a failure callback
@@ -151,17 +158,21 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onInfo", {
         info: `Handled failure callback.`,
       });
-      return onStepFinish(workflowRunId, {
-        condition: "failure-callback-executed",
-        result: failureCheck.value.response,
-      });
+      return responseGenerator(
+        createResponseData(workflowRunId, {
+          condition: "failure-callback-executed",
+          result: failureCheck.value.response,
+        })
+      );
     } else if (failureCheck.value.result === "failure-function-undefined") {
       await middlewareManager.dispatchDebug("onInfo", {
         info: `Failure callback invoked but no failure function defined.`,
       });
-      return onStepFinish(workflowRunId, {
-        condition: "failure-callback-undefined",
-      });
+      return responseGenerator(
+        createResponseData(workflowRunId, {
+          condition: "failure-callback-undefined",
+        })
+      );
     }
 
     const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
@@ -196,9 +207,11 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onError", {
         error: new Error(AUTH_FAIL_MESSAGE),
       });
-      return onStepFinish(isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId, {
-        condition: "auth-fail",
-      });
+      return responseGenerator(
+        createResponseData(isFirstInvocation ? "no-workflow-id" : workflowContext.workflowRunId, {
+          condition: "auth-fail",
+        })
+      );
     }
 
     // check if request is a third party call result
@@ -247,17 +260,21 @@ export const serveBase = <
           });
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
-        return onStepFinish(workflowRunId, {
-          condition: "non-retryable-error",
-          result: result.value,
-        });
+        return responseGenerator(
+          createResponseData(workflowRunId, {
+            condition: "non-retryable-error",
+            result: result.value,
+          })
+        );
       }
 
       if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
-        return onStepFinish(workflowRunId, {
-          condition: "retry-after-error",
-          result: result.value,
-        });
+        return responseGenerator(
+          createResponseData(workflowRunId, {
+            condition: "retry-after-error",
+            result: result.value,
+          })
+        );
       }
 
       if (result.isErr()) {
@@ -269,18 +286,24 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onInfo", {
         info: `Workflow endpoint execution completed successfully.`,
       });
-      return onStepFinish(workflowContext.workflowRunId, {
-        condition: "success",
-      });
+      return responseGenerator(
+        createResponseData(workflowContext.workflowRunId, {
+          condition: "success",
+        })
+      );
     } else if (callReturnCheck.value === "workflow-ended") {
-      return onStepFinish(workflowContext.workflowRunId, {
-        condition: "workflow-already-ended",
-      });
+      return responseGenerator(
+        createResponseData(workflowContext.workflowRunId, {
+          condition: "workflow-already-ended",
+        })
+      );
     }
     // response to QStash in call cases
-    return onStepFinish("no-workflow-id", {
-      condition: "fromCallback",
-    });
+    return responseGenerator(
+      createResponseData(workflowContext.workflowRunId, {
+        condition: "fromCallback",
+      })
+    );
   };
 
   const safeHandler = async (request: TRequest) => {
@@ -311,7 +334,7 @@ export const serveBase = <
  * route function as a workflow.
  *
  * @param routeFunction - A function that uses WorkflowContext as a parameter and runs a workflow.
- * @param options - Options including the client, onFinish callback, and initialPayloadParser.
+ * @param options - Options including the client and initialPayloadParser.
  * @returns An async method that consumes incoming requests and runs the workflow.
  */
 export const serve = <
@@ -321,11 +344,7 @@ export const serve = <
   TResult = unknown,
 >(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: Omit<
-    WorkflowServeOptions<TResponse, TInitialPayload, TResult>,
-    "useJSONContent" | "schema" | "initialPayloadParser"
-  > &
-    ExclusiveValidationOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): ReturnType<typeof serveBase<TInitialPayload, TRequest, TResponse, TResult>> => {
   return serveBase(
     routeFunction,

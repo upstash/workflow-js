@@ -58,10 +58,14 @@ function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
     });
 
     // create handler
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, {
-      ...options,
-      useJSONContent: true,
-    });
+    const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
+      routeFunction,
+      telemetry,
+      options,
+      {
+        useJSONContent: true,
+      }
+    );
 
     const response = await serveHandler(webRequest);
 
@@ -77,7 +81,7 @@ function createExpressHandler<TInitialPayload = unknown, TResult = unknown>(
 
 export function serve<TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: Omit<WorkflowServeOptions<globalThis.Response, TInitialPayload>, "onStepFinish">
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): Router {
   const router = Router();
 
@@ -96,6 +100,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
     routeFunction,
     options,
     workflowId: undefined,
+    useJSONContent: true,
   };
 };
 

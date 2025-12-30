@@ -1,6 +1,6 @@
 import type { RequestHandler } from "@sveltejs/kit";
 
-import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import type { InvokableWorkflow, WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { OmitOptionsInServeMany, serveManyBase } from "../src/serve/serve-many";
@@ -11,7 +11,7 @@ const telemetry: Telemetry = {
 };
 
 type RequireEnv<T> = T & {
-  env: PublicServeOptions["env"]; // make env required
+  env: WorkflowServeOptions["env"]; // make env required
 };
 
 /**
@@ -25,15 +25,21 @@ type RequireEnv<T> = T & {
  */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options: RequireEnv<PublicServeOptions<TInitialPayload>>
+  options: WorkflowServeOptions<TInitialPayload, TResult> & {
+    env: WorkflowServeOptions["env"]; // make env required
+  }
 ): {
   POST: RequestHandler;
 } => {
   const handler: RequestHandler = async ({ request }) => {
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, {
-      ...options,
-      useJSONContent: true,
-    });
+    const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
+      routeFunction,
+      telemetry,
+      options,
+      {
+        useJSONContent: true,
+      }
+    );
     return await serveHandler(request);
   };
   return { POST: handler };
@@ -47,6 +53,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
     workflowId: undefined,
     routeFunction,
     options,
+    useJSONContent: true,
   };
 };
 
@@ -67,7 +74,9 @@ export const serveMany = (
         return params.url.toString();
       },
       options,
-      serveMethod: (...params) => serve(...params).POST,
+      serveMethod: (routeFunction, serveOptions) => {
+        return serve(routeFunction, serveOptions).POST;
+      },
     }).handler,
   };
 };

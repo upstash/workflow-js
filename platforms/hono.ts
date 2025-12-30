@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import type { InvokableWorkflow, WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
 import { SDK_TELEMETRY } from "../src/constants";
@@ -34,7 +34,7 @@ export const serve = <
   TResult = unknown,
 >(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
     const environment = context.env

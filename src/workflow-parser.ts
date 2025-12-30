@@ -305,11 +305,9 @@ export const handleFailure = async <TInitialPayload>({
   request: Request;
   requestPayload: string;
   qstashClient: WorkflowClient;
-  initialPayloadParser: Required<
-    WorkflowServeOptions<Response, TInitialPayload>
-  >["initialPayloadParser"];
+  initialPayloadParser: Required<WorkflowServeOptions<TInitialPayload>>["initialPayloadParser"];
   routeFunction: RouteFunction<TInitialPayload>;
-  failureFunction?: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"];
+  failureFunction?: WorkflowServeOptions<TInitialPayload>["failureFunction"];
   env: WorkflowServeOptions["env"];
   dispatchDebug?: DispatchDebug;
 }): Promise<
