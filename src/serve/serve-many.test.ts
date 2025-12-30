@@ -58,12 +58,29 @@ describe("serveMany", () => {
 
     // 2. Workflow: (context: WorkflowContext<string>)
     //    - Purpose: Invokes workflowOne
-    const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
-      await context.invoke("invoke workflow one", {
-        workflow: workflowOne,
-        body: { count: 42 },
-      });
-    });
+    const workflowTwo = createWorkflow(
+      async (context: WorkflowContext<string>) => {
+        await context.invoke("invoke workflow one", {
+          workflow: workflowOne,
+          body: { count: 42 },
+          flowControl: {
+            key: "customFlowControl",
+            parallelism: 4,
+          },
+        });
+      },
+      {
+        // use a QStash client with custom headers to test header merging
+        qstashClient: new Client({
+          baseUrl: MOCK_QSTASH_SERVER_URL,
+          token,
+          enableTelemetry: false,
+          headers: {
+            "x-vercel-protection-bypass": "testing",
+          },
+        }),
+      }
+    );
 
     // 3. Workflow: (context)
     //    - Purpose: Calls workflowOne
@@ -145,10 +162,37 @@ describe("serveMany", () => {
           token,
           body: {
             body: '{"count":42}',
-            headers: expect.any(Object),
+            headers: {
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": [expect.any(String)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.3\./)],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowTwo"],
+              "content-type": ["application/json"],
+              "upstash-forward-x-vercel-protection-bypass": ["testing"],
+            },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflowTwo",
-            step: expect.any(Object),
+            step: {
+              stepId: 1,
+              concurrent: 1,
+              stepName: "invoke workflow one",
+              stepType: "Invoke",
+            },
+          },
+          headers: {
+            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
+            "Upstash-Flow-Control-Key": "customFlowControl",
+            "Upstash-Flow-Control-Value": "parallelism=4",
+            "upstash-forward-x-vercel-protection-bypass": "testing",
+            "upstash-workflow-init": "true",
+            "upstash-workflow-invoke": "true",
+            "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
           },
         },
       });
@@ -178,7 +222,35 @@ describe("serveMany", () => {
             {
               body: '{"count":99}',
               destination: "https://requestcatcher.com/api/workflowOne",
-              headers: expect.any(Object),
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api/workflowThree",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-invoke-count": "1",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call workflow one",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr_id",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowThree",
+                "upstash-forward-upstash-workflow-invoke-count": "1",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-telemetry-framework": "nextjs",
+                "upstash-telemetry-runtime": expect.any(String),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr_id",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflowThree",
+              },
             },
           ],
         },
@@ -204,10 +276,37 @@ describe("serveMany", () => {
           url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
           token,
           body: [
-            expect.objectContaining({
+            {
               body: "hello world",
               destination: "https://requestcatcher.com/api/workflowTwo",
-            }),
+              headers: {
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api/workflowFour",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call workflow two",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr_id",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowFour",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-telemetry-framework": "nextjs",
+                "upstash-telemetry-runtime": expect.any(String),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr_id",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflowFour",
+              },
+            },
           ],
         },
       });
@@ -233,10 +332,27 @@ describe("serveMany", () => {
           token,
           body: {
             body: "hello world",
-            headers: expect.any(Object),
+            headers: {
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": [expect.any(String)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.3\./)],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowFive"],
+              "content-type": ["application/json"],
+            },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflowFive",
-            step: expect.any(Object),
+            step: {
+              stepId: 1,
+              concurrent: 1,
+              stepName: "invoke workflow two",
+              stepType: "Invoke",
+            },
           },
         },
       });
@@ -261,10 +377,27 @@ describe("serveMany", () => {
           url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflowThree`,
           token,
           body: {
-            headers: expect.any(Object),
+            headers: {
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": [expect.any(String)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.3\./)],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowSix"],
+              "content-type": ["application/json"],
+            },
+            step: {
+              stepId: 1,
+              concurrent: 1,
+              stepName: "invoke workflow three",
+              stepType: "Invoke",
+            },
             workflowRunId: expect.any(String),
             workflowUrl: "https://requestcatcher.com/api/workflowSix",
-            step: expect.any(Object),
           },
         },
       });
@@ -289,9 +422,36 @@ describe("serveMany", () => {
           url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
           token,
           body: [
-            expect.objectContaining({
+            {
               destination: "https://requestcatcher.com/api/workflowFour",
-            }),
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call workflow three",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr_id",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-telemetry-framework": "nextjs",
+                "upstash-telemetry-runtime": expect.any(String),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.3\./),
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr_id",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflowSeven",
+              },
+            },
           ],
         },
       });
