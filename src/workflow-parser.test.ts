@@ -12,6 +12,7 @@ import {
 import { nanoid } from "./utils";
 import type { RawStep, Step, WaitStepResponse, WorkflowServeOptions } from "./types";
 import {
+  FinishState,
   getRequest,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
@@ -20,7 +21,6 @@ import {
 import { formatWorkflowError, WorkflowError } from "./error";
 import { Client } from "@upstash/qstash";
 import { processOptions } from "./serve/options";
-import { FinishState } from "./integration.test";
 import { WorkflowContext } from "./context";
 import { z } from "zod";
 import { serve } from "../platforms/nextjs";

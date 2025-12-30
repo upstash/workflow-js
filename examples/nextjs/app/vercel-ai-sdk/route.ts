@@ -91,9 +91,9 @@ export const { POST } = serve<{ prompt: string }>(async (context) => {
               'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY ?? "",
               'X-Goog-FieldMask': 'places.displayName,places.formattedAddress'
             },
-            body: {
+            body: JSON.stringify({
               textQuery: `tourist attractions in ${city}`
-            }
+            })
           })
         }),
       },

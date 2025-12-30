@@ -22,12 +22,12 @@ import {
   WORKFLOW_URL_HEADER,
 } from "./constants";
 import {
+  FinishState,
   MOCK_QSTASH_SERVER_URL,
   MOCK_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
-import { FinishState } from "./integration.test";
 import { getHeaders } from "./qstash/headers";
 import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
 import { MiddlewareManager } from "./middleware/manager";
@@ -612,7 +612,6 @@ describe("Workflow Requests", () => {
       const callHeaders = {
         "my-custom-header": "my-custom-header-value",
       };
-      const callBody = undefined;
 
       const mockContext = new WorkflowContext({
         qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
@@ -622,24 +621,20 @@ describe("Workflow Requests", () => {
         url: WORKFLOW_ENDPOINT,
         initialPayload: undefined,
       });
-      const lazyStep = new LazyCallStep(
-        mockContext,
+      const lazyStep = new LazyCallStep({
+        context: mockContext,
         stepName,
-        callUrl,
-        callMethod,
-        callBody,
-        callHeaders,
-        0,
-        undefined,
-        undefined,
-        {
+        url: callUrl,
+        method: callMethod,
+        headers: callHeaders,
+        retries: 0,
+        flowControl: {
           key: "call-flow-key",
           rate: 5,
           parallelism: 6,
           period: 30,
         },
-        true
-      );
+      });
       const { headers } = lazyStep.getHeaders({
         context: mockContext,
         invokeCount: 3,
