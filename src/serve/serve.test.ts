@@ -323,12 +323,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        onStepFinish(workflowRunId, finishCondition) {
-          return new Response(
-            JSON.stringify({ workflowRunId, finishCondition: finishCondition.condition }),
-            { status: 200 }
-          );
-        },
       }
     );
 
@@ -338,12 +332,13 @@ describe("serve", () => {
     await mockQStashServer({
       execute: async () => {
         const response = await endpoint(request);
-        const { workflowRunId, finishCondition } = (await response.json()) as {
+        const body = (await response.json()) as {
+          message: string;
           workflowRunId: string;
-          finishCondition: FinishCondition;
         };
-        expect(workflowRunId).toBe(workflowRunId);
-        expect(finishCondition).toBe("auth-fail");
+        expect(response.status).toBe(400);
+        expect(body.workflowRunId).toBe(workflowRunId);
+        expect(body.message).toContain("Failed to authenticate");
         called = true;
       },
       responseFields: { body: { messageId: "some-message-id" }, status: 200 },
@@ -368,12 +363,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        onStepFinish(workflowRunId, finishCondition) {
-          return new Response(
-            JSON.stringify({ workflowRunId, finishCondition: finishCondition.condition }),
-            { status: 200 }
-          );
-        },
       }
     );
 
@@ -960,21 +949,19 @@ describe("serve", () => {
             await context.sleep("first step", 2);
           },
           {
-            onStepFinish(finishRunId, detailedFinishCondition) {
-              console.log(finishRunId, workflowRunId);
-
-              expect(finishRunId).toBe(workflowRunId);
-              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
             qstashClient,
           }
         );
 
         await mockQStashServer({
-          execute: () => handler(request),
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { workflowRunId: string };
+            expect(body.workflowRunId).toBe(workflowRunId);
+            called = true;
+          },
           receivesRequest: {
             url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
             method: "GET",
@@ -1007,19 +994,19 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, detailedFinishCondition) {
-              expect(finishRunId).toBe(workflowRunId);
-              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
             qstashClient,
           }
         );
 
         await mockQStashServer({
-          execute: () => handler(request),
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { workflowRunId: string };
+            expect(body.workflowRunId).toBe(workflowRunId);
+            called = true;
+          },
           receivesRequest: {
             url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
             method: "GET",
@@ -1052,17 +1039,15 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, detailedFinishCondition) {
-              expect(finishRunId).toBe(workflowRunId);
-              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
           }
         );
 
         const response = await handler(request);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { workflowRunId: string };
+        expect(body.workflowRunId).toBe(workflowRunId);
+        called = true;
         expect(response.status).toBe(200);
 
         expect(called).toBeTrue();

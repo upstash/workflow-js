@@ -1,34 +1,115 @@
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
 import { WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
-import type { RequiredExceptFields, WorkflowServeOptions } from "../types";
+import type { DetailedFinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { formatWorkflowError, WorkflowError } from "../error";
 import { loggingMiddleware } from "../middleware";
 import { DispatchDebug } from "../middleware/types";
+
+export type ResponseData = {
+  text: string;
+  status: number;
+  headers: Record<string, string>;
+};
+
+/**
+ * Internal options for serveBase that are not exposed to users
+ */
+export type InternalServeOptions<TResponse extends Response = Response> = {
+  /**
+   * Function to generate a Response from ResponseData
+   */
+  generateResponse: (responseData: ResponseData) => TResponse;
+  /**
+   * Whether the framework should use `content-type: application/json`
+   * in `triggerFirstInvocation`.
+   */
+  useJSONContent: boolean;
+};
+
+/**
+ * Creates response data based on workflow run ID and finish condition.
+ * This is an internal method that cannot be overwritten by users.
+ *
+ * @param workflowRunId - The ID of the workflow run
+ * @param detailedFinishCondition - The detailed finish condition
+ * @returns Response data with text, status, and headers
+ */
+export const createResponseData = (
+  workflowRunId: string,
+  detailedFinishCondition: DetailedFinishCondition
+): ResponseData => {
+  const baseHeaders = {
+    [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+  };
+
+  if (detailedFinishCondition?.condition === "auth-fail") {
+    return {
+      text: JSON.stringify({
+        message: AUTH_FAIL_MESSAGE,
+        workflowRunId,
+      }),
+      status: 400,
+      headers: baseHeaders,
+    };
+  } else if (detailedFinishCondition?.condition === "non-retryable-error") {
+    return {
+      text: JSON.stringify(formatWorkflowError(detailedFinishCondition.result)),
+      status: 489,
+      headers: {
+        ...baseHeaders,
+        "Upstash-NonRetryable-Error": "true",
+      },
+    };
+  } else if (detailedFinishCondition?.condition === "retry-after-error") {
+    return {
+      text: JSON.stringify(formatWorkflowError(detailedFinishCondition.result)),
+      status: 429,
+      headers: {
+        ...baseHeaders,
+        "Retry-After": detailedFinishCondition.result.retryAfter.toString(),
+      },
+    };
+  } else if (detailedFinishCondition?.condition === "failure-callback-executed") {
+    return {
+      text: JSON.stringify({ result: detailedFinishCondition.result ?? undefined }),
+      status: 200,
+      headers: baseHeaders,
+    };
+  }
+  return {
+    text: JSON.stringify({
+      workflowRunId,
+      finishCondition: detailedFinishCondition.condition,
+    }),
+    status: 200,
+    headers: baseHeaders,
+  };
+};
 
 /**
  * Fills the options with default values if they are not provided.
  *
  * Default values for:
  * - qstashClient: QStash client created with QSTASH_URL and QSTASH_TOKEN env vars
- * - onStepFinish: returns a Response with workflowRunId & finish condition in the body (status: 200)
  * - initialPayloadParser: calls JSON.parse if initial request body exists.
  * - receiver: a Receiver if the required env vars are set
  * - baseUrl: env variable UPSTASH_WORKFLOW_URL
  *
- * @param options options including the client, onFinish and initialPayloadParser
+ * @param options options including the client and initialPayloadParser
  * @returns
  */
 export const processOptions = <
-  TResponse extends Response = Response,
   TInitialPayload = unknown,
   TResult = unknown,
+  TResponse extends Response = Response,
 >(
-  options?: WorkflowServeOptions<TResponse, TInitialPayload, TResult>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>,
+  internalOptions?: Partial<InternalServeOptions<TResponse>>
 ): RequiredExceptFields<
-  WorkflowServeOptions<TResponse, TInitialPayload, TResult>,
+  WorkflowServeOptions<TInitialPayload, TResult>,
   "receiver" | "url" | "failureFunction" | "baseUrl" | "schema" | "middlewares" | "verbose"
-> => {
+> & { internal: InternalServeOptions<TResponse> } => {
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
 
@@ -43,54 +124,6 @@ export const processOptions = <
         baseUrl: environment.QSTASH_URL!,
         token: environment.QSTASH_TOKEN!,
       }),
-    onStepFinish: (workflowRunId, detailedFinishCondition) => {
-      if (detailedFinishCondition?.condition === "auth-fail") {
-        return new Response(
-          JSON.stringify({
-            message: AUTH_FAIL_MESSAGE,
-            workflowRunId,
-          }),
-          {
-            status: 400,
-            headers: {
-              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-            },
-          }
-        ) as TResponse;
-      } else if (detailedFinishCondition?.condition === "non-retryable-error") {
-        return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
-          headers: {
-            "Upstash-NonRetryable-Error": "true",
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          },
-          status: 489,
-        }) as TResponse;
-      } else if (detailedFinishCondition?.condition === "retry-after-error") {
-        return new Response(JSON.stringify(formatWorkflowError(detailedFinishCondition.result)), {
-          headers: {
-            "Retry-After": detailedFinishCondition.result.retryAfter.toString(),
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          },
-          status: 429,
-        }) as TResponse;
-      } else if (detailedFinishCondition?.condition === "failure-callback-executed") {
-        return new Response(
-          JSON.stringify({ result: detailedFinishCondition.result ?? undefined }),
-          {
-            status: 200,
-            headers: {
-              [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-            },
-          }
-        ) as TResponse;
-      }
-      return new Response(JSON.stringify({ workflowRunId }), {
-        status: 200,
-        headers: {
-          [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        },
-      }) as TResponse;
-    },
     initialPayloadParser: (initialRequest: string) => {
       // if there is no payload, simply return undefined
       if (!initialRequest) {
@@ -119,11 +152,21 @@ export const processOptions = <
       : undefined,
     baseUrl: environment.UPSTASH_WORKFLOW_URL,
     env: environment,
-    useJSONContent: false,
     disableTelemetry: false,
     ...options,
     // merge middlewares
     middlewares: [options?.middlewares ?? [], options?.verbose ? [loggingMiddleware] : []].flat(),
+    internal: {
+      generateResponse:
+        internalOptions?.generateResponse ??
+        ((responseData: ResponseData) => {
+          return new Response(responseData.text, {
+            status: responseData.status,
+            headers: responseData.headers,
+          }) as TResponse;
+        }),
+      useJSONContent: internalOptions?.useJSONContent ?? false,
+    },
   };
 };
 
