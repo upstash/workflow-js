@@ -76,7 +76,20 @@ export const createResponseData = (
       status: 200,
       headers: baseHeaders,
     };
+  } else if (detailedFinishCondition?.condition === "failure-callback-undefined") {
+    return {
+      text: JSON.stringify({
+        workflowRunId,
+        finishCondition: detailedFinishCondition.condition,
+      }),
+      status: 200,
+      headers: {
+        ...baseHeaders,
+        "Upstash-Workflow-Failure-Callback-Notfound": "true",
+      },
+    };
   }
+
   return {
     text: JSON.stringify({
       workflowRunId,
