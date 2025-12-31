@@ -105,22 +105,23 @@ export const serveBase = <
     await verifyRequest(requestPayload, request.headers.get("upstash-signature"), receiver);
 
     // validation & parsing
-    const { isFirstInvocation, workflowRunId } = validateRequest(request);
+    const { isFirstInvocation, workflowRunId, unkownSdk } = validateRequest(request);
 
     middlewareManager.assignWorkflowRunId(workflowRunId);
     await middlewareManager.dispatchDebug("onInfo", {
-      info: `Run id identified.`,
+      info: `Run id identified. isFirstInvocation: ${isFirstInvocation}, unknownSdk: ${unkownSdk}`,
     });
 
     // parse steps
-    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest(
+    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest({
       requestPayload,
       isFirstInvocation,
+      unkownSdk,
       workflowRunId,
-      qstashClient.http,
-      request.headers.get("upstash-message-id")!,
-      middlewareManager.dispatchDebug.bind(middlewareManager)
-    );
+      requester: qstashClient.http,
+      messageId: request.headers.get("upstash-message-id")!,
+      dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
+    });
 
     if (workflowRunEnded) {
       return responseGenerator(
@@ -234,6 +235,7 @@ export const serveBase = <
             telemetry,
             invokeCount,
             middlewareManager,
+            unkownSdk,
           })
         : await triggerRouteFunction({
             onStep: async () => {
