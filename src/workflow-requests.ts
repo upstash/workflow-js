@@ -16,6 +16,7 @@ import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
+  WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER,
 } from "./constants";
 import type {
   CallResponse,
@@ -46,6 +47,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   retryDelay?: TriggerOptions["retryDelay"];
   flowControl?: TriggerOptions["flowControl"];
   middlewareManager?: MiddlewareManager;
+  unkownSdk?: boolean;
 };
 
 export const triggerFirstInvocation = async <TInitialPayload>(
@@ -68,6 +70,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       retries,
       retryDelay,
       flowControl,
+      unkownSdk,
     }) => {
       const { headers } = getHeaders({
         initHeaderValue: "true",
@@ -93,6 +96,10 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 
       if (useJSONContent) {
         headers["content-type"] = "application/json";
+      }
+
+      if (unkownSdk) {
+        headers[WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER] = "true";
       }
 
       /**

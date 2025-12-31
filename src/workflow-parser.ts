@@ -8,6 +8,7 @@ import {
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_UNKOWN_SDK_VERSION_HEADER,
 } from "./constants";
 import type {
   FailureFunctionPayload,
@@ -167,7 +168,22 @@ const checkIfLastOneIsDuplicate = async (
  */
 export const validateRequest = (
   request: Request
-): { isFirstInvocation: boolean; workflowRunId: string } => {
+): { isFirstInvocation: boolean; workflowRunId: string; unkownSdk: boolean } => {
+  if (request.headers.get(WORKFLOW_UNKOWN_SDK_VERSION_HEADER)) {
+    const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
+
+    if (!workflowRunId) {
+      throw new WorkflowError(
+        "Couldn't get workflow id from header when handling unknown sdk request"
+      );
+    }
+
+    return {
+      unkownSdk: true,
+      isFirstInvocation: true,
+      workflowRunId,
+    };
+  }
   const versionHeader = request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER);
   const isFirstInvocation = !versionHeader;
 
@@ -190,6 +206,7 @@ export const validateRequest = (
   return {
     isFirstInvocation,
     workflowRunId,
+    unkownSdk: false,
   };
 };
 
@@ -201,20 +218,30 @@ export const validateRequest = (
  *
  * @param requestPayload payload from the request
  * @param isFirstInvocation whether this is the first invocation
+ * @param unkownSdk whether the request is from an unkown sdk version
  * @param workflowRunId workflow run id
  * @param requester QStash client HTTP requester
  * @param messageId optional message id
  * @param dispatchDebug optional debug dispatcher
  * @returns raw initial payload and the steps
  */
-export const parseRequest = async (
-  requestPayload: string | undefined,
-  isFirstInvocation: boolean,
-  workflowRunId: string,
-  requester: Client["http"],
-  messageId?: string,
-  dispatchDebug?: DispatchDebug
-): Promise<
+export const parseRequest = async ({
+  requestPayload,
+  isFirstInvocation,
+  unkownSdk,
+  workflowRunId,
+  requester,
+  messageId,
+  dispatchDebug,
+}: {
+  requestPayload: string | undefined;
+  isFirstInvocation: boolean;
+  unkownSdk: boolean;
+  workflowRunId: string;
+  requester: Client["http"];
+  messageId?: string;
+  dispatchDebug?: DispatchDebug;
+}): Promise<
   | {
       rawInitialPayload: string;
       steps: Step[];
@@ -228,7 +255,7 @@ export const parseRequest = async (
       workflowRunEnded: true;
     }
 > => {
-  if (isFirstInvocation) {
+  if (isFirstInvocation && !unkownSdk) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
     return {
       rawInitialPayload: requestPayload ?? "",

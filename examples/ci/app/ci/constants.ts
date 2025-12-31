@@ -33,6 +33,11 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
     route: "path",
   },
   {
+    // same endpoint as path but passes an unknown sdk header
+    // which results in one extra request to the endpoint
+    route: "path-with-unknown-sdk-header",
+  },
+  {
     // runs sleep and sleepUntil. checks if sufficient time passed between
     // steps
     route: "sleep",
