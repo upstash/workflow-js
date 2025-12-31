@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 
-import type { PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import type { WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 
@@ -15,7 +15,7 @@ import { SDK_TELEMETRY } from "../src/constants";
  */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
   const telemetry: Telemetry = {
     sdk: SDK_TELEMETRY,
@@ -36,7 +36,11 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
     }
 
     // create serve handler
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, options);
+    const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
+      routeFunction,
+      telemetry,
+      options
+    );
 
     return await serveHandler(event.request);
   };

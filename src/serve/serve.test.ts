@@ -314,44 +314,6 @@ describe("serve", () => {
     expect(onErrorCalled).toBeTrue();
   });
 
-  test("should call onFinish with auth-fail if authentication fails", async () => {
-    const { handler: endpoint } = serve(
-      async (_context) => {
-        // we call `return` when auth fails:
-        return;
-      },
-      {
-        qstashClient,
-        receiver: undefined,
-        onStepFinish(workflowRunId, finishCondition) {
-          return new Response(
-            JSON.stringify({ workflowRunId, finishCondition: finishCondition.condition }),
-            { status: 200 }
-          );
-        },
-      }
-    );
-
-    const workflowRunId = "wfr-foo";
-    const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, "my-payload", []);
-    let called = false;
-    await mockQStashServer({
-      execute: async () => {
-        const response = await endpoint(request);
-        const { workflowRunId, finishCondition } = (await response.json()) as {
-          workflowRunId: string;
-          finishCondition: FinishCondition;
-        };
-        expect(workflowRunId).toBe(workflowRunId);
-        expect(finishCondition).toBe("auth-fail");
-        called = true;
-      },
-      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
-      receivesRequest: false,
-    });
-    expect(called).toBeTrue();
-  });
-
   describe("duplicate checks", () => {
     const { handler: endpoint } = serve(
       async (context) => {
@@ -368,12 +330,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        onStepFinish(workflowRunId, finishCondition) {
-          return new Response(
-            JSON.stringify({ workflowRunId, finishCondition: finishCondition.condition }),
-            { status: 200 }
-          );
-        },
       }
     );
 
@@ -819,74 +775,6 @@ describe("serve", () => {
     expect(runs).toBeFalse();
   });
 
-  test("should call qstash to fail workflow on WorkflowNonRetryableError", async () => {
-    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-2", "my-payload", []);
-    let called = false;
-    const { handler: endpoint } = serve(
-      async (context) => {
-        called = true;
-        throw new WorkflowNonRetryableError("This is a non-retryable error");
-      },
-      {
-        qstashClient,
-        receiver: undefined,
-      }
-    );
-
-    await mockQStashServer({
-      execute: async () => {
-        const response = await endpoint(request);
-
-        expect(response.status).toBe(489);
-        expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
-
-        const body = await response.json();
-        expect(body).toEqual({
-          error: "WorkflowNonRetryableError",
-          message: "This is a non-retryable error",
-          stack: expect.any(String),
-        });
-      },
-      responseFields: { body: undefined, status: 489 },
-      receivesRequest: false,
-    });
-    expect(called).toBeTrue();
-  });
-
-  test("should call qstash to retry workflow on WorkflowRetryAfterError", async () => {
-    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-3", "my-payload", []);
-    let called = false;
-    const { handler: endpoint } = serve(
-      async (context) => {
-        called = true;
-        throw new WorkflowRetryAfterError("This is a retry-after error", 30);
-      },
-      {
-        qstashClient,
-        receiver: undefined,
-      }
-    );
-
-    await mockQStashServer({
-      execute: async () => {
-        const response = await endpoint(request);
-
-        expect(response.status).toBe(429);
-        expect(response.headers.get("Retry-After")).toBe("30");
-
-        const body = await response.json();
-        expect(body).toEqual({
-          error: "WorkflowRetryAfterError",
-          message: "This is a retry-after error",
-          stack: expect.any(String),
-        });
-      },
-      responseFields: { body: undefined, status: 429 },
-      receivesRequest: false,
-    });
-    expect(called).toBeTrue();
-  });
-
   test("should send waitForEvent", async () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
     const { handler: endpoint } = serve(
@@ -960,21 +848,19 @@ describe("serve", () => {
             await context.sleep("first step", 2);
           },
           {
-            onStepFinish(finishRunId, detailedFinishCondition) {
-              console.log(finishRunId, workflowRunId);
-
-              expect(finishRunId).toBe(workflowRunId);
-              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
             qstashClient,
           }
         );
 
         await mockQStashServer({
-          execute: () => handler(request),
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { workflowRunId: string };
+            expect(body.workflowRunId).toBe(workflowRunId);
+            called = true;
+          },
           receivesRequest: {
             url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
             method: "GET",
@@ -1007,19 +893,19 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, detailedFinishCondition) {
-              expect(finishRunId).toBe(workflowRunId);
-              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
             qstashClient,
           }
         );
 
         await mockQStashServer({
-          execute: () => handler(request),
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { workflowRunId: string };
+            expect(body.workflowRunId).toBe(workflowRunId);
+            called = true;
+          },
           receivesRequest: {
             url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
             method: "GET",
@@ -1052,17 +938,15 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, detailedFinishCondition) {
-              expect(finishRunId).toBe(workflowRunId);
-              expect(detailedFinishCondition.condition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
           }
         );
 
         const response = await handler(request);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { workflowRunId: string };
+        expect(body.workflowRunId).toBe(workflowRunId);
+        called = true;
         expect(response.status).toBe(200);
 
         expect(called).toBeTrue();

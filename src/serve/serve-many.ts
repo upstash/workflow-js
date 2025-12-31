@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
 import { WorkflowError } from "../error";
-import { InvokableWorkflow, PublicServeOptions, RouteFunction } from "../types";
+import { InvokableWorkflow, RouteFunction, WorkflowServeOptions } from "../types";
 
 export type OmitOptionsInServeMany<TOptions> = Omit<
   TOptions,
@@ -22,7 +22,7 @@ const getWorkflowId = (url: string) => {
 export const serveManyBase = <
   THandler extends (...params: any[]) => any,
   TOptions extends
-    OmitOptionsInServeMany<PublicServeOptions> = OmitOptionsInServeMany<PublicServeOptions>,
+    OmitOptionsInServeMany<WorkflowServeOptions> = OmitOptionsInServeMany<WorkflowServeOptions>,
   TServeParams extends [routeFunction: RouteFunction<any, any>, options: TOptions] = [
     routeFunction: RouteFunction<any, any>,
     options: TOptions,

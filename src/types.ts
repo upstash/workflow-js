@@ -172,26 +172,11 @@ type WorkflowContextWithoutMethods<TInitialPayload> = Omit<
   | "waitForWebhook"
 >;
 
-export type WorkflowServeOptions<
-  TResponse extends Response = Response,
-  TInitialPayload = unknown,
-  TResult = unknown,
-> = ValidationOptions<TInitialPayload> & {
+export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> = {
   /**
    * QStash client
    */
   qstashClient?: WorkflowClient;
-  /**
-   * Function called to return a response after each step execution
-   *
-   * @param workflowRunId
-   * @param detailedFinishCondition
-   * @returns response
-   */
-  onStepFinish?: (
-    workflowRunId: string,
-    detailedFinishCondition: DetailedFinishCondition
-  ) => TResponse;
   /**
    * Url of the endpoint where the workflow is set up.
    *
@@ -243,13 +228,6 @@ export type WorkflowServeOptions<
    */
   env?: Record<string, string | undefined>;
   /**
-   * Whether the framework should use `content-type: application/json`
-   * in `triggerFirstInvocation`.
-   *
-   * Not part of the public API. Only available in serveBase, which is not exported.
-   */
-  useJSONContent?: boolean;
-  /**
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
    * Set `disableTelemetry` to disable this behavior.
@@ -265,7 +243,7 @@ export type WorkflowServeOptions<
    * Whether to enable verbose logging for debugging purposes
    */
   verbose?: boolean;
-} & ValidationOptions<TInitialPayload>;
+} & ExclusiveValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
   schema?: z.ZodType<TInitialPayload>;
@@ -295,15 +273,6 @@ export type Telemetry = {
    */
   runtime?: string;
 };
-
-export type PublicServeOptions<
-  TInitialPayload = unknown,
-  TResponse extends Response = Response,
-> = Omit<
-  WorkflowServeOptions<TResponse, TInitialPayload>,
-  "onStepFinish" | "useJSONContent" | "schema" | "initialPayloadParser"
-> &
-  ExclusiveValidationOptions<TInitialPayload>;
 
 /**
  * Payload passed as body in failureFunction
@@ -511,10 +480,7 @@ export type InvokeWorkflowRequest = {
 };
 
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  workflow: Pick<
-    InvokableWorkflow<TInitiaPayload, TResult>,
-    "routeFunction" | "workflowId" | "options"
-  >;
+  workflow: InvokableWorkflow<TInitiaPayload, TResult>;
   workflowRunId?: string;
 } & Pick<CallSettings, "retries" | "headers" | "flowControl" | "retryDelay"> &
   (TInitiaPayload extends undefined ? { body?: undefined } : { body: TInitiaPayload });
@@ -527,6 +493,12 @@ export type InvokeStepResponse<TBody> = {
 
 export type InvokableWorkflow<TInitialPayload, TResult> = {
   routeFunction: RouteFunction<TInitialPayload, TResult>;
-  options: WorkflowServeOptions<Response, TInitialPayload>;
+  options: WorkflowServeOptions<TInitialPayload, TResult>;
   workflowId?: string;
+  /**
+   * whether the invoked workflow should use JSON content type for initial trigger
+   *
+   * this is set by platform createWorkflow helpers and is not part of public serve options
+   */
+  useJSONContent?: boolean;
 };
