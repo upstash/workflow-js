@@ -1,5 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs"
 import pdf from "pdf-parse"
+import { Client as QStashClient } from '@upstash/qstash';
 
 
 type EmailPayload = {
@@ -9,13 +10,40 @@ type EmailPayload = {
 	attachment?: string,
 }
 
+function getQStashClient(): QStashClient {
+	const token = process.env.QSTASH_TOKEN;
+  
+	if (!token) {
+	  throw new Error(
+		'QSTASH_TOKEN environment variable is required'
+	  );
+	}
+  
+	return new QStashClient({
+	  token,
+	  headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+		? {
+			'Upstash-Forward-X-Vercel-Protection-Bypass':
+			  process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+			'x-vercel-protection-bypass':
+			  process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+		  }
+		: undefined,
+	});
+  }
+
 export const { POST } = serve<EmailPayload>(async (context) => {
 	const { message, subject, to, attachment } = context.requestPayload;
+
+	const somethingThatWorks = await context.run("somethingThatWorks", async () => {
+		return "somethingThatWorks";
+	});
 
 	const pdfContent = await context.run("Process PDF Attachment", async () => {
 		if (!attachment) {
 			return '';
 		}
+		console.log(somethingThatWorks);
 
 		// Download file
 		const response = await fetch(attachment);
@@ -68,4 +96,7 @@ export const { POST } = serve<EmailPayload>(async (context) => {
 			text: aiResponse.body.choices[0].message.content
 		}
 	})
+},
+{
+	qstashClient: getQStashClient(),
 })
