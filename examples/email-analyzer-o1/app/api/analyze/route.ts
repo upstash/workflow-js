@@ -1,6 +1,5 @@
 import { serve } from "@upstash/workflow/nextjs"
 import pdf from "pdf-parse"
-import { Client as WorkflowClient } from '@upstash/workflow';
 import { Client as QStashClient } from '@upstash/qstash';
 
 
