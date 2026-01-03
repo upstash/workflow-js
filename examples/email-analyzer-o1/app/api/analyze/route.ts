@@ -35,10 +35,15 @@ function getQStashClient(): QStashClient {
 export const { POST } = serve<EmailPayload>(async (context) => {
 	const { message, subject, to, attachment } = context.requestPayload;
 
+	const somethingThatWorks = await context.run("somethingThatWorks", async () => {
+		return "somethingThatWorks";
+	});
+
 	const pdfContent = await context.run("Process PDF Attachment", async () => {
 		if (!attachment) {
 			return '';
 		}
+		console.log(somethingThatWorks);
 
 		// Download file
 		const response = await fetch(attachment);
