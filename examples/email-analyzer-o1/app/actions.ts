@@ -35,10 +35,17 @@ function getWorkflowClient(): WorkflowClient {
 export async function triggerEmailAnalysis(formData: EmailPayload) {
   try {
     const workflowClient = getWorkflowClient()
-
     const result = await workflowClient.trigger({
       url: `${process.env.UPSTASH_WORKFLOW_URL ?? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/analyze`,
       body: formData,
+      headers: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          'Upstash-Forward-X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'X-Vercel-Protection-Bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+        }
+      : undefined,
     });
 
     return { success: true, workflowRunId: result.workflowRunId };
