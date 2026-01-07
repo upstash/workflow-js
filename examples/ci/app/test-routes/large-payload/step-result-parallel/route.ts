@@ -46,14 +46,16 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
     }
   ), {
-    expectedCallCount: 10,
+    expectedCallCount: 9,
     expectedResult: `${largeObjectLength} - ${largeObjectLength}`,
     payload,
     headers: {
       [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

@@ -1,6 +1,6 @@
 import { defineEventHandler, readRawBody } from "h3";
 
-import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import type { InvokableWorkflow, WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import type { IncomingHttpHeaders } from "node:http";
 import { SDK_TELEMETRY } from "../src/constants";
@@ -32,7 +32,7 @@ const telemetry: Telemetry = {
 
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
   const handler = defineEventHandler(async (event) => {
     const method = event.node.req.method;
@@ -51,7 +51,11 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
       method: "POST",
     });
 
-    const { handler: serveHandler } = serveBase<TInitialPayload>(routeFunction, telemetry, options);
+    const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
+      routeFunction,
+      telemetry,
+      options
+    );
     return await serveHandler(request);
   });
 

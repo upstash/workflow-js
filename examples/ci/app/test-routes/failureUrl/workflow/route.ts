@@ -18,15 +18,17 @@ export const { POST, GET } = testServe(
       });
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
-      failureUrl: thirdPartyEndpoint
     }
   ), {
-    expectedCallCount: 2,
+    expectedCallCount: 1,
     expectedResult: `{"error":"Error","message":"${ERROR_MESSAGE}","stack":${ANY_STRING}}`,
     payload: PAYLOAD,
     headers: {
       [ HEADER ]: HEADER_VALUE,
+    },
+    triggerConfig: {
+      retries: 0,
+      failureUrl: thirdPartyEndpoint
     }
   }
 ) 

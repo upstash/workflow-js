@@ -2,7 +2,7 @@ import type { Err, Ok } from "neverthrow";
 import { err, ok } from "neverthrow";
 import {
   isInstanceOf,
-  WorkflowAbort,
+  WorkflowAuthError,
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "../error";
@@ -43,7 +43,7 @@ export class DisabledWorkflowContext<
   public readonly disabled = true;
 
   /**
-   * overwrite the WorkflowContext.addStep method to always raise WorkflowAbort
+   * overwrite the WorkflowContext.addStep method to always raise WorkflowAuthError
    * error in order to stop the execution whenever we encounter a step.
    *
    * @param _step
@@ -52,14 +52,14 @@ export class DisabledWorkflowContext<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _step: BaseLazyStep<TResult>
   ): Promise<TResult> {
-    throw new WorkflowAbort(DisabledWorkflowContext.disabledMessage);
+    throw new WorkflowAuthError(DisabledWorkflowContext.disabledMessage);
   }
 
   /**
-   * overwrite cancel method to throw WorkflowAbort with the disabledMessage
+   * overwrite cancel method to throw WorkflowAuthError with the disabledMessage
    */
   public async cancel() {
-    throw new WorkflowAbort(DisabledWorkflowContext.disabledMessage);
+    throw new WorkflowAuthError(DisabledWorkflowContext.disabledMessage);
   }
 
   /**
@@ -86,12 +86,8 @@ export class DisabledWorkflowContext<
       headers: context.headers,
       steps: [],
       url: context.url,
-      failureUrl: context.failureUrl,
       initialPayload: context.requestPayload,
       env: context.env,
-      retries: context.retries,
-      retryDelay: context.retryDelay,
-      flowControl: context.flowControl,
       label: context.label,
     });
 
@@ -99,7 +95,7 @@ export class DisabledWorkflowContext<
       await routeFunction(disabledContext);
     } catch (error) {
       if (
-        (isInstanceOf(error, WorkflowAbort) && error.stepName === this.disabledMessage) ||
+        (isInstanceOf(error, WorkflowAuthError) && error.stepName === this.disabledMessage) ||
         isInstanceOf(error, WorkflowNonRetryableError) ||
         isInstanceOf(error, WorkflowRetryAfterError)
       ) {

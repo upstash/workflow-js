@@ -1,6 +1,6 @@
 import type { APIContext, APIRoute } from "astro";
 
-import { InvokableWorkflow, PublicServeOptions, Telemetry, WorkflowContext } from "../src";
+import { InvokableWorkflow, WorkflowServeOptions, Telemetry, WorkflowContext } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
@@ -18,10 +18,10 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
     workflowContext: WorkflowContext<TInitialPayload>,
     apiContext: APIContext
   ) => Promise<TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) {
   const POST: APIRoute = (apiContext) => {
-    const { handler } = serveBase<TInitialPayload>(
+    const { handler } = serveBase<TInitialPayload, Request, Response, TResult>(
       (workflowContext) => routeFunction(workflowContext, apiContext),
       telemetry,
       options

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-magic-numbers */
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
@@ -13,7 +12,6 @@ import { WorkflowAbort, WorkflowNonRetryableError, WorkflowRetryAfterError } fro
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "./client";
-import type { Step, StepType } from "./types";
 import {
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
@@ -24,15 +22,16 @@ import {
   WORKFLOW_URL_HEADER,
 } from "./constants";
 import {
+  FinishState,
   MOCK_QSTASH_SERVER_URL,
   MOCK_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
 } from "./test-utils";
-import { WorkflowLogger } from "./logger";
-import { FinishState } from "./integration.test";
 import { getHeaders } from "./qstash/headers";
 import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
+import { MiddlewareManager } from "./middleware/manager";
+import { Step, StepType } from "./types";
 
 describe("Workflow Requests", () => {
   test("should preserve WORKFLOW_LABEL_HEADER in recreateUserHeaders", () => {
@@ -61,9 +60,8 @@ describe("Workflow Requests", () => {
       headers: new Headers({ "upstash-label": label }) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
-      retries: 0,
-      retryDelay: "1000 * retried",
       label,
+      middlewareManager: new MiddlewareManager(),
     });
 
     expect(context.label).toBe(label);
@@ -105,8 +103,6 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
-      retries: 0,
-      retryDelay: "1000 * retried",
     });
 
     await mockQStashServer({
@@ -127,11 +123,9 @@ describe("Workflow Requests", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
-              "upstash-retries": "0",
-              "upstash-retry-delay": "1000 * retried",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
               "upstash-workflow-init": "true",
@@ -320,7 +314,7 @@ describe("Workflow Requests", () => {
     const token = "myToken";
 
     const context = new WorkflowContext({
-      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token }),
+      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token, retry: false }),
       workflowRunId: workflowRunId,
       initialPayload: undefined,
       headers: new Headers({}) as Headers,
@@ -386,9 +380,6 @@ describe("Workflow Requests", () => {
             requestPayload: await request.text(),
             client,
             workflowUrl: WORKFLOW_ENDPOINT,
-            failureUrl: WORKFLOW_ENDPOINT,
-            retries: 2,
-            retryDelay: "1000",
             telemetry: {
               framework: "some-platform",
               sdk: "some-sdk",
@@ -413,11 +404,7 @@ describe("Workflow Requests", () => {
             out: '{"status":200,"body":"third-party-call-result"}',
             concurrent: 1,
           },
-          headers: {
-            "upstash-retries": "2",
-            "upstash-retry-delay": "1000",
-            "upstash-failure-callback": WORKFLOW_ENDPOINT,
-          },
+          headers: {},
         },
       });
     });
@@ -466,9 +453,6 @@ describe("Workflow Requests", () => {
         requestPayload: await request.text(),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
-        failureUrl: WORKFLOW_ENDPOINT,
-        retries: 3,
-        retryDelay: "1000",
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -521,9 +505,6 @@ describe("Workflow Requests", () => {
         requestPayload: await initialRequest.text(),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
-        failureUrl: WORKFLOW_ENDPOINT,
-        retries: 5,
-        retryDelay: "1000",
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -540,8 +521,6 @@ describe("Workflow Requests", () => {
         requestPayload: await workflowRequest.text(),
         client,
         workflowUrl: WORKFLOW_ENDPOINT,
-        failureUrl: WORKFLOW_ENDPOINT,
-        retries: 0,
         telemetry: {
           framework: "some-platform",
           sdk: "some-sdk",
@@ -573,7 +552,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         "content-type": "application/json",
@@ -616,7 +595,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "false",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         "content-type": "application/json",
@@ -633,7 +612,6 @@ describe("Workflow Requests", () => {
       const callHeaders = {
         "my-custom-header": "my-custom-header-value",
       };
-      const callBody = undefined;
 
       const mockContext = new WorkflowContext({
         qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
@@ -642,31 +620,21 @@ describe("Workflow Requests", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: undefined,
-        flowControl: {
-          key: "regular-flow-key",
-          rate: 3,
-          parallelism: 4,
-          period: "1m",
-        },
       });
-      const lazyStep = new LazyCallStep(
-        mockContext,
+      const lazyStep = new LazyCallStep({
+        context: mockContext,
         stepName,
-        callUrl,
-        callMethod,
-        callBody,
-        callHeaders,
-        0,
-        undefined,
-        undefined,
-        {
+        url: callUrl,
+        method: callMethod,
+        headers: callHeaders,
+        retries: 0,
+        flowControl: {
           key: "call-flow-key",
           rate: 5,
           parallelism: 6,
           period: 30,
         },
-        true
-      );
+      });
       const { headers } = lazyStep.getHeaders({
         context: mockContext,
         invokeCount: 3,
@@ -680,7 +648,7 @@ describe("Workflow Requests", () => {
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Callback-Forward-Upstash-Workflow-Invoke-Count": "3",
         "Upstash-Forward-Upstash-Workflow-Invoke-Count": "3",
-        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+        "Upstash-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         "Upstash-Retries": "0",
         "Upstash-Callback": WORKFLOW_ENDPOINT,
         "Upstash-Callback-Forward-Upstash-Workflow-Callback": "true",
@@ -697,8 +665,6 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-CallType": "toCallback",
         "content-type": "application/json",
         // flow control:
-        "Upstash-Callback-Flow-Control-Key": "regular-flow-key",
-        "Upstash-Callback-Flow-Control-Value": "parallelism=4, rate=3, period=1m",
         "Upstash-Flow-Control-Key": "call-flow-key",
         "Upstash-Flow-Control-Value": "parallelism=6, rate=5, period=30s",
       });
@@ -725,8 +691,9 @@ describe("Workflow Requests", () => {
         [WORKFLOW_INIT_HEADER]: "true",
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
-        "Upstash-Failure-Callback-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+        "Upstash-Failure-Callback-Feature-Set":
+          "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`]: WORKFLOW_PROTOCOL_VERSION,
         [`Upstash-Failure-Callback-Forward-${WORKFLOW_FAILURE_HEADER}`]: "true",
@@ -756,10 +723,6 @@ describe("Workflow Requests", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         workflowRunId,
-        flowControl: {
-          key: "wait-key",
-          parallelism: 2,
-        },
       });
       const lazyStep = new LazyWaitForEventStep(
         context,
@@ -785,12 +748,10 @@ describe("Workflow Requests", () => {
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger",
+        [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
         "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
         "Upstash-Workflow-CallType": "step",
         "content-type": "application/json",
-        "Upstash-Flow-Control-Key": "wait-key",
-        "Upstash-Flow-Control-Value": "parallelism=2",
       });
       expect(typeof body).toBe("string");
       expect(JSON.parse(body)).toEqual({
@@ -801,12 +762,10 @@ describe("Workflow Requests", () => {
           "Upstash-Workflow-Init": ["false"],
           "Upstash-Workflow-RunId": [workflowRunId],
           "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
-          [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody,WF_DetectTrigger"],
+          [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: [WORKFLOW_PROTOCOL_VERSION],
           "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
           "content-type": ["application/json"],
-          "Upstash-Flow-Control-Key": ["wait-key"],
-          "Upstash-Flow-Control-Value": ["parallelism=2"],
           "Upstash-Workflow-CallType": ["step"],
           "Upstash-Workflow-Runid": [workflowRunId],
         },
@@ -840,17 +799,9 @@ describe("Workflow Requests", () => {
         });
 
         await triggerFirstInvocation({ workflowContext: context });
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
 
-        const firstDelete = await triggerWorkflowDelete(context, "hello world", debug);
+        const firstDelete = await triggerWorkflowDelete(context, "hello world");
         expect(firstDelete).toEqual(undefined);
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith(
-          "SUBMIT",
-          "SUBMIT_CLEANUP",
-          `workflow run ${workflowRunId} deleted.`
-        );
       },
       {
         timeout: 10000,
@@ -870,15 +821,12 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
         await triggerFirstInvocation({
           workflowContext: context,
           useJSONContent: false,
-          debug,
         });
-        expect(spy).toHaveBeenCalledTimes(1);
+
+        const warnSpy = spyOn(console, "warn");
 
         await workflowClient.cancel({ ids: [workflowRunId] });
 
@@ -892,20 +840,19 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
-          debug,
+          middlewareManager: new MiddlewareManager(),
         });
 
         expect(result.isOk()).toBeTrue();
         // @ts-expect-error value will be set since stepFinish isOk
         expect(result.value).toBe("workflow-was-finished");
 
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
-          message: "tried to append to a cancelled workflow. exiting without publishing.",
-          name: "QstashError",
-          errorMessage:
-            '[{"error":"failed to publish to url: can not append to a a cancelled workflow"}]',
-        });
+        expect(warnSpy).toHaveBeenCalled();
+        const warnCalls = warnSpy.mock.calls;
+        const cancelledWarning = warnCalls.find((call: string[]) =>
+          call[0]?.includes("Tried to append to a cancelled workflow")
+        );
+        expect(cancelledWarning).toBeDefined();
       },
       {
         timeout: 10000,
@@ -925,15 +872,10 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
         await triggerFirstInvocation({
           workflowContext: context,
           useJSONContent: false,
-          debug,
         });
-        expect(spy).toHaveBeenCalledTimes(1);
 
         await workflowClient.cancel({ ids: [workflowRunId] });
 
@@ -947,19 +889,11 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
-          debug,
         });
 
         expect(result.isOk()).toBeTrue();
         // @ts-expect-error value will be set since stepFinish isOk
         expect(result.value).toBe("workflow-was-finished");
-
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
-          message: "tried to append to a cancelled workflow. exiting without publishing.",
-          name: "QstashError",
-          errorMessage: `[{"error":"failed to publish to url: can not append to a a cancelled workflow"},{"error":"failed to publish to url: can not append to a a cancelled workflow"}]`,
-        });
       },
       {
         timeout: 10000,
@@ -994,13 +928,11 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
-        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false, debug });
-        expect(spy).toHaveBeenCalledTimes(1);
+        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false });
 
         await workflowClient.cancel({ ids: [workflowRunId] });
+
+        const warnSpy = spyOn(console, "warn");
 
         const result = await triggerRouteFunction({
           onStep: async () => {
@@ -1012,20 +944,18 @@ describe("Workflow Requests", () => {
           onCancel: async () => {
             throw new Error("shouldn't come here.");
           },
-          debug,
         });
 
         expect(result.isOk()).toBeTrue();
         // @ts-expect-error value will be set since stepFinish isOk
         expect(result.value).toBe("workflow-was-finished");
 
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "RESPONSE_WORKFLOW", {
-          message: "tried to append to a cancelled workflow. exiting without publishing.",
-          name: "QstashError",
-          errorMessage:
-            '[{"error":"failed to publish to url: can not append to a a cancelled workflow"}]',
-        });
+        expect(warnSpy).toHaveBeenCalled();
+        const warnCalls = warnSpy.mock.calls;
+        const cancelledWarning = warnCalls.find((call) =>
+          call[0]?.includes("Tried to append to a cancelled workflow")
+        );
+        expect(cancelledWarning).toBeDefined();
       },
       {
         timeout: 10000,
@@ -1045,19 +975,15 @@ describe("Workflow Requests", () => {
           url: WORKFLOW_ENDPOINT,
         });
 
-        const debug = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
-        const spy = spyOn(debug, "log");
-
         const resultOne = await triggerFirstInvocation({
           workflowContext: context,
           useJSONContent: false,
-          debug,
         });
         expect(resultOne.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultOne.value).toBe("success");
 
-        expect(spy).toHaveBeenCalledTimes(1);
+        const warnSpy = spyOn(console, "warn");
 
         const noRetryContext = new WorkflowContext({
           qstashClient,
@@ -1066,39 +992,27 @@ describe("Workflow Requests", () => {
           headers: new Headers({}) as Headers,
           steps: [],
           url: WORKFLOW_ENDPOINT,
-          retries: 0,
         });
         const resultTwo = await triggerFirstInvocation({
           workflowContext: noRetryContext,
           useJSONContent: false,
-          debug,
+          middlewareManager: new MiddlewareManager(),
         });
         expect(resultTwo.isOk()).toBeTrue();
         // @ts-expect-error value will exist because of isOk
         expect(resultTwo.value).toBe("workflow-run-already-exists");
 
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(spy).toHaveBeenLastCalledWith("WARN", "SUBMIT_FIRST_INVOCATION", {
-          message: `Workflow run ${workflowRunId} already exists. A new one isn't created.`,
-          headers: {
-            "Upstash-Workflow-Init": "true",
-            "Upstash-Workflow-RunId": workflowRunId,
-            "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
-            "Upstash-Feature-Set": "LazyFetch,InitialBody,WF_DetectTrigger",
-            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-            "Upstash-Forward-Upstash-Workflow-Sdk-Version": "1",
-            "Upstash-Retries": "0",
-            "content-type": "application/json",
-          },
-          requestPayload: undefined,
-          url: WORKFLOW_ENDPOINT,
-          messageId: expect.any(String),
-        });
+        expect(warnSpy).toHaveBeenCalled();
+        const warnCalls = warnSpy.mock.calls;
+        const duplicateWarning = warnCalls.find((call) =>
+          call[0]?.includes(`Workflow run ${workflowRunId} already exists`)
+        );
+        expect(duplicateWarning).toBeDefined();
 
-        const deleteResult = await triggerWorkflowDelete(context, debug);
+        const deleteResult = await triggerWorkflowDelete(context, undefined);
         expect(deleteResult).toEqual(undefined);
 
-        const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, debug);
+        const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, undefined);
         expect(deleteResultSecond).toEqual(undefined);
       },
       {

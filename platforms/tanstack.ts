@@ -1,4 +1,10 @@
-import type { PublicServeOptions, Telemetry, InvokableWorkflow, RouteFunction } from "../src";
+import type {
+  WorkflowServeOptions,
+  Telemetry,
+  InvokableWorkflow,
+  RouteFunction,
+  ExclusiveValidationOptions,
+} from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
@@ -20,7 +26,11 @@ const telemetry: Telemetry = {
  */
 export function serve<TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: Omit<
+    WorkflowServeOptions<TInitialPayload, TResult>,
+    "schema" | "initialPayloadParser"
+  > &
+    ExclusiveValidationOptions<TInitialPayload>
 ) {
   const POST = (tanstackContext: { request: Request }) => {
     // Create a Next.js compatible handler that passes the route context

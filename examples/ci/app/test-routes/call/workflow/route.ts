@@ -41,7 +41,7 @@ export const { POST, GET } = testServe(
       expect(postStatus, 201)
 
       expect(postResult as string,
-        "called POST 'third-party-result' 'post-header-value-x' '\"post-payload\"'"
+        "called POST 'third-party-result' 'post-header-value-x' 'post-payload'"
       );
 
       await context.sleep("sleep 1", 2);
@@ -59,7 +59,8 @@ export const { POST, GET } = testServe(
         url: thirdPartyEndpoint,
         headers: getHeader,
         method: "PATCH",
-        retries: 1
+        retries: 1,
+        retryDelay: "1000"
       });
 
       expect(status, 401)
@@ -93,14 +94,17 @@ export const { POST, GET } = testServe(
       )
     }, {
     baseUrl: BASE_URL,
-    retries: 0
   }
   ), {
-  expectedCallCount: 13,
+  expectedCallCount: 12,
   expectedResult: "called GET 'third-party-result' 'get-header-value-x'",
   payload,
   headers: {
     [testHeader]: headerValue,
+  },
+  triggerConfig: {
+    retries: 0,
+    retryDelay: "1000"
   }
 }
 ) 

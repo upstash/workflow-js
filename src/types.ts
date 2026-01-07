@@ -2,9 +2,9 @@ import type { FlowControl, Receiver } from "@upstash/qstash";
 import type { Client } from "@upstash/qstash";
 import type { HTTPMethods } from "@upstash/qstash";
 import type { WorkflowContext } from "./context";
-import type { WorkflowLogger } from "./logger";
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "./error";
+import { WorkflowMiddleware } from "./middleware";
 
 /**
  * Interface for Client with required methods
@@ -134,13 +134,14 @@ export type FinishCondition =
   | "duplicate-step"
   | "fromCallback"
   | "auth-fail"
-  | "failure-callback"
+  | "failure-callback-executed"
+  | "failure-callback-undefined"
   | "workflow-already-ended"
   | WorkflowNonRetryableError;
 
 export type DetailedFinishCondition =
   | {
-      condition: Exclude<FinishCondition, WorkflowNonRetryableError | "failure-callback">;
+      condition: Exclude<FinishCondition, WorkflowNonRetryableError | "failure-callback-executed">;
       result?: never;
     }
   | {
@@ -152,30 +153,30 @@ export type DetailedFinishCondition =
       result: WorkflowRetryAfterError;
     }
   | {
-      condition: "failure-callback";
+      condition: "failure-callback-executed";
       result: string | void;
     };
 
-export type WorkflowServeOptions<
-  TResponse extends Response = Response,
-  TInitialPayload = unknown,
-> = ValidationOptions<TInitialPayload> & {
+type WorkflowContextWithoutMethods<TInitialPayload> = Omit<
+  WorkflowContext<TInitialPayload>,
+  | "run"
+  | "sleepUntil"
+  | "sleep"
+  | "call"
+  | "waitForEvent"
+  | "notify"
+  | "cancel"
+  | "api"
+  | "invoke"
+  | "createWebhook"
+  | "waitForWebhook"
+>;
+
+export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> = {
   /**
    * QStash client
    */
   qstashClient?: WorkflowClient;
-  /**
-   * Function called to return a response after each step execution
-   *
-   * @param workflowRunId
-   * @returns response
-   */
-  onStepFinish?: (
-    workflowRunId: string,
-    finishCondition: FinishCondition,
-    // made optional to be backwards compatible:
-    detailedFinishCondition?: DetailedFinishCondition
-  ) => TResponse;
   /**
    * Url of the endpoint where the workflow is set up.
    *
@@ -183,36 +184,16 @@ export type WorkflowServeOptions<
    */
   url?: string;
   /**
-   * Verbose mode
-   *
-   * Disabled if not set. If set to true, a logger is created automatically.
-   *
-   * Alternatively, a WorkflowLogger can be passed.
-   */
-  verbose?: WorkflowLogger | true;
-  /**
    * Receiver to verify *all* requests by checking if they come from QStash
    *
    * By default, a receiver is created from the env variables
    * QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY if they are set.
    */
   receiver?: WorkflowReceiver;
-  /**
-   * Url to call if QStash retries are exhausted while executing the workflow
-   */
-  failureUrl?: string;
 
   /**
-   * Error handler called when an error occurs in the workflow. This is
-   * different from `failureFunction` in that it is called when an error
-   * occurs in the workflow, while `failureFunction` is called when QStash
-   * retries are exhausted.
-   */
-  onError?: (error: Error) => void;
-  /**
    * Failure function called when QStash retries are exhausted while executing
-   * the workflow. Will overwrite `failureUrl` parameter with the workflow
-   * endpoint if passed.
+   * the workflow.
    *
    * @param context workflow context at the moment of error
    * @param failStatus error status
@@ -220,19 +201,7 @@ export type WorkflowServeOptions<
    * @returns void
    */
   failureFunction?: (failureData: {
-    context: Omit<
-      WorkflowContext<TInitialPayload>,
-      | "run"
-      | "sleepUntil"
-      | "sleep"
-      | "call"
-      | "waitForEvent"
-      | "notify"
-      | "cancel"
-      | "api"
-      | "invoke"
-      | "agents"
-    >;
+    context: WorkflowContextWithoutMethods<TInitialPayload>;
     failStatus: number;
     failResponse: string;
     failHeaders: Record<string, string[]>;
@@ -259,50 +228,6 @@ export type WorkflowServeOptions<
    */
   env?: Record<string, string | undefined>;
   /**
-   * Number of retries to use in workflow requests
-   *
-   * @default 3
-   */
-  retries?: number;
-  /**
-   * Delay between retries.
-   *
-   * By default, the `retryDelay` is exponential backoff.
-   * More details can be found in: https://upstash.com/docs/qstash/features/retry.
-   *
-   * The `retryDelay` option allows you to customize the delay (in milliseconds) between retry attempts when message delivery fails.
-   *
-   * You can use mathematical expressions and the following built-in functions to calculate the delay dynamically.
-   * The special variable `retried` represents the current retry attempt count (starting from 0).
-   *
-   * Supported functions:
-   * - `pow`
-   * - `sqrt`
-   * - `abs`
-   * - `exp`
-   * - `floor`
-   * - `ceil`
-   * - `round`
-   * - `min`
-   * - `max`
-   *
-   * Examples of valid `retryDelay` values:
-   * ```ts
-   * 1000 // 1 second
-   * 1000 * (1 + retried)  // 1 second multiplied by the current retry attempt
-   * pow(2, retried) // 2 to the power of the current retry attempt
-   * max(10, pow(2, retried)) // The greater of 10 or 2^retried
-   * ```
-   */
-  retryDelay?: string;
-  /**
-   * Whether the framework should use `content-type: application/json`
-   * in `triggerFirstInvocation`.
-   *
-   * Not part of the public API. Only available in serveBase, which is not exported.
-   */
-  useJSONContent?: boolean;
-  /**
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
    * Set `disableTelemetry` to disable this behavior.
@@ -311,11 +236,14 @@ export type WorkflowServeOptions<
    */
   disableTelemetry?: boolean;
   /**
-   * Settings for controlling the number of active requests
-   * and number of requests per second with the same key.
+   * List of workflow middlewares to use
    */
-  flowControl?: FlowControl;
-} & ValidationOptions<TInitialPayload>;
+  middlewares?: WorkflowMiddleware<TInitialPayload, TResult>[];
+  /**
+   * Whether to enable verbose logging for debugging purposes
+   */
+  verbose?: boolean;
+} & ExclusiveValidationOptions<TInitialPayload>;
 
 type ValidationOptions<TInitialPayload> = {
   schema?: z.ZodType<TInitialPayload>;
@@ -345,15 +273,6 @@ export type Telemetry = {
    */
   runtime?: string;
 };
-
-export type PublicServeOptions<
-  TInitialPayload = unknown,
-  TResponse extends Response = Response,
-> = Omit<
-  WorkflowServeOptions<TResponse, TInitialPayload>,
-  "onStepFinish" | "useJSONContent" | "schema" | "initialPayloadParser"
-> &
-  ExclusiveValidationOptions<TInitialPayload>;
 
 /**
  * Payload passed as body in failureFunction
@@ -454,30 +373,15 @@ export interface WaitEventOptions {
   timeout?: number | Duration;
 }
 
-export type StringifyBody<TBody = unknown> = TBody extends string ? boolean : true;
-
-export type CallSettings<TBody = unknown> = {
+export type CallSettings = {
   url: string;
   method?: HTTPMethods;
-  /**
-   * Request body.
-   *
-   * By default, the body is stringified with `JSON.stringify`. If you want
-   * to send a string body without stringifying it, you need to set
-   * `stringifyBody` to false.
-   */
-  body?: TBody;
+  body?: string;
   headers?: Record<string, string>;
   retries?: number;
   retryDelay?: string;
   timeout?: Duration | number;
   flowControl?: FlowControl;
-  /**
-   * Whether the body field should be stringified when making the request.
-   *
-   * @default true
-   */
-  stringifyBody?: StringifyBody<TBody>;
 };
 
 export type HeaderParams = {
@@ -498,18 +402,6 @@ export type HeaderParams = {
    */
   userHeaders?: Headers;
   /**
-   * failure url to call incase of failure
-   */
-  failureUrl?: WorkflowServeOptions["failureUrl"];
-  /**
-   * retry setting of requests except context.call
-   */
-  retries?: number;
-  /**
-   * retry delay to include in headers.
-   */
-  retryDelay?: string;
-  /**
    * telemetry to include in timeoutHeaders.
    *
    * Only needed/used when the step is a waitForEvent step
@@ -519,11 +411,6 @@ export type HeaderParams = {
    * invoke count to include in headers
    */
   invokeCount?: number;
-  /**
-   * Settings for controlling the number of active requests
-   * and number of requests per second with the same key.
-   */
-  flowControl?: FlowControl;
 } & (
   | {
       /**
@@ -589,20 +476,14 @@ export type InvokeWorkflowRequest = {
   workflowRunId: string;
   headers: Record<string, string[]>;
   step: Step;
-  body: string;
+  body?: string;
 };
 
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
-  workflow: Pick<
-    InvokableWorkflow<TInitiaPayload, TResult>,
-    "routeFunction" | "workflowId" | "options"
-  >;
-  body: TInitiaPayload; // tried to make this optional but didn't work so nicely
+  workflow: InvokableWorkflow<TInitiaPayload, TResult>;
   workflowRunId?: string;
-} & Pick<
-  CallSettings<TInitiaPayload>,
-  "retries" | "headers" | "flowControl" | "retryDelay" | "stringifyBody"
->;
+} & Pick<CallSettings, "retries" | "headers" | "flowControl" | "retryDelay"> &
+  (TInitiaPayload extends undefined ? { body?: undefined } : { body: TInitiaPayload });
 
 export type InvokeStepResponse<TBody> = {
   body: TBody;
@@ -612,6 +493,12 @@ export type InvokeStepResponse<TBody> = {
 
 export type InvokableWorkflow<TInitialPayload, TResult> = {
   routeFunction: RouteFunction<TInitialPayload, TResult>;
-  options: WorkflowServeOptions<Response, TInitialPayload>;
+  options: WorkflowServeOptions<TInitialPayload, TResult>;
   workflowId?: string;
+  /**
+   * whether the invoked workflow should use JSON content type for initial trigger
+   *
+   * this is set by platform createWorkflow helpers and is not part of public serve options
+   */
+  useJSONContent?: boolean;
 };

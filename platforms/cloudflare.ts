@@ -1,4 +1,4 @@
-import type { InvokableWorkflow, PublicServeOptions, RouteFunction, Telemetry } from "../src";
+import type { InvokableWorkflow, WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import { serveManyBase } from "../src/serve/serve-many";
@@ -65,7 +65,7 @@ const telemetry: Telemetry = {
  */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): {
   fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>;
 } => {

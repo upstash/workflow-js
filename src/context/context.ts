@@ -22,14 +22,11 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import type { WorkflowLogger } from "../logger";
-import { DEFAULT_RETRIES } from "../constants";
-import { WorkflowAbort } from "../error";
+import { WorkflowCancelAbort } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
-import { WorkflowAgents } from "../agents";
-import { FlowControl } from "@upstash/qstash";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
+import { MiddlewareManager } from "../middleware/manager";
 
 /**
  * Upstash Workflow context
@@ -80,25 +77,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ```
    */
   public readonly url: string;
-  /**
-   * URL to call in case of workflow failure with QStash failure callback
-   *
-   * https://upstash.com/docs/qstash/features/callbacks#what-is-a-failure-callback
-   *
-   * Can be overwritten by passing a `failureUrl` parameter in `serve`:
-   *
-   * ```ts
-   * export const POST = serve(
-   *   async (context) => {
-   *     ...
-   *   },
-   *   {
-   *     failureUrl: "new-url-value"
-   *   }
-   * )
-   * ```
-   */
-  public readonly failureUrl?: string;
   /**
    * Payload of the request which started the workflow.
    *
@@ -154,46 +132,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Default value is set to `process.env`.
    */
   public readonly env: Record<string, string | undefined>;
-  /**
-   * Number of retries
-   */
-  public readonly retries: number;
-  /**
-   * Delay between retries.
-   *
-   * By default, the `retryDelay` is exponential backoff.
-   * More details can be found in: https://upstash.com/docs/qstash/features/retry.
-   *
-   * The `retryDelay` option allows you to customize the delay (in milliseconds) between retry attempts when message delivery fails.
-   *
-   * You can use mathematical expressions and the following built-in functions to calculate the delay dynamically.
-   * The special variable `retried` represents the current retry attempt count (starting from 0).
-   *
-   * Supported functions:
-   * - `pow`
-   * - `sqrt`
-   * - `abs`
-   * - `exp`
-   * - `floor`
-   * - `ceil`
-   * - `round`
-   * - `min`
-   * - `max`
-   *
-   * Examples of valid `retryDelay` values:
-   * ```ts
-   * 1000 // 1 second
-   * 1000 * (1 + retried)  // 1 second multiplied by the current retry attempt
-   * pow(2, retried) // 2 to the power of the current retry attempt
-   * max(10, pow(2, retried)) // The greater of 10 or 2^retried
-   * ```
-   */
-  public readonly retryDelay?: string;
-  /**
-   * Settings for controlling the number of active requests
-   * and number of requests per second with the same key.
-   */
-  public readonly flowControl?: FlowControl;
 
   /**
    * Label to apply to the workflow run.
@@ -218,47 +156,46 @@ export class WorkflowContext<TInitialPayload = unknown> {
     headers,
     steps,
     url,
-    failureUrl,
-    debug,
     initialPayload,
     env,
-    retries,
-    retryDelay,
     telemetry,
     invokeCount,
-    flowControl,
     label,
+    middlewareManager,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
     headers: Headers;
     steps: Step[];
     url: string;
-    failureUrl?: string;
-    debug?: WorkflowLogger;
     initialPayload: TInitialPayload;
     env?: Record<string, string | undefined>;
-    retries?: number;
-    retryDelay?: string;
     telemetry?: Telemetry;
     invokeCount?: number;
-    flowControl?: FlowControl;
     label?: string;
+    middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
     this.steps = steps;
     this.url = url;
-    this.failureUrl = failureUrl;
     this.headers = headers;
     this.requestPayload = initialPayload;
     this.env = env ?? {};
-    this.retries = retries ?? DEFAULT_RETRIES;
-    this.retryDelay = retryDelay;
-    this.flowControl = flowControl;
     this.label = label;
 
-    this.executor = new AutoExecutor(this, this.steps, telemetry, invokeCount, debug);
+    const middlewareManagerInstance =
+      middlewareManager ?? new MiddlewareManager<TInitialPayload, unknown>([]);
+    middlewareManagerInstance.assignContext(this);
+
+    this.executor = new AutoExecutor(
+      this,
+      this.steps,
+      middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
+      middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
+      telemetry,
+      invokeCount
+    );
   }
 
   /**
@@ -331,7 +268,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
     } else {
       datetime = typeof datetime === "string" ? new Date(datetime) : datetime;
       // get unix seconds
-      // eslint-disable-next-line @typescript-eslint/no-magic-numbers
       time = Math.round(datetime.getTime() / 1000);
     }
     await this.addStep(new LazySleepUntilStep(this, stepName, time));
@@ -370,9 +306,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *     header: Record<string, string[]>
    *   }
    */
-  public async call<TResult = unknown, TBody = unknown>(
+  public async call<TResult = unknown>(
     stepName: string,
-    settings: CallSettings<TBody>
+    settings: CallSettings
   ): Promise<CallResponse<TResult>>;
   public async call<
     TResult extends { workflowRunId: string } = { workflowRunId: string },
@@ -383,53 +319,43 @@ export class WorkflowContext<TInitialPayload = unknown> {
   ): Promise<CallResponse<TResult>>;
   public async call<TResult = unknown, TBody = unknown>(
     stepName: string,
-    settings:
-      | CallSettings<TBody>
-      | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
+    settings: CallSettings | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
   ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
-    let callStep: LazyCallStep<TResult | { workflowRunId: string }, typeof settings.body>;
+    let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
     if ("workflow" in settings) {
       const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
+      const stringBody =
+        typeof settings.body === "string"
+          ? settings.body
+          : settings.body === undefined // leave body as undefined if it's undefined
+            ? undefined
+            : JSON.stringify(settings.body);
 
-      callStep = new LazyCallStep<{ workflowRunId: string }, typeof settings.body>(
-        this,
+      callStep = new LazyCallStep<{ workflowRunId: string }>({
+        context: this,
         stepName,
         url,
-        "POST",
-        settings.body,
-        settings.headers || {},
-        settings.retries || 0,
-        settings.retryDelay,
-        settings.timeout,
-        settings.flowControl ?? settings.workflow.options.flowControl,
-        settings.stringifyBody ?? true
-      );
+        method: "POST",
+        body: stringBody,
+        headers: settings.headers || {},
+        retries: settings.retries || 0,
+        retryDelay: settings.retryDelay,
+        timeout: settings.timeout,
+        flowControl: settings.flowControl,
+      });
     } else {
-      const {
-        url,
-        method = "GET",
-        body,
-        headers = {},
-        retries = 0,
-        retryDelay,
-        timeout,
-        flowControl,
-        stringifyBody = true,
-      } = settings;
-
-      callStep = new LazyCallStep<TResult, typeof body>(
-        this,
+      callStep = new LazyCallStep<TResult>({
+        context: this,
         stepName,
-        url,
-        method,
-        body,
-        headers,
-        retries,
-        retryDelay,
-        timeout,
-        flowControl,
-        stringifyBody
-      );
+        url: settings.url,
+        method: settings.method ?? "GET",
+        body: settings.body,
+        headers: settings.headers ?? {},
+        retries: settings.retries ?? 0,
+        retryDelay: settings.retryDelay,
+        timeout: settings.timeout,
+        flowControl: settings.flowControl,
+      });
     }
 
     return await this.addStep(callStep);
@@ -538,12 +464,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
   /**
    * Cancel the current workflow run
    *
-   * Will throw WorkflowAbort to stop workflow execution.
+   * Will throw WorkflowCancelAbort to stop workflow execution.
    * Shouldn't be inside try/catch.
    */
   public async cancel() {
     // throw an abort which will make the workflow cancel
-    throw new WorkflowAbort("cancel", undefined, true);
+    throw new WorkflowCancelAbort();
   }
 
   /**
@@ -556,12 +482,6 @@ export class WorkflowContext<TInitialPayload = unknown> {
 
   public get api() {
     return new WorkflowApi({
-      context: this,
-    });
-  }
-
-  public get agents() {
-    return new WorkflowAgents({
       context: this,
     });
   }

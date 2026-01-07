@@ -174,19 +174,18 @@ describe("test steps", () => {
       parallelism: 3,
     };
     const mockContext = createMockContext();
-    const step = new LazyCallStep(
-      mockContext,
+    const step = new LazyCallStep({
+      context: mockContext,
       stepName,
-      callUrl,
-      callMethod,
-      callBody,
-      callHeaders,
-      14,
-      "1000",
-      30,
+      url: callUrl,
+      method: callMethod,
+      body: callBody,
+      headers: callHeaders,
+      retries: 14,
+      retryDelay: "1000",
+      timeout: 30,
       flowControl,
-      true
-    );
+    });
 
     test("should set correct fields", () => {
       expect(step.stepName).toBe(stepName);
@@ -355,12 +354,13 @@ describe("test steps", () => {
       );
     });
 
-    // will be enabled when the string check in BaseLazyStep constructor is updated
-    test.skip("should throw when step name isn't string", () => {
+    test("should throw when step name isn't string", () => {
       const mockContext = createMockContext();
       // @ts-expect-error passing number for test purposes
       const throws = () => new LazyFunctionStep(mockContext, 1, () => {});
-      expect(throws).toThrow(new WorkflowError("A workflow step name must be a string."));
+      expect(throws).toThrow(
+        new WorkflowError('A workflow step name must be a string. Received "1" (number).')
+      );
     });
   });
 
@@ -438,19 +438,14 @@ describe("test steps", () => {
 
     describe("LazyCallStep parseOut", () => {
       test("should parse successful call response with JSON body", () => {
-        const step = new LazyCallStep(
-          mockContext,
-          "call-step",
-          "https://api.example.com",
-          "POST",
-          { data: "test" },
-          {},
-          0,
-          undefined,
-          undefined,
-          undefined,
-          true
-        );
+        const step = new LazyCallStep({
+          context: mockContext,
+          stepName: "call-step",
+          url: "https://api.example.com",
+          method: "POST",
+          body: '{ "data": "test" }',
+          retries: 0,
+        });
 
         const responseBody = { message: "success", id: 123 };
         const stepResult: Step = {
@@ -472,19 +467,11 @@ describe("test steps", () => {
       });
 
       test("should parse call response with non-JSON text body", () => {
-        const step = new LazyCallStep(
-          mockContext,
-          "call-step",
-          "https://api.example.com",
-          "GET",
-          undefined,
-          {},
-          0,
-          undefined,
-          undefined,
-          undefined,
-          true
-        );
+        const step = new LazyCallStep({
+          context: mockContext,
+          stepName: "call-step",
+          url: "https://api.example.com",
+        });
 
         const textBody = "plain text response";
         const stepResult: Step = {
@@ -505,19 +492,11 @@ describe("test steps", () => {
       });
 
       test("should parse call response with binary body", () => {
-        const step = new LazyCallStep(
-          mockContext,
-          "call-step",
-          "https://api.example.com",
-          "GET",
-          undefined,
-          {},
-          0,
-          undefined,
-          undefined,
-          undefined,
-          true
-        );
+        const step = new LazyCallStep({
+          context: mockContext,
+          stepName: "call-step",
+          url: "https://api.example.com",
+        });
 
         const binaryBody = "binary-data";
         const stepResult: Step = {
@@ -538,19 +517,12 @@ describe("test steps", () => {
       });
 
       test("should handle error status codes", () => {
-        const step = new LazyCallStep(
-          mockContext,
-          "call-step",
-          "https://api.example.com",
-          "POST",
-          {},
-          {},
-          0,
-          undefined,
-          undefined,
-          undefined,
-          true
-        );
+        const step = new LazyCallStep({
+          context: mockContext,
+          stepName: "call-step",
+          url: "https://api.example.com",
+          method: "POST",
+        });
 
         const errorBody = { error: "Not Found" };
         const stepResult: Step = {

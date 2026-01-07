@@ -28,7 +28,6 @@ export const { POST, GET } = testServe(
       });
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
       async failureFunction({ context, failStatus, failResponse }) {
         expect( failResponse, largeObject )
         expect( failStatus, 500 )
@@ -41,11 +40,14 @@ export const { POST, GET } = testServe(
       },
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: `super secret`,
     payload,
     headers: {
       [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 )

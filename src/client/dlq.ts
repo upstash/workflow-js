@@ -83,15 +83,19 @@ export class DLQ {
   /**
    * list the items in the DLQ
    *
-   * @param cursor - Optional cursor for pagination.
-   * @param count - Optional number of items to return.
-   * @param filter - Optional filter options to apply to the DLQ items.
+   * @param parameters - Optional parameters object
+   * @param parameters.cursor - Optional cursor for pagination
+   * @param parameters.count - Optional number of items to return
+   * @param parameters.filter - Optional filter options to apply to the DLQ items.
    *    The available filter options are:
    *    - `fromDate`: Filter items which entered the DLQ after this date.
    *    - `toDate`: Filter items which entered the DLQ before this date.
    *    - `url`: Filter items by the URL they were sent to.
    *    - `responseStatus`: Filter items by the response status code.
-   * @returns
+   *    - `workflowRunId`: Filter items by workflow run ID.
+   *    - `workflowCreatedAt`: Filter items by workflow creation time.
+   *    - `failureFunctionState`: Filter items by failure callback state.
+   *    - `label`: Filter items by label.
    */
   async list(parameters?: { cursor?: string; count?: number; filter?: DLQFilterOptions }) {
     const { cursor, count, filter } = parameters || {};
@@ -231,8 +235,8 @@ export class DLQ {
    * Retry the failure callback of a workflow run whose failureUrl/failureFunction
    * request has failed.
    *
-   * @param dlqId - The ID of the DLQ message to retry.
-   * @returns
+   * @param dlqId - The ID of the DLQ message to retry
+   * @returns response with workflow run information
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
     const response = await this.client.http.request<DLQResumeRestartResponse>({
@@ -243,6 +247,11 @@ export class DLQ {
     return response;
   }
 
+  /**
+   * Handles DLQ options and prepares headers and query parameters.
+   *
+   * @param options - DLQ resume/restart options
+   */
   private static handleDLQOptions(options: DLQResumeRestartOptions) {
     const { dlqId, flowControl, retries } = options;
 
@@ -263,6 +272,11 @@ export class DLQ {
     };
   }
 
+  /**
+   * Converts DLQ ID(s) to query parameter string.
+   *
+   * @param dlqId - Single DLQ ID or array of DLQ IDs
+   */
   private static getDlqIdQueryParameter(dlqId: string | string[]): string {
     const dlqIds = Array.isArray(dlqId) ? dlqId : [dlqId];
     const paramsArray: [string, string][] = dlqIds.map((id) => ["dlqIds", id]);

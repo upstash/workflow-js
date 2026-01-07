@@ -49,14 +49,16 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0
     }
   ), {
-    expectedCallCount: 7,
+    expectedCallCount: 6,
     expectedResult: "foobar",
     payload: undefined,
     headers: {
       [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

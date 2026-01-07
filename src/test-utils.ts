@@ -214,3 +214,13 @@ export const eventually = async function (
     }
   }
 };
+
+export class FinishState {
+  public finished = false;
+  public finish() {
+    this.finished = true;
+  }
+  public check() {
+    expect(this.finished).toBeTrue();
+  }
+}

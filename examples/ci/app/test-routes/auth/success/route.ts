@@ -44,15 +44,17 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: "processed 'processed 'my-payload''",
     payload,
     headers: {
       [ header ]: headerValue,
       "authentication": authentication
+    },
+    triggerConfig: {
+      retries: 0
     }
   }
 ) 

@@ -10,7 +10,7 @@ const createWorkflowOpenAI = (context: WorkflowContext) => {
   return createOpenAI({
     apiKey: process.env.OPENAI_API_KEY ?? "",
     compatibility: "strict",
-    fetch: async (input, init) => {
+    fetch: (async (input, init) => {
       try {
         // Prepare headers from init.headers
         const headers = init?.headers
@@ -49,7 +49,7 @@ const createWorkflowOpenAI = (context: WorkflowContext) => {
           throw error; // Rethrow error for further handling
         }
       }
-    },
+    }) as typeof fetch,
   });
 };
 
@@ -91,9 +91,9 @@ export const { POST } = serve<{ prompt: string }>(async (context) => {
               'X-Goog-Api-Key': process.env.GOOGLE_PLACES_API_KEY ?? "",
               'X-Goog-FieldMask': 'places.displayName,places.formattedAddress'
             },
-            body: {
+            body: JSON.stringify({
               textQuery: `tourist attractions in ${city}`
-            }
+            })
           })
         }),
       },
