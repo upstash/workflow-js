@@ -1,6 +1,6 @@
 import { Receiver } from "@upstash/qstash";
 import { Client } from "@upstash/qstash";
-import { WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
+import { VERSION, WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
 import type { DetailedFinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { formatWorkflowError, WorkflowError } from "../error";
 import { loggingMiddleware } from "../middleware";
@@ -41,6 +41,7 @@ export const createResponseData = (
 ): ResponseData => {
   const baseHeaders = {
     [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+    "Upstash-workflow-sdk": VERSION
   };
 
   if (detailedFinishCondition?.condition === "auth-fail") {
