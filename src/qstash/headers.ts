@@ -2,6 +2,7 @@ import { FlowControl, QstashError } from "@upstash/qstash";
 import {
   DEFAULT_CONTENT_TYPE,
   DEFAULT_RETRIES,
+  WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_ID_HEADER,
@@ -203,7 +204,7 @@ class WorkflowHeaders {
     this.headers.workflowHeaders["Failure-Callback"] = this.workflowConfig.failureUrl;
 
     this.headers.failureHeaders[`Forward-${WORKFLOW_FAILURE_HEADER}`] = "true";
-    this.headers.failureHeaders[`Forward-Upstash-Workflow-Failure-Callback`] = "true";
+    this.headers.failureHeaders[`Forward-${WORKFLOW_FAILURE_CALLBACK_HEADER}`] = "true";
     this.headers.failureHeaders["Workflow-Runid"] = this.workflowConfig.workflowRunId;
     this.headers.failureHeaders["Workflow-Init"] = "false";
     this.headers.failureHeaders["Workflow-Url"] = this.workflowConfig.workflowUrl;

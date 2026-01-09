@@ -91,7 +91,7 @@ export const failWithoutContext = async (
  * @returns 
  */
 export const fail = async (
-  context: WorkflowContext<unknown>,
+  context: Pick<WorkflowContext<unknown>, "headers">,
 ) => {
   const randomTestId = context.headers.get(CI_RANDOM_ID_HEADER)
   const route = context.headers.get(CI_ROUTE_HEADER)
