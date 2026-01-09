@@ -41,7 +41,7 @@ export const createResponseData = (
 ): ResponseData => {
   const baseHeaders = {
     [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-    "Upstash-workflow-sdk": VERSION
+    "Upstash-workflow-sdk": VERSION,
   };
 
   if (detailedFinishCondition?.condition === "auth-fail") {
