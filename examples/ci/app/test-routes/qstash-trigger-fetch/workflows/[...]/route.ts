@@ -20,8 +20,10 @@ type TriggerResponse = {
   workflowCreatedAt: number
 }
 
+const QSTASH_URL = process.env.QSTASH_URL ?? "https://qstash.upstash.io";
+
 const workflowClient = new Client({
-  baseUrl: process.env.QSTASH_URL!,
+  baseUrl: QSTASH_URL,
   token: process.env.QSTASH_TOKEN!,
 })
 
@@ -40,10 +42,8 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
 
   // Step 1: Call the 2nd endpoint (workflow) using QStash trigger pattern
   const callWorkflowResponse = await context.run("call workflow endpoint", async () => {
-    console.log(`${process.env.QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`);
-    
     const response = await fetch(
-      `${process.env.QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
+      `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
       {
         method: "POST",
         headers: {
@@ -70,7 +70,7 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
   // Step 2: Call the 3rd endpoint (POST endpoint) using QStash trigger pattern
   const callPostEndpointResponse = await context.run("call post endpoint", async () => {
     const response = await fetch(
-      `${process.env.QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/post`,
+      `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/post`,
       {
         method: "POST",
         headers: {
