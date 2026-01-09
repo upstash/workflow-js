@@ -79,6 +79,10 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
     route: "failureFunction-retry",
   },
   {
+    // checks failureFunction with NonRetryableError
+    route: "failureFunction-nonRetryable",
+  },
+  {
     // checks failureUrl
     route: "failureUrl/workflow",
   },
