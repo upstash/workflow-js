@@ -47,7 +47,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   retryDelay?: TriggerOptions["retryDelay"];
   flowControl?: TriggerOptions["flowControl"];
   middlewareManager?: MiddlewareManager;
-  unkownSdk?: boolean;
+  unknownSdk?: boolean;
 };
 
 export const triggerFirstInvocation = async <TInitialPayload>(
@@ -70,7 +70,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       retries,
       retryDelay,
       flowControl,
-      unkownSdk,
+      unknownSdk,
     }) => {
       const { headers } = getHeaders({
         initHeaderValue: "true",
@@ -98,7 +98,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         headers["content-type"] = "application/json";
       }
 
-      if (unkownSdk) {
+      if (unknownSdk) {
         headers[WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER] = "true";
       }
 

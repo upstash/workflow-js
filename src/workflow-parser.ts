@@ -169,7 +169,7 @@ const checkIfLastOneIsDuplicate = async (
  */
 export const validateRequest = (
   request: Request
-): { isFirstInvocation: boolean; workflowRunId: string; unkownSdk: boolean } => {
+): { isFirstInvocation: boolean; workflowRunId: string; unknownSdk: boolean } => {
   if (request.headers.get(WORKFLOW_UNKOWN_SDK_VERSION_HEADER)) {
     const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
 
@@ -180,7 +180,7 @@ export const validateRequest = (
     }
 
     return {
-      unkownSdk: true,
+      unknownSdk: true,
       isFirstInvocation: true,
       workflowRunId,
     };
@@ -200,7 +200,7 @@ export const validateRequest = (
       );
     }
     return {
-      unkownSdk: false,
+      unknownSdk: false,
       isFirstInvocation: true,
       workflowRunId,
     };
@@ -228,7 +228,7 @@ export const validateRequest = (
   return {
     isFirstInvocation,
     workflowRunId,
-    unkownSdk: false,
+    unknownSdk: false,
   };
 };
 
@@ -240,7 +240,7 @@ export const validateRequest = (
  *
  * @param requestPayload payload from the request
  * @param isFirstInvocation whether this is the first invocation
- * @param unkownSdk whether the request is from an unkown sdk version
+ * @param unknownSdk whether the request is from an unkown sdk version
  * @param workflowRunId workflow run id
  * @param requester QStash client HTTP requester
  * @param messageId optional message id
@@ -250,7 +250,7 @@ export const validateRequest = (
 export const parseRequest = async ({
   requestPayload,
   isFirstInvocation,
-  unkownSdk,
+  unknownSdk,
   workflowRunId,
   requester,
   messageId,
@@ -258,7 +258,7 @@ export const parseRequest = async ({
 }: {
   requestPayload: string | undefined;
   isFirstInvocation: boolean;
-  unkownSdk: boolean;
+  unknownSdk: boolean;
   workflowRunId: string;
   requester: Client["http"];
   messageId?: string;
@@ -277,7 +277,7 @@ export const parseRequest = async ({
       workflowRunEnded: true;
     }
 > => {
-  if (isFirstInvocation && !unkownSdk) {
+  if (isFirstInvocation && !unknownSdk) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
     return {
       rawInitialPayload: requestPayload ?? "",

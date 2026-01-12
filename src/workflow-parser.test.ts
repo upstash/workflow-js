@@ -115,7 +115,7 @@ describe("Workflow Parser", () => {
           const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
             requestPayload,
             isFirstInvocation: true,
-            unkownSdk: false,
+            unknownSdk: false,
             workflowRunId,
             requester: qstashClient.http,
           });
@@ -157,7 +157,7 @@ describe("Workflow Parser", () => {
           const result = await parseRequest({
             requestPayload,
             isFirstInvocation: false,
-            unkownSdk: false,
+            unknownSdk: false,
             workflowRunId,
             requester: qstashClient.http,
           });
@@ -210,7 +210,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest({
         requestPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -289,7 +289,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest({
         requestPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -333,7 +333,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -364,7 +364,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -400,7 +400,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -438,7 +438,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -477,7 +477,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -512,7 +512,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -542,7 +542,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -584,7 +584,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
@@ -630,7 +630,7 @@ describe("Workflow Parser", () => {
       const { rawInitialPayload, steps, isLastDuplicate } = await parseRequest({
         requestPayload: requestFromPayload,
         isFirstInvocation: false,
-        unkownSdk: false,
+        unknownSdk: false,
         workflowRunId,
         requester: qstashClient.http,
       });
