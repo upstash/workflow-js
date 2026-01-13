@@ -42,6 +42,7 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
   expect(typeof webhook.eventId, "string");
 
   // Step 1: Call the 2nd endpoint (workflow) using QStash trigger pattern
+  // this time with Upstash-Workflow-Unknown-Sdk header and largeObject
   const callWorkflowResponse = await context.run("call workflow endpoint", async () => {
     const response = await fetch(
       `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
@@ -53,7 +54,8 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
           [`upstash-forward-${QSTASH_TRIGGER_HEADER}`]: QSTASH_TRIGGER_HEADER_VALUE,
           [`upstash-forward-${CI_RANDOM_ID_HEADER}`]: context.headers.get(CI_RANDOM_ID_HEADER)!,
           [`upstash-forward-${CI_ROUTE_HEADER}`]: context.headers.get(CI_ROUTE_HEADER)!,
-          "Upstash-Retries": "0"
+          "Upstash-Retries": "0",
+          "Upstash-Workflow-Unknown-Sdk": "true",
         },
         body: JSON.stringify({ webhookUrl: webhook.webhookUrl, largeObject }),
       }
@@ -67,7 +69,6 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
   });
 
   // Step 2: Call the 2nd endpoint (workflow) using QStash trigger pattern,
-  // this time with Upstash-Workflow-Unknown-Sdk header
   const callUnknownSDKWorkflowResponse = await context.run("call workflow endpoint", async () => {
     const response = await fetch(
       `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
@@ -79,10 +80,9 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
           [`upstash-forward-${QSTASH_TRIGGER_HEADER}`]: QSTASH_TRIGGER_HEADER_VALUE,
           [`upstash-forward-${CI_RANDOM_ID_HEADER}`]: context.headers.get(CI_RANDOM_ID_HEADER)!,
           [`upstash-forward-${CI_ROUTE_HEADER}`]: context.headers.get(CI_ROUTE_HEADER)!,
-          "Upstash-Workflow-Unknown-Sdk": "true",
           "Upstash-Retries": "0"
         },
-        body: JSON.stringify({ webhookUrl: webhook.webhookUrl, largeObject }),
+        body: JSON.stringify({ webhookUrl: webhook.webhookUrl }),
       }
     );
 
@@ -175,6 +175,8 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
     throw new WorkflowNonRetryableError("failed the test because incorrect logs were returned after retries")
   });
 
+  await context.sleep("sleep before finish to ensure all requests arrive", 2); // wait for 2 seconds to ensure all logs are flushed
+
   await saveResult(
     context,
     result
@@ -235,7 +237,7 @@ export const { POST, GET } = testServe(
       }
     }
   ), {
-    expectedCallCount: 15,
+    expectedCallCount: 16,
     expectedResult: getResult,
     payload,
     headers: {
