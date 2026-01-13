@@ -80,6 +80,19 @@ export const getSteps = async (
       path: ["v2", "workflows", "runs", workflowRunId],
       parseResponseAsJson: true,
     })) as RawStep[];
+    
+    if (steps.length === 1) {
+      /**
+       * If the user call /trigger and passes a large body, lazyFetch will be activated
+       * and getSteps will be called.
+       * 
+       * In this case, there will be only the one step in the workflow run, but messageId
+       * will be diffent from the one in the headers.
+       */
+      return {
+        steps, workflowRunEnded: false
+      }
+    }
 
     if (!messageId) {
       await dispatchDebug?.("onInfo", {

@@ -9,6 +9,7 @@ import {
   WORKFLOW_WEBHOOK_RESULT,
 } from "../../constants";
 import { Client, WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
+import { largeObject } from "app/test-routes/large-payload/utils";
 
 const header = "test-header-qstash-trigger"
 const headerValue = "qstash-trigger-header-value"
@@ -54,20 +55,47 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
           [`upstash-forward-${CI_ROUTE_HEADER}`]: context.headers.get(CI_ROUTE_HEADER)!,
           "Upstash-Retries": "0"
         },
-        body: JSON.stringify({ webhookUrl: webhook.webhookUrl }),
+        body: JSON.stringify({ webhookUrl: webhook.webhookUrl, largeObject }),
       }
     );
 
     if (!response.ok) {
-      throw new WorkflowNonRetryableError(`Workflow call failed with status ${response.status}. Error: ${await response.text()}`);
+      throw new WorkflowNonRetryableError(`First workflow call failed with status ${response.status}. Error: ${await response.text()}`);
     }
     
     return response.ok;
   });
 
-  expect(callWorkflowResponse, true);
+  // Step 2: Call the 2nd endpoint (workflow) using QStash trigger pattern,
+  // this time with Upstash-Workflow-Unknown-Sdk header
+  const callUnknownSDKWorkflowResponse = await context.run("call workflow endpoint", async () => {
+    const response = await fetch(
+      `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/workflows/webhookWorkflow`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.QSTASH_TOKEN}`,
+          [`upstash-forward-${QSTASH_TRIGGER_HEADER}`]: QSTASH_TRIGGER_HEADER_VALUE,
+          [`upstash-forward-${CI_RANDOM_ID_HEADER}`]: context.headers.get(CI_RANDOM_ID_HEADER)!,
+          [`upstash-forward-${CI_ROUTE_HEADER}`]: context.headers.get(CI_ROUTE_HEADER)!,
+          "Upstash-Workflow-Unknown-Sdk": "true",
+          "Upstash-Retries": "0"
+        },
+        body: JSON.stringify({ webhookUrl: webhook.webhookUrl, largeObject }),
+      }
+    );
 
-  // Step 2: Call the 3rd endpoint (POST endpoint) using QStash trigger pattern
+    if (!response.ok) {
+      throw new WorkflowNonRetryableError(`Second workflow call failed with status ${response.status}. Error: ${await response.text()}`);
+    }
+    
+    return response.ok;
+  });
+
+  expect(callUnknownSDKWorkflowResponse, true);
+
+  // Step 3: Call the 3rd endpoint (POST endpoint) using QStash trigger pattern
   const callPostEndpointResponse = await context.run("call post endpoint", async () => {
     const response = await fetch(
       `${QSTASH_URL}/v2/trigger/${TEST_ROUTE_PREFIX}/qstash-trigger-fetch/post`,
@@ -94,21 +122,24 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
   expect(typeof callPostEndpointResponse.workflowRunId, "string");
   expect(typeof callPostEndpointResponse.workflowCreatedAt, "number");
 
-  // Step 3: Wait for the webhook to be called by the 2nd endpoint
-  const webhookResponse = await context.waitForWebhook(
-    "wait for webhook",
-    webhook,
-    "30s"
-  );
-
-  // Verify the webhook was called
-  expect(webhookResponse.timeout, false);
-  const request = webhookResponse.request!;
-  expect(typeof request, "object");
-  expect(request.method, "POST");
-
-  const webhookData = await request.json() as { result: string }
-  expect(webhookData.result, WORKFLOW_WEBHOOK_RESULT);
+  // wait for the 2 webhook calls from the 2nd endpoint
+  for (let i = 0; i < 2; i++) {
+    // Step 3: Wait for the webhook to be called by the 2nd endpoint
+    const webhookResponse = await context.waitForWebhook(
+      "wait for webhook",
+      webhook,
+      "30s"
+    );
+    
+    // Verify the webhook was called
+    expect(webhookResponse.timeout, false);
+    const request = webhookResponse.request!;
+    expect(typeof request, "object");
+    expect(request.method, "POST");
+    
+    const webhookData = await request.json() as { result: string }
+    expect(webhookData.result, WORKFLOW_WEBHOOK_RESULT);
+  }
 
   // Step 4: Final verification step
   const result = await context.run("verify complete", async () => {
@@ -119,7 +150,7 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
         workflowRunId: callPostEndpointResponse.workflowRunId
       })
 
-      if (logs.runs.length === 0) {
+      if (logs.runs.length === 0 || logs.runs[0].workflowState !== "RUN_FAILED") {
         console.log("waiting for logs to be available...", i);
         await new Promise((resolve) => setTimeout(resolve, 2000));
         continue;
@@ -180,7 +211,7 @@ const webhookWorkflow = createWorkflow(async (context: WorkflowContext<{ webhook
     });
 
     if (!response.ok) {
-      throw new Error(`webhook call failed with status ${response.status}`);
+      throw new Error(`webhook call failed with status ${response.status}, ${await response.text()}`);
     }
 
     return response.ok;
@@ -204,7 +235,7 @@ export const { POST, GET } = testServe(
       }
     }
   ), {
-    expectedCallCount: 9,
+    expectedCallCount: 15,
     expectedResult: getResult,
     payload,
     headers: {
