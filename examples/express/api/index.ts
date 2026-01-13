@@ -87,7 +87,7 @@ const serveManyRouter = serveMany({
   workflowTwo
 });
 
-app.post("/serve-many/*", serveManyRouter);
+app.post("/serve-many/{*route}", serveManyRouter);
 
 /**
  * CI ROUTE
