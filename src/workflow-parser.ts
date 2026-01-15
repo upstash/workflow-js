@@ -3,11 +3,13 @@ import { err, ok } from "neverthrow";
 import { WorkflowError } from "./error";
 import {
   NO_CONCURRENCY,
+  WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_UNKOWN_SDK_VERSION_HEADER,
 } from "./constants";
 import type {
   FailureFunctionPayload,
@@ -167,7 +169,43 @@ const checkIfLastOneIsDuplicate = async (
  */
 export const validateRequest = (
   request: Request
-): { isFirstInvocation: boolean; workflowRunId: string } => {
+): { isFirstInvocation: boolean; workflowRunId: string; unknownSdk: boolean } => {
+  if (request.headers.get(WORKFLOW_UNKOWN_SDK_VERSION_HEADER)) {
+    const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
+
+    if (!workflowRunId) {
+      throw new WorkflowError(
+        "Couldn't get workflow id from header when handling unknown sdk request"
+      );
+    }
+
+    return {
+      unknownSdk: true,
+      isFirstInvocation: true,
+      workflowRunId,
+    };
+  }
+
+  if (request.headers.get(WORKFLOW_FAILURE_CALLBACK_HEADER)) {
+    // when failure callback is called, WORKFLOW_PROTOCOL_VERSION_HEADER isn't set, so
+    // we consider it as first invocation. But in the case of /trigger endpoint,
+    // WORKFLOW_PROTOCOL_VERSION_HEADER is set, so we check for
+    // WORKFLOW_FAILURE_CALLBACK_HEADER
+
+    const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
+
+    if (!workflowRunId) {
+      throw new WorkflowError(
+        "Couldn't get workflow id from header when handling failure callback request"
+      );
+    }
+    return {
+      unknownSdk: false,
+      isFirstInvocation: true,
+      workflowRunId,
+    };
+  }
+
   const versionHeader = request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER);
   const isFirstInvocation = !versionHeader;
 
@@ -190,6 +228,7 @@ export const validateRequest = (
   return {
     isFirstInvocation,
     workflowRunId,
+    unknownSdk: false,
   };
 };
 
@@ -201,20 +240,30 @@ export const validateRequest = (
  *
  * @param requestPayload payload from the request
  * @param isFirstInvocation whether this is the first invocation
+ * @param unknownSdk whether the request is from an unkown sdk version
  * @param workflowRunId workflow run id
  * @param requester QStash client HTTP requester
  * @param messageId optional message id
  * @param dispatchDebug optional debug dispatcher
  * @returns raw initial payload and the steps
  */
-export const parseRequest = async (
-  requestPayload: string | undefined,
-  isFirstInvocation: boolean,
-  workflowRunId: string,
-  requester: Client["http"],
-  messageId?: string,
-  dispatchDebug?: DispatchDebug
-): Promise<
+export const parseRequest = async ({
+  requestPayload,
+  isFirstInvocation,
+  unknownSdk,
+  workflowRunId,
+  requester,
+  messageId,
+  dispatchDebug,
+}: {
+  requestPayload: string | undefined;
+  isFirstInvocation: boolean;
+  unknownSdk: boolean;
+  workflowRunId: string;
+  requester: Client["http"];
+  messageId?: string;
+  dispatchDebug?: DispatchDebug;
+}): Promise<
   | {
       rawInitialPayload: string;
       steps: Step[];
@@ -228,7 +277,7 @@ export const parseRequest = async (
       workflowRunEnded: true;
     }
 > => {
-  if (isFirstInvocation) {
+  if (isFirstInvocation && !unknownSdk) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
     return {
       rawInitialPayload: requestPayload ?? "",
@@ -319,7 +368,10 @@ export const handleFailure = async <TInitialPayload>({
     >
   | Err<never, Error>
 > => {
-  if (request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true") {
+  if (
+    request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true" &&
+    !request.headers.get(WORKFLOW_FAILURE_CALLBACK_HEADER)
+  ) {
     return ok({ result: "not-failure-callback" });
   }
 

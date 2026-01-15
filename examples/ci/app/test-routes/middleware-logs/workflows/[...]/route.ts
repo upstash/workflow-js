@@ -181,17 +181,17 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
     const workflowRunId = result1.body.workflowRunId
     if (workflowRunId) {
       await checkLogs(workflowRunId, [
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'runStarted',
         'beforeExecution:run step',
         `onInfo:Submitted step "run step" with messageId: ${ANY_STRING}.`,
         'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'afterExecution:run step',
         'beforeExecution:sleep step',
         `onInfo:Submitted step "sleep step" with messageId: ${ANY_STRING}.`,
         'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'afterExecution:sleep step',
         `runCompleted:{"result":"runAndSleep-complete","workflowRunId":"${workflowRunId}"}`,
         `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
@@ -221,12 +221,12 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
     const workflowRunId = result2.body.workflowRunId
     if (workflowRunId) {
       await checkLogs(workflowRunId, [
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'runStarted',
         'beforeExecution:call step',
         `onInfo:Submitted step "call step" with messageId: ${ANY_STRING}.`,
         'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'afterExecution:call step',
         `runCompleted:{"result":"call-complete","workflowRunId":"${workflowRunId}"}`,
         `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
@@ -256,11 +256,11 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
     const workflowRunId = result3.body.workflowRunId
     if (workflowRunId) {
       await checkLogs(workflowRunId, [
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'runStarted',
         'beforeExecution:wait for event',
         'onInfo:Workflow endpoint execution completed successfully.',
-        'onInfo:Run id identified.',
+        'onInfo:Run id identified. isFirstInvocation: false, unknownSdk: false',
         'afterExecution:wait for event',
         `runCompleted:{"result":"waitForEventTimeout-complete","workflowRunId":"${workflowRunId}"}`,
         `onInfo:Deleting workflow run ${workflowRunId} from QStash.`,
