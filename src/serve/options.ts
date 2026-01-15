@@ -1,10 +1,10 @@
-import { Receiver } from "@upstash/qstash";
-import { Client } from "@upstash/qstash";
 import { VERSION, WORKFLOW_PROTOCOL_VERSION, WORKFLOW_PROTOCOL_VERSION_HEADER } from "../constants";
 import type { DetailedFinishCondition, RequiredExceptFields, WorkflowServeOptions } from "../types";
 import { formatWorkflowError, WorkflowError } from "../error";
 import { loggingMiddleware } from "../middleware";
 import { DispatchDebug } from "../middleware/types";
+import { getQStashHandlerOptions } from "./multi-region/handlers";
+import { QStashHandlers } from "./multi-region/utils";
 
 export type ResponseData = {
   text: string;
@@ -25,6 +25,10 @@ export type InternalServeOptions<TResponse extends Response = Response> = {
    * in `triggerFirstInvocation`.
    */
   useJSONContent: boolean;
+  /**
+   * QStash handlers for single or multi-region mode
+   */
+  qstashHandlers: QStashHandlers;
 };
 
 /**
@@ -101,6 +105,7 @@ export const createResponseData = (
   };
 };
 
+
 /**
  * Fills the options with default values if they are not provided.
  *
@@ -127,17 +132,10 @@ export const processOptions = <
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
 
-  const receiverEnvironmentVariablesSet = Boolean(
-    environment.QSTASH_CURRENT_SIGNING_KEY && environment.QSTASH_NEXT_SIGNING_KEY
-  );
+  const { qstashHandlers, defaultClient: qstashClient, defaultReceiver: receiver } = getQStashHandlerOptions(environment, options?.qstashClient);
 
   return {
-    qstashClient:
-      options?.qstashClient ??
-      new Client({
-        baseUrl: environment.QSTASH_URL!,
-        token: environment.QSTASH_TOKEN!,
-      }),
+    qstashClient,
     initialPayloadParser: (initialRequest: string) => {
       // if there is no payload, simply return undefined
       if (!initialRequest) {
@@ -158,12 +156,7 @@ export const processOptions = <
         throw error;
       }
     },
-    receiver: receiverEnvironmentVariablesSet
-      ? new Receiver({
-          currentSigningKey: environment.QSTASH_CURRENT_SIGNING_KEY!,
-          nextSigningKey: environment.QSTASH_NEXT_SIGNING_KEY!,
-        })
-      : undefined,
+    receiver,
     baseUrl: environment.UPSTASH_WORKFLOW_URL,
     env: environment,
     disableTelemetry: false,
@@ -180,6 +173,7 @@ export const processOptions = <
           }) as TResponse;
         }),
       useJSONContent: internalOptions?.useJSONContent ?? false,
+      qstashHandlers,
     },
   };
 };
