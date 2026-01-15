@@ -56,28 +56,18 @@ export const getHandlersForRequest = (
  */
 const createRegionalHandler = (
   environment: Record<string, string | undefined>,
-  receiverUndefined: boolean,
+  receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set",
   region?: QStashRegion,
   clientOptions?: Omit<ConstructorParameters<typeof Client>[0], "baseUrl" | "token">
 ): RegionalHandler => {
   const clientEnv = readClientEnvironmentVariables(environment, region);
-  const receiverEnv = readReceiverEnvironmentVariables(environment, region);
 
   const client = new Client({
     ...clientOptions,
     baseUrl: clientEnv.QSTASH_URL!,
     token: clientEnv.QSTASH_TOKEN!,
   });
-
-  const receiver =
-    !receiverUndefined &&
-    receiverEnv.QSTASH_CURRENT_SIGNING_KEY &&
-    receiverEnv.QSTASH_NEXT_SIGNING_KEY
-      ? new Receiver({
-          currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
-          nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
-        })
-      : undefined;
+  const receiver = getReceiver(environment, receiverConfig, region);
 
   return { client, receiver };
 };
@@ -109,16 +99,16 @@ const shouldUseMultiRegionMode = (
 const getQStashHandlers = ({
   environment,
   qstashClientOption,
-  receiverUndefined,
+  receiverConfig,
 }: {
   environment: Record<string, string | undefined>;
   qstashClientOption?: WorkflowClient | QStashClientExtraConfig;
   /**
-   * if receiver isn't passed, we check env variables.
-   *
-   * if receiver is explicitly passed as undefined, we keep it undefined.
+   * - "set-to-undefined" if user explicitly set receiver to undefined in options
+   * - "not-set" if user did not pass receiver in options
+   * - WorkflowReceiver if user passed a receiver instance in options
    */
-  receiverUndefined: boolean;
+  receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set";
 }): QStashHandlers => {
   const multiRegion = shouldUseMultiRegionMode(environment, qstashClientOption);
 
@@ -135,7 +125,7 @@ const getQStashHandlers = ({
       try {
         handlers[region] = createRegionalHandler(
           environment,
-          receiverUndefined,
+          receiverConfig,
           region,
           multiRegion.clientOptions
         );
@@ -151,18 +141,6 @@ const getQStashHandlers = ({
     };
   } else {
     // Single-region mode
-
-    const receiverEnv = readReceiverEnvironmentVariables(environment);
-    const receiver =
-      !receiverUndefined &&
-      receiverEnv.QSTASH_CURRENT_SIGNING_KEY &&
-      receiverEnv.QSTASH_NEXT_SIGNING_KEY
-        ? new Receiver({
-            currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
-            nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
-          })
-        : undefined;
-
     return {
       mode: "single-region",
       handlers: {
@@ -174,9 +152,31 @@ const getQStashHandlers = ({
                 baseUrl: environment.QSTASH_URL!,
                 token: environment.QSTASH_TOKEN!,
               }),
-        receiver,
+        receiver: getReceiver(environment, receiverConfig),
       },
     };
+  }
+};
+
+const getReceiver = (
+  environment: Record<string, string | undefined>,
+  receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set",
+  region?: QStashRegion
+) => {
+  if (typeof receiverConfig === "string") {
+    if (receiverConfig === "set-to-undefined") {
+      return undefined;
+    }
+
+    const receiverEnv = readReceiverEnvironmentVariables(environment, region);
+    return receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
+      ? new Receiver({
+          currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
+          nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
+        })
+      : undefined;
+  } else {
+    return receiverConfig;
   }
 };
 
