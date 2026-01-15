@@ -1,5 +1,13 @@
 import { Client, Receiver } from "@upstash/qstash";
-import { getRegionFromEnvironment, normalizeRegionHeader, QStashHandlers, QStashRegion, readClientEnvironmentVariables, readReceiverEnvironmentVariables, RegionalHandler } from "./utils";
+import {
+  getRegionFromEnvironment,
+  normalizeRegionHeader,
+  QStashHandlers,
+  QStashRegion,
+  readClientEnvironmentVariables,
+  readReceiverEnvironmentVariables,
+  RegionalHandler,
+} from "./utils";
 import { QStashClientExtraConfig, WorkflowClient, WorkflowReceiver } from "../../types";
 
 /**
@@ -63,9 +71,9 @@ const createRegionalHandler = (
   const receiver =
     receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
       ? new Receiver({
-        currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
-      })
+          currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
+          nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
+        })
       : undefined;
 
   return { client, receiver };
@@ -77,7 +85,9 @@ const createRegionalHandler = (
 const shouldUseMultiRegionMode = (
   environment: Record<string, string | undefined>,
   qstashClientOption?: WorkflowClient | QStashClientExtraConfig
-): { isMultiRegion: true, defaultRegion: QStashRegion, clientOptions?: QStashClientExtraConfig } | { isMultiRegion: false } => {
+):
+  | { isMultiRegion: true; defaultRegion: QStashRegion; clientOptions?: QStashClientExtraConfig }
+  | { isMultiRegion: false } => {
   // Multi-region mode is enabled when:
   // 1. QSTASH_REGION env variable is set
   // 2. qstashClient option is not a WorkflowClient instance (either undefined or config object)
@@ -87,7 +97,7 @@ const shouldUseMultiRegionMode = (
       isMultiRegion: true,
       defaultRegion: getRegionFromEnvironment(environment)!,
       clientOptions: qstashClientOption,
-    }
+    };
   } else {
     return { isMultiRegion: false };
   }
@@ -103,15 +113,14 @@ const getQStashHandlers = (
     // Multi-region mode
 
     const regions: QStashRegion[] = ["US_EAST_1", "EU_CENTRAL_1"];
-    const handlers: Record<QStashRegion, RegionalHandler> = {} as Record<QStashRegion, RegionalHandler>;
+    const handlers: Record<QStashRegion, RegionalHandler> = {} as Record<
+      QStashRegion,
+      RegionalHandler
+    >;
 
     for (const region of regions) {
       try {
-        handlers[region] = createRegionalHandler(
-          environment,
-          region,
-          multiRegion.clientOptions
-        );
+        handlers[region] = createRegionalHandler(environment, region, multiRegion.clientOptions);
       } catch (error) {
         console.warn(`[Upstash Workflow] Failed to create handler for region ${region}:`, error);
       }
@@ -126,29 +135,30 @@ const getQStashHandlers = (
     // Single-region mode
 
     const receiverEnv = readReceiverEnvironmentVariables(environment);
-    const receiver = receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
-      ? new Receiver({
-        currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
-        nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
-      })
-      : undefined;
-
+    const receiver =
+      receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
+        ? new Receiver({
+            currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
+            nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
+          })
+        : undefined;
 
     return {
       mode: "single-region",
       handlers: {
-        client: qstashClientOption && "http" in qstashClientOption
-          ? qstashClientOption
-          : new Client({
-            ...qstashClientOption,
-            baseUrl: environment.QSTASH_URL!,
-            token: environment.QSTASH_TOKEN!,
-          }),
+        client:
+          qstashClientOption && "http" in qstashClientOption
+            ? qstashClientOption
+            : new Client({
+                ...qstashClientOption,
+                baseUrl: environment.QSTASH_URL!,
+                token: environment.QSTASH_TOKEN!,
+              }),
         receiver,
       },
-    }
+    };
   }
-}
+};
 
 export const getQStashHandlerOptions = (
   ...params: Parameters<typeof getQStashHandlers>
@@ -169,5 +179,5 @@ export const getQStashHandlerOptions = (
       handlers.mode === "single-region"
         ? handlers.handlers.client
         : handlers.handlers[handlers.defaultRegion].client,
-  }
-}
+  };
+};
