@@ -105,7 +105,6 @@ export const createResponseData = (
   };
 };
 
-
 /**
  * Fills the options with default values if they are not provided.
  *
@@ -132,7 +131,11 @@ export const processOptions = <
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
 
-  const { qstashHandlers, defaultClient: qstashClient, defaultReceiver: receiver } = getQStashHandlerOptions(environment, options?.qstashClient);
+  const {
+    qstashHandlers,
+    defaultClient: qstashClient,
+    defaultReceiver: receiver,
+  } = getQStashHandlerOptions(environment, options?.qstashClient);
 
   return {
     qstashClient,

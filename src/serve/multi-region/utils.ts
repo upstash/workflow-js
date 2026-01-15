@@ -2,8 +2,7 @@ import { WorkflowClient, WorkflowReceiver } from "../../types";
 
 const VALID_REGIONS = ["EU_CENTRAL_1", "US_EAST_1"] as const;
 
-export type QStashRegion = typeof VALID_REGIONS[number];
-
+export type QStashRegion = (typeof VALID_REGIONS)[number];
 
 /**
  * Regional handler containing client and optional receiver
@@ -26,7 +25,6 @@ export type QStashHandlers =
       handlers: Record<QStashRegion, RegionalHandler>;
       defaultRegion: QStashRegion;
     };
-
 
 export const DEFAULT_QSTASH_URL = "https://qstash.upstash.io";
 

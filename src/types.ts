@@ -172,12 +172,15 @@ type WorkflowContextWithoutMethods<TInitialPayload> = Omit<
   | "waitForWebhook"
 >;
 
-export type QStashClientExtraConfig = Omit<NonNullable<ConstructorParameters<typeof Client>[0]>, "baseUrl" | "token">;
+export type QStashClientExtraConfig = Omit<
+  NonNullable<ConstructorParameters<typeof Client>[0]>,
+  "baseUrl" | "token"
+>;
 
 export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> = {
   /**
    * QStash client or client configuration
-   * 
+   *
    * Can be either:
    * - A WorkflowClient instance
    * - Client configuration options (omitting baseUrl and token, which will be read from env vars)
