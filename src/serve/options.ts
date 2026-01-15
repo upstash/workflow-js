@@ -131,9 +131,6 @@ export const processOptions = <
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
 
-  const receiverUndefined = Boolean(
-    options && "receiver" in options && options.receiver === undefined
-  );
   const {
     qstashHandlers,
     defaultClient: qstashClient,
@@ -141,7 +138,12 @@ export const processOptions = <
   } = getQStashHandlerOptions({
     environment,
     qstashClientOption: options?.qstashClient,
-    receiverUndefined,
+    receiverConfig:
+      options && "receiver" in options
+        ? options.receiver
+          ? options.receiver
+          : "set-to-undefined"
+        : "not-set",
   });
 
   return {
