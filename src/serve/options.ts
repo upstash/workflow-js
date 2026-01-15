@@ -131,11 +131,18 @@ export const processOptions = <
   const environment =
     options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
 
+  const receiverUndefined = Boolean(
+    options && "receiver" in options && options.receiver === undefined
+  );
   const {
     qstashHandlers,
     defaultClient: qstashClient,
     defaultReceiver: receiver,
-  } = getQStashHandlerOptions(environment, options?.qstashClient);
+  } = getQStashHandlerOptions({
+    environment,
+    qstashClientOption: options?.qstashClient,
+    receiverUndefined,
+  });
 
   return {
     qstashClient,

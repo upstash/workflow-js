@@ -56,6 +56,7 @@ export const getHandlersForRequest = (
  */
 const createRegionalHandler = (
   environment: Record<string, string | undefined>,
+  receiverUndefined: boolean,
   region?: QStashRegion,
   clientOptions?: Omit<ConstructorParameters<typeof Client>[0], "baseUrl" | "token">
 ): RegionalHandler => {
@@ -69,7 +70,9 @@ const createRegionalHandler = (
   });
 
   const receiver =
-    receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
+    !receiverUndefined &&
+    receiverEnv.QSTASH_CURRENT_SIGNING_KEY &&
+    receiverEnv.QSTASH_NEXT_SIGNING_KEY
       ? new Receiver({
           currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
           nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
@@ -103,10 +106,20 @@ const shouldUseMultiRegionMode = (
   }
 };
 
-const getQStashHandlers = (
-  environment: Record<string, string | undefined>,
-  qstashClientOption?: WorkflowClient | QStashClientExtraConfig
-): QStashHandlers => {
+const getQStashHandlers = ({
+  environment,
+  qstashClientOption,
+  receiverUndefined,
+}: {
+  environment: Record<string, string | undefined>;
+  qstashClientOption?: WorkflowClient | QStashClientExtraConfig;
+  /**
+   * if receiver isn't passed, we check env variables.
+   *
+   * if receiver is explicitly passed as undefined, we keep it undefined.
+   */
+  receiverUndefined: boolean;
+}): QStashHandlers => {
   const multiRegion = shouldUseMultiRegionMode(environment, qstashClientOption);
 
   if (multiRegion.isMultiRegion) {
@@ -120,7 +133,12 @@ const getQStashHandlers = (
 
     for (const region of regions) {
       try {
-        handlers[region] = createRegionalHandler(environment, region, multiRegion.clientOptions);
+        handlers[region] = createRegionalHandler(
+          environment,
+          receiverUndefined,
+          region,
+          multiRegion.clientOptions
+        );
       } catch (error) {
         console.warn(`[Upstash Workflow] Failed to create handler for region ${region}:`, error);
       }
@@ -136,7 +154,9 @@ const getQStashHandlers = (
 
     const receiverEnv = readReceiverEnvironmentVariables(environment);
     const receiver =
-      receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
+      !receiverUndefined &&
+      receiverEnv.QSTASH_CURRENT_SIGNING_KEY &&
+      receiverEnv.QSTASH_NEXT_SIGNING_KEY
         ? new Receiver({
             currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
             nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
