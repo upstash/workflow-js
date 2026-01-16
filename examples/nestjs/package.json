@@ -24,8 +24,9 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@types/express-serve-static-core": "5.1.0",
     "@upstash/qstash": "^2.8.1",
-    "@upstash/workflow": "latest",
+    "@upstash/workflow": "file:../../dist",
     "express": "^5.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

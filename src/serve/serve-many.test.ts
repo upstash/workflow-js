@@ -47,59 +47,31 @@ describe("serveMany", () => {
       enableTelemetry: false,
     });
 
-    const workflowOne = createWorkflow(
-      async (context: WorkflowContext<number>) => {
-        const a = context.requestPayload + 2;
-        return `result ${a}`;
-      },
-      {
-        flowControl: {
-          key: "workflowOneFlowControl",
-          parallelism: 2,
-          ratePerSecond: 10,
-        },
+    // 1. Workflow: (context: WorkflowContext<{ count: number }>)
+    //    - Purpose: Base workflow, does nothing, used for invocation/call by others.
+    const workflowOne = createWorkflow<{ count: number }, unknown>(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      async (context: WorkflowContext<{ count: number }>) => {
+        // This workflow is a base workflow for testing. It does nothing.
+        // Used to test invocation/call from other workflows.
+        return;
       }
     );
 
-    const workflowTwo = createWorkflow(
+    // 2. Workflow: (context: WorkflowContext<string>)
+    //    - Purpose: Invokes workflowOne
+    const workflowTwo = createWorkflow<string, unknown>(
       async (context: WorkflowContext<string>) => {
-        const result = await context.invoke("invoke step two", {
+        await context.invoke("invoke workflow one", {
           workflow: workflowOne,
-          body: 2,
+          body: { count: 42 },
           flowControl: {
             key: "customFlowControl",
             parallelism: 4,
           },
         });
-
-        const _body = result.body;
-        const _isCanceled = result.isCanceled;
-        const _isFailed = result.isFailed;
-
-        console.log(_body, _isCanceled, _isFailed);
-
-        // just checking the type. code won't reach here.
-        const secondResult = await context.invoke("invoke step two", {
-          workflow: workflowOne,
-          body: 2,
-          flowControl: {
-            key: "customFlowControl",
-            parallelism: 4,
-          },
-        });
-
-        const _secondBody = secondResult.body;
-        const _secondIsCanceled = secondResult.isCanceled;
-        const _secondIsFailed = secondResult.isFailed;
-
-        console.log(_secondBody, _secondIsCanceled, _secondIsFailed);
       },
       {
-        flowControl: {
-          key: "workflowTwoFlowControl",
-          parallelism: 4,
-          ratePerSecond: 6,
-        },
         // use a QStash client with custom headers to test header merging
         qstashClient: new Client({
           baseUrl: MOCK_QSTASH_SERVER_URL,
@@ -112,61 +84,61 @@ describe("serveMany", () => {
       }
     );
 
-    const workflowThree = createWorkflow(
-      async (context: WorkflowContext<string>) => {
-        const result = await context.call("call other workflow", {
-          workflow: workflowOne,
-          body: 2,
+    // 3. Workflow: (context)
+    //    - Purpose: Calls workflowOne
+    const workflowThree = createWorkflow<undefined, unknown>(async (context: WorkflowContext) => {
+      await context.call("call workflow one", {
+        workflow: workflowOne,
+        body: { count: 99 },
+      });
+    });
+
+    // 4. Workflow: (context: WorkflowContext<undefined>)
+    //    - Purpose: Calls workflowTwo, checks that string is not stringified.
+    const workflowFour = createWorkflow<undefined, unknown>(
+      async (context: WorkflowContext<undefined>) => {
+        await context.call("call workflow two", {
+          workflow: workflowTwo,
+          body: "hello world",
         });
-
-        const _body = result.body;
-        const _header = result.header;
-        const _status = result.status;
-
-        console.log(_body, _header, _status);
-      },
-      {
-        flowControl: {
-          key: "workflowThreeFlowControl",
-          parallelism: 4,
-          ratePerSecond: 6,
-        },
       }
     );
 
-    const workflowFour = createWorkflow(async (context) => {
+    // 5. Workflow: (context)
+    //    - Purpose: Invokes workflowTwo, checks that string is not stringified.
+    const workflowFive = createWorkflow<undefined, unknown>(async (context) => {
       await context.invoke("invoke workflow two", {
         workflow: workflowTwo,
         body: "hello world",
-        stringifyBody: false,
       });
     });
 
-    const workflowFive = createWorkflow(async (context) => {
-      await context.invoke("invoke workflow two", {
-        workflow: workflowTwo,
-        body: "hello world",
-        stringifyBody: true,
+    // 6. Workflow: (context)
+    //    - Purpose: Invokes workflowThree, passes body undefined
+    const workflowSix = createWorkflow<undefined, unknown>(async (context) => {
+      await context.invoke("invoke workflow three", {
+        workflow: workflowThree,
+        body: undefined,
       });
     });
 
-    const workflowSix = createWorkflow(async (context) => {
-      await context.invoke("invoke workflow two", {
-        workflow: workflowTwo,
-        stringifyBody: false,
-        // @ts-expect-error object body isn't accepted because stringifyBody is false
-        body: { hello: "world" },
+    // 7. Workflow: (context)
+    //    - Purpose: Calls workflowFour, passes no body
+    const workflowSeven = createWorkflow<undefined, unknown>(async (context) => {
+      await context.call("call workflow three", {
+        workflow: workflowFour,
       });
     });
 
     const { POST: handler } = serveMany(
       {
-        "workflow-one": workflowOne,
-        "workflow-two": workflowTwo,
-        "workflow-three": workflowThree,
-        "workflow-four": workflowFour,
-        "workflow-five": workflowFive,
-        "workflow-six": workflowSix,
+        workflowOne,
+        workflowTwo,
+        workflowThree,
+        workflowFour,
+        workflowFive,
+        workflowSix,
+        workflowSeven,
       },
       {
         qstashClient,
@@ -174,9 +146,9 @@ describe("serveMany", () => {
       }
     );
 
-    test("first invoke", async () => {
+    test("should invoke workflowOne from workflowTwo with object body", async () => {
       const request = getRequest(
-        `${WORKFLOW_ENDPOINT}/workflow-two`,
+        `${WORKFLOW_ENDPOINT}/workflowTwo`,
         "wfr_id",
         "initial-payload",
         []
@@ -190,32 +162,30 @@ describe("serveMany", () => {
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflow-one`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflowOne`,
           token,
           body: {
-            body: "2",
+            body: '{"count":42}',
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
-              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
-              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
-              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1\.0\./)],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-two"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowTwo"],
               "content-type": ["application/json"],
               "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
             workflowRunId: expect.any(String),
-            workflowUrl: "https://requestcatcher.com/api/workflow-two",
+            workflowUrl: "https://requestcatcher.com/api/workflowTwo",
             step: {
               stepId: 1,
               concurrent: 1,
-              stepName: "invoke step two",
+              stepName: "invoke workflow one",
               stepType: "Invoke",
             },
           },
@@ -223,70 +193,19 @@ describe("serveMany", () => {
             [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
             "Upstash-Flow-Control-Key": "customFlowControl",
             "Upstash-Flow-Control-Value": "parallelism=4",
+            "upstash-forward-x-vercel-protection-bypass": "testing",
+            "upstash-workflow-init": "true",
+            "upstash-workflow-invoke": "true",
+            "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
           },
         },
       });
     });
 
-    test("should increment invoke count in second invoke", async () => {
+    // Additional tests for new workflows:
+    test("should call workflowOne from workflowThree with object body", async () => {
       const request = getRequest(
-        `${WORKFLOW_ENDPOINT}/workflow-two`,
-        "wfr_id",
-        "initial-payload",
-        []
-      );
-      request.headers.set(WORKFLOW_INVOKE_COUNT_HEADER, "1");
-
-      await mockQStashServer({
-        execute: async () => {
-          const response = await handler(request);
-          expect(response.status).toBe(200);
-        },
-        responseFields: { body: "msgId", status: 200 },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflow-one`,
-          token,
-          body: {
-            body: "2",
-            headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Count": ["1"],
-              "Upstash-Flow-Control-Key": ["workflowTwoFlowControl"],
-              "Upstash-Flow-Control-Value": ["parallelism=4, rate=6"],
-              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Telemetry-Framework": ["nextjs"],
-              "Upstash-Telemetry-Runtime": [expect.any(String)],
-              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
-              "Upstash-Workflow-Init": ["false"],
-              "Upstash-Workflow-RunId": ["wfr_id"],
-              "Upstash-Workflow-Runid": ["wfr_id"],
-              "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-two"],
-              "content-type": ["application/json"],
-              "upstash-forward-x-vercel-protection-bypass": ["testing"],
-            },
-            workflowRunId: expect.any(String),
-            workflowUrl: "https://requestcatcher.com/api/workflow-two",
-            step: {
-              stepId: 1,
-              concurrent: 1,
-              stepName: "invoke step two",
-              stepType: "Invoke",
-            },
-          },
-          headers: {
-            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "2",
-            "Upstash-Flow-Control-Key": "customFlowControl",
-            "Upstash-Flow-Control-Value": "parallelism=4",
-          },
-        },
-      });
-    });
-
-    test("should make context.call request with workflow", async () => {
-      const request = getRequest(
-        `${WORKFLOW_ENDPOINT}/workflow-three`,
+        `${WORKFLOW_ENDPOINT}/workflowThree`,
         "wfr_id",
         "initial-payload",
         []
@@ -305,39 +224,36 @@ describe("serveMany", () => {
           token,
           body: [
             {
-              body: "2",
-              destination: "https://requestcatcher.com/api/workflow-one",
+              body: '{"count":99}',
+              destination: "https://requestcatcher.com/api/workflowOne",
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://requestcatcher.com/api/workflow-three",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-callback-flow-control-key": "workflowThreeFlowControl",
-                "upstash-callback-flow-control-value": "parallelism=4, rate=6",
-                "upstash-flow-control-key": "workflowOneFlowControl",
-                "upstash-flow-control-value": "parallelism=2, rate=10",
+                "upstash-callback": "https://requestcatcher.com/api/workflowThree",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
                 "upstash-callback-forward-upstash-workflow-invoke-count": "1",
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
-                "upstash-callback-forward-upstash-workflow-stepname": "call other workflow",
+                "upstash-callback-forward-upstash-workflow-stepname": "call workflow one",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflow-three",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowThree",
                 "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
                 "upstash-telemetry-framework": "nextjs",
                 "upstash-telemetry-runtime": expect.any(String),
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api/workflow-three",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflowThree",
               },
             },
           ],
@@ -345,9 +261,9 @@ describe("serveMany", () => {
       });
     });
 
-    test("should not stringify body if stringifyBody: false", async () => {
+    test("should call workflowTwo from workflowFour with string body", async () => {
       const request = getRequest(
-        `${WORKFLOW_ENDPOINT}/workflow-four`,
+        `${WORKFLOW_ENDPOINT}/workflowFour`,
         "wfr_id",
         "initial-payload",
         []
@@ -361,25 +277,80 @@ describe("serveMany", () => {
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflow-two`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: "hello world",
+              destination: "https://requestcatcher.com/api/workflowTwo",
+              headers: {
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api/workflowFour",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call workflow two",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr_id",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowFour",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-telemetry-framework": "nextjs",
+                "upstash-telemetry-runtime": expect.any(String),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr_id",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflowFour",
+              },
+            },
+          ],
+        },
+      });
+    });
+
+    test("should invoke workflowTwo from workflowFive with string body", async () => {
+      const request = getRequest(
+        `${WORKFLOW_ENDPOINT}/workflowFive`,
+        "wfr_id",
+        "initial-payload",
+        []
+      );
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await handler(request);
+          expect(response.status).toBe(200);
+        },
+        responseFields: { body: "msgId", status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflowTwo`,
           token,
           body: {
             body: "hello world",
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
-              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1\.0\./)],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-four"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowFive"],
               "content-type": ["application/json"],
             },
             workflowRunId: expect.any(String),
-            workflowUrl: "https://requestcatcher.com/api/workflow-four",
+            workflowUrl: "https://requestcatcher.com/api/workflowFive",
             step: {
               stepId: 1,
               concurrent: 1,
@@ -391,9 +362,9 @@ describe("serveMany", () => {
       });
     });
 
-    test("should stringify body if stringifyBody: true", async () => {
+    test("should invoke workflowThree from workflowSix with no body", async () => {
       const request = getRequest(
-        `${WORKFLOW_ENDPOINT}/workflow-five`,
+        `${WORKFLOW_ENDPOINT}/workflowSix`,
         "wfr_id",
         "initial-payload",
         []
@@ -407,39 +378,38 @@ describe("serveMany", () => {
         responseFields: { body: "msgId", status: 200 },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflow-two`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflowThree`,
           token,
           body: {
-            body: '"hello world"',
             headers: {
-              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
-              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1\.0\./)],
               "Upstash-Workflow-Init": ["false"],
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflow-five"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowSix"],
               "content-type": ["application/json"],
             },
-            workflowRunId: expect.any(String),
-            workflowUrl: "https://requestcatcher.com/api/workflow-five",
             step: {
               stepId: 1,
               concurrent: 1,
-              stepName: "invoke workflow two",
+              stepName: "invoke workflow three",
               stepType: "Invoke",
             },
+            workflowRunId: expect.any(String),
+            workflowUrl: "https://requestcatcher.com/api/workflowSix",
           },
         },
       });
     });
 
-    test("should get an error if body isn't a string but stringifyBody is false", async () => {
+    test("should call workflowFour from workflowSeven with no body", async () => {
       const request = getRequest(
-        `${WORKFLOW_ENDPOINT}/workflow-six`,
+        `${WORKFLOW_ENDPOINT}/workflowSeven`,
         "wfr_id",
         "initial-payload",
         []
@@ -448,13 +418,46 @@ describe("serveMany", () => {
       await mockQStashServer({
         execute: async () => {
           const response = await handler(request);
-          expect(response.status).toBe(500);
-          expect((await response.json()).message).toBe(
-            "When stringifyBody is false, body must be a string. Please check the body type of your invoke step."
-          );
+          expect(response.status).toBe(200);
         },
         responseFields: { body: "msgId", status: 200 },
-        receivesRequest: false,
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: "https://requestcatcher.com/api/workflowFour",
+              headers: {
+                "content-type": "application/json",
+                "upstash-callback": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call workflow three",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr_id",
+                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-method": "POST",
+                "upstash-retries": "0",
+                "upstash-telemetry-framework": "nextjs",
+                "upstash-telemetry-runtime": expect.any(String),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
+                "upstash-workflow-calltype": "toCallback",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr_id",
+                "upstash-workflow-sdk-version": "1",
+                "upstash-workflow-url": "https://requestcatcher.com/api/workflowSeven",
+              },
+            },
+          ],
+        },
       });
     });
   });

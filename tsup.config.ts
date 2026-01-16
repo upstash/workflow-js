@@ -18,5 +18,5 @@ export default defineConfig({
   dts: true,
   // This should optimally be an optional peer dependency,
   // we can change it in a future release
-  external: ["next", "express"],
+  external: ["next", "express", "@solidjs/start", "astro"],
 });

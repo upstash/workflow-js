@@ -23,7 +23,7 @@ export const { POST, GET } = testServe(
 
     const errorBody = await context.run("check run logs", async () => {
       for (let counter = 0; counter < 5; counter++) {
-        const { runs } = await workflowClient.logs({ workflowRunId })        
+        const { runs } = await workflowClient.logs({ workflowRunId })
         if (runs.length === 1) {
           const run = runs[0];
           expect(run.workflowState, "RUN_FAILED")
@@ -57,12 +57,14 @@ export const { POST, GET } = testServe(
 
   }, {
     baseUrl: BASE_URL,
-    retries: 0
   }), {
-  expectedCallCount: 5,
+  expectedCallCount: 4,
   expectedResult: NON_WORKFLOW_ROUTE_RESPONSE,
   payload: NON_WORKFLOW_ROUTE_RESPONSE,
   headers: {
     [header]: headerValue
+  },
+  triggerConfig: {
+    retries: 0,
   }
 })

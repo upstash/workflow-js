@@ -30,8 +30,6 @@ const workflowTwo = createWorkflowPagesRouter(async (context: WorkflowContext<st
   })
 
   return "workflow two done"
-}, {
-  retries: 0
 })
 
 const { handler } = serveManyPagesRouter({

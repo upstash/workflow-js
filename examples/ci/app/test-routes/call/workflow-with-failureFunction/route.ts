@@ -31,17 +31,19 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0,
       async failureFunction({ context }) {
         await fail(context as WorkflowContext)
       },
     }
   ), {
-    expectedCallCount: 4,
+    expectedCallCount: 3,
     expectedResult: PATCH_RESULT.toString(),
     payload,
     headers: {
       [ testHeader ]: headerValue,
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 ) 

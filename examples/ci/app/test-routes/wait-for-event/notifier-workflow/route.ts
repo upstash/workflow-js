@@ -63,6 +63,4 @@ export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async 
       NOTIFIER_CALL_COUNT_OVERRIDE
     )
   })
-}, {
-  retries: 0,
 })

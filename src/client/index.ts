@@ -240,25 +240,20 @@ export class Client {
     const options = isBatchInput ? params : [params];
 
     const invocations = options.map((option) => {
-      const failureUrl = option.useFailureFunction ? option.url : option.failureUrl;
+      const failureUrl = option.failureUrl ?? option.url;
       const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
 
       const context = new WorkflowContext({
         qstashClient: this.client,
-        // @ts-expect-error header type mismatch because of bun
         headers: new Headers({
           ...(option.headers ?? {}),
           ...(option.label ? { [WORKFLOW_LABEL_HEADER]: option.label } : {}),
-        }),
+        }) as Headers,
         initialPayload: option.body,
         steps: [],
         url: option.url,
         workflowRunId: finalWorkflowRunId,
-        retries: option.retries,
-        retryDelay: option.retryDelay,
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
-        flowControl: option.flowControl,
-        failureUrl,
         label: option.label,
       });
 
@@ -267,7 +262,10 @@ export class Client {
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         delay: option.delay,
         notBefore: option.notBefore,
-        keepTriggerConfig: option.keepTriggerConfig,
+        failureUrl,
+        retries: option.retries,
+        retryDelay: option.retryDelay,
+        flowControl: option.flowControl,
       };
     });
     const result = await triggerFirstInvocation(invocations);

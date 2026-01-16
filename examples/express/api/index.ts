@@ -15,7 +15,7 @@ const someWork = (input: string) => {
   return `processed: '${JSON.stringify(input)}'`
 }
 
-app.use('/workflow', serve<{ message: string }>(async (context) => {
+const workflowRouter = serve<{ message: string }>(async (context) => {
   const input = context.requestPayload
 
   const result1 = await context.run('step1', async () => {
@@ -27,7 +27,7 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
   const { body } = await context.call("get-data", {
     url: `${process.env.UPSTASH_WORKFLOW_URL ?? "http://localhost:3001"}/get-data`,
     method: "GET",
-    body: { message: result1 }
+    body: JSON.stringify({ message: result1 })
   })
 
   await context.run('step2', async () => {
@@ -36,7 +36,9 @@ app.use('/workflow', serve<{ message: string }>(async (context) => {
     console.log('step 2 input', result1, 'output', output)
     return output
   })
-}));
+});
+
+app.post('/workflow', workflowRouter);
 
 app.get('/get-data', (req, res) => {
   const message = req.body.message as string;
@@ -78,14 +80,14 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   })
 
   return "workflow two done"
-}, {
-  retries: 0
 })
 
-app.post("/serve-many/*", serveMany({
+const serveManyRouter = serveMany({
   workflowOne,
   workflowTwo
-}))
+});
+
+app.post("/serve-many/{*route}", serveManyRouter);
 
 /**
  * CI ROUTE
@@ -100,7 +102,7 @@ const CI_FAIL_HEADER = "workflow-should-fail"
 const CI_FAIL_MESSAGE = "Function failed as requested"
 const CI_FAIL_SHOULD_RETURN_HEADER = "workflow-failure-function-should-return"
 
-app.post("/ci", serve(
+const ciRouter = serve(
   async (context) => {
     const input = context.requestPayload
     const result1 = await context.run("step1", async () => {
@@ -163,7 +165,9 @@ app.post("/ci", serve(
       return
     },
   }
-))
+);
+
+app.post("/ci", ciRouter);
 
 app.listen(3001, () => {
   console.log('Server running on port 3001');

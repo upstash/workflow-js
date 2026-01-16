@@ -31,8 +31,6 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   })
 
   return "workflow two done"
-}, {
-  retries: 0
 })
 
 const { handler } = serveMany({

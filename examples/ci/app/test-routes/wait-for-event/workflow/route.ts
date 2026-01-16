@@ -49,7 +49,7 @@ export const { POST, GET } = testServe(
           {
             url: `${TEST_ROUTE_PREFIX}/wait-for-event/notifier`,
             method: "POST",
-            body: config,
+            body: JSON.stringify(config),
             headers: { authorization: `Bearer ${NOTIFIER_SECRET}` }
           }
         ),
@@ -70,9 +70,10 @@ export const { POST, GET } = testServe(
         context.call<{ workflowRunId: string }>(
           "start notifying workflow",
           {
-            url: `${TEST_ROUTE_PREFIX}/wait-for-event/notifier-workflow`,
+            url: `${TEST_ROUTE_PREFIX}/${NOTIFIER_WORKFLOW_ROUTE}`,
             method: "POST",
-            body: config,
+            body: JSON.stringify(config),
+            retries: 0
           }
         ),
         context.waitForEvent("wait text", config.textEventId, {
@@ -118,14 +119,16 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      retries: 0
     }
   ), {
-    expectedCallCount: 17,
+    expectedCallCount: 16,
     expectedResult: `${TEXT_EVENT_DATA} - ${JSON.stringify(OBJECT_EVENT_DATA)}`,
     payload,
     headers: {
       [ header ]: headerValue
+    },
+    triggerConfig: {
+      retries: 0,
     }
   }
 )

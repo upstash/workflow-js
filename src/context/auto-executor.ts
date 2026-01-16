@@ -2,39 +2,50 @@ import { isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
-import type { WorkflowLogger } from "../logger";
 import { QstashError } from "@upstash/qstash";
 import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
+import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
 export class AutoExecutor {
   private context: WorkflowContext;
   private promises = new WeakMap<BaseLazyStep[], Promise<unknown>>();
   private activeLazyStepList?: BaseLazyStep[];
-  private debug?: WorkflowLogger;
 
   private readonly nonPlanStepCount: number;
   private readonly steps: Step[];
   private indexInCurrentList = 0;
-  private invokeCount: number;
-  private telemetry?: Telemetry;
+  private readonly invokeCount: number;
+  private readonly telemetry?: Telemetry;
+  private readonly dispatchDebug: DispatchDebug;
+  private readonly dispatchLifecycle: DispatchLifecycle;
 
   public stepCount = 0;
   public planStepCount = 0;
 
   protected executingStep: string | false = false;
 
+  /**
+   * @param context workflow context
+   * @param steps list of steps
+   * @param dispatchDebug debug event dispatcher
+   * @param dispatchLifecycle lifecycle event dispatcher
+   * @param telemetry optional telemetry information
+   * @param invokeCount optional invoke count
+   */
   constructor(
     context: WorkflowContext,
     steps: Step[],
+    dispatchDebug: DispatchDebug,
+    dispatchLifecycle: DispatchLifecycle,
     telemetry?: Telemetry,
-    invokeCount?: number,
-    debug?: WorkflowLogger
+    invokeCount?: number
   ) {
     this.context = context;
     this.steps = steps;
+    this.dispatchDebug = dispatchDebug;
+    this.dispatchLifecycle = dispatchLifecycle;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
-    this.debug = debug;
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -118,7 +129,7 @@ export class AutoExecutor {
   /**
    * Executes a step:
    * - If the step result is available in the steps, returns the result
-   * - If the result is not avaiable, runs the function
+   * - If the result is not available, runs the function
    * - Sends the result to QStash
    *
    * @param lazyStep lazy step to execute
@@ -128,12 +139,19 @@ export class AutoExecutor {
     if (this.stepCount < this.nonPlanStepCount) {
       const step = this.steps[this.stepCount + this.planStepCount];
       validateStep(lazyStep, step);
-      await this.debug?.log("INFO", "RUN_SINGLE", {
-        fromRequest: true,
-        step,
-        stepCount: this.stepCount,
-      });
-      return lazyStep.parseOut(step);
+      const parsedOut = lazyStep.parseOut(step);
+
+      const isLastMemoized =
+        this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
+
+      if (isLastMemoized) {
+        await this.dispatchLifecycle("afterExecution", {
+          stepName: lazyStep.stepName,
+          result: parsedOut,
+        });
+      }
+
+      return parsedOut;
     }
 
     const resultStep = await submitSingleStep({
@@ -143,7 +161,8 @@ export class AutoExecutor {
       invokeCount: this.invokeCount,
       concurrency: 1,
       telemetry: this.telemetry,
-      debug: this.debug,
+      dispatchDebug: this.dispatchDebug,
+      dispatchLifecycle: this.dispatchLifecycle,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
   }
@@ -151,8 +170,7 @@ export class AutoExecutor {
   /**
    * Runs steps in parallel.
    *
-   * @param stepName parallel step name
-   * @param stepFunctions list of async functions to run in parallel
+   * @param parallelSteps list of lazy steps to run in parallel
    * @returns results of the functions run in parallel
    */
   protected async runParallel<TResults extends unknown[]>(parallelSteps: {
@@ -177,12 +195,16 @@ export class AutoExecutor {
       );
     }
 
-    await this.debug?.log("INFO", "RUN_PARALLEL", {
-      parallelCallState,
-      initialStepCount,
-      plannedParallelStepCount,
-      stepCount: this.stepCount,
-      planStepCount: this.planStepCount,
+    await this.dispatchDebug("onInfo", {
+      info:
+        `Executing parallel steps with: ` +
+        JSON.stringify({
+          parallelCallState,
+          initialStepCount,
+          plannedParallelStepCount,
+          stepCount: this.stepCount,
+          planStepCount: this.planStepCount,
+        }),
     });
 
     switch (parallelCallState) {
@@ -193,7 +215,7 @@ export class AutoExecutor {
           initialStepCount,
           invokeCount: this.invokeCount,
           telemetry: this.telemetry,
-          debug: this.debug,
+          dispatchDebug: this.dispatchDebug,
         });
         break;
       }
@@ -231,7 +253,8 @@ export class AutoExecutor {
             invokeCount: this.invokeCount,
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
-            debug: this.debug,
+            dispatchDebug: this.dispatchDebug,
+            dispatchLifecycle: this.dispatchLifecycle,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {
@@ -256,6 +279,19 @@ export class AutoExecutor {
          * This call to the API should be discarded: no operations are to be made. Parallel steps which are still
          * running will finish and call QStash eventually.
          */
+
+        const resultStep = this.steps.at(-1)!;
+        const lazyStep = parallelSteps.find(
+          (planStep, index) => resultStep.stepId - index === initialStepCount
+        );
+
+        if (lazyStep) {
+          await this.dispatchLifecycle("afterExecution", {
+            stepName: lazyStep.stepName,
+            result: lazyStep.parseOut(resultStep),
+          });
+        }
+
         throw new WorkflowAbort("discarded parallel");
       }
       case "last": {
@@ -270,6 +306,20 @@ export class AutoExecutor {
           .slice(0, parallelSteps.length); // get the result steps of parallel run
 
         validateParallelSteps(parallelSteps, parallelResultSteps);
+
+        const isLastMemoized =
+          this.stepCount + 1 === this.nonPlanStepCount && this.steps.at(-1)!.stepId !== 0;
+        if (isLastMemoized) {
+          const resultStep = this.steps.at(-1)!;
+          const lazyStep = parallelSteps.find(
+            (planStep, index) => resultStep.stepId - index === initialStepCount
+          )!;
+
+          await this.dispatchLifecycle("afterExecution", {
+            stepName: lazyStep.stepName,
+            result: lazyStep.parseOut(resultStep),
+          });
+        }
 
         return parallelResultSteps.map((step, index) =>
           parallelSteps[index].parseOut(step)

@@ -3,11 +3,13 @@ import { err, ok } from "neverthrow";
 import { WorkflowError } from "./error";
 import {
   NO_CONCURRENCY,
+  WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_UNKOWN_SDK_VERSION_HEADER,
 } from "./constants";
 import type {
   FailureFunctionPayload,
@@ -17,13 +19,13 @@ import type {
   WorkflowClient,
   RouteFunction,
 } from "./types";
-import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
 import { getSteps } from "./client/utils";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
+import { DispatchDebug } from "./middleware/types";
 
 /**
  * Gets the request body. If that fails, returns undefined
@@ -49,8 +51,8 @@ export const getPayload = async (request: Request) => {
  * When returning steps, we add the initial payload as initial step. This is to make it simpler
  * in the rest of the code.
  *
- * @param rawSteps body of the request as a string as explained above
- * @returns intiial payload and list of steps
+ * @param rawSteps list of raw steps from QStash
+ * @returns initial payload and list of steps
  */
 const processRawSteps = (rawSteps: RawStep[]) => {
   const [encodedInitialPayload, ...encodedSteps] = rawSteps;
@@ -91,7 +93,7 @@ const processRawSteps = (rawSteps: RawStep[]) => {
  * 2. Two plan steps with equal targetStep fields.
  *
  * @param steps steps with possible duplicates
- * @returns
+ * @returns deduplicated steps
  */
 const deduplicateSteps = (steps: Step[]): Step[] => {
   const targetStepIds: number[] = [];
@@ -122,19 +124,18 @@ const deduplicateSteps = (steps: Step[]): Step[] => {
  * this call.
  *
  * @param steps steps list to check
+ * @param dispatchDebug optional debug dispatcher
  * @returns boolean denoting whether the last one is duplicate
  */
 const checkIfLastOneIsDuplicate = async (
   steps: Step[],
-  debug?: WorkflowLogger
+  dispatchDebug?: DispatchDebug
 ): Promise<boolean> => {
   // return false if the length is 0 or 1
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
   if (steps.length < 2) {
     return false;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const lastStep = steps.at(-1)!;
   const lastStepId = lastStep.stepId;
   const lastTargetStepId = lastStep.targetStep;
@@ -144,9 +145,10 @@ const checkIfLastOneIsDuplicate = async (
       const message =
         `Upstash Workflow: The step '${step.stepName}' with id '${step.stepId}'` +
         "  has run twice during workflow execution. Rest of the workflow will continue running as usual.";
-      await debug?.log("WARN", "RESPONSE_DEFAULT", message);
 
-      console.warn(message);
+      await dispatchDebug?.("onWarning", {
+        warning: message,
+      });
       return true;
     }
   }
@@ -167,7 +169,43 @@ const checkIfLastOneIsDuplicate = async (
  */
 export const validateRequest = (
   request: Request
-): { isFirstInvocation: boolean; workflowRunId: string } => {
+): { isFirstInvocation: boolean; workflowRunId: string; unknownSdk: boolean } => {
+  if (request.headers.get(WORKFLOW_UNKOWN_SDK_VERSION_HEADER)) {
+    const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
+
+    if (!workflowRunId) {
+      throw new WorkflowError(
+        "Couldn't get workflow id from header when handling unknown sdk request"
+      );
+    }
+
+    return {
+      unknownSdk: true,
+      isFirstInvocation: true,
+      workflowRunId,
+    };
+  }
+
+  if (request.headers.get(WORKFLOW_FAILURE_CALLBACK_HEADER)) {
+    // when failure callback is called, WORKFLOW_PROTOCOL_VERSION_HEADER isn't set, so
+    // we consider it as first invocation. But in the case of /trigger endpoint,
+    // WORKFLOW_PROTOCOL_VERSION_HEADER is set, so we check for
+    // WORKFLOW_FAILURE_CALLBACK_HEADER
+
+    const workflowRunId = request.headers.get(WORKFLOW_ID_HEADER);
+
+    if (!workflowRunId) {
+      throw new WorkflowError(
+        "Couldn't get workflow id from header when handling failure callback request"
+      );
+    }
+    return {
+      unknownSdk: false,
+      isFirstInvocation: true,
+      workflowRunId,
+    };
+  }
+
   const versionHeader = request.headers.get(WORKFLOW_PROTOCOL_VERSION_HEADER);
   const isFirstInvocation = !versionHeader;
 
@@ -190,6 +228,7 @@ export const validateRequest = (
   return {
     isFirstInvocation,
     workflowRunId,
+    unknownSdk: false,
   };
 };
 
@@ -199,17 +238,32 @@ export const validateRequest = (
  * - Returns the steps. If it's the first invocation, steps are empty.
  *   Otherwise, steps are generated from the request body.
  *
- * @param request Request received
- * @returns raw intial payload and the steps
+ * @param requestPayload payload from the request
+ * @param isFirstInvocation whether this is the first invocation
+ * @param unknownSdk whether the request is from an unkown sdk version
+ * @param workflowRunId workflow run id
+ * @param requester QStash client HTTP requester
+ * @param messageId optional message id
+ * @param dispatchDebug optional debug dispatcher
+ * @returns raw initial payload and the steps
  */
-export const parseRequest = async (
-  requestPayload: string | undefined,
-  isFirstInvocation: boolean,
-  workflowRunId: string,
-  requester: Client["http"],
-  messageId?: string,
-  debug?: WorkflowLogger
-): Promise<
+export const parseRequest = async ({
+  requestPayload,
+  isFirstInvocation,
+  unknownSdk,
+  workflowRunId,
+  requester,
+  messageId,
+  dispatchDebug,
+}: {
+  requestPayload: string | undefined;
+  isFirstInvocation: boolean;
+  unknownSdk: boolean;
+  workflowRunId: string;
+  requester: Client["http"];
+  messageId?: string;
+  dispatchDebug?: DispatchDebug;
+}): Promise<
   | {
       rawInitialPayload: string;
       steps: Step[];
@@ -223,7 +277,7 @@ export const parseRequest = async (
       workflowRunEnded: true;
     }
 > => {
-  if (isFirstInvocation) {
+  if (isFirstInvocation && !unknownSdk) {
     // if first invocation, return and `serve` will handle publishing the JSON to QStash
     return {
       rawInitialPayload: requestPayload ?? "",
@@ -235,16 +289,15 @@ export const parseRequest = async (
     let rawSteps: RawStep[];
 
     if (!requestPayload) {
-      await debug?.log(
-        "INFO",
-        "ENDPOINT_START",
-        "request payload is empty, steps will be fetched from QStash."
-      );
+      await dispatchDebug?.("onInfo", {
+        info: "request payload is empty, steps will be fetched from QStash.",
+      });
+
       const { steps: fetchedSteps, workflowRunEnded } = await getSteps(
         requester,
         workflowRunId,
         messageId,
-        debug
+        dispatchDebug
       );
       if (workflowRunEnded) {
         return {
@@ -260,7 +313,7 @@ export const parseRequest = async (
     }
     const { rawInitialPayload, steps } = processRawSteps(rawSteps);
 
-    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, debug);
+    const isLastDuplicate = await checkIfLastOneIsDuplicate(steps, dispatchDebug);
     const deduplicatedSteps = deduplicateSteps(steps);
 
     return {
@@ -280,42 +333,50 @@ export const parseRequest = async (
  * WorkflowError.
  *
  * @param request incoming request
+ * @param requestPayload payload from the request
+ * @param qstashClient QStash client
+ * @param initialPayloadParser parser for the initial payload
+ * @param routeFunction route function to run
  * @param failureFunction function to handle the failure
+ * @param env environment variables
+ * @param dispatchDebug optional debug dispatcher
  */
-export const handleFailure = async <TInitialPayload>(
-  request: Request,
-  requestPayload: string,
-  qstashClient: WorkflowClient,
-  initialPayloadParser: Required<
-    WorkflowServeOptions<Response, TInitialPayload>
-  >["initialPayloadParser"],
-  routeFunction: RouteFunction<TInitialPayload>,
-  failureFunction: WorkflowServeOptions<Response, TInitialPayload>["failureFunction"],
-  env: WorkflowServeOptions["env"],
-  retries: WorkflowServeOptions["retries"],
-  retryDelay: WorkflowServeOptions["retryDelay"],
-  flowControl: WorkflowServeOptions["flowControl"],
-  debug?: WorkflowLogger
-): Promise<
+export const handleFailure = async <TInitialPayload>({
+  request,
+  requestPayload,
+  qstashClient,
+  initialPayloadParser,
+  routeFunction,
+  failureFunction,
+  env,
+  dispatchDebug,
+}: {
+  request: Request;
+  requestPayload: string;
+  qstashClient: WorkflowClient;
+  initialPayloadParser: Required<WorkflowServeOptions<TInitialPayload>>["initialPayloadParser"];
+  routeFunction: RouteFunction<TInitialPayload>;
+  failureFunction?: WorkflowServeOptions<TInitialPayload>["failureFunction"];
+  env: WorkflowServeOptions["env"];
+  dispatchDebug?: DispatchDebug;
+}): Promise<
   | Ok<
-      | { result: "is-failure-callback"; response: string | void }
-      | { result: "not-failure-callback" },
+      | { result: "not-failure-callback" }
+      | { result: "failure-function-executed"; response: string | void }
+      | { result: "failure-function-undefined" },
       never
     >
   | Err<never, Error>
 > => {
-  if (request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true") {
+  if (
+    request.headers.get(WORKFLOW_FAILURE_HEADER) !== "true" &&
+    !request.headers.get(WORKFLOW_FAILURE_CALLBACK_HEADER)
+  ) {
     return ok({ result: "not-failure-callback" });
   }
 
   if (!failureFunction) {
-    return err(
-      new WorkflowError(
-        "Workflow endpoint is called to handle a failure," +
-          " but a failureFunction is not provided in serve options." +
-          " Either provide a failureUrl or a failureFunction."
-      )
-    );
+    return ok({ result: "failure-function-undefined" });
   }
 
   try {
@@ -361,14 +422,10 @@ export const handleFailure = async <TInitialPayload>(
       headers: userHeaders,
       steps: [],
       url: url,
-      failureUrl: url,
-      debug,
       env,
-      retries,
-      retryDelay,
-      flowControl,
       telemetry: undefined, // not going to make requests in authentication check
       label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,
+      middlewareManager: undefined,
     });
 
     // attempt running routeFunction until the first step
@@ -378,8 +435,10 @@ export const handleFailure = async <TInitialPayload>(
     );
     if (authCheck.isErr()) {
       // got error while running until first step
-      await debug?.log("ERROR", "ERROR", { error: authCheck.error.message });
-      throw authCheck.error;
+      await dispatchDebug?.("onError", {
+        error: authCheck.error,
+      });
+      return err(authCheck.error);
     } else if (authCheck.value === "run-ended") {
       // finished routeFunction while trying to run until first step.
       // either there is no step or auth check resulted in `return`
@@ -393,7 +452,7 @@ export const handleFailure = async <TInitialPayload>(
       failHeaders: header,
       failStack,
     });
-    return ok({ result: "is-failure-callback", response: failureResponse });
+    return ok({ result: "failure-function-executed", response: failureResponse });
   } catch (error) {
     return err(error as Error);
   }

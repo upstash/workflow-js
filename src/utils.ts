@@ -8,12 +8,18 @@ function getRandomInt() {
   return Math.floor(Math.random() * NANOID_CHARS.length);
 }
 
+/**
+ * @param length length of the generated id
+ */
 export function nanoid(length: number = NANOID_LENGTH): string {
   return Array.from({ length })
     .map(() => NANOID_CHARS[getRandomInt()])
     .join("");
 }
 
+/**
+ * @param id optional id to use as suffix
+ */
 export function getWorkflowRunId(id?: string): string {
   return `wfr_${id ?? nanoid()}`;
 }
@@ -45,6 +51,9 @@ export function decodeBase64(base64: string) {
   }
 }
 
+/**
+ * @param qstashClient QStash client to extract user ID from
+ */
 export function getUserIdFromToken(qstashClient: WorkflowClient): string {
   try {
     const token = (qstashClient as WorkflowClient & { token: string }).token;
@@ -63,6 +72,9 @@ export function getUserIdFromToken(qstashClient: WorkflowClient): string {
   }
 }
 
+/**
+ * @param qstashClient QStash client to extract URL from
+ */
 export function getQStashUrl(qstashClient: WorkflowClient): string {
   try {
     const requester = qstashClient.http;
@@ -79,4 +91,14 @@ export function getQStashUrl(qstashClient: WorkflowClient): string {
 
 export function getEventId(): string {
   return `evt_${nanoid(15)}`;
+}
+
+export function stringifyBody(body: unknown): string | undefined {
+  if (body === undefined) {
+    return undefined;
+  }
+  if (typeof body === "string") {
+    return body;
+  }
+  return JSON.stringify(body);
 }

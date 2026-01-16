@@ -48,9 +48,9 @@ export const { POST, GET } = testServe(
         {
           url: `${TEST_ROUTE_PREFIX}/webhook/caller`,
           method: "POST",
-          body: {
+          body: JSON.stringify({
             webhookUrl: webhook.webhookUrl,
-          },
+          }),
         }
       );
 
@@ -100,7 +100,7 @@ export const { POST, GET } = testServe(
     }
   ),
   {
-    expectedCallCount: 9,
+    expectedCallCount: 8,
     expectedResult: getResult,
     headers: {
       [header]: headerValue,

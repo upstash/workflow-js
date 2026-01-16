@@ -50,6 +50,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
       [CI_ROUTE_HEADER]: context.headers.get(CI_ROUTE_HEADER) as string,
       [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
     },
+    retries: 0
   })
 
   expect(typeof result.body.workflowRunId, "string")
@@ -85,7 +86,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
 const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   expect(context.requestPayload, invokePayload)
   expect(context.headers.get(invokeHeader) as string, invokeHeaderValue)
-  expect(`wfr_${context.headers.get(workflowRunIdHeader)}`, context.workflowRunId)
+  expect(context.workflowRunId, `wfr_${context.headers.get(workflowRunIdHeader)}`)
 
   await context.run("step 1", async () => {
     console.log("workflow two says hi")
@@ -134,14 +135,10 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
     fail(context)
   }
   throw new Error("what")
-}, {
-  retries: 0
 })
 
 const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
   await context.run("mock", () => {})
-}, {
-  retries: 0
 })
 
 /**

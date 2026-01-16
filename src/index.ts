@@ -2,7 +2,7 @@ export { serve } from "./serve"; // exclude serveBase
 export * from "./context";
 export * from "./types";
 export * from "./client/types";
-export * from "./logger";
+export * from "./middleware";
 export * from "./client";
 export {
   WorkflowError,
@@ -10,4 +10,4 @@ export {
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
 } from "./error";
-export { WorkflowTool } from "./agents/adapters";
+export { WorkflowMiddleware, loggingMiddleware } from "./middleware";

@@ -1,4 +1,4 @@
-import { TestConfig } from "./types"
+import { RouteConfigs, TestConfig } from "./types"
 
 export const RETRY_COUNT = 20
 export const RETRY_INTERVAL_DURATION = 2000
@@ -26,11 +26,16 @@ export const BASE_URL = process.env.VERCEL_URL
 
 export const TEST_ROUTE_PREFIX = `${BASE_URL}/test-routes`
 
-export const TEST_ROUTES: Pick<TestConfig, "route">[] = [
+export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   {
     // tests a very basic endpoint with 2 context run statements
     // payload has unicode chars
     route: "path",
+  },
+  {
+    // same endpoint as path but passes an unknown sdk header
+    // which results in one extra request to the endpoint
+    route: "path-with-unknown-sdk-header",
   },
   {
     // runs sleep and sleepUntil. checks if sufficient time passed between
@@ -74,6 +79,10 @@ export const TEST_ROUTES: Pick<TestConfig, "route">[] = [
     route: "failureFunction-retry",
   },
   {
+    // checks failureFunction with NonRetryableError
+    route: "failureFunction-nonRetryable",
+  },
+  {
     // checks failureUrl
     route: "failureUrl/workflow",
   },
@@ -94,6 +103,12 @@ export const TEST_ROUTES: Pick<TestConfig, "route">[] = [
   },
   {
     route: "webhook/workflow",
+  },
+  {
+    route: "middleware-logs/workflows/mainWorkflow",
+  },
+  {
+    route: "qstash-trigger-fetch/workflows/mainWorkflow",
   }
 
   /**

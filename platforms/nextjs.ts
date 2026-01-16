@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-import type { RouteFunction, PublicServeOptions, Telemetry, InvokableWorkflow } from "../src";
+import type { RouteFunction, WorkflowServeOptions, Telemetry, InvokableWorkflow } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
@@ -32,7 +32,7 @@ const pagesTelemetry: Telemetry = {
  */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
@@ -76,11 +76,11 @@ export const serveMany = (
 
 export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
-  options?: PublicServeOptions<TInitialPayload>
+  options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): {
   handler: NextApiHandler;
 } => {
-  const { handler: serveHandler } = serveBase(routeFunction, pagesTelemetry, options);
+  const { handler: serveHandler } = serveBase(routeFunction, pagesTelemetry, options, undefined);
 
   const handler = async (request_: NextApiRequest, res: NextApiResponse) => {
     if (request_.method?.toUpperCase() !== "POST") {

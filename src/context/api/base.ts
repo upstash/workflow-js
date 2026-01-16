@@ -3,14 +3,16 @@ import { WorkflowContext } from "../context";
 import { getProviderInfo } from "../provider";
 
 export type ApiCallSettings<TBody = unknown, TFields extends object = object> = Omit<
-  CallSettings<TBody>,
-  "url"
-> &
-  TFields;
+  CallSettings,
+  "url" | "body"
+> & { body: TBody } & TFields;
 
 export abstract class BaseWorkflowApi {
   protected context: WorkflowContext;
 
+  /**
+   * @param context workflow context
+   */
   constructor({ context }: { context: WorkflowContext }) {
     this.context = context;
   }
@@ -18,9 +20,9 @@ export abstract class BaseWorkflowApi {
   /**
    * context.call which uses a QStash API
    *
-   * @param stepName
-   * @param settings
-   * @returns
+   * @param stepName name of the step
+   * @param settings call settings including api configuration
+   * @returns call response
    */
   protected async callApi<TResult = unknown, TBody = unknown>(
     stepName: string,
@@ -34,10 +36,10 @@ export abstract class BaseWorkflowApi {
     const { url, appendHeaders, method } = getProviderInfo(settings.api);
     const { method: userMethod, body, headers = {}, retries = 0, retryDelay, timeout } = settings;
 
-    return await this.context.call<TResult, TBody>(stepName, {
+    return await this.context.call<TResult>(stepName, {
       url,
       method: userMethod ?? method,
-      body,
+      body: typeof body === "string" ? body : JSON.stringify(body),
       headers: {
         ...appendHeaders,
         ...headers,

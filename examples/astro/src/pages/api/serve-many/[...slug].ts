@@ -39,7 +39,6 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
 
   return "workflow two done"
 }, {
-  retries: 0,
   // env must be passed in astro.
   // for local dev, we need import.meta.env.
   // For deployment, we need process.env:

@@ -30,8 +30,6 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   })
 
   return "workflow two done"
-}, {
-  retries: 0
 })
 
 export const { POST } = serveMany(

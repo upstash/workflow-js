@@ -31,7 +31,6 @@ export const { POST, GET } = testServe(
       await fail(context)
     }, {
       baseUrl: BASE_URL,
-      retries: 1 // check with retries 1 to see if endpoint will retry
     }
   ), {
     expectedCallCount: 1,
@@ -40,6 +39,9 @@ export const { POST, GET } = testServe(
     headers: {
       [ header ]: headerValue,
       "authentication": authentication
+    },
+    triggerConfig: {
+      retries: 1 // check with retries 1 to see if endpoint will retry
     },
     shouldWorkflowStart: false
   }

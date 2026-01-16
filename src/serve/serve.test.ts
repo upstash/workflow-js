@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/require-await */
 import { describe, expect, jest, spyOn, test } from "bun:test";
 import { serve } from ".";
 import {
@@ -22,12 +21,15 @@ import {
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER,
+  WORKFLOW_UNKOWN_SDK_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
-import { WorkflowLogger } from "../logger";
+
 import { z } from "zod";
 import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "../error";
+import { WorkflowMiddleware } from "../middleware";
 
 const someWork = (input: string) => {
   return `processed '${input}'`;
@@ -40,6 +42,7 @@ const qstashClient = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enable
 
 describe("serve", () => {
   test("should send create workflow request in initial request", async () => {
+    const infoLogs: string[] = [];
     const { handler: endpoint } = serve(
       async (context) => {
         const _input = context.requestPayload;
@@ -48,13 +51,18 @@ describe("serve", () => {
       },
       {
         qstashClient,
-        verbose: true,
         receiver: undefined,
         schema: z.string(),
-        flowControl: {
-          key: "my-key",
-          parallelism: 1,
-        },
+        middlewares: [
+          new WorkflowMiddleware({
+            name: "test-info-logger",
+            callbacks: {
+              onInfo: async ({ info }) => {
+                infoLogs.push(info);
+              },
+            },
+          }),
+        ],
       }
     );
 
@@ -71,6 +79,7 @@ describe("serve", () => {
       execute: async () => {
         const response = await endpoint(request);
         expect(response.status).toBe(200);
+        expect(infoLogs).toContain("Run id identified. isFirstInvocation: true, unknownSdk: false");
       },
       responseFields: { body: [{ messageId: "msgId" }], status: 200 },
       receivesRequest: {
@@ -82,16 +91,14 @@ describe("serve", () => {
             destination: WORKFLOW_ENDPOINT,
             headers: {
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-label": labelValue,
               "upstash-forward-upstash-label": labelValue,
-              "upstash-flow-control-key": "my-key",
-              "upstash-flow-control-value": "parallelism=1",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": expect.stringMatching(/^wfr_/),
               "upstash-workflow-sdk-version": "1",
@@ -104,14 +111,79 @@ describe("serve", () => {
     });
   });
 
+  test("should send create workflow request with unknown SDK header", async () => {
+    const infoLogs: string[] = [];
+    const { handler: endpoint } = serve(
+      async (context) => {
+        const _input = context.requestPayload;
+        await context.sleep("sleep 1", 1);
+        return 2;
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+        schema: z.string(),
+        middlewares: [
+          new WorkflowMiddleware({
+            name: "test-info-logger",
+            callbacks: {
+              onInfo: async ({ info }) => {
+                infoLogs.push(info);
+              },
+            },
+          }),
+        ],
+      }
+    );
+
+    const initialPayload = nanoid();
+    const testWorkflowRunId = `wfr-test-${nanoid()}`;
+    const labelValue = `test-label-${nanoid()}`;
+    const request = getRequest(WORKFLOW_ENDPOINT, testWorkflowRunId, initialPayload, [], {
+      [WORKFLOW_UNKOWN_SDK_VERSION_HEADER]: "true",
+      [WORKFLOW_LABEL_HEADER]: labelValue,
+    });
+
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(200);
+        expect(infoLogs).toContain("Run id identified. isFirstInvocation: true, unknownSdk: true");
+      },
+      responseFields: { body: [{ messageId: "msgId" }], status: 200 },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: {
+              "content-type": "application/json",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+              "upstash-label": labelValue,
+              "upstash-forward-upstash-label": labelValue,
+              "upstash-forward-upstash-workflow-sdk-version": "1",
+              "upstash-method": "POST",
+              "upstash-telemetry-framework": "unknown",
+              "upstash-telemetry-runtime": "unknown",
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
+              "upstash-workflow-init": "true",
+              "upstash-workflow-runid": testWorkflowRunId,
+              "upstash-workflow-sdk-version": "1",
+              "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              [WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER]: "true",
+            },
+            body: initialPayload,
+          },
+        ],
+      },
+    });
+  });
+
   test("path endpoint", async () => {
-    const flowControl = {
-      key: "my-key",
-      ratePerSecond: 3,
-    };
     const { handler: endpoint } = serve<string>(
       async (context) => {
-        expect(context.flowControl).toEqual(flowControl);
         const input = context.requestPayload;
 
         const result1 = await context.run("step1", async () => {
@@ -125,12 +197,8 @@ describe("serve", () => {
       },
       {
         qstashClient,
-        verbose: true,
         receiver: undefined,
         disableTelemetry: true,
-        retries: 2,
-        retryDelay: "1000",
-        flowControl,
       }
     );
 
@@ -190,16 +258,13 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                  "upstash-feature-set":
+                    "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
-                  "upstash-retries": "2",
-                  "upstash-retry-delay": "1000",
                   "upstash-method": "POST",
                   "upstash-workflow-init": "true",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                  "upstash-flow-control-key": "my-key",
-                  "upstash-flow-control-value": "rate=3",
                   "upstash-workflow-runid": expect.stringMatching(/^wfr/),
                   "upstash-forward-upstash-label": labelValue,
                   "upstash-label": labelValue,
@@ -226,17 +291,14 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                  "upstash-retries": "2",
-                  "upstash-retry-delay": "1000",
+                  "upstash-feature-set":
+                    "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                  "upstash-flow-control-key": "my-key",
-                  "upstash-flow-control-value": "rate=3",
                   "upstash-forward-upstash-label": labelValue,
                 },
               },
@@ -259,17 +321,14 @@ describe("serve", () => {
                 headers: {
                   "upstash-workflow-sdk-version": "1",
                   "content-type": "application/json",
-                  "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                  "upstash-retries": "2",
-                  "upstash-retry-delay": "1000",
+                  "upstash-feature-set":
+                    "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                   "upstash-forward-upstash-workflow-sdk-version": "1",
                   "upstash-forward-upstash-workflow-invoke-count": "2",
                   "upstash-method": "POST",
                   "upstash-workflow-runid": workflowRunId,
                   "upstash-workflow-init": "false",
                   "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                  "upstash-flow-control-key": "my-key",
-                  "upstash-flow-control-value": "rate=3",
                   "upstash-forward-upstash-label": labelValue,
                 },
                 body: JSON.stringify(steps[1]),
@@ -302,11 +361,18 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        onError(error) {
-          expect(error).toBeInstanceOf(Error);
-          expect(error.message).toBe("some-error");
-          onErrorCalled = true;
-        },
+        middlewares: [
+          new WorkflowMiddleware({
+            name: "test-error-handler",
+            callbacks: {
+              onError({ error }) {
+                expect(error).toBeInstanceOf(Error);
+                expect(error.message).toBe("some-error");
+                onErrorCalled = true;
+              },
+            },
+          }),
+        ],
       }
     );
 
@@ -315,7 +381,6 @@ describe("serve", () => {
     await mockQStashServer({
       execute: async () => {
         const response = await endpoint(request);
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         expect(response.status).toBe(500);
         expect(response.statusText).toBe("");
         const result = await response.json();
@@ -331,42 +396,6 @@ describe("serve", () => {
     });
     expect(called).toBeTrue();
     expect(onErrorCalled).toBeTrue();
-  });
-
-  test("should call onFinish with auth-fail if authentication fails", async () => {
-    const { handler: endpoint } = serve(
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      async (_context) => {
-        // we call `return` when auth fails:
-        return;
-      },
-      {
-        qstashClient,
-        receiver: undefined,
-        onStepFinish(workflowRunId, finishCondition) {
-          return new Response(JSON.stringify({ workflowRunId, finishCondition }), { status: 200 });
-        },
-      }
-    );
-
-    const workflowRunId = "wfr-foo";
-    const request = getRequest(WORKFLOW_ENDPOINT, workflowRunId, "my-payload", []);
-    let called = false;
-    await mockQStashServer({
-      execute: async () => {
-        const response = await endpoint(request);
-        const { workflowRunId, finishCondition } = (await response.json()) as {
-          workflowRunId: string;
-          finishCondition: FinishCondition;
-        };
-        expect(workflowRunId).toBe(workflowRunId);
-        expect(finishCondition).toBe("auth-fail");
-        called = true;
-      },
-      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
-      receivesRequest: false,
-    });
-    expect(called).toBeTrue();
   });
 
   describe("duplicate checks", () => {
@@ -385,9 +414,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        onStepFinish(workflowRunId, finishCondition) {
-          return new Response(JSON.stringify({ workflowRunId, finishCondition }), { status: 200 });
-        },
       }
     );
 
@@ -448,7 +474,7 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
@@ -456,7 +482,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
               },
               body: '{"stepId":3,"stepName":"step 3","stepType":"Run","out":"\\"combined results: result 1,result 2\\"","concurrent":1}',
             },
@@ -496,7 +522,7 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
@@ -505,7 +531,7 @@ describe("serve", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -521,7 +547,6 @@ describe("serve", () => {
       const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
-        failureUrl: myFailureEndpoint,
       });
       let called = false;
       await mockQStashServer({
@@ -541,24 +566,16 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                "upstash-failure-callback": myFailureEndpoint,
-                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-                "upstash-failure-callback-workflow-calltype": "failureCall",
-                "upstash-failure-callback-workflow-init": "false",
-                "upstash-failure-callback-workflow-runid": "wfr-bar",
-                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -596,24 +613,16 @@ describe("serve", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-delay": "1s",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-bar",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
-                "upstash-failure-callback": WORKFLOW_ENDPOINT,
-                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-                "upstash-failure-callback-workflow-calltype": "failureCall",
-                "upstash-failure-callback-workflow-init": "false",
-                "upstash-failure-callback-workflow-runid": "wfr-bar",
-                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
               },
               body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
             },
@@ -648,9 +657,6 @@ describe("serve", () => {
       const { handler: endpoint } = serve(routeFunction, {
         qstashClient,
         receiver: undefined,
-        failureUrl: "some-failure-url",
-        retries: 2,
-        retryDelay: "1000",
       });
       await mockQStashServer({
         execute: async () => {
@@ -669,23 +675,10 @@ describe("serve", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-callback": "https://requestcatcher.com/api",
-                "upstash-callback-failure-callback-feature-set":
-                  "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-callback-failure-callback": "some-failure-url",
-                "upstash-callback-failure-callback-forward-upstash-workflow-failure-callback":
-                  "true",
-                "upstash-callback-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-callback-failure-callback-retries": "2",
-                "upstash-callback-failure-callback-retry-delay": "1000",
-                "upstash-callback-failure-callback-workflow-calltype": "failureCall",
-                "upstash-callback-failure-callback-workflow-init": "false",
-                "upstash-callback-failure-callback-workflow-runid": "wfr-foo",
-                "upstash-callback-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
-                "upstash-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 // invoke counts:
-                "upstash-callback-failure-callback-forward-upstash-workflow-invoke-count": "2",
-                "upstash-failure-callback-forward-upstash-workflow-invoke-count": "2",
                 "upstash-callback-forward-upstash-workflow-invoke-count": "2",
                 "upstash-forward-upstash-workflow-invoke-count": "2",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
@@ -693,21 +686,10 @@ describe("serve", () => {
                 "upstash-callback-forward-upstash-workflow-stepid": "1",
                 "upstash-callback-forward-upstash-workflow-stepname": "call step",
                 "upstash-callback-forward-upstash-workflow-steptype": "Call",
-                "upstash-callback-retries": "2",
-                "upstash-callback-retry-delay": "1000",
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
                 "upstash-callback-workflow-url": "https://requestcatcher.com/api",
-                "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
-                "upstash-failure-callback-retries": "2",
-                "upstash-failure-callback-retry-delay": "1000",
-                "upstash-failure-callback-workflow-calltype": "failureCall",
-                "upstash-failure-callback-workflow-init": "false",
-                "upstash-failure-callback-workflow-runid": "wfr-foo",
-                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-test": "headers",
                 "upstash-method": "PATCH",
@@ -715,7 +697,7 @@ describe("serve", () => {
                 "upstash-retry-delay": "2000",
                 "upstash-telemetry-framework": "unknown",
                 "upstash-telemetry-runtime": "unknown",
-                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+                "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
                 "upstash-timeout": "10",
                 "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
@@ -723,7 +705,7 @@ describe("serve", () => {
                 "upstash-workflow-sdk-version": "1",
                 "upstash-workflow-url": "https://requestcatcher.com/api",
               },
-              body: '"body"',
+              body: "body",
             },
           ],
         },
@@ -858,7 +840,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        verbose: true,
       }
     );
 
@@ -878,76 +859,6 @@ describe("serve", () => {
     expect(runs).toBeFalse();
   });
 
-  test("should call qstash to fail workflow on WorkflowNonRetryableError", async () => {
-    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-2", "my-payload", []);
-    let called = false;
-    const { handler: endpoint } = serve(
-      async (context) => {
-        called = true;
-        throw new WorkflowNonRetryableError("This is a non-retryable error");
-      },
-      {
-        qstashClient,
-        receiver: undefined,
-        verbose: true,
-      }
-    );
-
-    await mockQStashServer({
-      execute: async () => {
-        const response = await endpoint(request);
-
-        expect(response.status).toBe(489);
-        expect(response.headers.get("Upstash-NonRetryable-Error")).toBe("true");
-
-        const body = await response.json();
-        expect(body).toEqual({
-          error: "WorkflowNonRetryableError",
-          message: "This is a non-retryable error",
-          stack: expect.any(String),
-        });
-      },
-      responseFields: { body: undefined, status: 489 },
-      receivesRequest: false,
-    });
-    expect(called).toBeTrue();
-  });
-
-  test("should call qstash to retry workflow on WorkflowRetryAfterError", async () => {
-    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-foo-3", "my-payload", []);
-    let called = false;
-    const { handler: endpoint } = serve(
-      async (context) => {
-        called = true;
-        throw new WorkflowRetryAfterError("This is a retry-after error", 30);
-      },
-      {
-        qstashClient,
-        receiver: undefined,
-        verbose: true,
-      }
-    );
-
-    await mockQStashServer({
-      execute: async () => {
-        const response = await endpoint(request);
-
-        expect(response.status).toBe(429);
-        expect(response.headers.get("Retry-After")).toBe("30");
-
-        const body = await response.json();
-        expect(body).toEqual({
-          error: "WorkflowRetryAfterError",
-          message: "This is a retry-after error",
-          stack: expect.any(String),
-        });
-      },
-      responseFields: { body: undefined, status: 429 },
-      receivesRequest: false,
-    });
-    expect(called).toBeTrue();
-  });
-
   test("should send waitForEvent", async () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
     const { handler: endpoint } = serve(
@@ -957,12 +868,6 @@ describe("serve", () => {
       {
         qstashClient,
         receiver: undefined,
-        retries: 2,
-        retryDelay: "1000",
-        flowControl: {
-          key: "fc-key",
-          ratePerSecond: 2,
-        },
       }
     );
     let called = false;
@@ -988,12 +893,8 @@ describe("serve", () => {
           timeoutHeaders: {
             "Upstash-Workflow-Sdk-Version": ["1"],
             "content-type": ["application/json"],
-            "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger"],
+            "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
             "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-            "Upstash-Retries": ["2"],
-            "Upstash-Retry-Delay": ["1000"],
-            "Upstash-Flow-Control-Key": ["fc-key"],
-            "Upstash-Flow-Control-Value": ["rate=2"],
             "Upstash-Workflow-CallType": ["step"],
             "Upstash-Workflow-Init": ["false"],
             "Upstash-Workflow-RunId": ["wfr-bar"],
@@ -1001,7 +902,7 @@ describe("serve", () => {
             "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
             "Upstash-Telemetry-Framework": ["unknown"],
             "Upstash-Telemetry-Runtime": ["unknown"],
-            "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v0\.2\./)],
+            "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1\.0\./)],
           },
           timeoutUrl: WORKFLOW_ENDPOINT,
           url: WORKFLOW_ENDPOINT,
@@ -1031,21 +932,19 @@ describe("serve", () => {
             await context.sleep("first step", 2);
           },
           {
-            onStepFinish(finishRunId, finishCondition) {
-              console.log(finishRunId, workflowRunId);
-
-              expect(finishRunId).toBe(workflowRunId);
-              expect(finishCondition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
             qstashClient,
           }
         );
 
         await mockQStashServer({
-          execute: () => handler(request),
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { workflowRunId: string };
+            expect(body.workflowRunId).toBe(workflowRunId);
+            called = true;
+          },
           receivesRequest: {
             url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
             method: "GET",
@@ -1078,19 +977,19 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, finishCondition) {
-              expect(finishRunId).toBe(workflowRunId);
-              expect(finishCondition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
             qstashClient,
           }
         );
 
         await mockQStashServer({
-          execute: () => handler(request),
+          execute: async () => {
+            const response = await handler(request);
+            expect(response.status).toBe(200);
+            const body = (await response.json()) as { workflowRunId: string };
+            expect(body.workflowRunId).toBe(workflowRunId);
+            called = true;
+          },
           receivesRequest: {
             url: `http://localhost:8080/v2/workflows/runs/${workflowRunId}`,
             method: "GET",
@@ -1123,17 +1022,15 @@ describe("serve", () => {
             console.log(context);
           },
           {
-            onStepFinish(finishRunId, finishCondition) {
-              expect(finishRunId).toBe(workflowRunId);
-              expect(finishCondition).toBe("workflow-already-ended");
-              called = true;
-              return new Response(JSON.stringify({ finishRunId }), { status: 200 });
-            },
             receiver: undefined,
           }
         );
 
         const response = await handler(request);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { workflowRunId: string };
+        expect(body.workflowRunId).toBe(workflowRunId);
+        called = true;
         expect(response.status).toBe(200);
 
         expect(called).toBeTrue();
@@ -1241,9 +1138,8 @@ describe("serve", () => {
 
     test("should not allow when not http:// or https://", async () => {
       const url = "localhost.com";
-      const verbose = new WorkflowLogger({ logLevel: "INFO", logOutput: "console" });
 
-      const logSpy = spyOn(verbose, "log");
+      const infoSpy = spyOn(console, "info");
 
       const { handler } = serve(
         async (context) => {
@@ -1254,7 +1150,7 @@ describe("serve", () => {
           baseUrl: undefined,
           qstashClient,
           receiver: undefined,
-          verbose,
+          verbose: true,
         }
       );
 
@@ -1267,9 +1163,12 @@ describe("serve", () => {
         stack: expect.any(String),
       });
 
-      expect(logSpy).toBeCalledWith("WARN", "ENDPOINT_START", {
-        message: `Workflow URL contains localhost. This can happen in local development, but shouldn't happen in production unless you have a route which contains localhost. Received: ${url}`,
-      });
+      expect(infoSpy).toHaveBeenCalled();
+      const warnCalls = infoSpy.mock.calls;
+      const localhostWarning = warnCalls.find((call: string[]) =>
+        call[0]?.includes(`Workflow URL contains localhost`)
+      );
+      expect(localhostWarning).toBeDefined();
     });
   });
 
@@ -1318,25 +1217,17 @@ describe("serve", () => {
             headers: {
               "upstash-workflow-sdk-version": "1",
               "content-type": "application/json",
-              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
-              "upstash-failure-callback-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger",
+              "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-delay": "1s",
               "upstash-forward-upstash-workflow-sdk-version": "1",
               "upstash-method": "POST",
-              "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
-              "upstash-failure-callback-workflow-calltype": "failureCall",
-              "upstash-failure-callback-workflow-init": "false",
-              "upstash-failure-callback-workflow-runid": "wfr-bar",
-              "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
               "upstash-workflow-init": "false",
               "upstash-workflow-runid": "wfr-bar",
               "upstash-workflow-url": WORKFLOW_ENDPOINT,
-              "upstash-failure-callback": WORKFLOW_ENDPOINT,
-              "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
               "upstash-forward-test-header": headerValue,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": "unknown",
-              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v0\.2\./),
+              "upstash-telemetry-sdk": expect.stringMatching(/^@upstash\/workflow@v1\.0\./),
             },
             body: '{"stepId":1,"stepName":"sleep-step","stepType":"SleepFor","sleepFor":1,"concurrent":1}',
           },
