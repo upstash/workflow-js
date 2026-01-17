@@ -44,6 +44,10 @@ export async function triggerEmailAnalysis(formData: EmailPayload) {
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
           'X-Vercel-Protection-Bypass':
             process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          "upstash-callback-forward-X-Vercel-Protection-Bypass":
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          "upstash-failure-callback-forward-X-Vercel-Protection-Bypass":
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
         }
       : undefined,
     });
