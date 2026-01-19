@@ -73,7 +73,9 @@ export const initiateTest = async (params: Pick<TestConfig, "route">) => {
   await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
   try {
-    await qstash.checkWorkflowStart(workflowRunId);
+    await eventually(async () => {
+      await qstash.checkWorkflowStart(workflowRunId);
+    })
   } catch (error) {
     console.error(error);
     if (shouldWorkflowStart) {
@@ -109,3 +111,29 @@ export const expect = <TObject extends ExpectType = ExpectType>(
     throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected "${expected}"`)
   }
 }
+
+export const eventually = async function (
+  fn: () => Promise<void> | void,
+  options: {
+    timeout?: number;
+    interval?: number;
+  } = {}
+): Promise<void> {
+  const { timeout = 5000, interval = 100 } = options;
+
+  const startTime = Date.now();
+
+  while (true) {
+    try {
+      await fn();
+      // Success case - all assertions passed
+      return;
+    } catch (error) {
+      const lastError = error as Error;
+      if (Date.now() - startTime >= timeout) {
+        throw new Error(`Assertions not satisfied within timeout: ${lastError.message}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+  }
+};
