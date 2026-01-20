@@ -48,3 +48,8 @@ export const checkWorkflowStart = async (workflowRunId: string) => {
     throw new Error(firstRun ? `Couldn't verify that workflow has begun. Number of steps: ${firstRun.steps.length}` : "No runs found")
   }
 }
+
+export const getWorkflowLogs = async (workflowRunId: string) => {
+  const results = await workflowClient.logs({ workflowRunId })
+  return results
+}
