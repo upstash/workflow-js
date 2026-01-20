@@ -32,23 +32,6 @@ export const startWorkflow = async (
   return result
 }
 
-/**
- * throws error if workflow hasn't started
- * 
- * @param messageId 
- * @returns 
- */
-export const checkWorkflowStart = async (workflowRunId: string) => {
-
-  const results = await workflowClient.logs({ workflowRunId })
-  const firstRun = results.runs[0]
-  const startMessageDelivered = firstRun && firstRun.steps.length > 1
-  if (!startMessageDelivered) {
-    await workflowClient.cancel({ ids: [ workflowRunId ] })
-    throw new Error(firstRun ? `Couldn't verify that workflow has begun. Number of steps: ${firstRun.steps.length}` : "No runs found")
-  }
-}
-
 export const getWorkflowLogs = async (workflowRunId: string) => {
   const results = await workflowClient.logs({ workflowRunId })
   return results
