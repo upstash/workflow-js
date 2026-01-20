@@ -83,7 +83,17 @@ export const initiateTest = async (params: Pick<TestConfig, "route">) => {
     };
   }
 
-  await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
+  try {
+    await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
+  } catch (error) {
+    try {
+      const logs = await qstash.getWorkflowLogs(workflowRunId)
+      console.error("Test Failed. Logs of the started workflow:", JSON.stringify(logs, null, 2))
+    } catch (error) {
+      console.error("Failed to get workflow logs:", error)
+    }
+    throw error
+  }
 }
 
 type ExpectType = number | string | object | undefined | void | boolean | null
