@@ -30,8 +30,8 @@ export const getHandlersForRequest = (
   // Multi-region mode
   let targetRegion: QStashRegion;
 
-  if (isFirstInvocation) {
-    // Use the default region for first invocation
+  if (isFirstInvocation && !regionHeader) {
+    // Use the default region for first non-qstash invocation
     targetRegion = qstashHandlers.defaultRegion;
   } else {
     // Use the region from the header for subsequent invocations
