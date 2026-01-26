@@ -25,6 +25,7 @@ import {
   verifyRequest,
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
+import { getHandlersForRequest } from "./multi-region/handlers";
 import {
   AUTH_FAIL_MESSAGE,
   createResponseData,
@@ -61,10 +62,8 @@ export const serveBase = <
   // Prepares options with defaults if they are not provided.
 
   const {
-    qstashClient,
     initialPayloadParser,
     url,
-    receiver,
     failureFunction,
     baseUrl,
     env,
@@ -100,12 +99,20 @@ export const serveBase = <
       middlewareManager.dispatchDebug.bind(middlewareManager)
     );
 
+    // validation & parsing to get isFirstInvocation early
+    const { isFirstInvocation, workflowRunId, unknownSdk } = validateRequest(request);
+
+    // Get the appropriate handlers based on region
+    const regionHeader = request.headers.get("upstash-region");
+    const { client: regionalClient, receiver: regionalReceiver } = getHandlersForRequest(
+      internal.qstashHandlers,
+      regionHeader,
+      isFirstInvocation
+    );
+
     // get payload as raw string
     const requestPayload = (await getPayload(request)) ?? "";
-    await verifyRequest(requestPayload, request.headers.get("upstash-signature"), receiver);
-
-    // validation & parsing
-    const { isFirstInvocation, workflowRunId, unknownSdk } = validateRequest(request);
+    await verifyRequest(requestPayload, request.headers.get("upstash-signature"), regionalReceiver);
 
     middlewareManager.assignWorkflowRunId(workflowRunId);
     await middlewareManager.dispatchDebug("onInfo", {
@@ -118,7 +125,7 @@ export const serveBase = <
       isFirstInvocation,
       unknownSdk,
       workflowRunId,
-      requester: qstashClient.http,
+      requester: regionalClient.http,
       messageId: request.headers.get("upstash-message-id")!,
       dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
     });
@@ -144,7 +151,7 @@ export const serveBase = <
     const failureCheck = await handleFailure<TInitialPayload>({
       request,
       requestPayload,
-      qstashClient,
+      qstashClient: regionalClient,
       initialPayloadParser,
       routeFunction,
       failureFunction,
@@ -181,7 +188,7 @@ export const serveBase = <
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
-      qstashClient,
+      qstashClient: regionalClient,
       workflowRunId,
       initialPayload: initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
@@ -219,7 +226,7 @@ export const serveBase = <
     const callReturnCheck = await handleThirdPartyCallResult({
       request,
       requestPayload: rawInitialPayload,
-      client: qstashClient,
+      client: regionalClient,
       workflowUrl,
       telemetry,
       middlewareManager,

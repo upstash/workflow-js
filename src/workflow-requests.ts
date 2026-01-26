@@ -271,7 +271,8 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
     const headerLowerCase = header.toLowerCase();
 
     const isUserHeader =
-      (!headerLowerCase.startsWith("upstash-workflow-") &&
+      (headerLowerCase !== "upstash-region" &&
+        !headerLowerCase.startsWith("upstash-workflow-") &&
         // https://vercel.com/docs/edge-network/headers/request-headers#x-vercel-id
         !headerLowerCase.startsWith("x-vercel-") &&
         !headerLowerCase.startsWith("x-forwarded-") &&
