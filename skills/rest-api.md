@@ -154,7 +154,3 @@ All are optional; original values are reused if omitted.
 • Always log `failureCallbackInfo.state` to determine whether a callback rerun is required.  
 • Apply header overrides sparingly; flow-control misconfiguration may stall large batches.  
 • Prefer filtering in bulk operations instead of manually passing large dlqIds arrays.
-
----
-
-This Skill equips agents to safely recover workflows, inspect DLQ state, and manage retry and flow-control semantics using TypeScript-based REST interactions.

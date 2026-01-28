@@ -199,7 +199,3 @@ await client.trigger({
 ```
 
 Both trigger header and client header are required.
-
----
-
-This documentation consolidates the core troubleshooting patterns needed to debug and maintain healthy workflows in TypeScript applications.

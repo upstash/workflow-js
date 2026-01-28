@@ -246,17 +246,3 @@ export const { POST } = serve(async (context) => {
   return (await task.run()).text;
 });
 ```
-
----
-
-# When to Use This Skill
-
-Use this Skill whenever the task involves:
-
-- Designing agent workflows
-- Multi-agent coordination or patterns
-- Using LangChain/AI SDK tools inside Workflow
-- Implementing refinement loops or multi-step processing
-- Debugging or optimizing Upstash agent behavior
-
-This Skill ensures consistent, correct usage of the Workflow Agents API and provides reference patterns for building reliable TypeScript agent systems.
