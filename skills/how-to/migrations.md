@@ -125,7 +125,7 @@ await context.invoke("other", {
 
 ### Logger removed → middleware system added
 
-Replace `verbose` logging with explicit middlewares.
+Removed `WorkflowLogger` class and added `WorkflowMiddleware`. Updated `verbose` param to only allow `true` (in this case, `loggingMiddleware` will be used which prints to console).
 
 ```ts
 import { loggingMiddleware, WorkflowMiddleware } from "@upstash/workflow";
@@ -193,7 +193,7 @@ const { status, headers, body } = await context.call("call-step", {
 ## Summary of Common Mistakes
 
 - Using `context.agents` instead of the new `agentWorkflow()` helper.
-- Leaving old serve-config options (`retries`, `verbose`, etc.).
+- Leaving old serve-config options (`retries`, `flowControl`, etc.).
 - Forgetting to `JSON.stringify` bodies.
 - Assuming `context.call` failures stop workflow execution.
 - Mix-and-matching `@upstash/qstash` and `@upstash/workflow` imports.
