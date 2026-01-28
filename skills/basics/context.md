@@ -228,9 +228,3 @@ const { eventData, timeout } = await context.waitForEvent("wait for update", "or
   timeout: "2h",
 });
 ```
-
----
-
-## Summary
-
-This skill centralizes all workflow context primitives. They enable long‑running, state‑persistent, event‑driven workflows with external API access, typed provider integrations, and fine‑grained control over retry strategies, sleeps, and cross‑workflow invocation.

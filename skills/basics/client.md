@@ -56,8 +56,6 @@ await client.cancel({ urlStartingWith: "https://your-endpoint.com" });
 await client.cancel({ all: true });
 ```
 
-**Pitfalls**:
-
 - `ids` accepts both string and array, but mixing with other filters is not supported.
 - `urlStartingWith` cancels _all_ descendant paths—use carefully.
 
@@ -70,18 +68,13 @@ Fetch workflow execution logs with filtering and cursor-based pagination.
 ```ts
 const { runs, cursor } = await client.logs({
   workflowRunId: "wfr_123", // filter a specific run
-  workflowUrl: "https://endpoint", // fetch logs for a workflow
+  workflowUrl: "https://endpoint", // fetch logs for an endpoint
   state: "RUN_FAILED", // filter by execution state
   count: 50, // limit return size
   workflowCreatedAt: 1700000000, // Unix timestamp
   cursor: undefined, // pagination
 });
 ```
-
-**Common mistakes**:
-
-- Passing invalid state strings causes silent empty results.
-- `workflowUrl` must match exactly; prefix filtering is not supported here.
 
 ---
 
@@ -96,7 +89,7 @@ await client.notify({
 });
 ```
 
-**Pitfall**: If no workflow is waiting, no error is thrown—ensure event IDs match exactly.
+**Pitfall**: If no workflow is waiting, no error is thrown.
 
 ---
 
@@ -129,10 +122,7 @@ const { messages, cursor } = await client.dlq.list({
 });
 ```
 
-**Pitfalls**:
-
 - Date fields use Unix **ms**, not seconds.
-- `url` must match exactly.
 
 ---
 
@@ -187,9 +177,4 @@ await client.dlq.resume({
 
 ## General Tips for TS Consumers
 
-- Always validate URLs before triggering or canceling workflows.
-- When dealing with arrays (`ids`, `dlqId`), ensure consistent type usage.
 - Use flow control when bulk‑triggering or restarting large batches to avoid rate limits.
-- Cursor values must be reused exactly as returned—do not modify.
-
-This skill equips AI agents with reliable patterns for orchestrating workflow runs, handling failures, and managing operational workflows end-to-end.

@@ -133,7 +133,7 @@ await client.trigger({
     key: "media-processing", // Shared grouping key
     parallelism: 4, // Max 4 at the same time
     rate: 10, // Max 10 starts
-    period: 60_000, // in 60 seconds (ms or string supported)
+    period: "60s", // in 60 seconds
   },
 });
 ```
