@@ -17,6 +17,7 @@ Use this feature to pause workflow execution until an external event arrives. It
 ## Key Concepts & Pitfalls
 
 ### Event IDs
+
 Use unique event IDs to avoid heavy fan‑out notifications.
 
 Example patterns:
@@ -24,7 +25,8 @@ Example patterns:
 • `user-42-email-verified`
 
 ### Race Conditions
-A notify call sent *before* the workflow begins waiting is lost.
+
+A notify call sent _before_ the workflow begins waiting is lost.
 
 To avoid this:
 • Always inspect the notify response.
@@ -33,6 +35,7 @@ To avoid this:
 ---
 
 ## Combined Example
+
 Below is a single TypeScript example showing waiting for an event, handling timeouts, and safely notifying:
 
 ```ts
@@ -47,9 +50,9 @@ export const { POST } = serve(async (context) => {
   // Wait for the event with timeout
   const { eventData, timeout } = await context.waitForEvent(
     "wait-for-order-processing", // step name
-    eventId,                     // event id
+    eventId, // event id
     {
-      timeout: "1d",             // optional timeout
+      timeout: "1d", // optional timeout
     }
   );
 

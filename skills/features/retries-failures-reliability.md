@@ -23,14 +23,17 @@ These mechanisms work together to guarantee that no failed execution is lost and
 Workflow steps automatically retry when they fail, using configurable retry count and delay.
 
 ### Retry Parameters
+
 - `retries`: How many times the step will retry
 - `retryDelay`: A math expression (string) returning delay in milliseconds; can use `retried` variable
 
 ### Common Pitfalls
-- The delay expression must be a *string*; raw numbers disable dynamic calculation.
+
+- The delay expression must be a _string_; raw numbers disable dynamic calculation.
 - A workflow only moves to DLQ after **all** retries fail.
 
 ### Example: Configure Retry Count + Delay
+
 ```ts
 import { Client, WorkflowNonRetryableError, serve } from "@upstash/workflow";
 
@@ -60,6 +63,7 @@ export const { POST } = serve(async (context) => {
 ## Preventing Retries
 
 ### When to Stop Retries
+
 Use these when failure is expected or should halt execution immediately:
 
 - `WorkflowNonRetryableError` → Fail fast, trigger failure function, enter DLQ
@@ -67,20 +71,23 @@ Use these when failure is expected or should halt execution immediately:
 - Conditional returns → Graceful early exit without error
 
 ### Pitfalls
+
 - `context.cancel()` marks the run as **canceled**, not failed — no failure handling executes.
-- Throwing any error *other than* `WorkflowNonRetryableError` will still trigger retries.
+- Throwing any error _other than_ `WorkflowNonRetryableError` will still trigger retries.
 
 ---
 
 ## Failure Handling
 
 You can handle workflow failures using either:
+
 - `failureFunction` (runs in your workflow environment)
 - `failureUrl` (external callback endpoint)
 
 Only **one** can be configured — they are mutually exclusive.
 
 ### Failure Function Behavior
+
 - Runs after all retries fail
 - Receives failure metadata and workflow context
 - Cannot create new workflow steps; `context` is read‑only
@@ -88,6 +95,7 @@ Only **one** can be configured — they are mutually exclusive.
 - Can be manually retried from the DLQ
 
 ### Failure Function Parameters
+
 - `context.workflowRunId`
 - `context.url`
 - `context.requestPayload`
@@ -98,6 +106,7 @@ Only **one** can be configured — they are mutually exclusive.
 - `failHeaders`
 
 ### Example: Workflow + Failure Function + Prevent‑Retry Logic
+
 ```ts
 export const { POST } = serve(
   async (context) => {
@@ -129,11 +138,13 @@ export const { POST } = serve(
 ## Dead Letter Queue (DLQ)
 
 A workflow enters the DLQ when:
-- A step fails *after all retries*
+
+- A step fails _after all retries_
 - A `WorkflowNonRetryableError` is thrown
 - `failureFunction` also fails (visible as failed in DLQ)
 
 ### Retention
+
 - Free: 3 days
 - Pay‑as‑you‑go: 1 week
 - Fixed: Up to 3 months
@@ -147,25 +158,30 @@ After retention expires, items cannot be recovered.
 You may perform these actions from the dashboard or programmatically.
 
 ### 1. Resume
+
 Continue from the failed step while keeping previous step results.
 
 ### 2. Restart
+
 Start the entire workflow from scratch, discarding previous results.
 
 ### 3. Rerun Failure Function
+
 Retry the failure handler **only if it previously failed**.
 
 ### Example: All DLQ Actions
+
 ```ts
 import { Client } from "@upstash/workflow";
 const client = new Client({ token: process.env.WORKFLOW_TOKEN! });
 
-await client.dlq.resume({ dlqId: "dlq-1", retries: 3 });     // Continue run
-await client.dlq.restart({ dlqId: "dlq-2", retries: 3 });    // Restart
-await client.dlq.retryFailureFunction({ dlqId: "dlq-3" });   // Retry failure handler
+await client.dlq.resume({ dlqId: "dlq-1", retries: 3 }); // Continue run
+await client.dlq.restart({ dlqId: "dlq-2", retries: 3 }); // Restart
+await client.dlq.retryFailureFunction({ dlqId: "dlq-3" }); // Retry failure handler
 ```
 
 ### Pitfalls
+
 - `retryFailureFunction` is only allowed when the failure function failed.
 - `resume` cannot be used if workflow code changed before the failure point.
 - `restart` re-executes everything, including expensive steps.
@@ -177,17 +193,22 @@ await client.dlq.retryFailureFunction({ dlqId: "dlq-3" });   // Retry failure ha
 Use when failure must be handled by a separate service.
 
 ### Notes
+
 - Use **either** `failureFunction` **or** `failureUrl`.
 - Recommended only when your primary app might be offline.
 - Failure URL receives a structured JSON payload about the failed request.
 
 ### Example
+
 ```ts
-export const { POST } = serve(async (context) => {
-  await context.run("work", () => doWork());
-}, {
-  failureUrl: "https://example.com/failure-handler",
-});
+export const { POST } = serve(
+  async (context) => {
+    await context.run("work", () => doWork());
+  },
+  {
+    failureUrl: "https://example.com/failure-handler",
+  }
+);
 ```
 
 ---
@@ -195,6 +216,7 @@ export const { POST } = serve(async (context) => {
 ## Debugging Failed Runs
 
 DLQ entries store:
+
 - Request + response headers
 - Payloads
 - Failure metadata

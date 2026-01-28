@@ -3,13 +3,16 @@
 This guide explains how to intercept workflow lifecycle and debug events using middleware. It covers how to attach middlewares, define event handlers, initialize resources, and combine functionality into efficient implementations.
 
 ## Overview
+
 Middlewares plug into the workflow engine and listen to:
+
 - Lifecycle events such as run start, run completion, and step execution
 - Debug messages such as errors, warnings, and informational logs
 
 They are useful for logging, monitoring, instrumentation, and integrating with external systems.
 
 ## Using Built‑in Middleware
+
 Add middleware inside the `middlewares` array when serving a workflow:
 
 ```ts
@@ -27,9 +30,11 @@ export const { POST } = serve(
 ```
 
 ## Creating Custom Middleware
+
 You define middleware by instantiating `WorkflowMiddleware` with callbacks for the events you want to handle.
 
 ### Direct Callback Definitions
+
 All lifecycle and debug events can be defined in one object.
 
 ```ts
@@ -67,6 +72,7 @@ const customMiddleware = new WorkflowMiddleware({
 ```
 
 ### Initialization With `init`
+
 Use `init` when you need setup logic (connecting to a DB, creating clients, loading configuration). `init` returns an object containing the callbacks.
 
 ```ts
@@ -93,20 +99,24 @@ const databaseMiddleware = new WorkflowMiddleware({
 ```
 
 ## Event Reference
+
 Below is a concise list of supported event handlers and what they receive.
 
 ### Lifecycle
+
 - **runStarted**: `{ context }`
 - **beforeExecution**: `{ context, stepName }`
 - **afterExecution**: `{ context, stepName, result }`
 - **runCompleted**: `{ context, result }`
 
 ### Debug
+
 - **onError**: `{ workflowRunId?, error }`
 - **onWarning**: `{ workflowRunId?, warning }`
 - **onInfo**: `{ workflowRunId?, info }`
 
 ## Combined Example
+
 Single snippet showing typical usage patterns.
 
 ```ts
@@ -151,5 +161,6 @@ export const { POST } = serve(
 ```
 
 ## Pitfalls and Tips
+
 - Ensure `init` returns all callbacks; missing keys simply mean the event is ignored.
 - Debug events may be called without a `workflowRunId` if errors occur before run id is identified.

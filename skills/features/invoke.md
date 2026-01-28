@@ -13,24 +13,28 @@ Use `context.invoke` to trigger another workflow:
 ```ts
 const result = await context.invoke("analyze content", {
   workflow: analyzeContent, // workflow object or function
-  body: "input payload",   // request body passed to invoked workflow
+  body: "input payload", // request body passed to invoked workflow
   headers: { "x-user": "123" }, // optional headers
-  retries: 5,               // optional, default 3
-  flowControl: { /* ... */ },
-  workflowRunId: "optional-custom-id"
+  retries: 5, // optional, default 3
+  flowControl: {
+    /* ... */
+  },
+  workflowRunId: "optional-custom-id",
 });
 
 const {
-  body,      // response returned by invoked workflow
-  isFailed,  // true if invoked workflow failed
-  isCanceled // true if invoked workflow was canceled
+  body, // response returned by invoked workflow
+  isFailed, // true if invoked workflow failed
+  isCanceled, // true if invoked workflow was canceled
 } = result;
 ```
 
 ### Returning a Value
+
 A workflow may return any serializable value, which becomes `body` for the caller.
 
 ### Depth Limitation
+
 Workflow invocation depth is limited to 100. Any recursive or cyclic chain exceeding this will fail.
 
 ---
@@ -48,7 +52,7 @@ const analyzeContent = createWorkflow(async (context) => {
 const processUser = createWorkflow(async (context) => {
   const { body } = await context.invoke("invoke analyze", {
     workflow: analyzeContent, // type‑safe invocation
-    body: "user-1"
+    body: "user-1",
   });
 
   return { result: body };
@@ -64,8 +68,8 @@ To allow workflows to invoke each other without requiring explicit URLs, define 
 ```ts
 // app/workflows/[...any]/route.ts
 export const { POST } = serveMany({
-  "analyze": analyzeContent,
-  "process": processUser
+  analyze: analyzeContent,
+  process: processUser,
 });
 ```
 
@@ -81,7 +85,7 @@ import { Client } from "@upstash/workflow";
 const client = new Client({ token: "<QSTASH_TOKEN>" });
 
 await client.trigger({
-  url: "https://your-app/workflows/analyze"
+  url: "https://your-app/workflows/analyze",
 });
 ```
 

@@ -1,9 +1,11 @@
 This documentation explains how to use `serve()` to expose workflows as HTTP endpoints.
 
 ## Core Concept
+
 `serve()` turns an async route function into a workflow endpoint. When a request arrives, a workflow run is created, and the route function defines the execution logic using `context.run()`.
 
 ### Full Example With Inline Comments
+
 ```typescript
 import { serve } from "@upstash/workflow/nextjs";
 import { z } from "zod";
@@ -21,7 +23,8 @@ export const { POST } = serve<InitialPayload>(
   },
   {
     // Runs when the workflow fails after all retries
-    failureFunction: async ({ context, failStatus, failResponse, failHeaders, failStack }) => console.error(failResponse),
+    failureFunction: async ({ context, failStatus, failResponse, failHeaders, failStack }) =>
+      console.error(failResponse),
 
     // Hooks for step lifecycle, run lifecycle, and debug events
     middlewares: [loggingMiddleware],
@@ -63,4 +66,5 @@ export const { POST } = serve<InitialPayload>(
 ```
 
 ## Common Pitfalls
+
 - **Incorrect URL inference** behind proxies or local tunnels—set `url` or `baseUrl`.

@@ -46,9 +46,12 @@ const base = "https://qstash.upstash.io/v2";
 
 async function example() {
   // 1. List DLQ items with filters
-  const list = await fetch(`${base}/workflows/dlq?workflowUrl=https://my.app/workflow&fromDate=1700000000000`, {
-    headers: { Authorization: `Bearer ${token}` }
-  }).then(r => r.json());
+  const list = await fetch(
+    `${base}/workflows/dlq?workflowUrl=https://my.app/workflow&fromDate=1700000000000`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  ).then((r) => r.json());
 
   const firstDlqId = list.messages?.[0]?.dlqId;
 
@@ -57,11 +60,11 @@ async function example() {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Upstash-Flow-Control-Key": "my-key",           // optional
-      "Upstash-Flow-Control-Value": "parallelism=1",  // optional
-      "Upstash-Retries": "3"                          // optional
-    }
-  }).then(r => r.json());
+      "Upstash-Flow-Control-Key": "my-key", // optional
+      "Upstash-Flow-Control-Value": "parallelism=1", // optional
+      "Upstash-Retries": "3", // optional
+    },
+  }).then((r) => r.json());
 
   // 3. Bulk resume using filters and cursor handling
   const bulkResume = await fetch(`${base}/workflows/dlq/resume`, {
@@ -70,26 +73,26 @@ async function example() {
     body: JSON.stringify({
       fromDate: 1700000000000,
       workflowUrl: "https://my.app/workflow",
-      dlqIds: [firstDlqId] // optional; filters also supported
-    })
-  }).then(r => r.json());
+      dlqIds: [firstDlqId], // optional; filters also supported
+    }),
+  }).then((r) => r.json());
 
   // 4. Rerun failure callback
   const callback = await fetch(`${base}/workflows/dlq/callback/${firstDlqId}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` }
-  }).then(r => r.json());
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((r) => r.json());
 
   // 5. Delete a DLQ entry
   await fetch(`${base}/workflows/dlq/${firstDlqId}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   // 6. Inspect Flow-Control
   const fc = await fetch(`${base}/flowControl/my-key`, {
-    headers: { Authorization: `Bearer ${token}` }
-  }).then(r => r.json());
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((r) => r.json());
 
   console.log({ list, restart, bulkResume, callback, fc });
 }
@@ -127,10 +130,11 @@ All are optional; original values are reused if omitted.
 • **cursor?: string** — If returned, additional entries exist.  
 • **workflowRuns: { workflowRunId: string; workflowCreatedAt: number }[]** — Returned by bulk restart/resume.  
 • **message objects** (DLQ list/get) include:
-  - **workflowRunId, workflowCreatedAt, workflowUrl**  
-  - **responseStatus, responseHeader, responseBody**  
-  - **failureCallbackInfo.state** — Identify failed callbacks.  
-  - **dlqId** — Unique DLQ entry identifier.
+
+- **workflowRunId, workflowCreatedAt, workflowUrl**
+- **responseStatus, responseHeader, responseBody**
+- **failureCallbackInfo.state** — Identify failed callbacks.
+- **dlqId** — Unique DLQ entry identifier.
 
 ---
 

@@ -6,14 +6,17 @@ description: Lightweight guidance for using the Upstash Workflow SDK to define, 
 # Upstash Workflow SDK
 
 ## Quick Start
+
 The Upstash Workflow SDK lets you expose serverless workflow endpoints and run them reliably using QStash under the hood.
 
 Install:
+
 ```bash
 npm install @upstash/workflow
 ```
 
 Define a simple workflow endpoint:
+
 ```ts
 import { serve } from "@upstash/workflow";
 
@@ -24,6 +27,7 @@ export const { POST } = serve(async (context) => {
 ```
 
 Trigger it from your backend:
+
 ```ts
 import { Client } from "@upstash/workflow";
 
@@ -32,6 +36,7 @@ await client.trigger({ url: "https://your-app.com/api/workflow" });
 ```
 
 ## Other Skill Files
+
 These files contain the full documentation. Use them for details, patterns, and advanced behavior.
 
 - basics:

@@ -22,6 +22,7 @@ npx @upstash/qstash-cli dev
 ```
 
 The CLI prints:
+
 - QSTASH_TOKEN
 - QSTASH_CURRENT_SIGNING_KEY
 - QSTASH_NEXT_SIGNING_KEY
@@ -49,6 +50,7 @@ These ensure all workflow requests are routed locally.
 ## 3. Trigger Workflows Using Local URLs
 
 A common pattern is determining the base URL dynamically based on environment variables. Below is an example that demonstrates:
+
 - Local development (localhost)
 - Production deployments (auto-detected env)
 
@@ -65,13 +67,14 @@ const BASE_URL = process.env.VERCEL_URL
 // Trigger a workflow with retries
 const { workflowRunId } = await client.trigger({
   url: `${BASE_URL}/api/workflow`, // Local or production
-  retries: 3,                      // Optional retry logic
+  retries: 3, // Optional retry logic
 });
 
 console.log("Workflow run:", workflowRunId);
 ```
 
 **Common mistakes:**
+
 - Forgetting to include the full URL including `http://` or `https://`.
 - Using a production URL while the local QStash server is running.
 - Missing environment variables.
@@ -83,16 +86,19 @@ console.log("Workflow run:", workflowRunId);
 If your workflow must be reachable from the managed Upstash servers (not local), expose your local server publicly.
 
 ### Install & authenticate
+
 ```
 ngrok config add-authtoken <YOUR-AUTH-TOKEN>
 ```
 
 ### Start a tunnel
+
 ```
 ngrok http 3000
 ```
 
 ngrok outputs a public URL:
+
 ```
 Forwarding  https://1234abcd.ngrok.io -> http://localhost:3000
 ```

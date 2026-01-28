@@ -5,9 +5,11 @@ This document provides a clear, task-focused overview of migrations between Work
 ## January 2026 – Major Release 1.0.0
 
 ### Agents API → moved to a separate package
+
 The Agents API was removed from the core workflow package and placed into `@upstash/workflow-agents` so the base SDK no longer depends on large AI-related libraries.
 
 **Key changes**:
+
 - Must install and import `agentWorkflow` from the new package.
 - Agents access now happens through an `agents` helper created per workflow invocation.
 
@@ -16,8 +18,12 @@ The Agents API was removed from the core workflow package and placed into `@upst
 import { serve } from "@upstash/workflow/nextjs";
 export const { POST } = serve(async (context) => {
   const model = context.agents.openai("gpt-3.5-turbo");
-  const agent = context.agents.agent({ /* ... */ });
-  const task = context.agents.task({ /* ... */ });
+  const agent = context.agents.agent({
+    /* ... */
+  });
+  const task = context.agents.task({
+    /* ... */
+  });
 });
 
 // After
@@ -26,13 +32,19 @@ import { agentWorkflow } from "@upstash/workflow-agents";
 export const { POST } = serve(async (context) => {
   const agents = agentWorkflow(context);
   const model = agents.openai("gpt-3.5-turbo");
-  const agent = agents.agent({ /* ... */ });
-  const task = agents.task({ /* ... */ });
+  const agent = agents.agent({
+    /* ... */
+  });
+  const task = agents.task({
+    /* ... */
+  });
 });
 ```
 
 ---
+
 ### `keepTriggerConfig` and `useFailureFunction` removed
+
 These fields were redundant—both behaviors are now always enabled.
 
 ```ts
@@ -41,7 +53,7 @@ await client.trigger({
   url: "...",
   retries: 3,
   keepTriggerConfig: true,
-  useFailureFunction: true
+  useFailureFunction: true,
 });
 
 // After
@@ -49,30 +61,41 @@ await client.trigger({ url: "...", retries: 3 });
 ```
 
 ---
+
 ### Configuration moved from `serve()` → `client.trigger()`
+
 Options such as `retries`, `flowControl`, `retryDelay`, and `failureUrl` no longer belong in `serve()`.
 
 ```ts
 // Before
-export const { POST } = serve(async (context) => { /* ... */ }, {
-  retries: 3,
-  retryDelay: "1000 * (1 + retried)",
-  flowControl: { key: "my-key", rate: 10 }
-});
+export const { POST } = serve(
+  async (context) => {
+    /* ... */
+  },
+  {
+    retries: 3,
+    retryDelay: "1000 * (1 + retried)",
+    flowControl: { key: "my-key", rate: 10 },
+  }
+);
 await client.trigger({ url: "..." });
 
 // After
-export const { POST } = serve(async (context) => { /* ... */ });
+export const { POST } = serve(async (context) => {
+  /* ... */
+});
 await client.trigger({
   url: "...",
   retries: 3,
   retryDelay: "1000 * (1 + retried)",
-  flowControl: { key: "my-key", rate: 10 }
+  flowControl: { key: "my-key", rate: 10 },
 });
 ```
 
 ---
+
 ### `stringifyBody` removed from `context.call` and `context.invoke`
+
 Bodies must now be strings.
 
 ```ts
@@ -81,25 +104,27 @@ await context.call("step", {
   url: "https://api.example.com",
   method: "POST",
   body: { key: "value" },
-  stringifyBody: true
+  stringifyBody: true,
 });
 
 // After
 await context.call("step", {
   url: "https://api.example.com",
   method: "POST",
-  body: JSON.stringify({ key: "value" })
+  body: JSON.stringify({ key: "value" }),
 });
 
 // Same change applies to invoke
 await context.invoke("other", {
   workflow: otherWorkflow,
-  body: JSON.stringify({ key: "value" })
+  body: JSON.stringify({ key: "value" }),
 });
 ```
 
 ---
+
 ### Logger removed → middleware system added
+
 Replace `verbose` logging with explicit middlewares.
 
 ```ts
@@ -109,22 +134,30 @@ const stepFinish = new WorkflowMiddleware({
   name: "step-finish",
   callbacks: {
     afterExecution: async ({ stepName, result }) =>
-      console.log(`Step ${stepName} finished`, result)
-  }
+      console.log(`Step ${stepName} finished`, result),
+  },
 });
 
-export const { POST } = serve(async (context) => { /* ... */ }, {
-  middlewares: [loggingMiddleware, stepFinish]
-});
+export const { POST } = serve(
+  async (context) => {
+    /* ... */
+  },
+  {
+    middlewares: [loggingMiddleware, stepFinish],
+  }
+);
 ```
 
 ---
+
 ## October 2024 – Migration from `@upstash/qstash`
 
 ### Install the new package
+
 Replace all workflow usage from `@upstash/qstash` with `@upstash/workflow`.
 
 ### Serve import and return shape changed
+
 Most environments now require destructuring `{ POST }`.
 
 ```ts
@@ -138,23 +171,27 @@ export const { POST } = serve(...);
 ```
 
 ### `context.call` updated
+
 Now returns `{ status, headers, body }` and **does not fail** the workflow if the HTTP call fails.
 
 ```ts
 const { status, headers, body } = await context.call("call-step", {
   url: "https://example.com/api",
-  method: "POST"
+  method: "POST",
 });
 ```
 
 **Pitfall**: Old runs may not contain `status` or `headers` until fully migrated.
 
 ### Errors renamed
+
 - `QStashWorkflowError` → `WorkflowError`
 - `QStashWorkflowAbort` → `WorkflowAbort`
 
 ---
+
 ## Summary of Common Mistakes
+
 - Using `context.agents` instead of the new `agentWorkflow()` helper.
 - Leaving old serve-config options (`retries`, `verbose`, etc.).
 - Forgetting to `JSON.stringify` bodies.

@@ -7,22 +7,24 @@ This skill provides guidance for using the Workflow Client to trigger, cancel, i
 ## Core Operations
 
 ### Triggering Workflow Runs (`client.trigger`)
+
 Starts one or multiple workflow runs with optional payload, metadata, retry logic, and flow control.
 
 ```ts
 // Single and multiple triggers
 const single = await client.trigger({
-  url: "https://your-endpoint/workflow",   // required
-  body: { msg: "hello" },                  // optional payload
-  headers: { "x-user": "123" },          // optional headers
-  workflowRunId: "custom-id",              // custom unique identifier
-  retries: 3,                                // retry count for steps
-  retryDelay: "1000 * (1 + retried)",      // expression-based retry delay
-  delay: "10s",                             // start later
+  url: "https://your-endpoint/workflow", // required
+  body: { msg: "hello" }, // optional payload
+  headers: { "x-user": "123" }, // optional headers
+  workflowRunId: "custom-id", // custom unique identifier
+  retries: 3, // retry count for steps
+  retryDelay: "1000 * (1 + retried)", // expression-based retry delay
+  delay: "10s", // start later
   notBefore: Math.floor(Date.now() / 1000) + 60, // absolute schedule
-  label: "my-run",                          // dashboard filtering
-  disableTelemetry: true,                    // opt‑out telemetry
-  flowControl: {                             // concurrency & rate limiting
+  label: "my-run", // dashboard filtering
+  disableTelemetry: true, // opt‑out telemetry
+  flowControl: {
+    // concurrency & rate limiting
     key: "user-key",
     rate: 10,
     parallelism: 5,
@@ -37,6 +39,7 @@ const multiple = await client.trigger([
 ```
 
 **Pitfalls**:
+
 - `workflowRunId` must be unique; collisions cause errors.
 - `delay` is ignored if `notBefore` is provided.
 - Using `url` incorrectly (missing protocol or dynamic segments) leads to invalid workflow endpoints.
@@ -44,6 +47,7 @@ const multiple = await client.trigger([
 ---
 
 ### Canceling Workflow Runs (`client.cancel`)
+
 Cancel runs by ID, by URL prefix, or all active/pending runs.
 
 ```ts
@@ -53,38 +57,42 @@ await client.cancel({ all: true });
 ```
 
 **Pitfalls**:
+
 - `ids` accepts both string and array, but mixing with other filters is not supported.
-- `urlStartingWith` cancels *all* descendant paths—use carefully.
+- `urlStartingWith` cancels _all_ descendant paths—use carefully.
 
 ---
 
 ### Retrieving Logs (`client.logs`)
+
 Fetch workflow execution logs with filtering and cursor-based pagination.
 
 ```ts
 const { runs, cursor } = await client.logs({
-  workflowRunId: "wfr_123",         // filter a specific run
-  workflowUrl: "https://endpoint",  // fetch logs for a workflow
-  state: "RUN_FAILED",              // filter by execution state
-  count: 50,                          // limit return size
-  workflowCreatedAt: 1700000000,      // Unix timestamp
-  cursor: undefined,                  // pagination
+  workflowRunId: "wfr_123", // filter a specific run
+  workflowUrl: "https://endpoint", // fetch logs for a workflow
+  state: "RUN_FAILED", // filter by execution state
+  count: 50, // limit return size
+  workflowCreatedAt: 1700000000, // Unix timestamp
+  cursor: undefined, // pagination
 });
 ```
 
 **Common mistakes**:
+
 - Passing invalid state strings causes silent empty results.
 - `workflowUrl` must match exactly; prefix filtering is not supported here.
 
 ---
 
 ### Notifying Events (`client.notify`)
+
 Notify workflows paused at `context.waitForEvent`.
 
 ```ts
 await client.notify({
   eventId: "order-paid",
-  eventData: { orderId: 1 },  // delivered to waiting workflow
+  eventData: { orderId: 1 }, // delivered to waiting workflow
 });
 ```
 
@@ -93,6 +101,7 @@ await client.notify({
 ---
 
 ### Fetching Waiting Workflows (`client.getWaiters`)
+
 Retrieve active waiters waiting for a specific event.
 
 ```ts
@@ -121,12 +130,14 @@ const { messages, cursor } = await client.dlq.list({
 ```
 
 **Pitfalls**:
+
 - Date fields use Unix **ms**, not seconds.
 - `url` must match exactly.
 
 ---
 
 ### Retry Failure Callback (`client.dlq.retryFailureFunction`)
+
 If a workflow's `failureFunction`/`failureUrl` call failed:
 
 ```ts
@@ -136,6 +147,7 @@ await client.dlq.retryFailureFunction({ dlqId: "dlq-123" });
 ---
 
 ### Restarting DLQ Runs (`client.dlq.restart`)
+
 Restart from the **beginning** of the workflow.
 
 ```ts
@@ -152,6 +164,7 @@ await client.dlq.restart({
 ---
 
 ### Resuming DLQ Runs (`client.dlq.resume`)
+
 Continue from the **failed step**.
 
 ```ts
@@ -166,12 +179,14 @@ await client.dlq.resume({
 ```
 
 **Common confusion**:
+
 - `restart` = new run from step 0.
 - `resume` = same run continues at the failed step.
 
 ---
 
 ## General Tips for TS Consumers
+
 - Always validate URLs before triggering or canceling workflows.
 - When dealing with arrays (`ids`, `dlqId`), ensure consistent type usage.
 - Use flow control when bulk‑triggering or restarting large batches to avoid rate limits.

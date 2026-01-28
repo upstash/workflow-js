@@ -59,7 +59,7 @@ export const { POST } = serve(async (context) => {
 
 ### Webhook Reliability: Lookback Protection
 
-**Common pitfall:** external systems may call the webhook *before* the workflow reaches `waitForWebhook()`.
+**Common pitfall:** external systems may call the webhook _before_ the workflow reaches `waitForWebhook()`.
 
 Upstash automatically stores early webhook calls. The next `waitForWebhook()` will immediately resolve with the stored request.
 

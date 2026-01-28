@@ -9,6 +9,7 @@ This skill documents all workflow context functions available inside a TypeScrip
 `context.api` provides typed integrations for OpenAI, Anthropic, and Resend. These calls behave like `context.call` but enforce the correct operation names and body types.
 
 ### Key points
+
 - Each provider exposes a `.call(stepName, config)` function.
 - `token` is always required.
 - The `operation` field selects the API method.
@@ -16,6 +17,7 @@ This skill documents all workflow context functions available inside a TypeScrip
 - Returns `{ status, body }`.
 
 ### Example (combined)
+
 ```ts
 // OpenAI + Anthropic + Resend usage
 const openai = await context.api.openai.call("openai chat", {
@@ -60,6 +62,7 @@ const email = await context.api.resend.call("send email", {
 Performs an HTTP request with long execution windows (up to 12 hours). Always returns a response, even for non‑2xx status codes.
 
 ### Important parameters
+
 - `url`: required.
 - `method`: defaults to `GET`.
 - `headers`: object.
@@ -71,6 +74,7 @@ Performs an HTTP request with long execution windows (up to 12 hours). Always re
 - `workflow`: used only when invoking a workflow inside `serveMany`.
 
 ### Example (showing most fields)
+
 ```ts
 const response = await context.call("sync user", {
   url: "https://api.example.com/user",
@@ -89,6 +93,7 @@ const response = await context.call("sync user", {
 ```
 
 ### Pitfalls
+
 - Localhost requests fail unless tunneled.
 
 ---
@@ -96,11 +101,13 @@ const response = await context.call("sync user", {
 ## context.cancel
 
 Cancels the current workflow run.
+
 - Workflow is marked **canceled**, not failed.
 - `failureFunction` does not run.
 - No DLQ entry.
 
 ### Example
+
 ```ts
 const result = await context.run("check something", () => ...);
 if (result.cancel) await context.cancel();
@@ -113,6 +120,7 @@ if (result.cancel) await context.cancel();
 Creates a reusable webhook URL for external systems.
 
 ### Example
+
 ```ts
 const { webhookUrl, eventId } = await context.createWebhook("create webhook");
 // Use webhookUrl with an external service
@@ -125,6 +133,7 @@ const { webhookUrl, eventId } = await context.createWebhook("create webhook");
 Invokes another workflow (must be served under the same `serveMany`) and waits for its completion.
 
 ### Key parameters
+
 - `workflow`: the workflow definition.
 - `body`: becomes `requestPayload` of invoked workflow.
 - `headers`: forwarded headers.
@@ -132,6 +141,7 @@ Invokes another workflow (must be served under the same `serveMany`) and waits f
 - `retries`, `retryDelay`, `flowControl`: control invocation retry strategy.
 
 ### Example
+
 ```ts
 const { body, isFailed, isCanceled } = await context.invoke("invoke child", {
   workflow: childWorkflow,
@@ -148,12 +158,11 @@ const { body, isFailed, isCanceled } = await context.invoke("invoke child", {
 Notifies waiting workflows created via `context.waitForEvent`.
 
 ### Example
+
 ```ts
-const { notifyResponse } = await context.notify(
-  "notify step",
-  "order-updated",
-  { status: "shipped" },
-);
+const { notifyResponse } = await context.notify("notify step", "order-updated", {
+  status: "shipped",
+});
 ```
 
 `notifyResponse` lists all workflows resumed by this event.
@@ -165,6 +174,7 @@ const { notifyResponse } = await context.notify(
 Runs custom synchronous or async logic as a step. Values must be JSON‑serializable.
 
 ### Example
+
 ```ts
 const user = await context.run("load user", () => getUser());
 
@@ -177,6 +187,7 @@ await Promise.all([a, b]);
 ```
 
 ### Pitfalls
+
 - Returned class instances lose methods due to serialization. Rehydrate via `Object.assign(new Class(), data)`.
 
 ---
@@ -186,6 +197,7 @@ await Promise.all([a, b]);
 Pauses workflow execution for a duration. String or numeric seconds.
 
 ### Example
+
 ```ts
 await context.sleep("wait 1 day", "1d");
 ```
@@ -197,6 +209,7 @@ await context.sleep("wait 1 day", "1d");
 Pauses execution until a specific `Date`, timestamp, or parseable string.
 
 ### Example
+
 ```ts
 const ts = new Date(Date.now() + 1000 * 60 * 60);
 await context.sleepUntil("wait until", ts);
@@ -209,15 +222,15 @@ await context.sleepUntil("wait until", ts);
 Waits for an event (triggered by `context.notify`) or until timeout.
 
 ### Example
+
 ```ts
-const { eventData, timeout } = await context.waitForEvent(
-  "wait for update",
-  "order-updated",
-  { timeout: "2h" }
-);
+const { eventData, timeout } = await context.waitForEvent("wait for update", "order-updated", {
+  timeout: "2h",
+});
 ```
 
 ---
 
 ## Summary
+
 This skill centralizes all workflow context primitives. They enable long‑running, state‑persistent, event‑driven workflows with external API access, typed provider integrations, and fine‑grained control over retry strategies, sleeps, and cross‑workflow invocation.

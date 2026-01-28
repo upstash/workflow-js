@@ -3,6 +3,7 @@
 This Skill provides guidance for building real‑time and human‑in‑the‑loop workflows using Upstash Workflow + Upstash Realtime. It covers event schemas, workflow patterns, emitting/receiving updates, and handling interactive pauses.
 
 Key capabilities:
+
 - Emit strongly typed workflow events.
 - Subscribe to live updates in the frontend.
 - Implement pause/resume workflows using `waitForEvent` and `notify`.
@@ -12,6 +13,7 @@ Key capabilities:
 ## Core Concepts
 
 ### Realtime schema design
+
 Define all workflow event types in one schema. Keep event definitions minimal and stable.
 
 ```ts
@@ -24,8 +26,8 @@ const schema = {
 
     // Human‑in‑the‑loop events
     waitingForInput: z.object({ eventId: z.string(), message: z.string() }),
-    inputResolved:   z.object({ eventId: z.string() }),
-  }
+    inputResolved: z.object({ eventId: z.string() }),
+  },
 };
 
 export const realtime = new Realtime({ schema, redis });
@@ -33,11 +35,13 @@ export type RealtimeEvents = InferRealtimeEvents<typeof realtime>;
 ```
 
 Common mistakes:
+
 - Forgetting to wrap events under a namespace (e.g. `workflow.*`).
 
 ---
 
 ## Emitting Events Inside Workflows
+
 Emit inside `context.run()` whenever possible to avoid duplicate emissions on retries.
 
 ```ts
@@ -58,11 +62,13 @@ export const { POST } = serve(async (context) => {
 ```
 
 Pitfall:
-- Emitting events *outside* of `context.run()` risks duplicate delivery if retries happen.
+
+- Emitting events _outside_ of `context.run()` risks duplicate delivery if retries happen.
 
 ---
 
 ## Human‑in‑the‑Loop Workflows
+
 Use `waitForEvent()` with unique `eventId` values and emit a `waitingForInput` event immediately.
 
 ```ts
@@ -74,19 +80,18 @@ const [{ eventData, timeout }] = await Promise.all([
   context.run("notify-wait", () =>
     channel.emit("workflow.waitingForInput", {
       eventId,
-      message: "Waiting for approval..."
+      message: "Waiting for approval...",
     })
-  )
+  ),
 ]);
 
 if (timeout) return { success: false, reason: "timeout" };
 
-await context.run("resolved", () =>
-  channel.emit("workflow.inputResolved", { eventId })
-);
+await context.run("resolved", () => channel.emit("workflow.inputResolved", { eventId }));
 ```
 
 Important details:
+
 - Always handle timeout: otherwise the workflow may appear stuck.
 - Emit `inputResolved` so the UI can clear any pending state.
 - Use deterministic `eventId` prefixes per action/approval.
@@ -94,6 +99,7 @@ Important details:
 ---
 
 ## Notify Endpoint (User Response)
+
 The frontend sends input back to the workflow using `client.notify()`.
 
 ```ts
@@ -107,12 +113,14 @@ export async function POST(req: NextRequest) {
 ```
 
 Common mistakes:
+
 - Sending the wrong `eventId` → workflow never resumes.
 - Sending `eventData` that doesn’t match the awaited type.
 
 ---
 
 ## Realtime Subscription in the Frontend
+
 Use a single hook to consume all workflow‑related events and manage state.
 
 ```ts
@@ -124,31 +132,35 @@ useRealtime({
     "workflow.stepFinish",
     "workflow.runFinish",
     "workflow.waitingForInput",
-    "workflow.inputResolved"
+    "workflow.inputResolved",
   ],
   onData({ event, data }) {
     switch (event) {
       case "workflow.stepFinish":
-        setSteps(prev => [...prev, data]); break;
+        setSteps((prev) => [...prev, data]);
+        break;
       case "workflow.waitingForInput":
-        setWaitingState(data); break;
+        setWaitingState(data);
+        break;
       case "workflow.inputResolved":
-        setWaitingState(prev => prev?.eventId === data.eventId ? null : prev);
+        setWaitingState((prev) => (prev?.eventId === data.eventId ? null : prev));
         break;
       case "workflow.runFinish":
         setIsRunFinished(true);
     }
-  }
+  },
 });
 ```
 
 Pitfalls:
+
 - Forgetting to clear waiting state on `inputResolved`.
 - Forgetting to reset state on re‑trigger.
 
 ---
 
 ## Triggering the Workflow
+
 One simple endpoint triggers both basic and human‑in‑the‑loop flows.
 
 ```ts
@@ -157,7 +169,7 @@ export async function POST(req: NextRequest) {
   const workflowUrl = `${req.nextUrl.origin}/api/workflow`; // or /human-in-loop
   const { workflowRunId } = await workflowClient.trigger({
     url: workflowUrl,
-    body: { userId: "123", action: "process" }
+    body: { userId: "123", action: "process" },
   });
   return NextResponse.json({ workflowRunId });
 }
@@ -166,6 +178,7 @@ export async function POST(req: NextRequest) {
 ---
 
 ## Recommended Patterns
+
 - Use one channel per workflow run (`workflowRunId`).
 - Always place event emissions inside `context.run()`.
 - Use stable `eventId` formats for all interactive steps.
