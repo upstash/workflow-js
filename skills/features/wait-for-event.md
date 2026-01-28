@@ -79,7 +79,7 @@ async function notifyProcessingComplete(orderId: string, payload: any) {
   // First attempt - returns array of NotifyResponse
   const waiters = await client.notify({ eventId, eventData: payload });
 
-  if (waiters > 0) return first;
+  if (waiters > 0) return waiters;
 
   // Retry if no workflows were waiting
   await new Promise((r) => setTimeout(r, 3000));
