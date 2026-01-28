@@ -1,8 +1,6 @@
 ---
-
 name: workflow-agents
 description: Skill for building, configuring, and orchestrating Upstash Workflow Agents. Use when the user mentions agent workflows, multi-agent collaboration, tools, tasks, Upstash Workflow, or patterns like evaluator-optimizer, prompt chaining, parallelization, or orchestrator-workers.
-
 ---
 
 # Workflow Agents
