@@ -1,5 +1,5 @@
 ---
-name: @upstash/workflow TypeScript SDK Skill
+name: upstash/workflow TypeScript SDK Skill
 description: Lightweight guidance for using the Upstash Workflow SDK to define, trigger, and manage workflows. Use this Skill whenever a user wants to create workflow endpoints, run steps, or interact with the Upstash Workflow client.
 ---
 
