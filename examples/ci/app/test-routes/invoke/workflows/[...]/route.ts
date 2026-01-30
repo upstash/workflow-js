@@ -18,6 +18,7 @@ const BRANCH_TWO_RESULT = "branch-two-result"
 
 const invokeHeader = "invoke-header"
 const invokeHeaderValue = "invoke-header-value"
+const invokeLabel = "invoke-label"
 
 const workflowRunIdHeader = "workflow-run-id-header"
 
@@ -37,6 +38,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
       [CI_RANDOM_ID_HEADER]: context.headers.get(CI_RANDOM_ID_HEADER) as string,
     },
     workflowRunId,
+    label: invokeLabel,
   })
 
   expect(body, invokeResult)
@@ -87,6 +89,7 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
   expect(context.requestPayload, invokePayload)
   expect(context.headers.get(invokeHeader) as string, invokeHeaderValue)
   expect(context.workflowRunId, `wfr_${context.headers.get(workflowRunIdHeader)}`)
+  expect(context.label, invokeLabel)
 
   await context.run("step 1", async () => {
     console.log("workflow two says hi")

@@ -9,7 +9,7 @@ import {
   WORKFLOW_ENDPOINT,
 } from "../test-utils";
 import { nanoid } from "../utils";
-import { WORKFLOW_INVOKE_COUNT_HEADER } from "../constants";
+import { WORKFLOW_INVOKE_COUNT_HEADER, WORKFLOW_LABEL_HEADER } from "../constants";
 import { getNewUrlFromWorkflowId } from "./serve-many";
 
 describe("serveMany", () => {
@@ -130,6 +130,16 @@ describe("serveMany", () => {
       });
     });
 
+    // 8. Workflow: (context)
+    //    - Purpose: Invokes workflowOne with a label
+    const workflowEight = createWorkflow<undefined, unknown>(async (context) => {
+      await context.invoke("invoke workflow one with label", {
+        workflow: workflowOne,
+        body: { count: 123 },
+        label: "test-invoke-label",
+      });
+    });
+
     const { POST: handler } = serveMany(
       {
         workflowOne,
@@ -139,6 +149,7 @@ describe("serveMany", () => {
         workflowFive,
         workflowSix,
         workflowSeven,
+        workflowEight,
       },
       {
         qstashClient,
@@ -457,6 +468,60 @@ describe("serveMany", () => {
               },
             },
           ],
+        },
+      });
+    });
+
+    test("should invoke workflowOne from workflowEight with label", async () => {
+      const request = getRequest(
+        `${WORKFLOW_ENDPOINT}/workflowEight`,
+        "wfr_id",
+        "initial-payload",
+        []
+      );
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await handler(request);
+          expect(response.status).toBe(200);
+        },
+        responseFields: { body: "msgId", status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}/workflowOne`,
+          token,
+          body: {
+            body: '{"count":123}',
+            headers: {
+              "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
+              "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Telemetry-Framework": ["nextjs"],
+              "Upstash-Telemetry-Runtime": [expect.any(String)],
+              "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1\.0\./)],
+              "Upstash-Workflow-Init": ["false"],
+              "Upstash-Workflow-RunId": ["wfr_id"],
+              "Upstash-Workflow-Runid": ["wfr_id"],
+              "Upstash-Workflow-Sdk-Version": ["1"],
+              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowEight"],
+              "content-type": ["application/json"],
+            },
+            workflowRunId: expect.any(String),
+            workflowUrl: "https://requestcatcher.com/api/workflowEight",
+            step: {
+              stepId: 1,
+              concurrent: 1,
+              stepName: "invoke workflow one with label",
+              stepType: "Invoke",
+            },
+          },
+          headers: {
+            [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
+            [WORKFLOW_LABEL_HEADER]: "test-invoke-label",
+            [`upstash-forward-${WORKFLOW_LABEL_HEADER}`]: "test-invoke-label",
+            "upstash-workflow-init": "true",
+            "upstash-workflow-invoke": "true",
+            "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+          },
         },
       });
     });

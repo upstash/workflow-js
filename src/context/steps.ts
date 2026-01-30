@@ -30,6 +30,7 @@ import {
   DEFAULT_RETRIES,
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_INIT_HEADER,
+  WORKFLOW_LABEL_HEADER,
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
@@ -721,7 +722,15 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
   }
 
   getHeaders({ context, telemetry, invokeCount }: GetHeaderParams): HeadersResponse {
-    const { workflow, headers = {}, workflowRunId, retries, retryDelay, flowControl } = this.params;
+    const {
+      workflow,
+      headers = {},
+      workflowRunId,
+      retries,
+      retryDelay,
+      flowControl,
+      label,
+    } = this.params;
     const newUrl = context.url.replace(/[^/]+$/, this.workflowId);
 
     const { headers: triggerHeaders, contentType } = getHeaders({
@@ -740,6 +749,11 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       userHeaders: new Headers(headers) as Headers,
     });
     triggerHeaders["Upstash-Workflow-Invoke"] = "true";
+
+    if (label) {
+      triggerHeaders[WORKFLOW_LABEL_HEADER] = label;
+      triggerHeaders[`upstash-forward-${WORKFLOW_LABEL_HEADER}`] = label;
+    }
 
     return { headers: triggerHeaders, contentType };
   }

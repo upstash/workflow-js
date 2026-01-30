@@ -491,6 +491,7 @@ export type InvokeWorkflowRequest = {
 export type LazyInvokeStepParams<TInitiaPayload, TResult> = {
   workflow: InvokableWorkflow<TInitiaPayload, TResult>;
   workflowRunId?: string;
+  label?: string;
 } & Pick<CallSettings, "retries" | "headers" | "flowControl" | "retryDelay"> &
   (TInitiaPayload extends undefined ? { body?: undefined } : { body: TInitiaPayload });
 
