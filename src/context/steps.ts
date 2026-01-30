@@ -752,6 +752,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
 
     if (label) {
       triggerHeaders[WORKFLOW_LABEL_HEADER] = label;
+      triggerHeaders[`upstash-forward-${WORKFLOW_LABEL_HEADER}`] = label;
     }
 
     return { headers: triggerHeaders, contentType };

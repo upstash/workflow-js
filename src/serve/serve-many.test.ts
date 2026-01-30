@@ -517,6 +517,7 @@ describe("serveMany", () => {
           headers: {
             [`Upstash-Forward-${WORKFLOW_INVOKE_COUNT_HEADER}`]: "1",
             [WORKFLOW_LABEL_HEADER]: "test-invoke-label",
+            [`upstash-forward-${WORKFLOW_LABEL_HEADER}`]: "test-invoke-label",
             "upstash-workflow-init": "true",
             "upstash-workflow-invoke": "true",
             "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
