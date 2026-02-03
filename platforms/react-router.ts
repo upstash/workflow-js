@@ -1,9 +1,4 @@
-import type {
-  WorkflowServeOptions,
-  RouteFunction,
-  Telemetry,
-  InvokableWorkflow,
-} from "../src";
+import type { WorkflowServeOptions, RouteFunction, Telemetry, InvokableWorkflow } from "../src";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import { serveManyBase } from "../src/serve/serve-many";
