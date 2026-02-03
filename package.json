@@ -56,6 +56,10 @@
     "./tanstack": {
       "import": "./tanstack.mjs",
       "require": "./tanstack.js"
+    },
+    "./react-router": {
+      "import": "./react-router.mjs",
+      "require": "./react-router.js"
     }
   },
   "scripts": {
