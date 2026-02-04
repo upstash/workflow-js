@@ -483,6 +483,7 @@ export type HeaderParams = {
 export type InvokeWorkflowRequest = {
   workflowUrl: string;
   workflowRunId: string;
+  workflowCreatedAt: number;
   headers: Record<string, string[]>;
   step: Step;
   body?: string;

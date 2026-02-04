@@ -30,6 +30,7 @@ const createMockContext = () => {
     url: WORKFLOW_ENDPOINT,
     headers: new Headers() as Headers,
     workflowRunId: "test-wfr-id",
+    workflowRunCreatedAt: 0,
   });
 };
 

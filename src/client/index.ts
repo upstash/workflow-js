@@ -245,6 +245,7 @@ export class Client {
         workflowRunId: finalWorkflowRunId,
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         label: option.label,
+        workflowRunCreatedAt: Date.now(), // pass a timestamp (server will override it)
       });
 
       return {

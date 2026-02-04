@@ -92,6 +92,7 @@ describe("auto-executor", () => {
       steps,
       url: WORKFLOW_ENDPOINT,
       invokeCount: 7,
+      workflowRunCreatedAt: 0,
     });
   };
 

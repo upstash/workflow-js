@@ -22,6 +22,7 @@ describe("disabled workflow context", () => {
     steps: [],
     url: WORKFLOW_ENDPOINT,
     initialPayload: "my-payload",
+    workflowRunCreatedAt: 0,
   });
   describe("should throw abort for each step kind", () => {
     test("run", async () => {
@@ -116,6 +117,7 @@ describe("disabled workflow context", () => {
       steps: [],
       url: WORKFLOW_ENDPOINT,
       initialPayload: "my-payload",
+      workflowRunCreatedAt: 0,
     });
 
     test("should return step-found on step", async () => {
@@ -193,6 +195,7 @@ describe("disabled workflow context", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
+        workflowRunCreatedAt: 0,
       });
 
       let called = false;
@@ -247,6 +250,7 @@ describe("disabled workflow context", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
+        workflowRunCreatedAt: 0,
       });
 
       let called = false;
@@ -302,6 +306,7 @@ describe("disabled workflow context", () => {
         url: WORKFLOW_ENDPOINT,
         initialPayload: "my-payload",
         invokeCount: 4,
+        workflowRunCreatedAt: 0,
       });
 
       let called = false;
