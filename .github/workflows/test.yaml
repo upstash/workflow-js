@@ -1,6 +1,7 @@
 name: Tests
+
 on:
-  pull_request:
+  workflow_call:
 
 env:
   QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
@@ -589,16 +590,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Get version
         id: version
         run: echo "::set-output name=version::v0.0.0-ci.${GITHUB_SHA}-$(date +%Y%m%d%H%M%S)"
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -615,12 +611,17 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Set NPM_TOKEN
-        run: npm config set //registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
 
       - name: Publish ci version
-        run: npm publish --tag=ci --verbose
+        run: npm publish --provenance --tag=ci --verbose
         working-directory: ./dist
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Sleep for 10s
         run: sleep 10s
@@ -633,9 +634,9 @@ jobs:
       - release
     steps:
       - name: Setup repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -664,9 +665,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup nodejs
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -713,9 +714,9 @@ jobs:
       - release
     steps:
       - name: Setup repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
@@ -749,9 +750,9 @@ jobs:
       - release
     steps:
       - name: Setup repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -780,9 +781,9 @@ jobs:
       - release
     steps:
       - name: Setup repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -811,9 +812,9 @@ jobs:
       - release
     steps:
       - name: Setup repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
