@@ -68,7 +68,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/upstash/workflow-ts.git"
+    "url": "git@github.com:upstash/workflow-js.git"
   },
   "keywords": [
     "upstash",
