@@ -450,4 +450,68 @@ describe("DLQ", () => {
       });
     });
   });
+
+  describe("delete", () => {
+    test("should delete a single DLQ message", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const deleted = 1;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({ dlqIds: [dlqId] });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?dlqIds=${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should delete multiple DLQ messages", async () => {
+      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`, `dlq-${nanoid()}`];
+      const deleted = 3;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({ dlqIds });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}&dlqIds=${dlqIds[2]}`,
+          token,
+        },
+      });
+    });
+
+    test("should handle empty array of DLQ IDs", async () => {
+      const deleted = 0;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({ dlqIds: [] });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          token,
+        },
+      });
+    });
+  });
 });

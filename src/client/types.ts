@@ -167,50 +167,50 @@ export type StepError = {
 
 type StepLogGroup =
   | {
-      /**
-       * Log which belongs to a single step
-       */
-      steps: [StepLog];
-      /**
-       * Log which belongs to a single step
-       */
-      type: "sequential";
-    }
+    /**
+     * Log which belongs to a single step
+     */
+    steps: [StepLog];
+    /**
+     * Log which belongs to a single step
+     */
+    type: "sequential";
+  }
   | {
-      /**
-       * Log which belongs to parallel steps
-       */
-      steps: StepLog[];
-      /**
-       * Log which belongs to parallel steps
-       */
-      type: "parallel";
-    }
+    /**
+     * Log which belongs to parallel steps
+     */
+    steps: StepLog[];
+    /**
+     * Log which belongs to parallel steps
+     */
+    type: "parallel";
+  }
   | {
+    /**
+     * Log which belongs to the next step
+     */
+    steps: {
+      messageId: string;
+      state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
       /**
-       * Log which belongs to the next step
+       * retries
        */
-      steps: {
-        messageId: string;
-        state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
-        /**
-         * retries
-         */
-        retries: number;
-        /**
-         * retry delay parameter for the step if it was set
-         */
-        retryDelay?: string;
-        /**
-         * errors which occured in the step
-         */
-        errors?: StepError[];
-      }[];
+      retries: number;
       /**
-       * Log which belongs to the next step
+       * retry delay parameter for the step if it was set
        */
-      type: "next";
-    };
+      retryDelay?: string;
+      /**
+       * errors which occured in the step
+       */
+      errors?: StepError[];
+    }[];
+    /**
+     * Log which belongs to the next step
+     */
+    type: "next";
+  };
 
 type FailureFunctionLog = {
   /**
@@ -447,3 +447,9 @@ export type DLQResumeRestartResponse = {
    */
   workflowCreatedAt: string;
 };
+
+export type WorkflowFilters = {
+  fromDate?: string
+  toDate?: string
+  label?: string
+}

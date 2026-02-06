@@ -5,7 +5,7 @@ import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
-import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
+import { WorkflowFilters, TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
@@ -23,7 +23,17 @@ export class Client {
   private client: QStashClient;
 
   constructor(clientConfig: ClientConfig) {
-    // TODO: add warning back
+    if (!clientConfig?.token) {
+      console.error(
+        "QStash token is required for Upstash Workflow!\n\n" +
+        "To fix this:\n" +
+        "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
+        "2. Initialize the workflow client with:\n\n" +
+        "   const client = new Client({\n" +
+        "     token: '<YOUR_QSTASH_TOKEN>'\n" +
+        "   });"
+      );
+    }
     this.client = new QStashClient(clientConfig);
   }
 
@@ -81,10 +91,12 @@ export class Client {
   public async cancel({
     ids,
     urlStartingWith,
+    filters,
     all,
   }: {
     ids?: string | string[];
     urlStartingWith?: string;
+    filters?: WorkflowFilters;
     all?: true;
   }) {
     let body: string;
@@ -96,6 +108,12 @@ export class Client {
       body = JSON.stringify({ workflowUrl: urlStartingWith });
     } else if (all) {
       body = "{}";
+    } else if (filters) {
+      body = JSON.stringify({
+        ...filters,
+        ...(filters.fromDate ? { fromDate: Number(filters.fromDate) } : {}),
+        ...(filters.toDate ? { toDate: Number(filters.toDate) } : {}),
+      });
     } else {
       throw new TypeError("The `cancel` method cannot be called without any options.");
     }

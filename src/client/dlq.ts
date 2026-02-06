@@ -78,7 +78,7 @@ type PublicDLQMessage = Pick<
 >;
 
 export class DLQ {
-  constructor(private client: QStashClient) {}
+  constructor(private client: QStashClient) { }
 
   /**
    * list the items in the DLQ
@@ -157,10 +157,11 @@ export class DLQ {
   async resume(parameters: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
   async resume(parameters: DLQResumeRestartOptions) {
     const { headers, queryParams } = DLQ.handleDLQOptions(parameters);
+    const path = queryParams ? `resume?${queryParams}` : "resume";
     const { workflowRuns } = await this.client.http.request<{
       workflowRuns: DLQResumeRestartResponse[];
     }>({
-      path: ["v2", "workflows", "dlq", `resume?${queryParams}`],
+      path: ["v2", "workflows", "dlq", path],
       headers,
       method: "POST",
     });
@@ -217,10 +218,11 @@ export class DLQ {
   async restart(parameters: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
   async restart(parameters: DLQResumeRestartOptions) {
     const { headers, queryParams } = DLQ.handleDLQOptions(parameters);
+    const path = queryParams ? `restart?${queryParams}` : "restart";
     const { workflowRuns } = await this.client.http.request<{
       workflowRuns: DLQResumeRestartResponse[];
     }>({
-      path: ["v2", "workflows", "dlq", `restart?${queryParams}`],
+      path: ["v2", "workflows", "dlq", path],
       headers,
       method: "POST",
     });
@@ -244,6 +246,25 @@ export class DLQ {
       method: "POST",
     });
 
+    return response;
+  }
+
+  /**
+   * Delete multiple DLQ messages using their `dlqId`s
+   *
+   * @param dlqIds - The IDs of the DLQ messages to delete
+   * @returns number of deleted DLQ messages
+   */
+
+  async delete(request: { dlqIds: string | string[] }) {
+    const queryParams = DLQ.getDlqIdQueryParameter(request.dlqIds);
+    const path = queryParams ? `dlq?${queryParams}` : "dlq";
+    const response = await this.client.http.request<{
+      deleted: number;
+    }>({
+      path: ["v2", "workflows", path],
+      method: "DELETE",
+    });
     return response;
   }
 
