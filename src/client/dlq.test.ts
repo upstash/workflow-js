@@ -161,8 +161,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.resume({ dlqId });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -212,8 +212,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.resume({ dlqId, flowControl });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -240,8 +240,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.resume({ dlqId, retries });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -268,8 +268,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.resume({ dlqId, flowControl, retries });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -447,8 +447,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.restart({ dlqId });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -498,8 +498,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.restart({ dlqId, flowControl });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -526,8 +526,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.restart({ dlqId, retries });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,
@@ -554,8 +554,8 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.restart({ dlqId, flowControl, retries });
-          expect(result[0].workflowRunId).toBe(workflowRunId);
-          expect(result[0].workflowCreatedAt).toBe(workflowCreatedAt);
+          expect(result.workflowRunId).toBe(workflowRunId);
+          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
         },
         responseFields: {
           status: 200,

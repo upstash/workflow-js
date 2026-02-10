@@ -78,7 +78,7 @@ type PublicDLQMessage = Pick<
 >;
 
 export class DLQ {
-  constructor(private client: QStashClient) {}
+  constructor(private client: QStashClient) { }
 
   /**
    * list the items in the DLQ
@@ -131,7 +131,7 @@ export class DLQ {
    *   retries: 3,
    * });
    *
-   * console.log(response[0].workflowRunId); // ID of the new workflow run
+   * console.log(response.workflowRunId); // ID of the new workflow run
    * ```
    *
    * Example with multiple DLQ IDs:
@@ -153,8 +153,16 @@ export class DLQ {
    * @returns run id and creation time of the new workflow run(s).
    */
   async resume(
+    request: DLQResumeRestartOptions<string>
+  ): Promise<DLQResumeRestartResponse>;
+  async resume(
+    request: DLQResumeRestartOptions<string[]>
+  ): Promise<DLQResumeRestartResponse[]>;
+  async resume(request: WorkflowBulkFilters): Promise<DLQResumeRestartResponse[]>;
+
+  async resume(
     request: DLQResumeRestartOptions | WorkflowBulkFilters
-  ): Promise<DLQResumeRestartResponse[]> {
+  ): Promise<DLQResumeRestartResponse | DLQResumeRestartResponse[]> {
     // Filter-based resume
     if (!("dlqId" in request)) {
       const { workflowRuns } = await this.client.http.request<{
@@ -182,7 +190,9 @@ export class DLQ {
       headers,
       method: "POST",
     });
-    return workflowRuns;
+
+    // Return single response for string dlqId, array for array dlqId
+    return typeof request.dlqId === "string" ? workflowRuns[0] : workflowRuns;
   }
 
   /**
@@ -205,7 +215,7 @@ export class DLQ {
    *   retries: 3,
    * });
    *
-   * console.log(response[0].workflowRunId); // ID of the new workflow run
+   * console.log(response.workflowRunId); // ID of the new workflow run
    * ```
    *
    * Example with multiple DLQ IDs:
@@ -227,8 +237,16 @@ export class DLQ {
    * @returns run id and creation time of the new workflow run(s).
    */
   async restart(
+    request: DLQResumeRestartOptions<string>
+  ): Promise<DLQResumeRestartResponse>;
+  async restart(
+    request: DLQResumeRestartOptions<string[]>
+  ): Promise<DLQResumeRestartResponse[]>;
+  async restart(request: WorkflowBulkFilters): Promise<DLQResumeRestartResponse[]>;
+
+  async restart(
     request: DLQResumeRestartOptions | WorkflowBulkFilters
-  ): Promise<DLQResumeRestartResponse[]> {
+  ): Promise<DLQResumeRestartResponse | DLQResumeRestartResponse[]> {
     // Filter-based restart
     if (!("dlqId" in request)) {
       const { workflowRuns } = await this.client.http.request<{
@@ -256,7 +274,9 @@ export class DLQ {
       headers,
       method: "POST",
     });
-    return workflowRuns;
+
+    // Return single response for string dlqId, array for array dlqId
+    return typeof request.dlqId === "string" ? workflowRuns[0] : workflowRuns;
   }
 
   /**
