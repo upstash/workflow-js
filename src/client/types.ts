@@ -167,50 +167,50 @@ export type StepError = {
 
 type StepLogGroup =
   | {
-    /**
-     * Log which belongs to a single step
-     */
-    steps: [StepLog];
-    /**
-     * Log which belongs to a single step
-     */
-    type: "sequential";
-  }
+      /**
+       * Log which belongs to a single step
+       */
+      steps: [StepLog];
+      /**
+       * Log which belongs to a single step
+       */
+      type: "sequential";
+    }
   | {
-    /**
-     * Log which belongs to parallel steps
-     */
-    steps: StepLog[];
-    /**
-     * Log which belongs to parallel steps
-     */
-    type: "parallel";
-  }
+      /**
+       * Log which belongs to parallel steps
+       */
+      steps: StepLog[];
+      /**
+       * Log which belongs to parallel steps
+       */
+      type: "parallel";
+    }
   | {
-    /**
-     * Log which belongs to the next step
-     */
-    steps: {
-      messageId: string;
-      state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
       /**
-       * retries
+       * Log which belongs to the next step
        */
-      retries: number;
+      steps: {
+        messageId: string;
+        state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
+        /**
+         * retries
+         */
+        retries: number;
+        /**
+         * retry delay parameter for the step if it was set
+         */
+        retryDelay?: string;
+        /**
+         * errors which occured in the step
+         */
+        errors?: StepError[];
+      }[];
       /**
-       * retry delay parameter for the step if it was set
+       * Log which belongs to the next step
        */
-      retryDelay?: string;
-      /**
-       * errors which occured in the step
-       */
-      errors?: StepError[];
-    }[];
-    /**
-     * Log which belongs to the next step
-     */
-    type: "next";
-  };
+      type: "next";
+    };
 
 type FailureFunctionLog = {
   /**
