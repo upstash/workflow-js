@@ -5,7 +5,7 @@ import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
-import { WorkflowFilters, TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
+import { WorkflowBulkFilters, TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
@@ -96,7 +96,7 @@ export class Client {
   }: {
     ids?: string | string[];
     urlStartingWith?: string;
-    filters?: WorkflowFilters;
+    filters?: Pick<WorkflowBulkFilters, "fromDate" | "toDate" | "label">;
     all?: true;
   }) {
     let body: string;

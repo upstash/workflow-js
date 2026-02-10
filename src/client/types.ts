@@ -448,8 +448,10 @@ export type DLQResumeRestartResponse = {
   workflowCreatedAt: string;
 };
 
-export type WorkflowFilters = {
-  fromDate?: string
-  toDate?: string
-  label?: string
-}
+export type WorkflowBulkFilters = {
+  workflowRunIds?: string[];
+  workflowUrl?: string;
+  fromDate?: string;
+  toDate?: string;
+  label?: string;
+};

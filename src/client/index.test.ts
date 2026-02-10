@@ -54,6 +54,25 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel single workflow run id passed as array", async () => {
+      const ids = [`wfr-${nanoid()}`];
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ids });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: { workflowRunIds: ids },
+        },
+      });
+    });
+
     test("should cancel workflowUrl", async () => {
       const urlStartingWith = "http://workflow-endpoint.com";
       await mockQStashServer({
