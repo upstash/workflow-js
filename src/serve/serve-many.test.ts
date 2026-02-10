@@ -200,7 +200,7 @@ describe("serveMany", () => {
               "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
             workflowRunId: "wfr_id",
-            workflowCreatedAt: Number(workflowCreatedAt),
+            workflowRunCreatedAt: Number(workflowCreatedAt),
             workflowUrl: "https://requestcatcher.com/api/workflowTwo",
             step: {
               stepId: 1,
@@ -374,7 +374,7 @@ describe("serveMany", () => {
               "content-type": ["application/json"],
             },
             workflowRunId: "wfr_id",
-            workflowCreatedAt: Number(workflowCreatedAt),
+            workflowRunCreatedAt: Number(workflowCreatedAt),
             workflowUrl: "https://requestcatcher.com/api/workflowFive",
             step: {
               stepId: 1,
@@ -431,7 +431,7 @@ describe("serveMany", () => {
             },
             workflowRunId: "wfr_id",
             workflowUrl: "https://requestcatcher.com/api/workflowSix",
-            workflowCreatedAt: Number(workflowCreatedAt),
+            workflowRunCreatedAt: Number(workflowCreatedAt),
           },
         },
       });
@@ -528,8 +528,8 @@ describe("serveMany", () => {
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowEight"],
               "content-type": ["application/json"],
             },
-            workflowRunId: expect.any(String),
-            workflowCreatedAt: Number(workflowCreatedAt),
+            workflowRunId: "wfr_id",
+            workflowRunCreatedAt: Number(workflowCreatedAt),
             workflowUrl: "https://requestcatcher.com/api/workflowEight",
             step: {
               stepId: 1,
