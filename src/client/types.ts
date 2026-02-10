@@ -449,7 +449,7 @@ export type DLQResumeRestartResponse = {
 };
 
 export type WorkflowBulkFilters = {
-  workflowRunIds?: string[];
+  workflowRunId?: string;
   workflowUrl?: string;
   fromDate?: string;
   toDate?: string;

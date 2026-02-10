@@ -110,16 +110,11 @@ describe("workflow client", () => {
       });
     });
 
-    test("should throw if no option", async () => {
-      const throws = () => client.cancel({});
-      expect(throws).toThrow("The `cancel` method cannot be called without any options.");
-    });
-
     test("should cancel with label filter", async () => {
       const filters = { label: "test-label" };
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ filters });
+          await client.cancel({ ...filters });
         },
         responseFields: {
           status: 200,
@@ -141,7 +136,7 @@ describe("workflow client", () => {
       };
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ filters });
+          await client.cancel({ ...filters });
         },
         responseFields: {
           status: 200,
@@ -167,7 +162,7 @@ describe("workflow client", () => {
       };
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ filters });
+          await client.cancel({ ...filters });
         },
         responseFields: {
           status: 200,
@@ -192,7 +187,7 @@ describe("workflow client", () => {
       };
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ filters });
+          await client.cancel({ ...filters });
         },
         responseFields: {
           status: 200,
@@ -215,7 +210,7 @@ describe("workflow client", () => {
       };
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ filters });
+          await client.cancel({ ...filters });
         },
         responseFields: {
           status: 200,

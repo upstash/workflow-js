@@ -1,9 +1,5 @@
 import { Client as QStashClient } from "@upstash/qstash";
-import {
-  DLQResumeRestartOptions,
-  DLQResumeRestartResponse,
-  WorkflowBulkFilters,
-} from "./types";
+import { DLQResumeRestartOptions, DLQResumeRestartResponse, WorkflowBulkFilters } from "./types";
 import { prepareFlowControl } from "../qstash/headers";
 
 type QStashDLQFilterOptions = NonNullable<
@@ -82,7 +78,7 @@ type PublicDLQMessage = Pick<
 >;
 
 export class DLQ {
-  constructor(private client: QStashClient) { }
+  constructor(private client: QStashClient) {}
 
   /**
    * list the items in the DLQ
