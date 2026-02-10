@@ -714,7 +714,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
       ),
       workflowRunId: context.workflowRunId,
-      workflowCreatedAt: context.workflowRunCreatedAt,
+      workflowRunCreatedAt: context.workflowRunCreatedAt,
       workflowUrl: context.url,
       step,
     };
