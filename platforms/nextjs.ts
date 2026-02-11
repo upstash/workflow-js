@@ -6,6 +6,13 @@ import type { RouteFunction, WorkflowServeOptions, Telemetry, InvokableWorkflow 
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
+import { ensureDevServer } from "../src/dev-server";
+
+// In dev mode, eagerly start the dev server at import time so it's ready
+// before any Client or serve() call.
+if (typeof process !== "undefined" && process.env.WORKFLOW_DEV === "true") {
+  ensureDevServer(process.env);
+}
 
 const appTelemetry: Telemetry = {
   sdk: SDK_TELEMETRY,

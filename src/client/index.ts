@@ -7,6 +7,7 @@ import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
 import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
+import { DEV_QSTASH_TOKEN, ensureDevServer, getDevCredentials } from "../dev-server";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -21,10 +22,39 @@ type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
  */
 export class Client {
   private client: QStashClient;
+  private devMode: boolean;
 
-  constructor(clientConfig: ClientConfig) {
-    // TODO: add warning back
-    this.client = new QStashClient(clientConfig);
+  constructor(clientConfig?: ClientConfig) {
+    const env =
+      typeof process === "undefined" ? ({} as Record<string, string | undefined>) : process.env;
+    this.devMode = env.WORKFLOW_DEV === "true";
+
+    if (this.devMode) {
+      const port = Number(env.WORKFLOW_DEV_PORT) || 8080;
+      const creds = getDevCredentials(port);
+      this.client = new QStashClient({
+        ...clientConfig,
+        token: DEV_QSTASH_TOKEN,
+        baseUrl: creds.QSTASH_URL,
+      });
+    } else if (!clientConfig) {
+      throw new Error(
+        "[Upstash Workflow] Client requires a token. Either pass { token: '...' } or set WORKFLOW_DEV=true."
+      );
+    } else {
+      this.client = new QStashClient(clientConfig);
+    }
+  }
+
+  /**
+   * In dev mode, ensures the dev server is running before making requests.
+   * If a server is already listening on the port (started by another process
+   * or by a platform's serve()), this is a no-op.
+   */
+  private async ensureReady(): Promise<void> {
+    if (this.devMode) {
+      await ensureDevServer(process.env);
+    }
   }
 
   /**
@@ -87,6 +117,7 @@ export class Client {
     urlStartingWith?: string;
     all?: true;
   }) {
+    await this.ensureReady();
     let body: string;
     if (ids) {
       const runIdArray = typeof ids === "string" ? [ids] : ids;
@@ -135,6 +166,7 @@ export class Client {
     eventId: string;
     eventData?: unknown;
   }): Promise<NotifyResponse[]> {
+    await this.ensureReady();
     return await makeNotifyRequest(this.client.http, eventId, eventData);
   }
 
@@ -153,6 +185,7 @@ export class Client {
    * @param eventId event id to check
    */
   public async getWaiters({ eventId }: { eventId: string }): Promise<Required<Waiter>[]> {
+    await this.ensureReady();
     return await makeGetWaitersRequest(this.client.http, eventId);
   }
 
@@ -226,6 +259,7 @@ export class Client {
   public async trigger(
     params: TriggerOptions | TriggerOptions[]
   ): Promise<{ workflowRunId: string } | { workflowRunId: string }[]> {
+    await this.ensureReady();
     const isBatchInput = Array.isArray(params);
     const options = isBatchInput ? params : [params];
 
@@ -309,6 +343,7 @@ export class Client {
     workflowCreatedAt?: WorkflowRunLog["workflowRunCreatedAt"];
     label?: WorkflowRunLog["label"];
   }): Promise<WorkflowRunLogs> {
+    await this.ensureReady();
     const { workflowRunId, cursor, count, state, workflowUrl, workflowCreatedAt } = params ?? {};
 
     const urlParams = new URLSearchParams({ groupBy: "workflowRunId" });

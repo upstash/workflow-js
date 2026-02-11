@@ -7,6 +7,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
 } from "../constants";
 import { WorkflowContext } from "../context";
+import { getDevCredentials } from "../dev-server";
 import {
   formatWorkflowError,
   isInstanceOf,
@@ -59,21 +60,28 @@ export const serveBase = <
 ): {
   handler: (request: TRequest) => Promise<TResponse>;
 } => {
-  // Prepares options with defaults if they are not provided.
+  // Detect dev mode from the environment
+  const environment =
+    options?.env ?? (typeof process === "undefined" ? ({} as Record<string, string>) : process.env);
+  const devMode = environment.WORKFLOW_DEV === "true";
 
-  const {
-    initialPayloadParser,
-    url,
-    failureFunction,
-    baseUrl,
-    env,
-    disableTelemetry,
-    middlewares,
-    internal,
-  } = processOptions<TInitialPayload, TResult, TResponse>(options, internalOptions);
-  telemetry = disableTelemetry ? undefined : telemetry;
+  // In dev mode, inject the well-known dev credentials immediately so
+  // processOptions can create the QStash client without waiting for the server.
+  if (devMode) {
+    const port = Number(environment.WORKFLOW_DEV_PORT) || 8080;
+    const creds = getDevCredentials(port);
+    for (const [k, v] of Object.entries(creds)) {
+      if (!environment[k]) {
+        environment[k] = v;
+      }
+    }
+  }
 
-  const { generateResponse: responseGenerator, useJSONContent } = internal;
+  type ProcessedOptions = ReturnType<typeof processOptions<TInitialPayload, TResult, TResponse>>;
+  const resolvedOptions: ProcessedOptions = processOptions<TInitialPayload, TResult, TResponse>(
+    options,
+    internalOptions
+  );
 
   /**
    * Handles the incoming request, triggering the appropriate workflow steps.
@@ -88,6 +96,17 @@ export const serveBase = <
     request: TRequest,
     middlewareManager: MiddlewareManager<TInitialPayload, TResult>
   ) => {
+    const {
+      initialPayloadParser,
+      url,
+      failureFunction,
+      baseUrl,
+      env,
+      disableTelemetry: optDisableTelemetry,
+      internal,
+    } = resolvedOptions;
+    const currentTelemetry = optDisableTelemetry ? undefined : telemetry;
+    const { generateResponse: responseGenerator, useJSONContent } = internal;
     await middlewareManager.dispatchDebug("onInfo", {
       info: `Received request for workflow execution.`,
     });
@@ -195,7 +214,7 @@ export const serveBase = <
       steps,
       url: workflowUrl,
       env,
-      telemetry,
+      telemetry: currentTelemetry,
       invokeCount,
       label,
       middlewareManager,
@@ -228,7 +247,7 @@ export const serveBase = <
       requestPayload: rawInitialPayload,
       client: regionalClient,
       workflowUrl,
-      telemetry,
+      telemetry: currentTelemetry,
       middlewareManager,
     });
     if (callReturnCheck.isErr()) {
@@ -239,7 +258,7 @@ export const serveBase = <
         ? await triggerFirstInvocation({
             workflowContext,
             useJSONContent,
-            telemetry,
+            telemetry: currentTelemetry,
             invokeCount,
             middlewareManager,
             unknownSdk,
@@ -317,7 +336,9 @@ export const serveBase = <
 
   const safeHandler = async (request: TRequest) => {
     // Create middleware manager for this request
-    const middlewareManager = new MiddlewareManager<TInitialPayload, TResult>(middlewares);
+    const middlewareManager = new MiddlewareManager<TInitialPayload, TResult>(
+      resolvedOptions.middlewares
+    );
 
     try {
       return await handler(request, middlewareManager);

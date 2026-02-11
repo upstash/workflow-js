@@ -4,6 +4,7 @@ import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
+import { ensureDevServer } from "../src/dev-server";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -36,6 +37,14 @@ export const serve = <
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
+  // In dev mode, eagerly start the dev server at setup time (not on first request).
+  // ensureDevServer is a singleton, so this is safe to call multiple times.
+  const processEnv =
+    typeof process === "undefined" ? ({} as Record<string, string | undefined>) : process.env;
+  if (processEnv.WORKFLOW_DEV === "true") {
+    ensureDevServer(processEnv);
+  }
+
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
     const environment = context.env
       ? context.env
@@ -47,7 +56,7 @@ export const serve = <
     const { handler: serveHandler } = serveBase(routeFunction, telemetry, {
       // when hono is used without cf workers, it sends a DebugHTTPServer
       // object in `context.env`. don't pass env if this is the case:
-      env: "QSTASH_TOKEN" in environment ? environment : undefined,
+      env: "QSTASH_TOKEN" in environment || "WORKFLOW_DEV" in environment ? environment : undefined,
       ...options,
     });
     return await serveHandler(request);
