@@ -512,6 +512,7 @@ describe("workflow client", () => {
             workflowRunId,
             steps: [],
             url: "https://httpstat.us/200",
+            workflowRunCreatedAt: 0,
           }),
         });
 
@@ -656,6 +657,7 @@ describe("workflow client", () => {
             workflowRunId,
             steps: [],
             url: "https://httpstat.us/400",
+            workflowRunCreatedAt: 0,
           }),
           failureUrl: "https://400check.requestcatcher.com/",
           retries: 0,

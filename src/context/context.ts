@@ -61,6 +61,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly workflowRunId: string;
   /**
+   * Creation time of the workflow run
+   */
+  public readonly workflowRunCreatedAt: number;
+  /**
    * URL of the workflow
    *
    * Can be overwritten by passing a `url` parameter in `serve`:
@@ -153,6 +157,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   constructor({
     qstashClient,
     workflowRunId,
+    workflowRunCreatedAt,
     headers,
     steps,
     url,
@@ -165,6 +170,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
+    workflowRunCreatedAt: number;
     headers: Headers;
     steps: Step[];
     url: string;
@@ -177,6 +183,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
+    this.workflowRunCreatedAt = workflowRunCreatedAt;
     this.steps = steps;
     this.url = url;
     this.headers = headers;
