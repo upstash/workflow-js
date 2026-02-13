@@ -54,6 +54,25 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel single workflow run id passed as array", async () => {
+      const ids = [`wfr-${nanoid()}`];
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ids });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: { workflowRunIds: ids },
+        },
+      });
+    });
+
     test("should cancel workflowUrl", async () => {
       const urlStartingWith = "http://workflow-endpoint.com";
       await mockQStashServer({
@@ -91,9 +110,121 @@ describe("workflow client", () => {
       });
     });
 
-    test("should throw if no option", async () => {
-      const throws = () => client.cancel({});
-      expect(throws).toThrow("The `cancel` method cannot be called without any options.");
+    test("should cancel with label filter", async () => {
+      const filters = { label: "test-label" };
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ...filters });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: { label: "test-label" },
+        },
+      });
+    });
+
+    test("should cancel with fromDate and toDate filters (converted to numbers)", async () => {
+      const filters = {
+        fromDate: "1640995200000",
+        toDate: "1672531200000",
+      };
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ...filters });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: {
+            fromDate: 1640995200000,
+            toDate: 1672531200000,
+          },
+        },
+      });
+    });
+
+    test("should cancel with all filter fields", async () => {
+      const filters = {
+        label: "my-workflow-label",
+        fromDate: "1640995200000",
+        toDate: "1672531200000",
+      };
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ...filters });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: {
+            label: "my-workflow-label",
+            fromDate: 1640995200000,
+            toDate: 1672531200000,
+          },
+        },
+      });
+    });
+
+    test("should cancel with filters when only fromDate is provided", async () => {
+      const filters = {
+        fromDate: "1640995200000",
+      };
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ...filters });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: {
+            fromDate: 1640995200000,
+          },
+        },
+      });
+    });
+
+    test("should cancel with filters when only toDate is provided", async () => {
+      const filters = {
+        toDate: "1672531200000",
+      };
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ ...filters });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: {
+            toDate: 1672531200000,
+          },
+        },
+      });
     });
   });
 
