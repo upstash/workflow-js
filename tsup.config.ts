@@ -12,6 +12,7 @@ export default defineConfig({
     astro: "./platforms/astro.ts",
     express: "./platforms/express.ts",
     tanstack: "./platforms/tanstack.ts",
+    "react-router": "./platforms/react-router.ts",
   },
   format: ["cjs", "esm"],
   clean: true,
