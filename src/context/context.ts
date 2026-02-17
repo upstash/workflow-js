@@ -22,11 +22,12 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import { WorkflowCancelAbort } from "../error";
+import { isInstanceOf, WorkflowCancelAbort, WorkflowNonRetryableError } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 import { MiddlewareManager } from "../middleware/manager";
+import { QstashError } from "@upstash/qstash";
 
 /**
  * Upstash Workflow context
@@ -477,7 +478,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * DisabledWorkflowContext.
    */
   protected async addStep<TResult = unknown>(step: BaseLazyStep<TResult>) {
-    return await this.executor.addStep(step);
+    try {
+      return await this.executor.addStep(step);
+    } catch (error) {
+      if (isInstanceOf(error, QstashError) && error.status === 412) {
+        throw new WorkflowNonRetryableError(error.message);
+      }
+      throw error;
+    }
   }
 
   public get api() {

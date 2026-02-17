@@ -109,6 +109,9 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   },
   {
     route: "qstash-trigger-fetch/workflows/mainWorkflow",
+  },
+  {
+    route: "quota-error/workflows/mainWorkflow",
   }
 
   /**
