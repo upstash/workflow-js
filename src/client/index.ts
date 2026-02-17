@@ -26,12 +26,12 @@ export class Client {
     if (!clientConfig?.token) {
       console.error(
         "QStash token is required for Upstash Workflow!\n\n" +
-          "To fix this:\n" +
-          "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
-          "2. Initialize the workflow client with:\n\n" +
-          "   const client = new Client({\n" +
-          "     token: '<YOUR_QSTASH_TOKEN>'\n" +
-          "   });"
+        "To fix this:\n" +
+        "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
+        "2. Initialize the workflow client with:\n\n" +
+        "   const client = new Client({\n" +
+        "     token: '<YOUR_QSTASH_TOKEN>'\n" +
+        "   });"
       );
     }
     this.client = new QStashClient(clientConfig);
@@ -99,10 +99,6 @@ export class Client {
     fromDate,
     toDate,
     label,
-    /**
-     * @deprecated by default if no option is provided, all workflows will be cancelled.
-     */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     all,
   }: {
     ids?: string | string[];
@@ -113,23 +109,26 @@ export class Client {
     label?: string;
     all?: true;
   }) {
-    let body: Record<string, unknown> = {};
-    if (ids) {
-      const runIdArray = typeof ids === "string" ? [ids] : ids;
-
-      body = { workflowRunIds: runIdArray };
-    } else if (workflowUrl) {
-      body = { workflowUrl };
-    } else if (urlStartingWith) {
-      body = { workflowUrl: urlStartingWith };
-    }
-
-    body = {
-      ...body,
+    let body: Record<string, unknown> =
+    {
       ...(fromDate ? { fromDate: Number(fromDate) } : {}),
       ...(toDate ? { toDate: Number(toDate) } : {}),
       ...(label ? { label } : {}),
     };
+
+    if (ids) {
+      const runIdArray = typeof ids === "string" ? [ids] : ids;
+
+      body = { ...body, workflowRunIds: runIdArray };
+    } else if (workflowUrl) {
+      body = { ...body, workflowUrl };
+    } else if (urlStartingWith) {
+      body = { ...body, workflowUrl: urlStartingWith };
+    } else if (all) {
+      body = { ...body };
+    } else if (Object.keys(body).length === 0) {
+      throw new TypeError("The `cancel` method cannot be called without any options.");
+    }
 
     const result = await this.client.http.request<{ cancelled: number }>({
       path: ["v2", "workflows", "runs"],

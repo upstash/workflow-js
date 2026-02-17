@@ -20,11 +20,12 @@ describe("workflow client", () => {
       const ids = `wfr-${nanoid()}`;
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ ids });
+          const result = await client.cancel({ ids });
+          expect(result).toEqual({ cancelled: 1 });
         },
         responseFields: {
           status: 200,
-          body: "msgId",
+          body: { cancelled: 1 },
         },
         receivesRequest: {
           method: "DELETE",
@@ -39,11 +40,12 @@ describe("workflow client", () => {
       const ids = [`wfr-${nanoid()}`, `wfr-${nanoid()}`];
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ ids });
+          const result = await client.cancel({ ids });
+          expect(result).toEqual({ cancelled: 2 });
         },
         responseFields: {
           status: 200,
-          body: "msgId",
+          body: { cancelled: 2 },
         },
         receivesRequest: {
           method: "DELETE",
@@ -77,11 +79,12 @@ describe("workflow client", () => {
       const urlStartingWith = "http://workflow-endpoint.com";
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ urlStartingWith });
+          const result = await client.cancel({ urlStartingWith });
+          expect(result).toEqual({ cancelled: 5 });
         },
         responseFields: {
           status: 200,
-          body: "msgId",
+          body: { cancelled: 5 },
         },
         receivesRequest: {
           method: "DELETE",
@@ -95,11 +98,12 @@ describe("workflow client", () => {
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {
-          await client.cancel({ all: true });
+          const result = await client.cancel({ all: true });
+          expect(result).toEqual({ cancelled: 10 });
         },
         responseFields: {
           status: 200,
-          body: "msgId",
+          body: { cancelled: 10 },
         },
         receivesRequest: {
           method: "DELETE",
@@ -108,6 +112,16 @@ describe("workflow client", () => {
           body: {},
         },
       });
+    });
+
+    test("should throw error when called without any options", async () => {
+      await expect(async () => {
+        await client.cancel({});
+      }).toThrow(TypeError);
+      
+      await expect(async () => {
+        await client.cancel({});
+      }).toThrow("The `cancel` method cannot be called without any options.");
     });
 
     test("should cancel with label filter", async () => {

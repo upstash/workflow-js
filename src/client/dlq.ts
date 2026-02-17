@@ -78,7 +78,7 @@ type PublicDLQMessage = Pick<
 >;
 
 export class DLQ {
-  constructor(private client: QStashClient) { }
+  constructor(private client: QStashClient) {}
 
   /**
    * list the items in the DLQ
@@ -152,12 +152,8 @@ export class DLQ {
    *     If not passed, retries settings of the failing workflow will be used.
    * @returns run id and creation time of the new workflow run(s).
    */
-  async resume(
-    request: DLQResumeRestartOptions<string>
-  ): Promise<DLQResumeRestartResponse>;
-  async resume(
-    request: DLQResumeRestartOptions<string[]>
-  ): Promise<DLQResumeRestartResponse[]>;
+  async resume(request: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>;
+  async resume(request: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
   async resume(request: WorkflowBulkFilters): Promise<DLQResumeRestartResponse[]>;
 
   async resume(
@@ -236,12 +232,8 @@ export class DLQ {
    *     If not passed, retries settings of the failing workflow will be used.
    * @returns run id and creation time of the new workflow run(s).
    */
-  async restart(
-    request: DLQResumeRestartOptions<string>
-  ): Promise<DLQResumeRestartResponse>;
-  async restart(
-    request: DLQResumeRestartOptions<string[]>
-  ): Promise<DLQResumeRestartResponse[]>;
+  async restart(request: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>;
+  async restart(request: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
   async restart(request: WorkflowBulkFilters): Promise<DLQResumeRestartResponse[]>;
 
   async restart(
