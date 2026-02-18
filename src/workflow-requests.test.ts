@@ -62,6 +62,7 @@ describe("Workflow Requests", () => {
       url: WORKFLOW_ENDPOINT,
       label,
       middlewareManager: new MiddlewareManager(),
+      workflowRunCreatedAt: 0,
     });
 
     expect(context.label).toBe(label);
@@ -103,6 +104,7 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
+      workflowRunCreatedAt: 0,
     });
 
     await mockQStashServer({
@@ -217,6 +219,7 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
+      workflowRunCreatedAt: 0,
     });
 
     const finished = new FinishState();
@@ -287,6 +290,7 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
+      workflowRunCreatedAt: 0,
     });
 
     const finished = new FinishState();
@@ -320,6 +324,7 @@ describe("Workflow Requests", () => {
       headers: new Headers({}) as Headers,
       steps: [],
       url: WORKFLOW_ENDPOINT,
+      workflowRunCreatedAt: 0,
     });
 
     const spy = spyOn(context.qstashClient.http, "request");
@@ -567,6 +572,7 @@ describe("Workflow Requests", () => {
       const mockContext = new WorkflowContext({
         qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
         workflowRunId: "test-run-id",
+        workflowRunCreatedAt: 0,
         headers: new Headers() as Headers,
         steps: [],
         url: WORKFLOW_ENDPOINT,
@@ -616,6 +622,7 @@ describe("Workflow Requests", () => {
       const mockContext = new WorkflowContext({
         qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
         workflowRunId,
+        workflowRunCreatedAt: 0,
         headers: new Headers() as Headers,
         steps: [],
         url: WORKFLOW_ENDPOINT,
@@ -723,6 +730,7 @@ describe("Workflow Requests", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         workflowRunId,
+        workflowRunCreatedAt: 0,
       });
       const lazyStep = new LazyWaitForEventStep(
         context,
@@ -796,6 +804,7 @@ describe("Workflow Requests", () => {
           headers: new Headers({}) as Headers,
           steps: [],
           url: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
         });
 
         await triggerFirstInvocation({ workflowContext: context });
@@ -819,6 +828,7 @@ describe("Workflow Requests", () => {
           headers: new Headers({}) as Headers,
           steps: [],
           url: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
         });
 
         await triggerFirstInvocation({
@@ -870,6 +880,7 @@ describe("Workflow Requests", () => {
           headers: new Headers({}) as Headers,
           steps: [],
           url: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
         });
 
         await triggerFirstInvocation({
@@ -907,6 +918,7 @@ describe("Workflow Requests", () => {
         const context = new WorkflowContext({
           qstashClient,
           workflowRunId: workflowRunId,
+          workflowRunCreatedAt: 0,
           initialPayload: undefined,
           headers: new Headers({}) as Headers,
           steps: [
@@ -969,6 +981,7 @@ describe("Workflow Requests", () => {
         const context = new WorkflowContext({
           qstashClient,
           workflowRunId: workflowRunId,
+          workflowRunCreatedAt: 0,
           initialPayload: undefined,
           headers: new Headers({}) as Headers,
           steps: [],
@@ -988,6 +1001,7 @@ describe("Workflow Requests", () => {
         const noRetryContext = new WorkflowContext({
           qstashClient,
           workflowRunId: workflowRunId,
+          workflowRunCreatedAt: 0,
           initialPayload: undefined,
           headers: new Headers({}) as Headers,
           steps: [],

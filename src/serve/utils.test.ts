@@ -13,6 +13,7 @@ describe("isDisabledWorkflowContext", () => {
       steps: [],
       url: "",
       workflowRunId: "",
+      workflowRunCreatedAt: 0,
     });
 
     expect(isDisabledWorkflowContext(context)).toBeFalse();
@@ -26,6 +27,7 @@ describe("isDisabledWorkflowContext", () => {
       steps: [],
       url: "",
       workflowRunId: "",
+      workflowRunCreatedAt: 0,
     });
 
     expect(isDisabledWorkflowContext(context)).toBeTrue();

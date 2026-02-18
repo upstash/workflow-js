@@ -112,6 +112,9 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   },
   {
     route: "quota-error/workflows/mainWorkflow",
+  },
+  {
+    route: "invoke-parent-failure/workflow",
   }
 
   /**

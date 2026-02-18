@@ -56,6 +56,10 @@
     "./tanstack": {
       "import": "./tanstack.mjs",
       "require": "./tanstack.js"
+    },
+    "./react-router": {
+      "import": "./react-router.mjs",
+      "require": "./react-router.js"
     }
   },
   "scripts": {
@@ -68,7 +72,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/upstash/workflow-ts.git"
+    "url": "git@github.com:upstash/workflow-js.git"
   },
   "keywords": [
     "upstash",
@@ -89,7 +93,7 @@
     "@solidjs/start": "^1.0.8",
     "@sveltejs/kit": "^2.6.1",
     "@types/bun": "^1.1.10",
-    "@types/express": "^5.0.3",
+    "@types/express": "^5.0.6",
     "astro": "^4.16.7",
     "eslint": "^9.11.1",
     "eslint-plugin-unicorn": "^55.0.0",
