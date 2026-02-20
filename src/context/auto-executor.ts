@@ -260,7 +260,8 @@ export class AutoExecutor {
         } catch (error) {
           if (
             isInstanceOf(error, WorkflowAbort) ||
-            (isInstanceOf(error, QstashError) && error.status === 400)
+            (isInstanceOf(error, QstashError) && error.status === 400) ||
+            (isInstanceOf(error, QstashError) && error.status === 412)
           ) {
             throw error;
           }
