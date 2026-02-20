@@ -109,8 +109,7 @@ export class Client {
     label?: string;
     all?: true;
   }) {
-    let body: Record<string, unknown> =
-    {
+    let body: Record<string, unknown> = {
       ...(fromDate ? { fromDate: Number(fromDate) } : {}),
       ...(toDate ? { toDate: Number(toDate) } : {}),
       ...(label ? { label } : {}),
@@ -121,7 +120,7 @@ export class Client {
 
       body = { ...body, workflowRunIds: runIdArray };
     } else if (workflowUrl) {
-      body = { ...body, workflowUrl };
+      body = { ...body, workflowUrl, workflowUrlExactMatch: true };
     } else if (urlStartingWith) {
       body = { ...body, workflowUrl: urlStartingWith };
     } else if (all) {

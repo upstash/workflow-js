@@ -15,6 +15,37 @@ describe("workflow client", () => {
   const token = nanoid();
   const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
+  describe("constructor", () => {
+    test("should log an error when token is missing", () => {
+      const errors: unknown[] = [];
+      const originalConsoleError = console.error;
+      console.error = (...args: unknown[]) => {
+        errors.push(...args);
+      };
+
+      new Client({ token: "" });
+
+      console.error = originalConsoleError;
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(String(errors[0])).toContain("QStash token is required");
+    });
+
+    test("should not log an error when token is provided", () => {
+      const errors: unknown[] = [];
+      const originalConsoleError = console.error;
+      console.error = (...args: unknown[]) => {
+        errors.push(...args);
+      };
+
+      new Client({ token: nanoid() });
+
+      console.error = originalConsoleError;
+
+      expect(errors.length).toBe(0);
+    });
+  });
+
   describe("cancel - mocked", () => {
     test("should cancel single workflow run id", async () => {
       const ids = `wfr-${nanoid()}`;
@@ -95,6 +126,46 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel with exact workflowUrl match", async () => {
+      const workflowUrl = "https://workflow-endpoint.com/specific-path";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ workflowUrl });
+          expect(result).toEqual({ cancelled: 3 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: { workflowUrl, workflowUrlExactMatch: true },
+        },
+      });
+    });
+
+    test("should cancel with exact workflowUrl and additional filters", async () => {
+      const workflowUrl = "https://workflow-endpoint.com/specific-path";
+      const label = "my-label";
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ workflowUrl, label });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
+          token,
+          body: { label, workflowUrl, workflowUrlExactMatch: true },
+        },
+      });
+    });
+
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -118,7 +189,7 @@ describe("workflow client", () => {
       await expect(async () => {
         await client.cancel({});
       }).toThrow(TypeError);
-      
+
       await expect(async () => {
         await client.cancel({});
       }).toThrow("The `cancel` method cannot be called without any options.");
@@ -628,6 +699,70 @@ describe("workflow client", () => {
             `&state=${state}` +
             `&workflowUrl=${encodeURIComponent(workflowUrl)}` +
             `&workflowCreatedAt=${workflowCreatedAt}`,
+          token,
+          body: "",
+        },
+      });
+    });
+
+    test("should send logs request with label filter", async () => {
+      const label = "my-workflow-label";
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.logs({ label });
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "GET",
+          url:
+            `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
+            `&label=${label}`,
+          token,
+          body: "",
+        },
+      });
+    });
+
+    test("should send logs request with all parameters including label", async () => {
+      const count = 5;
+      const cursor = "cursor-abc";
+      const state = "RUN_SUCCESS";
+      const workflowCreatedAt = 456;
+      const workflowRunId = "wfr-456";
+      const workflowUrl = "https://workflow-url.com";
+      const label = "my-workflow-label";
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.logs({
+            count,
+            cursor,
+            state,
+            workflowCreatedAt,
+            workflowRunId,
+            workflowUrl,
+            label,
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "GET",
+          url:
+            `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
+            `&workflowRunId=${workflowRunId}` +
+            `&cursor=${cursor}` +
+            `&count=${count}` +
+            `&state=${state}` +
+            `&workflowUrl=${encodeURIComponent(workflowUrl)}` +
+            `&workflowCreatedAt=${workflowCreatedAt}` +
+            `&label=${label}`,
           token,
           body: "",
         },

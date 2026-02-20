@@ -811,5 +811,163 @@ describe("DLQ", () => {
         },
       });
     });
+
+    test("should delete a single DLQ message passed as a plain string", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const deleted = 1;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete(dlqId);
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?dlqIds=${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should delete multiple DLQ messages passed as a plain string array", async () => {
+      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
+      const deleted = 2;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete(dlqIds);
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
+          token,
+        },
+      });
+    });
+
+    test("should delete DLQ messages with label filter", async () => {
+      const deleted = 4;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({ label: "my-label" });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          token,
+          body: { label: "my-label" },
+        },
+      });
+    });
+
+    test("should delete DLQ messages with workflowUrl filter", async () => {
+      const deleted = 2;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({ workflowUrl: "https://example.com/workflow" });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          token,
+          body: { workflowUrl: "https://example.com/workflow" },
+        },
+      });
+    });
+
+    test("should delete DLQ messages with fromDate and toDate filters (converted to numbers)", async () => {
+      const deleted = 3;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({
+            fromDate: "1640995200000",
+            toDate: "1672531200000",
+          });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          token,
+          body: { fromDate: 1640995200000, toDate: 1672531200000 },
+        },
+      });
+    });
+
+    test("should delete DLQ messages with multiple filters", async () => {
+      const deleted = 1;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({
+            label: "my-label",
+            workflowUrl: "https://example.com/workflow",
+            fromDate: "1640995200000",
+          });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          token,
+          body: {
+            label: "my-label",
+            workflowUrl: "https://example.com/workflow",
+            fromDate: 1640995200000,
+          },
+        },
+      });
+    });
+
+    test("should delete all DLQ messages with all:true filter", async () => {
+      const deleted = 10;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({ all: true });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          token,
+          body: {},
+        },
+      });
+    });
   });
 });
