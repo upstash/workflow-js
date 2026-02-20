@@ -78,7 +78,7 @@ type PublicDLQMessage = Pick<
 >;
 
 export class DLQ {
-  constructor(private client: QStashClient) { }
+  constructor(private client: QStashClient) {}
 
   /**
    * list the items in the DLQ
@@ -166,11 +166,13 @@ export class DLQ {
       }>({
         path: ["v2", "workflows", "dlq", "resume"],
         headers: { "Content-Type": "application/json" },
-        body: request.all ? JSON.stringify({}) : JSON.stringify({
-          ...request,
-          ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
-          ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
-        }),
+        body: request.all
+          ? JSON.stringify({})
+          : JSON.stringify({
+              ...request,
+              ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
+              ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
+            }),
         method: "POST",
       });
       return workflowRuns;
@@ -246,11 +248,13 @@ export class DLQ {
       }>({
         path: ["v2", "workflows", "dlq", "restart"],
         headers: { "Content-Type": "application/json" },
-        body: request.all ? JSON.stringify({}) : JSON.stringify({
-          ...request,
-          ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
-          ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
-        }),
+        body: request.all
+          ? JSON.stringify({})
+          : JSON.stringify({
+              ...request,
+              ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
+              ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
+            }),
         method: "POST",
       });
       return workflowRuns;
@@ -326,11 +330,13 @@ export class DLQ {
       path: ["v2", "workflows", "dlq"],
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: request.all ? JSON.stringify({}) : JSON.stringify({
-        ...request,
-        ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
-        ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
-      }),
+      body: request.all
+        ? JSON.stringify({})
+        : JSON.stringify({
+            ...request,
+            ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
+            ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
+          }),
     });
   }
 
