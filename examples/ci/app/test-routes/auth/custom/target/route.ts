@@ -10,7 +10,8 @@ export const { POST } = serve(async (context) => {
   };
 }, {
   receiver: undefined,
-  async failureFunction({ context }) {
+  async failureFunction({ context, failResponse }) {
+    console.error("failing:", failResponse);
     await fail(context as WorkflowContext)
   },
 })
