@@ -31,7 +31,8 @@ export const { POST, GET } = testServe(
       )
     }, {
       baseUrl: BASE_URL,
-      async failureFunction({ context }) {
+      async failureFunction({ context, failResponse }) {
+        console.error("failing:", failResponse);
         await fail(context as WorkflowContext)
       },
     }

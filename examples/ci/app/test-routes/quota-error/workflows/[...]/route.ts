@@ -176,8 +176,8 @@ export const { POST, GET } = testServe(
     {
       baseUrl: BASE_URL,
       receiver: undefined,
-      failureFunction: async ({ context }) => {
-        console.log("failing");
+      failureFunction: async ({ context, failResponse }) => {
+        console.error("failing:", failResponse);
         await fail(context as WorkflowContext)
       }
     }
