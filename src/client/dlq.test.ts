@@ -379,6 +379,11 @@ describe("DLQ", () => {
       });
     });
 
+    test("should return empty array when dlqId is an empty array", async () => {
+      const result = await client.dlq.resume({ dlqId: [] });
+      expect(result).toEqual([]);
+    });
+
     test("should resume DLQ messages with filters", async () => {
       const responses = [
         { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
@@ -663,6 +668,11 @@ describe("DLQ", () => {
           },
         },
       });
+    });
+
+    test("should return empty array when dlqId is an empty array", async () => {
+      const result = await client.dlq.restart({ dlqId: [] });
+      expect(result).toEqual([]);
     });
 
     test("should restart DLQ messages with filters", async () => {

@@ -1,6 +1,7 @@
 import { Client as QStashClient } from "@upstash/qstash";
 import { DLQResumeRestartOptions, DLQResumeRestartResponse, WorkflowBulkFilters } from "./types";
 import { prepareFlowControl } from "../qstash/headers";
+import { toMs } from "./utils";
 
 type QStashDLQFilterOptions = NonNullable<
   Required<Parameters<QStashClient["dlq"]["listMessages"]>[0]>
@@ -170,8 +171,8 @@ export class DLQ {
           ? JSON.stringify({})
           : JSON.stringify({
               ...request,
-              ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
-              ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
+              ...(request.fromDate !== undefined ? { fromDate: toMs(request.fromDate) } : {}),
+              ...(request.toDate !== undefined ? { toDate: toMs(request.toDate) } : {}),
             }),
         method: "POST",
       });
@@ -180,11 +181,13 @@ export class DLQ {
 
     // DLQ ID-based resume
     const { headers, queryParams } = DLQ.handleDLQOptions(request);
-    const path = queryParams ? `resume?${queryParams}` : "resume";
+    if (!queryParams) {
+      return [];
+    }
     const { workflowRuns } = await this.client.http.request<{
       workflowRuns: DLQResumeRestartResponse[];
     }>({
-      path: ["v2", "workflows", "dlq", path],
+      path: ["v2", "workflows", "dlq", `resume?${queryParams}`],
       headers,
       method: "POST",
     });
@@ -252,8 +255,8 @@ export class DLQ {
           ? JSON.stringify({})
           : JSON.stringify({
               ...request,
-              ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
-              ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
+              ...(request.fromDate !== undefined ? { fromDate: toMs(request.fromDate) } : {}),
+              ...(request.toDate !== undefined ? { toDate: toMs(request.toDate) } : {}),
             }),
         method: "POST",
       });
@@ -262,11 +265,13 @@ export class DLQ {
 
     // DLQ ID-based restart
     const { headers, queryParams } = DLQ.handleDLQOptions(request);
-    const path = queryParams ? `restart?${queryParams}` : "restart";
+    if (!queryParams) {
+      return [];
+    }
     const { workflowRuns } = await this.client.http.request<{
       workflowRuns: DLQResumeRestartResponse[];
     }>({
-      path: ["v2", "workflows", "dlq", path],
+      path: ["v2", "workflows", "dlq", `restart?${queryParams}`],
       headers,
       method: "POST",
     });
@@ -300,7 +305,8 @@ export class DLQ {
    * - A single dlqId: `delete("id")`
    * - An array of dlqIds: `delete(["id1", "id2"])`
    * - An object with dlqIds: `delete({ dlqIds: ["id1", "id2"] })`
-   * - A filter object: `delete({ label: "my-label", fromDate: "..." })`
+   * - A filter object: `delete({ label: "my-label", fromDate: 1640995200000 })`
+   * - To delete all entries: `delete({ all: true })`
    */
   async delete(
     request: string | string[] | { dlqIds: string | string[] } | WorkflowBulkFilters
@@ -334,8 +340,8 @@ export class DLQ {
         ? JSON.stringify({})
         : JSON.stringify({
             ...request,
-            ...(request.fromDate ? { fromDate: Number(request.fromDate) } : {}),
-            ...(request.toDate ? { toDate: Number(request.toDate) } : {}),
+            ...(request.fromDate !== undefined ? { fromDate: toMs(request.fromDate) } : {}),
+            ...(request.toDate !== undefined ? { toDate: toMs(request.toDate) } : {}),
           }),
     });
   }

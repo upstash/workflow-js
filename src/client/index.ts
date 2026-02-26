@@ -1,6 +1,6 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
+import { makeGetWaitersRequest, makeNotifyRequest, toMs } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -23,17 +23,6 @@ export class Client {
   private client: QStashClient;
 
   constructor(clientConfig: ClientConfig) {
-    if (!clientConfig?.token) {
-      console.error(
-        "QStash token is required for Upstash Workflow!\n\n" +
-          "To fix this:\n" +
-          "1. Get your token from the Upstash Console (https://console.upstash.com/qstash)\n" +
-          "2. Initialize the workflow client with:\n\n" +
-          "   const client = new Client({\n" +
-          "     token: '<YOUR_QSTASH_TOKEN>'\n" +
-          "   });"
-      );
-    }
     this.client = new QStashClient(clientConfig);
   }
 
@@ -102,16 +91,17 @@ export class Client {
     all,
   }: {
     ids?: string | string[];
-    urlStartingWith?: string;
-    workflowUrl?: string;
-    fromDate?: string;
-    toDate?: string;
+    fromDate?: Date | number | string;
+    toDate?: Date | number | string;
     label?: string;
-    all?: true;
-  }) {
+    all?: boolean;
+  } & (
+    | { urlStartingWith?: string; workflowUrl?: never }
+    | { workflowUrl?: string; urlStartingWith?: never }
+  )) {
     let body: Record<string, unknown> = {
-      ...(fromDate ? { fromDate: Number(fromDate) } : {}),
-      ...(toDate ? { toDate: Number(toDate) } : {}),
+      ...(fromDate !== undefined ? { fromDate: toMs(fromDate) } : {}),
+      ...(toDate !== undefined ? { toDate: toMs(toDate) } : {}),
       ...(label ? { label } : {}),
     };
 
@@ -124,7 +114,7 @@ export class Client {
     } else if (urlStartingWith) {
       body = { ...body, workflowUrl: urlStartingWith };
     } else if (all) {
-      body = { ...body };
+      body = {};
     } else if (Object.keys(body).length === 0) {
       throw new TypeError("The `cancel` method cannot be called without any options.");
     }
