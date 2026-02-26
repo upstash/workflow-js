@@ -1,6 +1,7 @@
 import { Client as QStashClient } from "@upstash/qstash";
-import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
+import { DLQResumeRestartOptions, DLQResumeRestartResponse, WorkflowBulkFilters } from "./types";
 import { prepareFlowControl } from "../qstash/headers";
+import { toMs } from "./utils";
 
 type QStashDLQFilterOptions = NonNullable<
   Required<Parameters<QStashClient["dlq"]["listMessages"]>[0]>
@@ -138,7 +139,6 @@ export class DLQ {
    * ```ts
    * const response = await client.dlq.resume({
    *  dlqId: ["dlq-12345", "dlq-67890"],
-   *  // other parameters...
    * });
    * console.log(response[0].workflowRunId); // ID of the first workflow run
    * console.log(response[1].workflowRunId); // ID of the second workflow run
@@ -153,10 +153,37 @@ export class DLQ {
    *     If not passed, retries settings of the failing workflow will be used.
    * @returns run id and creation time of the new workflow run(s).
    */
-  async resume(parameters: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>;
-  async resume(parameters: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
-  async resume(parameters: DLQResumeRestartOptions) {
-    const { headers, queryParams } = DLQ.handleDLQOptions(parameters);
+  async resume(request: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>;
+  async resume(request: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
+  async resume(request: WorkflowBulkFilters): Promise<DLQResumeRestartResponse[]>;
+
+  async resume(
+    request: DLQResumeRestartOptions | WorkflowBulkFilters
+  ): Promise<DLQResumeRestartResponse | DLQResumeRestartResponse[]> {
+    // Filter-based resume
+    if (!("dlqId" in request)) {
+      const { workflowRuns } = await this.client.http.request<{
+        workflowRuns: DLQResumeRestartResponse[];
+      }>({
+        path: ["v2", "workflows", "dlq", "resume"],
+        headers: { "Content-Type": "application/json" },
+        body: request.all
+          ? JSON.stringify({})
+          : JSON.stringify({
+              ...request,
+              ...(request.fromDate !== undefined ? { fromDate: toMs(request.fromDate) } : {}),
+              ...(request.toDate !== undefined ? { toDate: toMs(request.toDate) } : {}),
+            }),
+        method: "POST",
+      });
+      return workflowRuns;
+    }
+
+    // DLQ ID-based resume
+    const { headers, queryParams } = DLQ.handleDLQOptions(request);
+    if (!queryParams) {
+      return [];
+    }
     const { workflowRuns } = await this.client.http.request<{
       workflowRuns: DLQResumeRestartResponse[];
     }>({
@@ -165,10 +192,8 @@ export class DLQ {
       method: "POST",
     });
 
-    if (Array.isArray(parameters.dlqId)) {
-      return workflowRuns;
-    }
-    return workflowRuns[0];
+    // Return single response for string dlqId, array for array dlqId
+    return typeof request.dlqId === "string" ? workflowRuns[0] : workflowRuns;
   }
 
   /**
@@ -198,7 +223,6 @@ export class DLQ {
    * ```ts
    * const response = await client.dlq.restart({
    *  dlqId: ["dlq-12345", "dlq-67890"],
-   *  // other parameters...
    * });
    * console.log(response[0].workflowRunId); // ID of the first workflow run
    * console.log(response[1].workflowRunId); // ID of the second workflow run
@@ -213,10 +237,37 @@ export class DLQ {
    *     If not passed, retries settings of the failing workflow will be used.
    * @returns run id and creation time of the new workflow run(s).
    */
-  async restart(parameters: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>;
-  async restart(parameters: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
-  async restart(parameters: DLQResumeRestartOptions) {
-    const { headers, queryParams } = DLQ.handleDLQOptions(parameters);
+  async restart(request: DLQResumeRestartOptions<string>): Promise<DLQResumeRestartResponse>;
+  async restart(request: DLQResumeRestartOptions<string[]>): Promise<DLQResumeRestartResponse[]>;
+  async restart(request: WorkflowBulkFilters): Promise<DLQResumeRestartResponse[]>;
+
+  async restart(
+    request: DLQResumeRestartOptions | WorkflowBulkFilters
+  ): Promise<DLQResumeRestartResponse | DLQResumeRestartResponse[]> {
+    // Filter-based restart
+    if (!("dlqId" in request)) {
+      const { workflowRuns } = await this.client.http.request<{
+        workflowRuns: DLQResumeRestartResponse[];
+      }>({
+        path: ["v2", "workflows", "dlq", "restart"],
+        headers: { "Content-Type": "application/json" },
+        body: request.all
+          ? JSON.stringify({})
+          : JSON.stringify({
+              ...request,
+              ...(request.fromDate !== undefined ? { fromDate: toMs(request.fromDate) } : {}),
+              ...(request.toDate !== undefined ? { toDate: toMs(request.toDate) } : {}),
+            }),
+        method: "POST",
+      });
+      return workflowRuns;
+    }
+
+    // DLQ ID-based restart
+    const { headers, queryParams } = DLQ.handleDLQOptions(request);
+    if (!queryParams) {
+      return [];
+    }
     const { workflowRuns } = await this.client.http.request<{
       workflowRuns: DLQResumeRestartResponse[];
     }>({
@@ -225,10 +276,8 @@ export class DLQ {
       method: "POST",
     });
 
-    if (Array.isArray(parameters.dlqId)) {
-      return workflowRuns;
-    }
-    return workflowRuns[0];
+    // Return single response for string dlqId, array for array dlqId
+    return typeof request.dlqId === "string" ? workflowRuns[0] : workflowRuns;
   }
 
   /**
@@ -239,12 +288,62 @@ export class DLQ {
    * @returns response with workflow run information
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
-    const response = await this.client.http.request<DLQResumeRestartResponse>({
+    const { workflowRuns } = await this.client.http.request<{
+      workflowRuns: DLQResumeRestartResponse[];
+    }>({
       path: ["v2", "workflows", "dlq", "callback", dlqId],
       method: "POST",
     });
 
-    return response;
+    return workflowRuns[0];
+  }
+
+  /**
+   * Delete DLQ messages.
+   *
+   * Can be called with:
+   * - A single dlqId: `delete("id")`
+   * - An array of dlqIds: `delete(["id1", "id2"])`
+   * - An object with dlqIds: `delete({ dlqIds: ["id1", "id2"] })`
+   * - A filter object: `delete({ label: "my-label", fromDate: 1640995200000 })`
+   * - To delete all entries: `delete({ all: true })`
+   */
+  async delete(
+    request: string | string[] | { dlqIds: string | string[] } | WorkflowBulkFilters
+  ): Promise<{ deleted: number }> {
+    // Handle string or string[] - direct dlqIds
+    if (typeof request === "string" || Array.isArray(request)) {
+      const queryParams = DLQ.getDlqIdQueryParameter(request);
+      const path = queryParams ? `dlq?${queryParams}` : "dlq";
+      return await this.client.http.request<{ deleted: number }>({
+        path: ["v2", "workflows", path],
+        method: "DELETE",
+      });
+    }
+
+    // Handle object with dlqIds
+    if ("dlqIds" in request) {
+      const queryParams = DLQ.getDlqIdQueryParameter(request.dlqIds);
+      const path = queryParams ? `dlq?${queryParams}` : "dlq";
+      return await this.client.http.request<{ deleted: number }>({
+        path: ["v2", "workflows", path],
+        method: "DELETE",
+      });
+    }
+
+    // Handle filters (WorkflowBulkFilters)
+    return await this.client.http.request<{ deleted: number }>({
+      path: ["v2", "workflows", "dlq"],
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: request.all
+        ? JSON.stringify({})
+        : JSON.stringify({
+            ...request,
+            ...(request.fromDate !== undefined ? { fromDate: toMs(request.fromDate) } : {}),
+            ...(request.toDate !== undefined ? { toDate: toMs(request.toDate) } : {}),
+          }),
+    });
   }
 
   /**

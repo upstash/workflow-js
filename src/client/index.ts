@@ -1,6 +1,6 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { makeGetWaitersRequest, makeNotifyRequest } from "./utils";
+import { makeGetWaitersRequest, makeNotifyRequest, toMs } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -23,7 +23,6 @@ export class Client {
   private client: QStashClient;
 
   constructor(clientConfig: ClientConfig) {
-    // TODO: add warning back
     this.client = new QStashClient(clientConfig);
   }
 
@@ -74,6 +73,10 @@ export class Client {
    * @param ids run id of the workflow to delete
    * @param urlStartingWith cancel workflows starting with this url. Will be ignored
    *   if `ids` parameter is set.
+   * @param workflowUrl cancel workflows with this url.
+   * @param fromDate cancel workflows created after this date.
+   * @param toDate cancel workflows created before this date.
+   * @param label cancel workflows with this label.
    * @param all set to true in order to cancel all workflows. Will be ignored
    *   if `ids` or `urlStartingWith` parameters are set.
    * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
@@ -81,29 +84,45 @@ export class Client {
   public async cancel({
     ids,
     urlStartingWith,
+    workflowUrl,
+    fromDate,
+    toDate,
+    label,
     all,
   }: {
     ids?: string | string[];
-    urlStartingWith?: string;
-    all?: true;
-  }) {
-    let body: string;
+    fromDate?: Date | number | string;
+    toDate?: Date | number | string;
+    label?: string;
+    all?: boolean;
+  } & (
+    | { urlStartingWith?: string; workflowUrl?: never }
+    | { workflowUrl?: string; urlStartingWith?: never }
+  )) {
+    let body: Record<string, unknown> = {
+      ...(fromDate !== undefined ? { fromDate: toMs(fromDate) } : {}),
+      ...(toDate !== undefined ? { toDate: toMs(toDate) } : {}),
+      ...(label ? { label } : {}),
+    };
+
     if (ids) {
       const runIdArray = typeof ids === "string" ? [ids] : ids;
 
-      body = JSON.stringify({ workflowRunIds: runIdArray });
+      body = { ...body, workflowRunIds: runIdArray };
+    } else if (workflowUrl) {
+      body = { ...body, workflowUrl, workflowUrlExactMatch: true };
     } else if (urlStartingWith) {
-      body = JSON.stringify({ workflowUrl: urlStartingWith });
+      body = { ...body, workflowUrl: urlStartingWith };
     } else if (all) {
-      body = "{}";
-    } else {
+      body = {};
+    } else if (Object.keys(body).length === 0) {
       throw new TypeError("The `cancel` method cannot be called without any options.");
     }
 
     const result = await this.client.http.request<{ cancelled: number }>({
       path: ["v2", "workflows", "runs"],
       method: "DELETE",
-      body,
+      body: JSON.stringify(body),
       headers: {
         "Content-Type": "application/json",
       },
