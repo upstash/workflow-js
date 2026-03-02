@@ -447,3 +447,12 @@ export type DLQResumeRestartResponse = {
    */
   workflowCreatedAt: string;
 };
+
+export type WorkflowBulkFilters = {
+  workflowRunId?: string;
+  workflowUrl?: string;
+  fromDate?: Date | number | string;
+  toDate?: Date | number | string;
+  label?: string;
+  all?: boolean;
+};
