@@ -55,7 +55,7 @@ type StepInfo = {
 };
 
 type WorkflowHeaderParams = {
-  userHeaders: Headers;
+  userHeaders?: Headers;
   workflowConfig: WorkflowConfig;
   invokeCount?: number;
   initHeaderValue: "true" | "false";
@@ -63,7 +63,7 @@ type WorkflowHeaderParams = {
 };
 
 class WorkflowHeaders {
-  private userHeaders: Headers;
+  private userHeaders?: Headers;
   private workflowConfig: WorkflowConfig;
   private invokeCount?: number;
   private initHeaderValue: "true" | "false";
@@ -186,6 +186,10 @@ class WorkflowHeaders {
   }
 
   private addUserHeaders() {
+    if (!this.userHeaders) {
+      return;
+    }
+
     for (const [key, value] of this.userHeaders.entries()) {
       const forwardKey = `Forward-${key}`;
       this.headers.workflowHeaders[forwardKey] = value;

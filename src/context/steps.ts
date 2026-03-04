@@ -158,7 +158,6 @@ export abstract class BaseLazyStep<TResult = unknown> {
         useJSONContent: false,
         telemetry,
       },
-      userHeaders: context.headers,
       invokeCount,
       stepInfo: {
         step,
@@ -698,7 +697,6 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         telemetry,
         useJSONContent: false,
       },
-      userHeaders: context.headers,
       invokeCount,
     });
 

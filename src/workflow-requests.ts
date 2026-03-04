@@ -423,7 +423,6 @@ export const handleThirdPartyCallResult = async ({
         );
       }
 
-      const userHeaders = recreateUserHeaders(request.headers as Headers);
       const { headers: requestHeaders } = getHeaders({
         initHeaderValue: "false",
         workflowConfig: {
@@ -431,7 +430,6 @@ export const handleThirdPartyCallResult = async ({
           workflowUrl,
           telemetry,
         },
-        userHeaders,
         invokeCount: Number(invokeCount),
       });
 
