@@ -848,12 +848,15 @@ export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResp
     const body = parsedEventData.body;
     const parsedBody = typeof body === "string" ? decodeBase64(body) : undefined;
 
+    const methodUpper = parsedEventData.method.toUpperCase();
+    const canHaveBody = methodUpper !== "GET" && methodUpper !== "HEAD";
+
     const request = new Request(
       `${parsedEventData.proto}://${parsedEventData.host}${parsedEventData.url}`,
       {
         method: parsedEventData.method,
         headers: parsedEventData.header,
-        body: parsedBody,
+        body: canHaveBody ? parsedBody : undefined,
       }
     );
 
