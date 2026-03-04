@@ -291,7 +291,6 @@ describe("Multi-Region Integration Tests", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
-                "upstash-forward-upstash-message-id": "msg_123",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-telemetry-framework": "unknown",
@@ -450,7 +449,6 @@ describe("Multi-Region Integration Tests", () => {
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
-                "upstash-forward-upstash-message-id": "msg_123",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-telemetry-framework": "unknown",

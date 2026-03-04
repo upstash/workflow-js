@@ -158,7 +158,6 @@ export abstract class BaseLazyStep<TResult = unknown> {
         useJSONContent: false,
         telemetry,
       },
-      userHeaders: context.headers,
       invokeCount,
       stepInfo: {
         step,
@@ -698,7 +697,6 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         telemetry,
         useJSONContent: false,
       },
-      userHeaders: context.headers,
       invokeCount,
     });
 
@@ -850,12 +848,15 @@ export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResp
     const body = parsedEventData.body;
     const parsedBody = typeof body === "string" ? decodeBase64(body) : undefined;
 
+    const methodUpper = parsedEventData.method.toUpperCase();
+    const canHaveBody = methodUpper !== "GET" && methodUpper !== "HEAD";
+
     const request = new Request(
       `${parsedEventData.proto}://${parsedEventData.host}${parsedEventData.url}`,
       {
         method: parsedEventData.method,
         headers: parsedEventData.header,
-        body: parsedBody,
+        body: canHaveBody ? parsedBody : undefined,
       }
     );
 
