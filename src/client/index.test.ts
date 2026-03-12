@@ -155,14 +155,14 @@ describe("workflow client", () => {
       "should cancel workflowUrl",
       async () => {
         await liveClient.trigger({
-          url: "http://requestcatcher.com/first",
+          url: "https://wf-test.requestcatcher.com//first",
         });
         await liveClient.trigger({
-          url: "http://requestcatcher.com/second",
+          url: "https://wf-test.requestcatcher.com//second",
         });
 
         const cancel = await liveClient.cancel({
-          urlStartingWith: "http://requestcatcher.com",
+          urlStartingWith: "https://wf-test.requestcatcher.com//",
         });
 
         expect(cancel).toEqual({ cancelled: 2 });
