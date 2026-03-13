@@ -22,7 +22,7 @@ const workflowClient = new Client({
  */
 const singleCallWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
   await context.call("huge retry call", {
-    url: "https://httpstat.us/200",
+    url: "https://mock.httpstatus.io/200",
     method: "GET",
     retries: HUGE_RETRY,
   })
@@ -35,12 +35,12 @@ const singleCallWorkflow = createWorkflow(async (context: WorkflowContext<string
 const parallelCallWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
   await Promise.all([
     context.call("normal call", {
-      url: "https://httpstat.us/200",
+      url: "https://mock.httpstatus.io/200",
       method: "GET",
       retries: 0,
     }),
     context.call("huge retry call", {
-      url: "https://httpstat.us/200",
+      url: "https://mock.httpstatus.io/200",
       method: "GET",
       retries: HUGE_RETRY,
     }),
