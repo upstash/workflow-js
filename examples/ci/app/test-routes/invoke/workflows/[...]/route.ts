@@ -23,6 +23,8 @@ const invokeLabel = "invoke-label"
 const workflowRunIdHeader = "workflow-run-id-header"
 
 const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
+  expect(context.headers.get(testHeader), headerValue)
+
   const workflowRunId = await context.run("step 1", async () => {
     console.log("workflow one says hi")
     return nanoid()
