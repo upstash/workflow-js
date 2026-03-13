@@ -156,11 +156,11 @@ describe("workflow client", () => {
       async () => {
         await liveClient.trigger({
           url: "https://wf-test.requestcatcher.com//first",
-          delay: "2s"
+          delay: "2s",
         });
         await liveClient.trigger({
           url: "https://wf-test.requestcatcher.com//second",
-          delay: "2s"
+          delay: "2s",
         });
 
         const cancel = await liveClient.cancel({
