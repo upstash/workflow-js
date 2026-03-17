@@ -94,7 +94,7 @@ export class Client {
     fromDate?: Date | number | string;
     toDate?: Date | number | string;
     label?: string;
-    all?: boolean;
+    all?: true;
   } & (
     | { urlStartingWith?: string; workflowUrl?: never }
     | { workflowUrl?: string; urlStartingWith?: never }

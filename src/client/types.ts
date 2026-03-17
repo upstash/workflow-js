@@ -454,5 +454,5 @@ export type WorkflowBulkFilters = {
   fromDate?: Date | number | string;
   toDate?: Date | number | string;
   label?: string;
-  all?: boolean;
+  all?: true;
 };
