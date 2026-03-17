@@ -99,6 +99,7 @@ await client.cancel({ workflowRunId: "<WORKFLOW_RUN_ID>" });
 await client.notify({
   eventId: "my-event-id",
   eventData: "my-data", // data passed to the workflow run
+  workflowRunId: "wfr_123", // optional workflow run ID for lookback
 });
 
 // get waiters:

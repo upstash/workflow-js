@@ -200,6 +200,27 @@ describe("workflow client", () => {
     });
   });
 
+  test("should send notify with workflowRunId", async () => {
+    const eventId = `event-id-${nanoid()}`;
+    const workflowRunId = `wfr_${nanoid()}`;
+    const eventData = { data: `notify-data-${nanoid()}` };
+    await mockQStashServer({
+      execute: async () => {
+        await client.notify({ eventId, eventData, workflowRunId });
+      },
+      responseFields: {
+        status: 200,
+        body: "msgId",
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/notify/${workflowRunId}/${eventId}`,
+        token,
+        body: eventData,
+      },
+    });
+  });
+
   test("should trigger workflow run", async () => {
     const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
     const body = "request-body";
