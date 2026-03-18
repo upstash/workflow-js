@@ -85,7 +85,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&count=100`,
           token,
         },
       });
@@ -106,7 +106,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&workflowUrlExactMatch=true`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&workflowUrlExactMatch=true&count=100`,
           token,
         },
       });
@@ -125,7 +125,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&label=${label}`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&label=${label}&count=100`,
           token,
         },
       });
@@ -143,7 +143,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?all=true`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?all=true&count=100`,
           token,
         },
       });
@@ -165,7 +165,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=test-label`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=test-label&count=100`,
           token,
         },
       });
@@ -182,7 +182,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?fromDate=1640995200000&toDate=1672531200000`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?fromDate=1640995200000&toDate=1672531200000&count=100`,
           token,
         },
       });
@@ -205,7 +205,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=my-workflow-label&fromDate=1640995200000&toDate=1672531200000`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=my-workflow-label&fromDate=1640995200000&toDate=1672531200000&count=100`,
           token,
         },
       });
@@ -222,7 +222,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?fromDate=1640995200000`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?fromDate=1640995200000&count=100`,
           token,
         },
       });
@@ -239,7 +239,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?toDate=1672531200000`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?toDate=1672531200000&count=100`,
           token,
         },
       });

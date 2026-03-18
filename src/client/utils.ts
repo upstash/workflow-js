@@ -2,6 +2,7 @@ import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
 import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
+import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
 
 /**
  * Makes a request to notify waiting workflows.
@@ -138,4 +139,74 @@ export const getSteps = async (
 export function normalizeCursor<T>(response: T): T {
   const cursor = (response as { cursor?: string }).cursor;
   return { ...response, cursor: cursor || undefined };
+}
+
+const DEFAULT_BULK_COUNT = 100;
+
+/**
+ * Builds query parameters for bulk actions (DLQ resume/restart/delete and workflow cancel).
+ *
+ * Validates that ID arrays are not empty and applies a default `count` of 100
+ * for filter-based and `{ all: true }` operations.
+ *
+ * @example DLQ action with dlqIds
+ * ```ts
+ * buildBulkActionQueryParameters({ dlqIds: ["dlq_1", "dlq_2"] })
+ * // => { dlqIds: ["dlq_1", "dlq_2"] }
+ * ```
+ *
+ * @example DLQ action targeting all with custom count
+ * ```ts
+ * buildBulkActionQueryParameters({ all: true, count: 50 })
+ * // => { all: true, count: 50 }
+ * ```
+ *
+ * @example Cancel with workflowRunIds
+ * ```ts
+ * buildBulkActionQueryParameters({ workflowRunIds: ["wfr_1", "wfr_2"] })
+ * // => { workflowRunIds: ["wfr_1", "wfr_2"] }
+ * ```
+ *
+ * @example Cancel targeting all (uses default count of 100)
+ * ```ts
+ * buildBulkActionQueryParameters({ all: true })
+ * // => { all: true, count: 100 }
+ * ```
+ *
+ * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
+ */
+export function buildBulkActionQueryParameters(
+  request: WorkflowDLQActionFilters | WorkflowRunCancelFilters
+) {
+  const cursor = "cursor" in request ? request.cursor : undefined;
+
+  if ("all" in request) {
+    return { all: true as const, count: request.count ?? DEFAULT_BULK_COUNT, cursor };
+  }
+
+  if ("dlqIds" in request) {
+    const ids = request.dlqIds;
+    if (Array.isArray(ids) && ids.length === 0) {
+      throw new QstashError(
+        "Empty dlqIds array provided. If you intend to target all DLQ messages, use { all: true } explicitly."
+      );
+    }
+    return { dlqIds: ids, cursor };
+  }
+
+  if ("workflowRunIds" in request && request.workflowRunIds) {
+    if (request.workflowRunIds.length === 0) {
+      throw new QstashError(
+        "Empty workflowRunIds array provided. If you intend to target all workflow runs, use { all: true } explicitly."
+      );
+    }
+    return { workflowRunIds: request.workflowRunIds };
+  }
+
+  // Filter branch
+  return {
+    ...request.filter,
+    count: request.count ?? DEFAULT_BULK_COUNT,
+    cursor,
+  };
 }

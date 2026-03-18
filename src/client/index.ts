@@ -1,6 +1,11 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { makeGetWaitersRequest, makeNotifyRequest, normalizeCursor } from "./utils";
+import {
+  buildBulkActionQueryParameters,
+  makeGetWaitersRequest,
+  makeNotifyRequest,
+  normalizeCursor,
+} from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -33,27 +38,28 @@ export class Client {
    * Can be called with:
    * - A single workflow run id: `cancel("wfr_123")`
    * - An array of workflow run ids: `cancel(["wfr_123", "wfr_456"])`
-   * - A filter object: `cancel({ workflowUrl: "https://...", label: "my-label" })`
-   * - To cancel all: `cancel({ all: true })`
+   * - A filter object: `cancel({ filter: { workflowUrl: "https://...", label: "my-label" } })`
+   * - To target all: `cancel({ all: true })`
+   *
+   * Cancels up to `count` workflow runs per call (defaults to 100).
+   *
+   * ```ts
+   * const result = await client.cancel({ all: true, count: 50 });
+   * ```
    */
   public async cancel(
     request: string | string[] | WorkflowRunCancelFilters
   ): Promise<{ cancelled: number }> {
     if (typeof request === "string") request = [request];
     if (Array.isArray(request) && request.length === 0) return { cancelled: 0 };
-    const filters = Array.isArray(request) ? { workflowRunIds: request } : request;
-
-    const query =
-      "filter" in filters
-        ? filters.filter
-        : "all" in filters
-          ? { all: filters.all }
-          : { workflowRunIds: filters.workflowRunIds };
+    const filters: WorkflowRunCancelFilters = Array.isArray(request)
+      ? { workflowRunIds: request }
+      : request;
 
     return await this.client.http.request<{ cancelled: number }>({
       path: ["v2", "workflows", "runs"],
       method: "DELETE",
-      query,
+      query: buildBulkActionQueryParameters(filters),
     });
   }
 

@@ -223,7 +223,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&count=100`,
           token,
         },
       });
@@ -247,7 +247,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&count=100`,
           token,
         },
       });
@@ -269,7 +269,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?all=true`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?all=true&count=100`,
           token,
         },
       });
@@ -322,7 +322,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&count=100`,
           token,
           headers: {
             "upstash-retries": "2",
@@ -450,7 +450,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label&count=100`,
           token,
         },
       });
@@ -474,7 +474,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&count=100`,
           token,
         },
       });
@@ -496,7 +496,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?all=true`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?all=true&count=100`,
           token,
         },
       });
@@ -688,7 +688,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&count=100`,
           token,
         },
       });
@@ -710,7 +710,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?workflowUrl=${encodeURIComponent("https://example.com/workflow")}`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?workflowUrl=${encodeURIComponent("https://example.com/workflow")}&count=100`,
           token,
         },
       });
@@ -732,7 +732,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?fromDate=1640995200000&toDate=1672531200000`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?fromDate=1640995200000&toDate=1672531200000&count=100`,
           token,
         },
       });
@@ -758,7 +758,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&fromDate=1640995200000`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&fromDate=1640995200000&count=100`,
           token,
         },
       });
@@ -778,7 +778,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?all=true`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?all=true&count=100`,
           token,
         },
       });

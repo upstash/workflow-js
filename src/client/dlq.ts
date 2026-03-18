@@ -1,6 +1,6 @@
 import { Client as QStashClient, FlowControl } from "@upstash/qstash";
 import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
-import { normalizeCursor } from "./utils";
+import { buildBulkActionQueryParameters, normalizeCursor } from "./utils";
 import { WorkflowDLQActionFilters, WorkflowDLQListFilters } from "./filter-types";
 import { prepareFlowControl } from "../qstash/headers";
 
@@ -83,16 +83,6 @@ function buildResumeRestartHeaders(options?: ResumeRestartOptions): Record<strin
   return headers;
 }
 
-function flattenDLQFilters(filters: WorkflowDLQActionFilters) {
-  if ("filter" in filters) {
-    return { ...filters.filter, cursor: filters.cursor };
-  }
-  if ("all" in filters) {
-    return { all: filters.all, cursor: filters.cursor };
-  }
-  return { dlqIds: filters.dlqIds };
-}
-
 export class DLQ {
   constructor(private client: QStashClient) {}
 
@@ -141,8 +131,19 @@ export class DLQ {
    * Can be called with:
    * - A single dlqId: `resume("id")`
    * - An array of dlqIds: `resume(["id1", "id2"])`
-   * - A filter object: `resume({ label: "my-label", fromDate: 1640995200000 })`
-   * - To resume all entries: `resume({ all: true })`
+   * - A filter object: `resume({ filter: { label: "my-label", fromDate: 1640995200000 } })`
+   * - To target all entries: `resume({ all: true })`
+   *
+   * Processes up to `count` messages per call (defaults to 100).
+   * Call in a loop until cursor is undefined to process all:
+   *
+   * ```ts
+   * let cursor: string | undefined;
+   * do {
+   *   const result = await client.dlq.resume({ all: true, count: 100, cursor });
+   *   cursor = result.cursor;
+   * } while (cursor);
+   * ```
    */
   async resume(
     request: string | string[] | WorkflowDLQActionFilters,
@@ -190,7 +191,7 @@ export class DLQ {
         workflowRuns: DLQResumeRestartResponse[];
       }>({
         path: ["v2", "workflows", "dlq", "resume"],
-        query: flattenDLQFilters(filters),
+        query: buildBulkActionQueryParameters(filters),
         method: "POST",
         headers: buildResumeRestartHeaders(options),
       })
@@ -209,8 +210,19 @@ export class DLQ {
    * Can be called with:
    * - A single dlqId: `restart("id")`
    * - An array of dlqIds: `restart(["id1", "id2"])`
-   * - A filter object: `restart({ label: "my-label", fromDate: 1640995200000 })`
-   * - To restart all entries: `restart({ all: true })`
+   * - A filter object: `restart({ filter: { label: "my-label", fromDate: 1640995200000 } })`
+   * - To target all entries: `restart({ all: true })`
+   *
+   * Processes up to `count` messages per call (defaults to 100).
+   * Call in a loop until cursor is undefined to process all:
+   *
+   * ```ts
+   * let cursor: string | undefined;
+   * do {
+   *   const result = await client.dlq.restart({ all: true, count: 100, cursor });
+   *   cursor = result.cursor;
+   * } while (cursor);
+   * ```
    */
   async restart(
     request: string | string[] | WorkflowDLQActionFilters,
@@ -258,7 +270,7 @@ export class DLQ {
         workflowRuns: DLQResumeRestartResponse[];
       }>({
         path: ["v2", "workflows", "dlq", "restart"],
-        query: flattenDLQFilters(filters),
+        query: buildBulkActionQueryParameters(filters),
         method: "POST",
         headers: buildResumeRestartHeaders(options),
       })
@@ -289,8 +301,19 @@ export class DLQ {
    * Can be called with:
    * - A single dlqId: `delete("id")`
    * - An array of dlqIds: `delete(["id1", "id2"])`
-   * - A filter object: `delete({ label: "my-label", fromDate: 1640995200000 })`
-   * - To delete all entries: `delete({ all: true })`
+   * - A filter object: `delete({ filter: { label: "my-label", fromDate: 1640995200000 } })`
+   * - To target all entries: `delete({ all: true })`
+   *
+   * Processes up to `count` messages per call (defaults to 100).
+   * Call in a loop until cursor is undefined to process all:
+   *
+   * ```ts
+   * let cursor: string | undefined;
+   * do {
+   *   const result = await client.dlq.delete({ all: true, count: 100, cursor });
+   *   cursor = result.cursor;
+   * } while (cursor);
+   * ```
    */
   async delete(request: string | string[] | WorkflowDLQActionFilters) {
     if (typeof request === "string") request = [request];
@@ -303,7 +326,7 @@ export class DLQ {
       await this.client.http.request<{ cursor?: string; deleted: number }>({
         path: ["v2", "workflows", "dlq"],
         method: "DELETE",
-        query: flattenDLQFilters(filters),
+        query: buildBulkActionQueryParameters(filters),
       })
     );
   }
