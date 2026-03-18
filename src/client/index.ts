@@ -49,12 +49,41 @@ export class Client {
    */
   public async cancel(
     request: string | string[] | WorkflowRunCancelFilters
+  ): Promise<{ cancelled: number }>;
+  /** @deprecated Use `cancel(id)`, `cancel([id1, id2])`, `cancel({ filter: { workflowUrl } })` or `cancel({ all: true })` instead. */
+  public async cancel(request: {
+    ids?: string | string[];
+    urlStartingWith?: string;
+    all?: true;
+  }): Promise<{ cancelled: number }>;
+  public async cancel(
+    request:
+      | string
+      | string[]
+      | WorkflowRunCancelFilters
+      | { ids?: string | string[]; urlStartingWith?: string; all?: true }
   ): Promise<{ cancelled: number }> {
+    // Legacy format: { ids?, urlStartingWith?, all? }
+    if (
+      typeof request === "object" &&
+      !Array.isArray(request) &&
+      ("ids" in request || "urlStartingWith" in request)
+    ) {
+      const legacy = request as { ids?: string | string[]; urlStartingWith?: string; all?: true };
+      if (legacy.ids) {
+        const ids = typeof legacy.ids === "string" ? [legacy.ids] : legacy.ids;
+        return this.cancel(ids);
+      }
+      if (legacy.urlStartingWith) {
+        return this.cancel({ filter: { workflowUrl: legacy.urlStartingWith } });
+      }
+    }
+
     if (typeof request === "string") request = [request];
     if (Array.isArray(request) && request.length === 0) return { cancelled: 0 };
     const filters: WorkflowRunCancelFilters = Array.isArray(request)
       ? { workflowRunIds: request }
-      : request;
+      : (request as WorkflowRunCancelFilters);
 
     return await this.client.http.request<{ cancelled: number }>({
       path: ["v2", "workflows", "runs"],

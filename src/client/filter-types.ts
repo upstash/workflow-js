@@ -68,7 +68,13 @@ export type WorkflowDLQActionFilters =
       filter?: never;
     } & WorkflowDLQBulkCount);
 
-export type WorkflowDLQListFilters = UniversalFilterFields & WorkflowFilterFields;
+export type WorkflowDLQListFilters = UniversalFilterFields &
+  WorkflowFilterFields & {
+    /** @deprecated Use `workflowUrl` instead. */
+    url?: string;
+    /** @deprecated No longer supported in the new API. */
+    responseStatus?: number;
+  };
 
 type WorkflowCancelCount = {
   /**
