@@ -154,6 +154,63 @@ describe("workflow client", () => {
       expect(result).toEqual({ cancelled: 0 });
     });
 
+    test("should cancel with legacy { ids: string } format", async () => {
+      const id = `wfr-${nanoid()}`;
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ ids: id });
+          expect(result).toEqual({ cancelled: 1 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowRunIds=${id}`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with legacy { ids: string[] } format", async () => {
+      const ids = [`wfr-${nanoid()}`, `wfr-${nanoid()}`];
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ ids });
+          expect(result).toEqual({ cancelled: 2 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowRunIds=${ids[0]}&workflowRunIds=${ids[1]}`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with legacy { urlStartingWith } format", async () => {
+      const urlStartingWith = "http://workflow-endpoint.com";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ urlStartingWith });
+          expect(result).toEqual({ cancelled: 3 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(urlStartingWith)}&count=100`,
+          token,
+        },
+      });
+    });
+
     test("should cancel with label filter", async () => {
       await mockQStashServer({
         execute: async () => {
