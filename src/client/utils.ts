@@ -176,7 +176,8 @@ const DEFAULT_BULK_COUNT = 100;
  * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
  */
 export function buildBulkActionQueryParameters(
-  request: WorkflowDLQActionFilters | WorkflowRunCancelFilters
+  request: WorkflowDLQActionFilters | WorkflowRunCancelFilters,
+  options?: { translateWorkflowUrl?: boolean }
 ) {
   const cursor = "cursor" in request ? request.cursor : undefined;
 
@@ -204,8 +205,33 @@ export function buildBulkActionQueryParameters(
   }
 
   // Filter branch
+  const filter = request.filter as Record<string, unknown>;
+
+  // When translateWorkflowUrl is set (cancel filters), translate
+  // workflowUrl/workflowUrlStartingWith into the server's query params:
+  // - workflowUrl → workflowUrl + workflowUrlExactMatch=true (exact match)
+  // - workflowUrlStartingWith → workflowUrl (prefix match, server default)
+  if (options?.translateWorkflowUrl) {
+    const { workflowUrlStartingWith, workflowUrl, ...rest } = filter;
+
+    const urlParams: Record<string, string | boolean> = {};
+    if (workflowUrlStartingWith) {
+      urlParams.workflowUrl = workflowUrlStartingWith as string;
+    } else if (workflowUrl) {
+      urlParams.workflowUrl = workflowUrl as string;
+      urlParams.workflowUrlExactMatch = true;
+    }
+
+    return {
+      ...rest,
+      ...urlParams,
+      count: request.count ?? DEFAULT_BULK_COUNT,
+      cursor,
+    };
+  }
+
   return {
-    ...request.filter,
+    ...filter,
     count: request.count ?? DEFAULT_BULK_COUNT,
     cursor,
   };

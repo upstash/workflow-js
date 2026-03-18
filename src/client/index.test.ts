@@ -72,7 +72,7 @@ describe("workflow client", () => {
       });
     });
 
-    test("should cancel workflowUrl", async () => {
+    test("should cancel with workflowUrl (exact match)", async () => {
       const workflowUrl = "http://workflow-endpoint.com";
       await mockQStashServer({
         execute: async () => {
@@ -85,18 +85,18 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&workflowUrlExactMatch=true&count=100`,
           token,
         },
       });
     });
 
-    test("should cancel with exact workflowUrl match", async () => {
+    test("should cancel with workflowUrlStartingWith (prefix match)", async () => {
       const workflowUrl = "https://workflow-endpoint.com/specific-path";
       await mockQStashServer({
         execute: async () => {
           const result = await client.cancel({
-            filter: { workflowUrl, workflowUrlExactMatch: true },
+            filter: { workflowUrlStartingWith: workflowUrl },
           });
           expect(result).toEqual({ cancelled: 3 });
         },
@@ -106,7 +106,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&workflowUrlExactMatch=true&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&count=100`,
           token,
         },
       });
@@ -125,7 +125,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(workflowUrl)}&label=${label}&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=${label}&workflowUrl=${encodeURIComponent(workflowUrl)}&workflowUrlExactMatch=true&count=100`,
           token,
         },
       });
@@ -301,7 +301,7 @@ describe("workflow client", () => {
     );
 
     test(
-      "should cancel workflowUrl",
+      "should cancel with workflowUrlStartingWith (prefix match)",
       async () => {
         await liveClient.trigger({
           url: "http://requestcatcher.com/first",
@@ -311,7 +311,7 @@ describe("workflow client", () => {
         });
 
         const cancel = await liveClient.cancel({
-          filter: { workflowUrl: "http://requestcatcher.com" },
+          filter: { workflowUrlStartingWith: "http://requestcatcher.com" },
         });
 
         expect(cancel).toEqual({ cancelled: 2 });
@@ -352,7 +352,7 @@ describe("workflow client", () => {
     );
 
     test(
-      "should cancel with workflowUrlExactMatch",
+      "should cancel with workflowUrl (exact match)",
       async () => {
         await liveClient.trigger({
           url: "http://requestcatcher.com/exact-match-test",
@@ -365,14 +365,13 @@ describe("workflow client", () => {
         const cancel = await liveClient.cancel({
           filter: {
             workflowUrl: "http://requestcatcher.com/exact-match-test",
-            workflowUrlExactMatch: true,
           },
         });
         expect(cancel).toEqual({ cancelled: 1 });
 
         // clean up the remaining workflow (prefix match)
         const cleanup = await liveClient.cancel({
-          filter: { workflowUrl: "http://requestcatcher.com/exact-match-test" },
+          filter: { workflowUrlStartingWith: "http://requestcatcher.com/exact-match-test" },
         });
         expect(cleanup).toEqual({ cancelled: 1 });
       },

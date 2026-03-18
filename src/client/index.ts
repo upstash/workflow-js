@@ -38,7 +38,9 @@ export class Client {
    * Can be called with:
    * - A single workflow run id: `cancel("wfr_123")`
    * - An array of workflow run ids: `cancel(["wfr_123", "wfr_456"])`
-   * - A filter object: `cancel({ filter: { workflowUrl: "https://...", label: "my-label" } })`
+   * - By exact URL: `cancel({ filter: { workflowUrl: "https://..." } })`
+   * - By URL prefix: `cancel({ filter: { workflowUrlStartingWith: "https://..." } })`
+   * - With other filters: `cancel({ filter: { label: "my-label" } })`
    * - To target all: `cancel({ all: true })`
    *
    * Cancels up to `count` workflow runs per call (defaults to 100).
@@ -75,7 +77,7 @@ export class Client {
         return this.cancel(ids);
       }
       if (legacy.urlStartingWith) {
-        return this.cancel({ filter: { workflowUrl: legacy.urlStartingWith } });
+        return this.cancel({ filter: { workflowUrlStartingWith: legacy.urlStartingWith } });
       }
     }
 
@@ -88,7 +90,7 @@ export class Client {
     return await this.client.http.request<{ cancelled: number }>({
       path: ["v2", "workflows", "runs"],
       method: "DELETE",
-      query: buildBulkActionQueryParameters(filters),
+      query: buildBulkActionQueryParameters(filters, { translateWorkflowUrl: true }),
     });
   }
 

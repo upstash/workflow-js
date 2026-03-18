@@ -32,10 +32,12 @@ type WorkflowLogsFilterFields = {
 
 type DLQActionFilterFields = UniversalFilterFields & WorkflowFilterFields;
 
-type CancelFilterFields = UniversalFilterFields &
-  Pick<WorkflowFilterFields, "workflowUrl"> & {
-    workflowUrlExactMatch?: boolean;
-  };
+type CancelFilterFields = UniversalFilterFields & {
+  /** Cancel workflows with this exact URL. */
+  workflowUrl?: string;
+  /** Cancel workflows whose URL starts with this prefix. */
+  workflowUrlStartingWith?: string;
+};
 
 // ── Composed Endpoint Filter Types ────────────────────────────
 
