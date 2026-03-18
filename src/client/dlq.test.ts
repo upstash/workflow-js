@@ -102,8 +102,7 @@ describe("DLQ", () => {
       const filter = {
         fromDate: 1640995200000, // 2022-01-01
         toDate: 1672531200000, // 2023-01-01
-        url: "https://example.com",
-        responseStatus: 500,
+        workflowUrl: "https://example.com",
       };
 
       await mockQStashServer({
@@ -118,7 +117,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "GET",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?fromDate=${filter.fromDate}&toDate=${filter.toDate}&url=${encodeURIComponent(filter.url)}&responseStatus=${filter.responseStatus}&source=workflow`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?fromDate=${filter.fromDate}&toDate=${filter.toDate}&workflowUrl=${encodeURIComponent(filter.workflowUrl)}&source=workflow`,
           token,
         },
       });
@@ -130,7 +129,7 @@ describe("DLQ", () => {
       const nextCursor = `next-${cursor}`;
       const filter = {
         fromDate: 1640995200000,
-        url: "https://example.com",
+        workflowUrl: "https://example.com",
       };
 
       await mockQStashServer({
@@ -145,7 +144,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "GET",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?cursor=${cursor}&count=${count}&fromDate=${filter.fromDate}&url=${encodeURIComponent(filter.url)}&source=workflow`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?cursor=${cursor}&count=${count}&fromDate=${filter.fromDate}&workflowUrl=${encodeURIComponent(filter.workflowUrl)}&source=workflow`,
           token,
         },
       });
@@ -160,9 +159,11 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.resume({ dlqId });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
+          const result = await client.dlq.resume(dlqId);
+          expect(result).toEqual({
+            cursor: undefined,
+            workflowRuns: [{ workflowRunId, workflowCreatedAt }],
+          });
         },
         responseFields: {
           status: 200,
@@ -172,7 +173,6 @@ describe("DLQ", () => {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqId}`,
           token,
-          headers: {},
         },
       });
     });
@@ -186,9 +186,8 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.resume({ dlqId: dlqIds });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
+          const result = await client.dlq.resume(dlqIds);
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
         responseFields: {
           status: 200,
@@ -198,190 +197,13 @@ describe("DLQ", () => {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
           token,
-          headers: {},
         },
       });
     });
 
-    test("should resume DLQ message with flow control", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const workflowRunId = `wfr-${nanoid()}`;
-      const workflowCreatedAt = "2023-01-01T00:00:00Z";
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.resume({ dlqId, flowControl });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqId}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-          },
-        },
-      });
-    });
-
-    test("should resume DLQ message with retries", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const workflowRunId = `wfr-${nanoid()}`;
-      const workflowCreatedAt = "2023-01-01T00:00:00Z";
-      const retries = 5;
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.resume({ dlqId, retries });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqId}`,
-          token,
-          headers: {
-            "Upstash-Retries": "5",
-          },
-        },
-      });
-    });
-
-    test("should resume DLQ message with all parameters", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const workflowRunId = `wfr-${nanoid()}`;
-      const workflowCreatedAt = "2023-01-01T00:00:00Z";
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-      const retries = 3;
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.resume({ dlqId, flowControl, retries });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqId}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-            "Upstash-Retries": "3",
-          },
-        },
-      });
-    });
-
-    test("should resume multiple DLQ messages with flow control", async () => {
-      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-      const responses = [
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
-      ];
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.resume({ dlqId: dlqIds, flowControl });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: responses },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-          },
-        },
-      });
-    });
-
-    test("should resume multiple DLQ messages with retries", async () => {
-      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
-      const retries = 5;
-      const responses = [
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
-      ];
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.resume({ dlqId: dlqIds, retries });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: responses },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
-          token,
-          headers: {
-            "Upstash-Retries": "5",
-          },
-        },
-      });
-    });
-
-    test("should resume multiple DLQ messages with all parameters", async () => {
-      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-      const retries = 3;
-      const responses = [
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
-      ];
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.resume({ dlqId: dlqIds, flowControl, retries });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: responses },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-            "Upstash-Retries": "3",
-          },
-        },
-      });
-    });
-
-    test("should return empty array when dlqId is an empty array", async () => {
-      const result = await client.dlq.resume({ dlqId: [] });
-      expect(result).toEqual([]);
+    test("should return empty array when dlqIds is an empty array", async () => {
+      const result = await client.dlq.resume([]);
+      expect(result).toEqual({ workflowRuns: [] });
     });
 
     test("should resume DLQ messages with filters", async () => {
@@ -392,9 +214,8 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.resume({ label: "my-label" });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
+          const result = await client.dlq.resume({ filter: { label: "my-label" } });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
         responseFields: {
           status: 200,
@@ -402,12 +223,8 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label`,
           token,
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: { label: "my-label" },
         },
       });
     });
@@ -420,11 +237,9 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.resume({
-            label: "my-label",
-            workflowUrl: "https://example.com/workflow",
+            filter: { label: "my-label", workflowUrl: "https://example.com/workflow" },
           });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
         responseFields: {
           status: 200,
@@ -432,12 +247,132 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}`,
+          token,
+        },
+      });
+    });
+
+    test("should resume all DLQ messages", async () => {
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume({ all: true });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?all=true`,
+          token,
+        },
+      });
+    });
+
+    test("should resume with flowControl and retries options", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume(dlqId, {
+            flowControl: { key: "my-key", rate: 10, parallelism: 3, period: "1m" },
+            retries: 5,
+          });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqId}`,
           token,
           headers: {
-            "Content-Type": "application/json",
+            "upstash-flow-control-key": "my-key",
+            "upstash-flow-control-value": "parallelism=3, rate=10, period=1m",
+            "upstash-retries": "5",
           },
-          body: { label: "my-label", workflowUrl: "https://example.com/workflow" },
+        },
+      });
+    });
+
+    test("should resume with filter and flowControl options", async () => {
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume({ filter: { label: "my-label" } }, { retries: 2 });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label`,
+          token,
+          headers: {
+            "upstash-retries": "2",
+          },
+        },
+      });
+    });
+
+    test("should resume single DLQ message with legacy { dlqId } format", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const workflowRunId = `wfr-${nanoid()}`;
+      const workflowCreatedAt = "2023-01-01T00:00:00Z";
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume({ dlqId });
+          expect(result).toEqual({ workflowRunId, workflowCreatedAt });
+        },
+        responseFields: {
+          status: 200,
+          body: { workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should resume multiple DLQ messages with legacy { dlqId } format", async () => {
+      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume({ dlqId: dlqIds });
+          expect(result).toEqual(responses);
+        },
+        responseFields: {
+          status: 200,
+          body: { workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
+          token,
         },
       });
     });
@@ -451,9 +386,11 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.restart({ dlqId });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
+          const result = await client.dlq.restart(dlqId);
+          expect(result).toEqual({
+            cursor: undefined,
+            workflowRuns: [{ workflowRunId, workflowCreatedAt }],
+          });
         },
         responseFields: {
           status: 200,
@@ -463,7 +400,6 @@ describe("DLQ", () => {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqId}`,
           token,
-          headers: {},
         },
       });
     });
@@ -477,9 +413,8 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.restart({ dlqId: dlqIds });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
+          const result = await client.dlq.restart(dlqIds);
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
         responseFields: {
           status: 200,
@@ -489,190 +424,13 @@ describe("DLQ", () => {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
           token,
-          headers: {},
         },
       });
     });
 
-    test("should restart DLQ message with flow control", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const workflowRunId = `wfr-${nanoid()}`;
-      const workflowCreatedAt = "2023-01-01T00:00:00Z";
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.restart({ dlqId, flowControl });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqId}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-          },
-        },
-      });
-    });
-
-    test("should restart DLQ message with retries", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const workflowRunId = `wfr-${nanoid()}`;
-      const workflowCreatedAt = "2023-01-01T00:00:00Z";
-      const retries = 5;
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.restart({ dlqId, retries });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqId}`,
-          token,
-          headers: {
-            "Upstash-Retries": "5",
-          },
-        },
-      });
-    });
-
-    test("should restart DLQ message with all parameters", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const workflowRunId = `wfr-${nanoid()}`;
-      const workflowCreatedAt = "2023-01-01T00:00:00Z";
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-      const retries = 3;
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.restart({ dlqId, flowControl, retries });
-          expect(result.workflowRunId).toBe(workflowRunId);
-          expect(result.workflowCreatedAt).toBe(workflowCreatedAt);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqId}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-            "Upstash-Retries": "3",
-          },
-        },
-      });
-    });
-
-    test("should restart multiple DLQ messages with flow control", async () => {
-      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-      const responses = [
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
-      ];
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.restart({ dlqId: dlqIds, flowControl });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: responses },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-          },
-        },
-      });
-    });
-
-    test("should restart multiple DLQ messages with retries", async () => {
-      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
-      const retries = 5;
-      const responses = [
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
-      ];
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.restart({ dlqId: dlqIds, retries });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: responses },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
-          token,
-          headers: {
-            "Upstash-Retries": "5",
-          },
-        },
-      });
-    });
-
-    test("should restart multiple DLQ messages with all parameters", async () => {
-      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
-      const flowControl = { key: "test-key", rate: 10, parallelism: 5 };
-      const retries = 3;
-      const responses = [
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
-        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
-      ];
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.restart({ dlqId: dlqIds, flowControl, retries });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
-        },
-        responseFields: {
-          status: 200,
-          body: { cursor: "", workflowRuns: responses },
-        },
-        receivesRequest: {
-          method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
-          token,
-          headers: {
-            "Upstash-Flow-Control-Key": "test-key",
-            "Upstash-Flow-Control-Value": "parallelism=5, rate=10",
-            "Upstash-Retries": "3",
-          },
-        },
-      });
-    });
-
-    test("should return empty array when dlqId is an empty array", async () => {
-      const result = await client.dlq.restart({ dlqId: [] });
-      expect(result).toEqual([]);
+    test("should return empty array when dlqIds is an empty array", async () => {
+      const result = await client.dlq.restart([]);
+      expect(result).toEqual({ workflowRuns: [] });
     });
 
     test("should restart DLQ messages with filters", async () => {
@@ -683,9 +441,8 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.restart({ label: "my-label" });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
+          const result = await client.dlq.restart({ filter: { label: "my-label" } });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
         responseFields: {
           status: 200,
@@ -693,12 +450,8 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label`,
           token,
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: { label: "my-label" },
         },
       });
     });
@@ -711,11 +464,9 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.restart({
-            label: "my-label",
-            workflowUrl: "https://example.com/workflow",
+            filter: { label: "my-label", workflowUrl: "https://example.com/workflow" },
           });
-          expect(Array.isArray(result)).toBe(true);
-          expect(result).toEqual(responses);
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
         responseFields: {
           status: 200,
@@ -723,12 +474,107 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}`,
+          token,
+        },
+      });
+    });
+
+    test("should restart all DLQ messages", async () => {
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.restart({ all: true });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?all=true`,
+          token,
+        },
+      });
+    });
+
+    test("should restart with flowControl and retries options", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.restart(dlqId, {
+            flowControl: { key: "my-key", rate: 10, parallelism: 3, period: "1m" },
+            retries: 5,
+          });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqId}`,
           token,
           headers: {
-            "Content-Type": "application/json",
+            "upstash-flow-control-key": "my-key",
+            "upstash-flow-control-value": "parallelism=3, rate=10, period=1m",
+            "upstash-retries": "5",
           },
-          body: { label: "my-label", workflowUrl: "https://example.com/workflow" },
+        },
+      });
+    });
+
+    test("should restart single DLQ message with legacy { dlqId } format", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+      const workflowRunId = `wfr-${nanoid()}`;
+      const workflowCreatedAt = "2023-01-01T00:00:00Z";
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.restart({ dlqId });
+          expect(result).toEqual({ workflowRunId, workflowCreatedAt });
+        },
+        responseFields: {
+          status: 200,
+          body: { workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should restart multiple DLQ messages with legacy { dlqId } format", async () => {
+      const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T01:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.restart({ dlqId: dlqIds });
+          expect(result).toEqual(responses);
+        },
+        responseFields: {
+          status: 200,
+          body: { workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?dlqIds=${dlqIds[0]}&dlqIds=${dlqIds[1]}`,
+          token,
         },
       });
     });
@@ -766,7 +612,7 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.delete({ dlqIds: [dlqId] });
+          const result = await client.dlq.delete(dlqId);
           expect(result.deleted).toBe(deleted);
         },
         responseFields: {
@@ -787,7 +633,7 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.delete({ dlqIds });
+          const result = await client.dlq.delete(dlqIds);
           expect(result.deleted).toBe(deleted);
         },
         responseFields: {
@@ -803,53 +649,17 @@ describe("DLQ", () => {
     });
 
     test("should handle empty array of DLQ IDs", async () => {
-      const deleted = 0;
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.delete({ dlqIds: [] });
-          expect(result.deleted).toBe(deleted);
-        },
-        responseFields: {
-          status: 200,
-          body: { deleted },
-        },
-        receivesRequest: {
-          method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
-          token,
-        },
-      });
+      const result = await client.dlq.delete([]);
+      expect(result.deleted).toBe(0);
     });
 
-    test("should delete a single DLQ message passed as a plain string", async () => {
-      const dlqId = `dlq-${nanoid()}`;
-      const deleted = 1;
-
-      await mockQStashServer({
-        execute: async () => {
-          const result = await client.dlq.delete(dlqId);
-          expect(result.deleted).toBe(deleted);
-        },
-        responseFields: {
-          status: 200,
-          body: { deleted },
-        },
-        receivesRequest: {
-          method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?dlqIds=${dlqId}`,
-          token,
-        },
-      });
-    });
-
-    test("should delete multiple DLQ messages passed as a plain string array", async () => {
+    test("should delete DLQ messages with dlqIds filter", async () => {
       const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
       const deleted = 2;
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.delete(dlqIds);
+          const result = await client.dlq.delete({ dlqIds });
           expect(result.deleted).toBe(deleted);
         },
         responseFields: {
@@ -869,7 +679,7 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.delete({ label: "my-label" });
+          const result = await client.dlq.delete({ filter: { label: "my-label" } });
           expect(result.deleted).toBe(deleted);
         },
         responseFields: {
@@ -878,9 +688,8 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label`,
           token,
-          body: { label: "my-label" },
         },
       });
     });
@@ -890,30 +699,8 @@ describe("DLQ", () => {
 
       await mockQStashServer({
         execute: async () => {
-          const result = await client.dlq.delete({ workflowUrl: "https://example.com/workflow" });
-          expect(result.deleted).toBe(deleted);
-        },
-        responseFields: {
-          status: 200,
-          body: { deleted },
-        },
-        receivesRequest: {
-          method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
-          token,
-          body: { workflowUrl: "https://example.com/workflow" },
-        },
-      });
-    });
-
-    test("should delete DLQ messages with fromDate and toDate filters (converted to numbers)", async () => {
-      const deleted = 3;
-
-      await mockQStashServer({
-        execute: async () => {
           const result = await client.dlq.delete({
-            fromDate: "1640995200000",
-            toDate: "1672531200000",
+            filter: { workflowUrl: "https://example.com/workflow" },
           });
           expect(result.deleted).toBe(deleted);
         },
@@ -923,9 +710,30 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?workflowUrl=${encodeURIComponent("https://example.com/workflow")}`,
           token,
-          body: { fromDate: 1640995200000, toDate: 1672531200000 },
+        },
+      });
+    });
+
+    test("should delete DLQ messages with fromDate and toDate filters", async () => {
+      const deleted = 3;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({
+            filter: { fromDate: 1640995200000, toDate: 1672531200000 },
+          });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?fromDate=1640995200000&toDate=1672531200000`,
+          token,
         },
       });
     });
@@ -936,9 +744,11 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.delete({
-            label: "my-label",
-            workflowUrl: "https://example.com/workflow",
-            fromDate: "1640995200000",
+            filter: {
+              label: "my-label",
+              workflowUrl: "https://example.com/workflow",
+              fromDate: 1640995200000,
+            },
           });
           expect(result.deleted).toBe(deleted);
         },
@@ -948,13 +758,8 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&fromDate=1640995200000`,
           token,
-          body: {
-            label: "my-label",
-            workflowUrl: "https://example.com/workflow",
-            fromDate: 1640995200000,
-          },
         },
       });
     });
@@ -973,9 +778,8 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?all=true`,
           token,
-          body: {},
         },
       });
     });

@@ -1111,7 +1111,7 @@ describe("serve", () => {
       const { workflowRunId } = (await response.json()) as { workflowRunId: string };
       expect(workflowRunId).toBeString();
 
-      await client.cancel({ ids: workflowRunId });
+      await client.cancel(workflowRunId);
     });
 
     test("allow https://", async () => {
@@ -1133,7 +1133,7 @@ describe("serve", () => {
       const { workflowRunId } = (await response.json()) as { workflowRunId: string };
       expect(workflowRunId).toBeString();
 
-      await client.cancel({ ids: workflowRunId });
+      await client.cancel(workflowRunId);
     });
 
     test("should not allow when not http:// or https://", async () => {

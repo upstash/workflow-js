@@ -4,12 +4,6 @@ import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
 
 /**
- * Converts a `Date` object, Unix timestamp in milliseconds, or numeric string to a number.
- */
-export const toMs = (d: Date | number | string): number =>
-  d instanceof Date ? d.getTime() : Number(d);
-
-/**
  * Makes a request to notify waiting workflows.
  *
  * @param requester QStash HTTP requester
@@ -136,3 +130,12 @@ export const getSteps = async (
     }
   }
 };
+
+/**
+ * Normalizes a response cursor: converts empty string to `undefined`
+ * so that callers can reliably use `cursor` as a boolean presence check.
+ */
+export function normalizeCursor<T>(response: T): T {
+  const cursor = (response as { cursor?: string }).cursor;
+  return { ...response, cursor: cursor || undefined };
+}

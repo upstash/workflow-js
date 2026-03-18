@@ -1,12 +1,13 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { makeGetWaitersRequest, makeNotifyRequest, toMs } from "./utils";
+import { makeGetWaitersRequest, makeNotifyRequest, normalizeCursor } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
-import { TriggerOptions, WorkflowRunLog, WorkflowRunLogs } from "./types";
+import { TriggerOptions, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
+import { WorkflowLogsListFilters, WorkflowRunCancelFilters } from "./filter-types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -27,108 +28,33 @@ export class Client {
   }
 
   /**
-   * Cancel an ongoing workflow
+   * Cancel an ongoing workflow.
    *
-   * Returns true if workflow is canceled succesfully. Otherwise, throws error.
-   *
-   * There are multiple ways you can cancel workflows:
-   * - pass one or more workflow run ids to cancel them
-   * - pass a workflow url to cancel all runs starting with this url
-   * - cancel all pending or active workflow runs
-   *
-   * ### Cancel a set of workflow runs
-   *
-   * ```ts
-   * // cancel a single workflow
-   * await client.cancel({ ids: "<WORKFLOW_RUN_ID>" })
-   *
-   * // cancel a set of workflow runs
-   * await client.cancel({ ids: [
-   *   "<WORKFLOW_RUN_ID_1>",
-   *   "<WORKFLOW_RUN_ID_2>",
-   * ]})
-   * ```
-   *
-   * ### Cancel workflows starting with a url
-   *
-   * If you have an endpoint called `https://your-endpoint.com` and you
-   * want to cancel all workflow runs on it, you can use `urlStartingWith`.
-   *
-   * Note that this will cancel workflows in all endpoints under
-   * `https://your-endpoint.com`.
-   *
-   * ```ts
-   * await client.cancel({ urlStartingWith: "https://your-endpoint.com" })
-   * ```
-   *
-   * ### Cancel *all* workflows
-   *
-   * To cancel all pending and currently running workflows, you can
-   * do it like this:
-   *
-   * ```ts
-   * await client.cancel({ all: true })
-   * ```
-   *
-   * @param ids run id of the workflow to delete
-   * @param urlStartingWith cancel workflows starting with this url. Will be ignored
-   *   if `ids` parameter is set.
-   * @param workflowUrl cancel workflows with this url.
-   * @param fromDate cancel workflows created after this date.
-   * @param toDate cancel workflows created before this date.
-   * @param label cancel workflows with this label.
-   * @param all set to true in order to cancel all workflows. Will be ignored
-   *   if `ids` or `urlStartingWith` parameters are set.
-   * @returns true if workflow is succesfully deleted. Otherwise throws QStashError
+   * Can be called with:
+   * - A single workflow run id: `cancel("wfr_123")`
+   * - An array of workflow run ids: `cancel(["wfr_123", "wfr_456"])`
+   * - A filter object: `cancel({ workflowUrl: "https://...", label: "my-label" })`
+   * - To cancel all: `cancel({ all: true })`
    */
-  public async cancel({
-    ids,
-    urlStartingWith,
-    workflowUrl,
-    fromDate,
-    toDate,
-    label,
-    all,
-  }: {
-    ids?: string | string[];
-    fromDate?: Date | number | string;
-    toDate?: Date | number | string;
-    label?: string;
-    all?: boolean;
-  } & (
-    | { urlStartingWith?: string; workflowUrl?: never }
-    | { workflowUrl?: string; urlStartingWith?: never }
-  )) {
-    let body: Record<string, unknown> = {
-      ...(fromDate !== undefined ? { fromDate: toMs(fromDate) } : {}),
-      ...(toDate !== undefined ? { toDate: toMs(toDate) } : {}),
-      ...(label ? { label } : {}),
-    };
+  public async cancel(
+    request: string | string[] | WorkflowRunCancelFilters
+  ): Promise<{ cancelled: number }> {
+    if (typeof request === "string") request = [request];
+    if (Array.isArray(request) && request.length === 0) return { cancelled: 0 };
+    const filters = Array.isArray(request) ? { workflowRunIds: request } : request;
 
-    if (ids) {
-      const runIdArray = typeof ids === "string" ? [ids] : ids;
+    const query =
+      "filter" in filters
+        ? filters.filter
+        : "all" in filters
+          ? { all: filters.all }
+          : { workflowRunIds: filters.workflowRunIds };
 
-      body = { ...body, workflowRunIds: runIdArray };
-    } else if (workflowUrl) {
-      body = { ...body, workflowUrl, workflowUrlExactMatch: true };
-    } else if (urlStartingWith) {
-      body = { ...body, workflowUrl: urlStartingWith };
-    } else if (all) {
-      body = {};
-    } else if (Object.keys(body).length === 0) {
-      throw new TypeError("The `cancel` method cannot be called without any options.");
-    }
-
-    const result = await this.client.http.request<{ cancelled: number }>({
+    return await this.client.http.request<{ cancelled: number }>({
       path: ["v2", "workflows", "runs"],
       method: "DELETE",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      query,
     });
-
-    return result;
   }
 
   /**
@@ -320,44 +246,34 @@ export class Client {
    * ```
    */
   public async logs(params?: {
-    workflowRunId?: WorkflowRunLog["workflowRunId"];
     cursor?: string;
     count?: number;
-    state?: WorkflowRunLog["workflowState"];
-    workflowUrl?: WorkflowRunLog["workflowUrl"];
-    workflowCreatedAt?: WorkflowRunLog["workflowRunCreatedAt"];
-    label?: WorkflowRunLog["label"];
+    filter?: WorkflowLogsListFilters;
+    /** @deprecated Use `filter.workflowRunId` instead. */
+    workflowRunId?: string;
+    /** @deprecated Use `filter.state` instead. */
+    state?: string;
+    /** @deprecated Use `filter.workflowUrl` instead. */
+    workflowUrl?: string;
+    /** @deprecated Use `filter.label` instead. */
+    label?: string;
+    /** @deprecated No longer supported. */
+    workflowCreatedAt?: number;
   }): Promise<WorkflowRunLogs> {
-    const { workflowRunId, cursor, count, state, workflowUrl, workflowCreatedAt } = params ?? {};
+    const { cursor, count, filter, ...legacyFilter } = params ?? {};
 
-    const urlParams = new URLSearchParams({ groupBy: "workflowRunId" });
-    if (workflowRunId) {
-      urlParams.append("workflowRunId", workflowRunId);
-    }
-    if (cursor) {
-      urlParams.append("cursor", cursor);
-    }
-    if (count) {
-      urlParams.append("count", count.toString());
-    }
-    if (state) {
-      urlParams.append("state", state);
-    }
-    if (workflowUrl) {
-      urlParams.append("workflowUrl", workflowUrl);
-    }
-    if (workflowCreatedAt) {
-      urlParams.append("workflowCreatedAt", workflowCreatedAt.toString());
-    }
-    if (params?.label) {
-      urlParams.append("label", params.label);
-    }
-
-    const result = await this.client.http.request<WorkflowRunLogs>({
-      path: ["v2", "workflows", `events?${urlParams.toString()}`],
-    });
-
-    return result;
+    return normalizeCursor(
+      await this.client.http.request<WorkflowRunLogs>({
+        path: ["v2", "workflows", "events"],
+        query: {
+          groupBy: "workflowRunId",
+          ...legacyFilter,
+          cursor,
+          count,
+          ...filter,
+        },
+      })
+    );
   }
 
   get dlq() {

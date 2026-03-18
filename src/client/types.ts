@@ -334,7 +334,7 @@ export type WorkflowRunLog = {
 };
 
 export type WorkflowRunLogs = {
-  cursor: string;
+  cursor?: string;
   runs: WorkflowRunLog[];
 };
 
@@ -433,6 +433,7 @@ export type TriggerOptions = {
   failureUrl?: string;
 };
 
+/** @deprecated Use `resume(dlqId)` or `resume([dlqId1, dlqId2])` instead of `resume({ dlqId })` */
 export type DLQResumeRestartOptions<TDLQId extends string | string[] = string | string[]> = {
   dlqId: TDLQId;
 } & Pick<TriggerOptions, "flowControl" | "retries">;
@@ -454,5 +455,5 @@ export type WorkflowBulkFilters = {
   fromDate?: Date | number | string;
   toDate?: Date | number | string;
   label?: string;
-  all?: boolean;
+  all?: true;
 };
