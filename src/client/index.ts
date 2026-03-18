@@ -270,6 +270,7 @@ export class Client {
         retries: option.retries,
         retryDelay: option.retryDelay,
         flowControl: option.flowControl,
+        redact: option.redact,
       };
     });
     const result = await triggerFirstInvocation(invocations);

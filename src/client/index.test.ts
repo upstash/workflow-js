@@ -472,6 +472,73 @@ describe("workflow client", () => {
     });
   });
 
+  test("should trigger workflow run with redact fields", async () => {
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
+    await mockQStashServer({
+      execute: async () => {
+        await client.trigger({
+          url: WORKFLOW_ENDPOINT,
+          body,
+          workflowRunId: myWorkflowRunId,
+          redact: { body: true, header: ["Authorization"] },
+        });
+      },
+      responseFields: {
+        status: 200,
+        body: [{ messageId: "msgId" }],
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: expect.objectContaining({
+              "upstash-redact-fields": "body,header[Authorization]",
+            }),
+            body,
+          },
+        ],
+      },
+    });
+  });
+
+  test("should trigger workflow run with redact fields and failure callback", async () => {
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
+    await mockQStashServer({
+      execute: async () => {
+        await client.trigger({
+          url: WORKFLOW_ENDPOINT,
+          body,
+          workflowRunId: myWorkflowRunId,
+          redact: { body: true, header: true },
+          failureUrl: "https://requestcatcher.com/some-failure-callback",
+        });
+      },
+      responseFields: {
+        status: 200,
+        body: [{ messageId: "msgId" }],
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: expect.objectContaining({
+              "upstash-redact-fields": "body,header",
+            }),
+            body,
+          },
+        ],
+      },
+    });
+  });
+
   describe("logs", () => {
     test("should send logs request", async () => {
       const count = 10;

@@ -46,6 +46,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   retries?: TriggerOptions["retries"];
   retryDelay?: TriggerOptions["retryDelay"];
   flowControl?: TriggerOptions["flowControl"];
+  redact?: TriggerOptions["redact"];
   middlewareManager?: MiddlewareManager;
   unknownSdk?: boolean;
 };
@@ -70,6 +71,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       retries,
       retryDelay,
       flowControl,
+      redact,
       unknownSdk,
     }) => {
       const { headers } = getHeaders({
@@ -125,6 +127,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         url: workflowContext.url,
         delay: delay,
         notBefore: notBefore,
+        redact,
       } as PublishBatchRequest;
     }
   );
