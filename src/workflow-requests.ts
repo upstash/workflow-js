@@ -46,6 +46,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   retries?: TriggerOptions["retries"];
   retryDelay?: TriggerOptions["retryDelay"];
   flowControl?: TriggerOptions["flowControl"];
+  redact?: TriggerOptions["redact"];
   middlewareManager?: MiddlewareManager;
   unknownSdk?: boolean;
 };
@@ -70,6 +71,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       retries,
       retryDelay,
       flowControl,
+      redact,
       unknownSdk,
     }) => {
       const { headers } = getHeaders({
@@ -83,6 +85,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
           telemetry: telemetry,
           flowControl,
           useJSONContent: useJSONContent ?? false,
+          redact,
         },
         invokeCount: invokeCount ?? 0,
         userHeaders: workflowContext.headers,

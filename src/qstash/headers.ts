@@ -25,6 +25,10 @@ export type WorkflowConfig = {
   workflowRunId: string;
   workflowUrl: string;
   useJSONContent?: boolean;
+  redact?: {
+    body?: true;
+    header?: true | string[];
+  };
 };
 
 /**
@@ -100,6 +104,7 @@ class WorkflowHeaders {
     this.addUserHeaders();
     this.addInvokeCount();
     this.addFailureUrl();
+    this.addRedact();
     const contentType = this.addContentType();
 
     return this.prefixHeaders(contentType);
@@ -223,6 +228,35 @@ class WorkflowHeaders {
     }
     if (this.workflowConfig.retryDelay !== undefined && this.workflowConfig.retryDelay !== "") {
       this.headers.failureHeaders["Retry-Delay"] = this.workflowConfig.retryDelay.toString();
+    }
+  }
+
+  private addRedact() {
+    if (!this.workflowConfig.redact) {
+      return;
+    }
+
+    const redactParts: string[] = [];
+
+    if (this.workflowConfig.redact.body) {
+      redactParts.push("body");
+    }
+
+    if (this.workflowConfig.redact.header !== undefined) {
+      if (this.workflowConfig.redact.header === true) {
+        redactParts.push("header");
+      } else if (Array.isArray(this.workflowConfig.redact.header) && this.workflowConfig.redact.header.length > 0) {
+        for (const headerName of this.workflowConfig.redact.header) {
+          redactParts.push(`header[${headerName}]`);
+        }
+      }
+    }
+
+    if (redactParts.length > 0) {
+      this.headers.workflowHeaders["Redact-Fields"] = redactParts.join(",");
+      if (this.workflowConfig.failureUrl) {
+        this.headers.failureHeaders["Redact-Fields"] = redactParts.join(",");
+      }
     }
   }
 
