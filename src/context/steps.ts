@@ -606,10 +606,11 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
     stepName: string,
     eventId: string,
     eventData: unknown,
-    requester: Client["http"]
+    requester: Client["http"],
+    workflowRunId?: string
   ) {
     super(context, stepName, async () => {
-      const notifyResponse = await makeNotifyRequest(requester, eventId, eventData);
+      const notifyResponse = await makeNotifyRequest(requester, eventId, eventData, workflowRunId);
 
       return {
         eventId,

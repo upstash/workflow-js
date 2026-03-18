@@ -433,18 +433,28 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * a notifyResponse field which contains a list of `Waiter` objects, each corresponding
    * to a notified workflow run.
    *
+   * Optionally, you can pass a workflowRunId to enable lookback functionality:
+   *
+   * ```ts
+   * const { eventId, eventData, notifyResponse } = await context.notify(
+   *   "notify step", "event-id", "event-data", "wfr_123"
+   * );
+   * ```
+   *
    * @param stepName
    * @param eventId event id to notify
    * @param eventData event data to notify with
+   * @param workflowRunId optional workflow run id for lookback support
    * @returns notify response which has event id, event data and list of waiters which were notified
    */
   public async notify(
     stepName: string,
     eventId: string,
-    eventData: unknown
+    eventData: unknown,
+    workflowRunId?: string
   ): Promise<NotifyStepResponse> {
     return await this.addStep(
-      new LazyNotifyStep(this, stepName, eventId, eventData, this.qstashClient.http)
+      new LazyNotifyStep(this, stepName, eventId, eventData, this.qstashClient.http, workflowRunId)
     );
   }
 
