@@ -85,7 +85,6 @@ export const triggerFirstInvocation = async <TInitialPayload>(
           telemetry: telemetry,
           flowControl,
           useJSONContent: useJSONContent ?? false,
-          redact,
         },
         invokeCount: invokeCount ?? 0,
         userHeaders: workflowContext.headers,
@@ -128,6 +127,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         url: workflowContext.url,
         delay: delay,
         notBefore: notBefore,
+        redact,
       } as PublishBatchRequest;
     }
   );

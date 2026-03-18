@@ -471,11 +471,15 @@ describe("workflow client", () => {
         method: "POST",
         url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
         token,
-      },
-      validateRequest: (request) => {
-        const batchBody = JSON.parse(request.body as string);
-        const headers = batchBody[0].headers;
-        expect(headers["upstash-redact-fields"]).toBe("body,header[Authorization]");
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: expect.objectContaining({
+              "upstash-redact-fields": "body,header[Authorization]",
+            }),
+            body,
+          },
+        ],
       },
     });
   });
@@ -501,12 +505,15 @@ describe("workflow client", () => {
         method: "POST",
         url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
         token,
-      },
-      validateRequest: (request) => {
-        const batchBody = JSON.parse(request.body as string);
-        const headers = batchBody[0].headers;
-        expect(headers["upstash-redact-fields"]).toBe("body,header");
-        expect(headers["upstash-failure-callback-redact-fields"]).toBe("body,header");
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: expect.objectContaining({
+              "upstash-redact-fields": "body,header",
+            }),
+            body,
+          },
+        ],
       },
     });
   });
