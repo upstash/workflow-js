@@ -150,8 +150,14 @@ describe("workflow client", () => {
     });
 
     test("should return early when called with empty array", async () => {
-      const result = await client.cancel([]);
-      expect(result).toEqual({ cancelled: 0 });
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel([]);
+          expect(result).toEqual({ cancelled: 0 });
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
     });
 
     test("should cancel with legacy { ids: string } format", async () => {

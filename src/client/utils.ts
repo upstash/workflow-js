@@ -18,9 +18,7 @@ export const makeNotifyRequest = async (
   eventData?: unknown,
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
-  const path = workflowRunId
-    ? ["v2", "notify", workflowRunId, eventId]
-    : ["v2", "notify", eventId];
+  const path = workflowRunId ? ["v2", "notify", workflowRunId, eventId] : ["v2", "notify", eventId];
 
   const result = (await requester.request({
     path,

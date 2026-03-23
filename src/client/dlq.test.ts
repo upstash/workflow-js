@@ -202,8 +202,14 @@ describe("DLQ", () => {
     });
 
     test("should return empty array when dlqIds is an empty array", async () => {
-      const result = await client.dlq.resume([]);
-      expect(result).toEqual({ workflowRuns: [] });
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume([]);
+          expect(result).toEqual({ workflowRuns: [] });
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
     });
 
     test("should resume DLQ messages with filters", async () => {
@@ -429,8 +435,14 @@ describe("DLQ", () => {
     });
 
     test("should return empty array when dlqIds is an empty array", async () => {
-      const result = await client.dlq.restart([]);
-      expect(result).toEqual({ workflowRuns: [] });
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.restart([]);
+          expect(result).toEqual({ workflowRuns: [] });
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
     });
 
     test("should restart DLQ messages with filters", async () => {
@@ -649,8 +661,14 @@ describe("DLQ", () => {
     });
 
     test("should handle empty array of DLQ IDs", async () => {
-      const result = await client.dlq.delete([]);
-      expect(result.deleted).toBe(0);
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete([]);
+          expect(result.deleted).toBe(0);
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
     });
 
     test("should delete DLQ messages with dlqIds filter", async () => {
