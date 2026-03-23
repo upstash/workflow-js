@@ -143,7 +143,7 @@ describe("workflow client", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?all=true&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?count=100`,
           token,
         },
       });
@@ -476,10 +476,17 @@ describe("workflow client", () => {
       }
     );
 
-    test.skip("should cancel all", async () => {
-      // intentionally didn't write a test for cancel.all,
-      // because it may break apps running on the same QStash user.
-    });
+    test.skip(
+      "should cancel all",
+      async () => {
+        await liveClient.trigger({ url: "http://requestcatcher.com/cancel-all-1" });
+        await liveClient.trigger({ url: "http://requestcatcher.com/cancel-all-2" });
+
+        const cancel = await liveClient.cancel({ all: true });
+        expect(cancel.cancelled).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 15000 }
+    );
   });
 
   test("should send notify", async () => {

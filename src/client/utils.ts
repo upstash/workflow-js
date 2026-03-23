@@ -186,7 +186,7 @@ export function buildBulkActionQueryParameters(
   const cursor = "cursor" in request ? request.cursor : undefined;
 
   if ("all" in request) {
-    return { all: true as const, count: request.count ?? DEFAULT_BULK_COUNT, cursor };
+    return { count: request.count ?? DEFAULT_BULK_COUNT, cursor };
   }
 
   if ("dlqIds" in request) {

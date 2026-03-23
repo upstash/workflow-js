@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
+import { MOCK_QSTASH_SERVER_URL, mockQStashServer, eventually } from "../test-utils";
 import { Client } from ".";
 import { nanoid } from "../utils";
 
@@ -212,6 +212,18 @@ describe("DLQ", () => {
       });
     });
 
+    test("should throw when dlqIds is empty in filter format", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.resume({ dlqIds: [] })).rejects.toThrow(
+            "Empty dlqIds array provided"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should resume DLQ messages with filters", async () => {
       const responses = [
         { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
@@ -275,7 +287,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?all=true&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?count=100`,
           token,
         },
       });
@@ -445,6 +457,18 @@ describe("DLQ", () => {
       });
     });
 
+    test("should throw when dlqIds is empty in filter format", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.restart({ dlqIds: [] })).rejects.toThrow(
+            "Empty dlqIds array provided"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should restart DLQ messages with filters", async () => {
       const responses = [
         { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
@@ -508,7 +532,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?all=true&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?count=100`,
           token,
         },
       });
@@ -671,6 +695,18 @@ describe("DLQ", () => {
       });
     });
 
+    test("should throw when dlqIds is empty in filter format", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.delete({ dlqIds: [] })).rejects.toThrow(
+            "Empty dlqIds array provided"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should delete DLQ messages with dlqIds filter", async () => {
       const dlqIds = [`dlq-${nanoid()}`, `dlq-${nanoid()}`];
       const deleted = 2;
@@ -796,10 +832,82 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?all=true&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?count=100`,
           token,
         },
       });
     });
+  });
+
+  /**
+   * tests skipped to avoid breaking live apps
+   */
+  describe.skip("DLQ - live", () => {
+    const liveClient = new Client({
+      baseUrl: process.env.QSTASH_URL,
+      token: process.env.QSTASH_TOKEN!,
+    });
+
+    test(
+      "should resume all DLQ messages",
+      async () => {
+        // trigger workflows that will fail and end up in DLQ
+        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+
+        // wait for messages to land in DLQ
+        await eventually(
+          async () => {
+            const { messages } = await liveClient.dlq.list();
+            expect(messages.length).toBeGreaterThanOrEqual(2);
+          },
+          { timeout: 30000, interval: 2000 }
+        );
+
+        const result = await liveClient.dlq.resume({ all: true });
+        expect(result.workflowRuns.length).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 60000 }
+    );
+
+    test(
+      "should restart all DLQ messages",
+      async () => {
+        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+
+        await eventually(
+          async () => {
+            const { messages } = await liveClient.dlq.list();
+            expect(messages.length).toBeGreaterThanOrEqual(2);
+          },
+          { timeout: 30000, interval: 2000 }
+        );
+
+        const result = await liveClient.dlq.restart({ all: true });
+        expect(result.workflowRuns.length).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 60000 }
+    );
+
+    test(
+      "should delete all DLQ messages",
+      async () => {
+        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+
+        await eventually(
+          async () => {
+            const { messages } = await liveClient.dlq.list();
+            expect(messages.length).toBeGreaterThanOrEqual(2);
+          },
+          { timeout: 30000, interval: 2000 }
+        );
+
+        const result = await liveClient.dlq.delete({ all: true });
+        expect(result.deleted).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 60000 }
+    );
   });
 });
