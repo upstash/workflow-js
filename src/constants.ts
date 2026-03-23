@@ -3,6 +3,7 @@ import { Telemetry } from "./types";
 export const WORKFLOW_ID_HEADER = "Upstash-Workflow-RunId";
 export const WORKFLOW_INIT_HEADER = "Upstash-Workflow-Init";
 export const WORKFLOW_URL_HEADER = "Upstash-Workflow-Url";
+export const WORKFLOW_CREATED_AT_HEADER = "Upstash-Workflow-CreatedAt";
 export const WORKFLOW_FAILURE_HEADER = "Upstash-Workflow-Is-Failure";
 export const WORKFLOW_FAILURE_CALLBACK_HEADER = "Upstash-Workflow-Failure-Callback";
 export const WORKFLOW_FEATURE_HEADER = "Upstash-Feature-Set";

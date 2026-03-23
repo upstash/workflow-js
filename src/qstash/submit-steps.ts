@@ -48,7 +48,6 @@ export const submitParallelSteps = async ({
           workflowUrl: context.url,
           telemetry,
         },
-        userHeaders: context.headers,
         invokeCount,
       });
 

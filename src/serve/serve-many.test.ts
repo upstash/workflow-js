@@ -9,7 +9,11 @@ import {
   WORKFLOW_ENDPOINT,
 } from "../test-utils";
 import { nanoid } from "../utils";
-import { WORKFLOW_INVOKE_COUNT_HEADER, WORKFLOW_LABEL_HEADER } from "../constants";
+import {
+  WORKFLOW_CREATED_AT_HEADER,
+  WORKFLOW_INVOKE_COUNT_HEADER,
+  WORKFLOW_LABEL_HEADER,
+} from "../constants";
 import { getNewUrlFromWorkflowId } from "./serve-many";
 
 describe("serveMany", () => {
@@ -158,11 +162,15 @@ describe("serveMany", () => {
     );
 
     test("should invoke workflowOne from workflowTwo with object body", async () => {
+      const workflowCreatedAt = "1769433002013";
       const request = getRequest(
         `${WORKFLOW_ENDPOINT}/workflowTwo`,
         "wfr_id",
         "initial-payload",
-        []
+        [],
+        {
+          [WORKFLOW_CREATED_AT_HEADER]: workflowCreatedAt,
+        }
       );
 
       await mockQStashServer({
@@ -191,7 +199,8 @@ describe("serveMany", () => {
               "content-type": ["application/json"],
               "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
-            workflowRunId: expect.any(String),
+            workflowRunId: "wfr_id",
+            workflowRunCreatedAt: Number(workflowCreatedAt),
             workflowUrl: "https://requestcatcher.com/api/workflowTwo",
             step: {
               stepId: 1,
@@ -328,11 +337,15 @@ describe("serveMany", () => {
     });
 
     test("should invoke workflowTwo from workflowFive with string body", async () => {
+      const workflowCreatedAt = "1869433002013";
       const request = getRequest(
         `${WORKFLOW_ENDPOINT}/workflowFive`,
         "wfr_id",
         "initial-payload",
-        []
+        [],
+        {
+          [WORKFLOW_CREATED_AT_HEADER]: workflowCreatedAt,
+        }
       );
 
       await mockQStashServer({
@@ -360,7 +373,8 @@ describe("serveMany", () => {
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowFive"],
               "content-type": ["application/json"],
             },
-            workflowRunId: expect.any(String),
+            workflowRunId: "wfr_id",
+            workflowRunCreatedAt: Number(workflowCreatedAt),
             workflowUrl: "https://requestcatcher.com/api/workflowFive",
             step: {
               stepId: 1,
@@ -374,11 +388,15 @@ describe("serveMany", () => {
     });
 
     test("should invoke workflowThree from workflowSix with no body", async () => {
+      const workflowCreatedAt = "1629433002013";
       const request = getRequest(
         `${WORKFLOW_ENDPOINT}/workflowSix`,
         "wfr_id",
         "initial-payload",
-        []
+        [],
+        {
+          [WORKFLOW_CREATED_AT_HEADER]: workflowCreatedAt,
+        }
       );
 
       await mockQStashServer({
@@ -411,8 +429,9 @@ describe("serveMany", () => {
               stepName: "invoke workflow three",
               stepType: "Invoke",
             },
-            workflowRunId: expect.any(String),
+            workflowRunId: "wfr_id",
             workflowUrl: "https://requestcatcher.com/api/workflowSix",
+            workflowRunCreatedAt: Number(workflowCreatedAt),
           },
         },
       });
@@ -473,11 +492,15 @@ describe("serveMany", () => {
     });
 
     test("should invoke workflowOne from workflowEight with label", async () => {
+      const workflowCreatedAt = "4323425434234";
       const request = getRequest(
         `${WORKFLOW_ENDPOINT}/workflowEight`,
         "wfr_id",
         "initial-payload",
-        []
+        [],
+        {
+          [WORKFLOW_CREATED_AT_HEADER]: workflowCreatedAt,
+        }
       );
 
       await mockQStashServer({
@@ -505,7 +528,8 @@ describe("serveMany", () => {
               "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowEight"],
               "content-type": ["application/json"],
             },
-            workflowRunId: expect.any(String),
+            workflowRunId: "wfr_id",
+            workflowRunCreatedAt: Number(workflowCreatedAt),
             workflowUrl: "https://requestcatcher.com/api/workflowEight",
             step: {
               stepId: 1,

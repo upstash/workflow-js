@@ -83,6 +83,7 @@ export class DisabledWorkflowContext<
         token: "disabled-client",
       }),
       workflowRunId: context.workflowRunId,
+      workflowRunCreatedAt: context.workflowRunCreatedAt,
       headers: context.headers,
       steps: [],
       url: context.url,

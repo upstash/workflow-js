@@ -158,7 +158,6 @@ export abstract class BaseLazyStep<TResult = unknown> {
         useJSONContent: false,
         telemetry,
       },
-      userHeaders: context.headers,
       invokeCount,
       stepInfo: {
         step,
@@ -607,10 +606,11 @@ export class LazyNotifyStep extends LazyFunctionStep<NotifyStepResponse> {
     stepName: string,
     eventId: string,
     eventData: unknown,
-    requester: Client["http"]
+    requester: Client["http"],
+    workflowRunId?: string
   ) {
     super(context, stepName, async () => {
-      const notifyResponse = await makeNotifyRequest(requester, eventId, eventData);
+      const notifyResponse = await makeNotifyRequest(requester, eventId, eventData, workflowRunId);
 
       return {
         eventId,
@@ -698,7 +698,6 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         telemetry,
         useJSONContent: false,
       },
-      userHeaders: context.headers,
       invokeCount,
     });
 
@@ -714,6 +713,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         Object.entries(invokerHeaders).map((pairs) => [pairs[0], [pairs[1]]])
       ),
       workflowRunId: context.workflowRunId,
+      workflowRunCreatedAt: context.workflowRunCreatedAt,
       workflowUrl: context.url,
       step,
     };
@@ -849,12 +849,15 @@ export class LazyWaitForWebhookStep extends LazyWaitEventStep<WaitForWebhookResp
     const body = parsedEventData.body;
     const parsedBody = typeof body === "string" ? decodeBase64(body) : undefined;
 
+    const methodUpper = parsedEventData.method.toUpperCase();
+    const canHaveBody = methodUpper !== "GET" && methodUpper !== "HEAD";
+
     const request = new Request(
       `${parsedEventData.proto}://${parsedEventData.host}${parsedEventData.url}`,
       {
         method: parsedEventData.method,
         headers: parsedEventData.header,
-        body: parsedBody,
+        body: canHaveBody ? parsedBody : undefined,
       }
     );
 

@@ -1,6 +1,7 @@
 import { makeCancelRequest } from "../client/utils";
 import {
   SDK_TELEMETRY,
+  WORKFLOW_CREATED_AT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
@@ -185,6 +186,7 @@ export const serveBase = <
 
     const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
     const label = request.headers.get(WORKFLOW_LABEL_HEADER) ?? undefined;
+    const workflowRunCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER)!;
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
@@ -198,6 +200,7 @@ export const serveBase = <
       telemetry,
       invokeCount,
       label,
+      workflowRunCreatedAt: Number(workflowRunCreatedAt),
       middlewareManager,
     });
 

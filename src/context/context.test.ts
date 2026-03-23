@@ -24,6 +24,7 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers({ "upstash-label": label }) as Headers,
       workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
       label,
     });
     expect(context.label).toBe(label);
@@ -43,6 +44,7 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
     });
 
     const throws = async () => {
@@ -67,6 +69,7 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
     });
 
     const throws = async () => {
@@ -89,6 +92,7 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
     });
 
     const throws = async () => {
@@ -111,6 +115,7 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
     });
 
     const throws = async () => {
@@ -134,6 +139,7 @@ describe("context tests", () => {
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
       invokeCount: 5,
+      workflowRunCreatedAt: 0,
     });
 
     await mockQStashServer({
@@ -183,6 +189,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 5,
+        workflowRunCreatedAt: 0,
       });
 
       const eventId = "my-event-id";
@@ -235,6 +242,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 1,
+        workflowRunCreatedAt: 0,
       });
 
       const eventId = "my-event-id";
@@ -306,6 +314,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 7,
+        workflowRunCreatedAt: 0,
       });
       await mockQStashServer({
         execute: () => {
@@ -384,6 +393,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
       await mockQStashServer({
         execute: () => {
@@ -445,6 +455,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
       await mockQStashServer({
         execute: () => {
@@ -509,6 +520,7 @@ describe("context tests", () => {
       url: WORKFLOW_ENDPOINT,
       headers: new Headers() as Headers,
       workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
     });
     try {
       await context.cancel();
@@ -530,6 +542,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       await mockQStashServer({
@@ -559,6 +572,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       await mockQStashServer({
@@ -589,6 +603,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       const openAIToken = `hello-there`;
@@ -670,6 +685,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 5,
+        workflowRunCreatedAt: 0,
       });
 
       const openAIToken = `hello-there`;
@@ -753,6 +769,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       const resendToken = `hello-there`;
@@ -832,6 +849,7 @@ describe("context tests", () => {
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
         invokeCount: 3,
+        workflowRunCreatedAt: 0,
       });
 
       const anthropicToken = `hello-there`;
@@ -925,6 +943,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       await mockQStashServer({
@@ -972,6 +991,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       const webhook = {
@@ -1028,6 +1048,7 @@ describe("context tests", () => {
         url: WORKFLOW_ENDPOINT,
         headers: new Headers() as Headers,
         workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
       });
 
       // First create webhook

@@ -10,14 +10,20 @@ import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-typ
  * @param requester QStash HTTP requester
  * @param eventId event ID to notify
  * @param eventData optional event data to send
+ * @param workflowRunId optional workflow run ID for lookback support
  */
 export const makeNotifyRequest = async (
   requester: Client["http"],
   eventId: string,
-  eventData?: unknown
+  eventData?: unknown,
+  workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
+  const path = workflowRunId
+    ? ["v2", "notify", workflowRunId, eventId]
+    : ["v2", "notify", eventId];
+
   const result = (await requester.request({
-    path: ["v2", "notify", eventId],
+    path,
     method: "POST",
     body: typeof eventData === "string" ? eventData : JSON.stringify(eventData),
   })) as NotifyResponse[];

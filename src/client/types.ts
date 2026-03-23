@@ -431,6 +431,19 @@ export type TriggerOptions = {
    * URL to call if the first request to the workflow endpoint fails
    */
   failureUrl?: string;
+  /**
+   * Configure which fields should be redacted in logs.
+   *
+   * - `{ body: true }` to redact the request body
+   * - `{ header: true }` to redact all headers
+   * - `{ header: ["Authorization"] }` to redact specific headers
+   *
+   * @default undefined
+   */
+  redact?: {
+    body?: true;
+    header?: true | string[];
+  };
 };
 
 /** @deprecated Use `resume(dlqId)` or `resume([dlqId1, dlqId2])` instead of `resume({ dlqId })` */

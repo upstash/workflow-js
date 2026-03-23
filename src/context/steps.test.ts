@@ -30,6 +30,7 @@ const createMockContext = () => {
     url: WORKFLOW_ENDPOINT,
     headers: new Headers() as Headers,
     workflowRunId: "test-wfr-id",
+    workflowRunCreatedAt: 0,
   });
 };
 
@@ -668,6 +669,111 @@ describe("test steps", () => {
         expect(result.request).toBeInstanceOf(Request);
         expect(result.request && result.request.method).toBe("POST");
         expect(result.request && result.request.url).toBe("https://example.com/api/endpoint");
+      });
+
+      test("should parse webhook wait response with GET request (no body)", () => {
+        const webhook = {
+          webhookUrl: "https://qstash.upstash.io/v2/workflows/hooks/user/wfr/evt",
+          eventId: "evt-123",
+        };
+        const step = new LazyWaitForWebhookStep(mockContext, "wait-webhook-step", webhook, "30s");
+
+        const requestData = {
+          method: "GET" as const,
+          header: {
+            accept: ["application/json"],
+          },
+          body: undefined,
+          proto: "https",
+          host: "example.com",
+          url: "/api/data",
+        };
+
+        const encodedData = btoa(JSON.stringify(requestData));
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-webhook-step",
+          stepType: "WaitForWebhook",
+          out: encodedData,
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.timeout).toBe(false);
+        expect(result.request).toBeInstanceOf(Request);
+        expect(result.request && result.request.method).toBe("GET");
+        expect(result.request && result.request.url).toBe("https://example.com/api/data");
+        expect(result.request && result.request.body).toBeNull();
+      });
+
+      test("should parse webhook wait response with HEAD request (no body)", () => {
+        const webhook = {
+          webhookUrl: "https://qstash.upstash.io/v2/workflows/hooks/user/wfr/evt",
+          eventId: "evt-123",
+        };
+        const step = new LazyWaitForWebhookStep(mockContext, "wait-webhook-step", webhook, "30s");
+
+        const requestData = {
+          method: "HEAD" as const,
+          header: {},
+          body: btoa("should be ignored"),
+          proto: "https",
+          host: "example.com",
+          url: "/api/health",
+        };
+
+        const encodedData = btoa(JSON.stringify(requestData));
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-webhook-step",
+          stepType: "WaitForWebhook",
+          out: encodedData,
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.timeout).toBe(false);
+        expect(result.request).toBeInstanceOf(Request);
+        expect(result.request && result.request.method).toBe("HEAD");
+        expect(result.request && result.request.body).toBeNull();
+      });
+
+      test("should parse webhook wait response with POST request body", () => {
+        const webhook = {
+          webhookUrl: "https://qstash.upstash.io/v2/workflows/hooks/user/wfr/evt",
+          eventId: "evt-123",
+        };
+        const step = new LazyWaitForWebhookStep(mockContext, "wait-webhook-step", webhook, "30s");
+
+        const bodyContent = JSON.stringify({ key: "value" });
+        const requestData = {
+          method: "POST" as const,
+          header: {
+            "content-type": ["application/json"],
+          },
+          body: btoa(bodyContent),
+          proto: "https",
+          host: "example.com",
+          url: "/api/submit",
+        };
+
+        const encodedData = btoa(JSON.stringify(requestData));
+
+        const stepResult: Step = {
+          stepId: 1,
+          stepName: "wait-webhook-step",
+          stepType: "WaitForWebhook",
+          out: encodedData,
+          concurrent: 1,
+        };
+
+        const result = step.parseOut(stepResult);
+        expect(result.timeout).toBe(false);
+        expect(result.request).toBeInstanceOf(Request);
+        expect(result.request && result.request.method).toBe("POST");
+        expect(result.request && result.request.body).not.toBeNull();
       });
 
       test("should parse webhook wait response with timeout", () => {

@@ -361,14 +361,16 @@ describe("workflow client", () => {
       "should cancel with workflowUrlStartingWith (prefix match)",
       async () => {
         await liveClient.trigger({
-          url: "http://requestcatcher.com/first",
+          url: "https://wf-test.requestcatcher.com//first",
+          delay: "2s",
         });
         await liveClient.trigger({
-          url: "http://requestcatcher.com/second",
+          url: "https://wf-test.requestcatcher.com//second",
+          delay: "2s",
         });
 
         const cancel = await liveClient.cancel({
-          filter: { workflowUrlStartingWith: "http://requestcatcher.com" },
+          urlStartingWith: "https://wf-test.requestcatcher.com//",
         });
 
         expect(cancel).toEqual({ cancelled: 2 });
@@ -488,6 +490,27 @@ describe("workflow client", () => {
       receivesRequest: {
         method: "POST",
         url: `${MOCK_QSTASH_SERVER_URL}/v2/notify/${eventId}`,
+        token,
+        body: eventData,
+      },
+    });
+  });
+
+  test("should send notify with workflowRunId", async () => {
+    const eventId = `event-id-${nanoid()}`;
+    const workflowRunId = `wfr_${nanoid()}`;
+    const eventData = { data: `notify-data-${nanoid()}` };
+    await mockQStashServer({
+      execute: async () => {
+        await client.notify({ eventId, eventData, workflowRunId });
+      },
+      responseFields: {
+        status: 200,
+        body: "msgId",
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/notify/${workflowRunId}/${eventId}`,
         token,
         body: eventData,
       },
@@ -745,6 +768,73 @@ describe("workflow client", () => {
     });
   });
 
+  test("should trigger workflow run with redact fields", async () => {
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
+    await mockQStashServer({
+      execute: async () => {
+        await client.trigger({
+          url: WORKFLOW_ENDPOINT,
+          body,
+          workflowRunId: myWorkflowRunId,
+          redact: { body: true, header: ["Authorization"] },
+        });
+      },
+      responseFields: {
+        status: 200,
+        body: [{ messageId: "msgId" }],
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: expect.objectContaining({
+              "upstash-redact-fields": "body,header[Authorization]",
+            }),
+            body,
+          },
+        ],
+      },
+    });
+  });
+
+  test("should trigger workflow run with redact fields and failure callback", async () => {
+    const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+    const body = "request-body";
+    await mockQStashServer({
+      execute: async () => {
+        await client.trigger({
+          url: WORKFLOW_ENDPOINT,
+          body,
+          workflowRunId: myWorkflowRunId,
+          redact: { body: true, header: true },
+          failureUrl: "https://requestcatcher.com/some-failure-callback",
+        });
+      },
+      responseFields: {
+        status: 200,
+        body: [{ messageId: "msgId" }],
+      },
+      receivesRequest: {
+        method: "POST",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+        token,
+        body: [
+          {
+            destination: WORKFLOW_ENDPOINT,
+            headers: expect.objectContaining({
+              "upstash-redact-fields": "body,header",
+            }),
+            body,
+          },
+        ],
+      },
+    });
+  });
+
   describe("logs", () => {
     test("should send logs request", async () => {
       const count = 10;
@@ -872,6 +962,7 @@ describe("workflow client", () => {
             workflowRunId,
             steps: [],
             url: "https://httpstat.us/200",
+            workflowRunCreatedAt: 0,
           }),
         });
 
@@ -1016,6 +1107,7 @@ describe("workflow client", () => {
             workflowRunId,
             steps: [],
             url: "https://httpstat.us/400",
+            workflowRunCreatedAt: 0,
           }),
           failureUrl: "https://400check.requestcatcher.com/",
           retries: 0,

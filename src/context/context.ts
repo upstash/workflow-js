@@ -22,11 +22,12 @@ import {
   LazyWaitForEventStep,
   LazyWaitForWebhookStep,
 } from "./steps";
-import { WorkflowCancelAbort } from "../error";
+import { isInstanceOf, WorkflowCancelAbort, WorkflowNonRetryableError } from "../error";
 import type { Duration } from "../types";
 import { WorkflowApi } from "./api";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 import { MiddlewareManager } from "../middleware/manager";
+import { QstashError } from "@upstash/qstash";
 
 /**
  * Upstash Workflow context
@@ -60,6 +61,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Run id of the workflow
    */
   public readonly workflowRunId: string;
+  /**
+   * Creation time of the workflow run
+   */
+  public readonly workflowRunCreatedAt: number;
   /**
    * URL of the workflow
    *
@@ -153,6 +158,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   constructor({
     qstashClient,
     workflowRunId,
+    workflowRunCreatedAt,
     headers,
     steps,
     url,
@@ -165,6 +171,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
+    workflowRunCreatedAt: number;
     headers: Headers;
     steps: Step[];
     url: string;
@@ -177,6 +184,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
+    this.workflowRunCreatedAt = workflowRunCreatedAt;
     this.steps = steps;
     this.url = url;
     this.headers = headers;
@@ -425,18 +433,28 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * a notifyResponse field which contains a list of `Waiter` objects, each corresponding
    * to a notified workflow run.
    *
+   * Optionally, you can pass a workflowRunId to enable lookback functionality:
+   *
+   * ```ts
+   * const { eventId, eventData, notifyResponse } = await context.notify(
+   *   "notify step", "event-id", "event-data", "wfr_123"
+   * );
+   * ```
+   *
    * @param stepName
    * @param eventId event id to notify
    * @param eventData event data to notify with
+   * @param workflowRunId optional workflow run id for lookback support
    * @returns notify response which has event id, event data and list of waiters which were notified
    */
   public async notify(
     stepName: string,
     eventId: string,
-    eventData: unknown
+    eventData: unknown,
+    workflowRunId?: string
   ): Promise<NotifyStepResponse> {
     return await this.addStep(
-      new LazyNotifyStep(this, stepName, eventId, eventData, this.qstashClient.http)
+      new LazyNotifyStep(this, stepName, eventId, eventData, this.qstashClient.http, workflowRunId)
     );
   }
 
@@ -477,7 +495,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * DisabledWorkflowContext.
    */
   protected async addStep<TResult = unknown>(step: BaseLazyStep<TResult>) {
-    return await this.executor.addStep(step);
+    try {
+      return await this.executor.addStep(step);
+    } catch (error) {
+      if (isInstanceOf(error, QstashError) && error.status === 412) {
+        throw new WorkflowNonRetryableError(error.message);
+      }
+      throw error;
+    }
   }
 
   public get api() {

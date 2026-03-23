@@ -107,17 +107,30 @@ export class Client {
    * });
    * ```
    *
+   * Optionally, you can pass a workflowRunId to enable lookback functionality:
+   *
+   * ```ts
+   * await client.notify({
+   *   eventId: "my-event-id",
+   *   eventData: "my-data",
+   *   workflowRunId: "wfr_123" // enables lookback
+   * });
+   * ```
+   *
    * @param eventId event id to notify
    * @param eventData data to provide to the workflow
+   * @param workflowRunId optional workflow run id for lookback support
    */
   public async notify({
     eventId,
     eventData,
+    workflowRunId,
   }: {
     eventId: string;
     eventData?: unknown;
+    workflowRunId?: string;
   }): Promise<NotifyResponse[]> {
-    return await makeNotifyRequest(this.client.http, eventId, eventData);
+    return await makeNotifyRequest(this.client.http, eventId, eventData, workflowRunId);
   }
 
   /**
@@ -227,6 +240,7 @@ export class Client {
         workflowRunId: finalWorkflowRunId,
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         label: option.label,
+        workflowRunCreatedAt: Date.now(), // pass a timestamp (server will override it)
       });
 
       return {
@@ -238,6 +252,7 @@ export class Client {
         retries: option.retries,
         retryDelay: option.retryDelay,
         flowControl: option.flowControl,
+        redact: option.redact,
       };
     });
     const result = await triggerFirstInvocation(invocations);

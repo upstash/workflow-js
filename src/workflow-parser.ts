@@ -380,7 +380,9 @@ export const handleFailure = async <TInitialPayload>({
   }
 
   try {
-    const { status, header, body, url, sourceBody, workflowRunId } = JSON.parse(requestPayload) as {
+    const { status, header, body, url, sourceBody, workflowRunId, workflowCreatedAt } = JSON.parse(
+      requestPayload
+    ) as {
       status: number;
       header: Record<string, string[]>;
       body: string;
@@ -388,6 +390,7 @@ export const handleFailure = async <TInitialPayload>({
       sourceHeader: Record<string, string[]>;
       sourceBody: string;
       workflowRunId: string;
+      workflowCreatedAt: number;
       sourceMessageId: string;
     };
 
@@ -425,6 +428,7 @@ export const handleFailure = async <TInitialPayload>({
       env,
       telemetry: undefined, // not going to make requests in authentication check
       label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,
+      workflowRunCreatedAt: workflowCreatedAt,
       middlewareManager: undefined,
     });
 

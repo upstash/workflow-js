@@ -46,6 +46,7 @@ type TriggerFirstInvocationParams<TInitialPayload> = {
   retries?: TriggerOptions["retries"];
   retryDelay?: TriggerOptions["retryDelay"];
   flowControl?: TriggerOptions["flowControl"];
+  redact?: TriggerOptions["redact"];
   middlewareManager?: MiddlewareManager;
   unknownSdk?: boolean;
 };
@@ -70,6 +71,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
       retries,
       retryDelay,
       flowControl,
+      redact,
       unknownSdk,
     }) => {
       const { headers } = getHeaders({
@@ -125,6 +127,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         url: workflowContext.url,
         delay: delay,
         notBefore: notBefore,
+        redact,
       } as PublishBatchRequest;
     }
   );
@@ -423,7 +426,6 @@ export const handleThirdPartyCallResult = async ({
         );
       }
 
-      const userHeaders = recreateUserHeaders(request.headers as Headers);
       const { headers: requestHeaders } = getHeaders({
         initHeaderValue: "false",
         workflowConfig: {
@@ -431,7 +433,6 @@ export const handleThirdPartyCallResult = async ({
           workflowUrl,
           telemetry,
         },
-        userHeaders,
         invokeCount: Number(invokeCount),
       });
 
