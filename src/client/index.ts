@@ -47,7 +47,7 @@ export class Client {
   public async cancel(
     request: string | string[] | WorkflowRunCancelFilters
   ): Promise<{ cancelled: number }>;
-  /** @deprecated Use `cancel(id)`, `cancel([id1, id2])`, `cancel({ filter: { workflowUrl } })` or `cancel({ all: true })` instead. */
+  /** @deprecated Use `cancel(id)`, `cancel([id1, id2])`, `cancel({ filter: { workflowUrlStartingWith } })` instead. */
   public async cancel(request: {
     ids?: string | string[];
     urlStartingWith?: string;
