@@ -285,14 +285,12 @@ export class DLQ {
    * @returns response with workflow run information
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
-    const { workflowRuns } = await this.client.http.request<{
-      workflowRuns: DLQResumeRestartResponse[];
-    }>({
+    const response = await this.client.http.request<DLQResumeRestartResponse>({
       path: ["v2", "workflows", "dlq", "callback", dlqId],
       method: "POST",
     });
 
-    return workflowRuns[0];
+    return response;
   }
 
   /**

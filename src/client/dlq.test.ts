@@ -920,13 +920,13 @@ describe("DLQ", () => {
   /**
    * tests skipped to avoid breaking live apps
    */
-  describe.skip("DLQ - live", () => {
+  describe("DLQ - live", () => {
     const liveClient = new Client({
       baseUrl: process.env.QSTASH_URL,
       token: process.env.QSTASH_TOKEN!,
     });
 
-    test(
+    test.skip(
       "should resume all DLQ messages",
       async () => {
         // trigger workflows that will fail and end up in DLQ
@@ -948,7 +948,7 @@ describe("DLQ", () => {
       { timeout: 60000 }
     );
 
-    test(
+    test.skip(
       "should restart all DLQ messages",
       async () => {
         await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
@@ -968,7 +968,7 @@ describe("DLQ", () => {
       { timeout: 60000 }
     );
 
-    test(
+    test.skip(
       "should delete all DLQ messages",
       async () => {
         await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
@@ -984,6 +984,36 @@ describe("DLQ", () => {
 
         const result = await liveClient.dlq.delete({ all: true });
         expect(result.deleted).toBeGreaterThanOrEqual(2);
+      },
+      { timeout: 60000 }
+    );
+
+    test(
+      "should retry failure function of a DLQ message",
+      async () => {
+        // trigger a workflow with a failureUrl that also returns 500
+        // so the failure callback itself fails and lands in DLQ
+        await liveClient.trigger({
+          url: "https://mock.httpstatus.io/500",
+          failureUrl: "https://mock.httpstatus.io/500",
+          retries: 0,
+        });
+
+        // wait for the message (with failureCallbackInfo) to land in DLQ
+        let dlqId: string | undefined;
+        await eventually(
+          async () => {
+            const { messages } = await liveClient.dlq.list();
+            const match = messages.find((m) => m.failureCallbackInfo);
+            expect(match).toBeDefined();
+            dlqId = match!.dlqId;
+          },
+          { timeout: 30000, interval: 2000 }
+        );
+
+        const result = await liveClient.dlq.retryFailureFunction({ dlqId: dlqId! });
+        expect(result.workflowRunId).toBeDefined();
+        expect(result.workflowCreatedAt).toBeDefined();
       },
       { timeout: 60000 }
     );
