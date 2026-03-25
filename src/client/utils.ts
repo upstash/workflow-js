@@ -209,7 +209,13 @@ export function buildBulkActionQueryParameters(
   }
 
   // Filter branch
-  const filter = request.filter as Record<string, unknown>;
+  const filter = request.filter as Record<string, unknown> | undefined;
+
+  if (!filter) {
+    throw new QstashError(
+      "No filter provided. Use { filter: { ... } } with at least one filter field, or { all: true }."
+    );
+  }
 
   // When translateWorkflowUrl is set (cancel filters), translate
   // workflowUrl/workflowUrlStartingWith into the server's query params:
@@ -217,6 +223,13 @@ export function buildBulkActionQueryParameters(
   // - workflowUrlStartingWith → workflowUrl (prefix match, server default)
   if (options?.translateWorkflowUrl) {
     const { workflowUrlStartingWith, workflowUrl, ...rest } = filter;
+
+    if (workflowUrlStartingWith && workflowUrl) {
+      throw new QstashError(
+        "workflowUrl and workflowUrlStartingWith are mutually exclusive. " +
+          "Use workflowUrl for exact match or workflowUrlStartingWith for prefix match."
+      );
+    }
 
     const urlParams: Record<string, string | boolean> = {};
     if (workflowUrlStartingWith) {

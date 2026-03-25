@@ -1,11 +1,6 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import {
-  buildBulkActionQueryParameters,
-  makeGetWaitersRequest,
-  makeNotifyRequest,
-  normalizeCursor,
-} from "./utils";
+import { buildBulkActionQueryParameters, makeGetWaitersRequest, makeNotifyRequest } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -314,18 +309,16 @@ export class Client {
   }): Promise<WorkflowRunLogs> {
     const { cursor, count, filter, ...legacyFilter } = params ?? {};
 
-    return normalizeCursor(
-      await this.client.http.request<WorkflowRunLogs>({
-        path: ["v2", "workflows", "events"],
-        query: {
-          groupBy: "workflowRunId",
-          ...legacyFilter,
-          cursor,
-          count,
-          ...filter,
-        },
-      })
-    );
+    return await this.client.http.request<WorkflowRunLogs>({
+      path: ["v2", "workflows", "events"],
+      query: {
+        groupBy: "workflowRunId",
+        ...legacyFilter,
+        cursor,
+        count,
+        ...filter,
+      },
+    });
   }
 
   get dlq() {

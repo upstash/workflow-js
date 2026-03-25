@@ -334,7 +334,7 @@ export type WorkflowRunLog = {
 };
 
 export type WorkflowRunLogs = {
-  cursor?: string;
+  cursor: string;
   runs: WorkflowRunLog[];
 };
 
@@ -460,13 +460,4 @@ export type DLQResumeRestartResponse = {
    * Time when the new workflow run was created
    */
   workflowCreatedAt: string;
-};
-
-export type WorkflowBulkFilters = {
-  workflowRunId?: string;
-  workflowUrl?: string;
-  fromDate?: Date | number | string;
-  toDate?: Date | number | string;
-  label?: string;
-  all?: true;
 };

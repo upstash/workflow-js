@@ -32,12 +32,25 @@ type WorkflowLogsFilterFields = {
 
 type DLQActionFilterFields = UniversalFilterFields & WorkflowFilterFields;
 
-type CancelFilterFields = UniversalFilterFields & {
-  /** Cancel workflows with this exact URL. */
-  workflowUrl?: string;
-  /** Cancel workflows whose URL starts with this prefix. */
-  workflowUrlStartingWith?: string;
+/** Cancel filter: exact URL match. Cannot combine with `workflowUrlStartingWith`. */
+type CancelFilterWithExactUrl = UniversalFilterFields & {
+  workflowUrl: string;
+  workflowUrlStartingWith?: never;
 };
+
+/** Cancel filter: URL prefix match. Cannot combine with `workflowUrl`. */
+type CancelFilterWithPrefixUrl = UniversalFilterFields & {
+  workflowUrlStartingWith: string;
+  workflowUrl?: never;
+};
+
+/** Cancel filter: no URL. Requires at least one other filter field. */
+type CancelFilterWithoutUrl = RequireAtLeastOne<UniversalFilterFields> & {
+  workflowUrl?: never;
+  workflowUrlStartingWith?: never;
+};
+
+type CancelFilter = CancelFilterWithExactUrl | CancelFilterWithPrefixUrl | CancelFilterWithoutUrl;
 
 // ── Composed Endpoint Filter Types ────────────────────────────
 
@@ -98,7 +111,7 @@ type WorkflowCancelCount = {
 export type WorkflowRunCancelFilters =
   | { workflowRunIds: string[]; filter?: never; all?: never; count?: never }
   | ({
-      filter: RequireAtLeastOne<CancelFilterFields>;
+      filter: CancelFilter;
       workflowRunIds?: never;
       all?: never;
     } & WorkflowCancelCount)
