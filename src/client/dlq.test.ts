@@ -123,6 +123,33 @@ describe("DLQ", () => {
       });
     });
 
+    test("should list DLQ messages with fromDate and toDate as Date objects", async () => {
+      const fromDateMs = 1640995200000; // 2022-01-01
+      const toDateMs = 1672531200000; // 2023-01-01
+      const filter = {
+        fromDate: new Date(fromDateMs),
+        toDate: new Date(toDateMs),
+        workflowUrl: "https://example.com",
+      };
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.list({ filter });
+          expect(result.messages).toEqual([MOCK_DLQ_MESSAGES[0]]);
+          expect(result.cursor).toBeUndefined();
+        },
+        responseFields: {
+          status: 200,
+          body: { messages: [MOCK_DLQ_MESSAGES[0]], cursor: undefined },
+        },
+        receivesRequest: {
+          method: "GET",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?fromDate=${fromDateMs}&toDate=${toDateMs}&workflowUrl=${encodeURIComponent(filter.workflowUrl)}&source=workflow`,
+          token,
+        },
+      });
+    });
+
     test("should list DLQ messages with all parameters", async () => {
       const cursor = `cursor-${nanoid()}`;
       const count = 5;
@@ -787,6 +814,57 @@ describe("DLQ", () => {
         receivesRequest: {
           method: "DELETE",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?fromDate=1640995200000&toDate=1672531200000&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should delete DLQ messages with fromDate and toDate as Date objects", async () => {
+      const fromDateMs = 1640995200000; // 2022-01-01
+      const toDateMs = 1672531200000; // 2023-01-01
+      const deleted = 3;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({
+            filter: { fromDate: new Date(fromDateMs), toDate: new Date(toDateMs) },
+          });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?fromDate=${fromDateMs}&toDate=${toDateMs}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should delete DLQ messages with mixed Date and number filters", async () => {
+      const fromDateMs = 1640995200000; // 2022-01-01
+      const deleted = 1;
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.delete({
+            filter: {
+              label: "my-label",
+              workflowUrl: "https://example.com/workflow",
+              fromDate: new Date(fromDateMs),
+            },
+          });
+          expect(result.deleted).toBe(deleted);
+        },
+        responseFields: {
+          status: 200,
+          body: { deleted },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&fromDate=${fromDateMs}&count=100`,
           token,
         },
       });

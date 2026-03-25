@@ -307,6 +307,95 @@ describe("workflow client", () => {
         },
       });
     });
+
+    test("should cancel with fromDate and toDate as Date objects", async () => {
+      const fromDateMs = 1640995200000; // 2022-01-01
+      const toDateMs = 1672531200000; // 2023-01-01
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({
+            filter: {
+              fromDate: new Date(fromDateMs),
+              toDate: new Date(toDateMs),
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?fromDate=${fromDateMs}&toDate=${toDateMs}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with only fromDate as Date object", async () => {
+      const fromDateMs = 1640995200000; // 2022-01-01
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { fromDate: new Date(fromDateMs) } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?fromDate=${fromDateMs}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with only toDate as Date object", async () => {
+      const toDateMs = 1672531200000; // 2023-01-01
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { toDate: new Date(toDateMs) } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 1 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?toDate=${toDateMs}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with mixed Date and number filters", async () => {
+      const fromDateMs = 1640995200000; // 2022-01-01
+      const toDateMs = 1672531200000; // 2023-01-01
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({
+            filter: {
+              label: "my-label",
+              fromDate: new Date(fromDateMs),
+              toDate: toDateMs,
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=my-label&fromDate=${fromDateMs}&toDate=${toDateMs}&count=100`,
+          token,
+        },
+      });
+    });
   });
 
   describe("cancel - live", () => {
