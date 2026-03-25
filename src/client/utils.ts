@@ -1,6 +1,6 @@
-import { Client } from "@upstash/qstash";
+import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
-import { isInstanceOf, WorkflowError } from "../error";
+import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
 import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
 
@@ -124,7 +124,7 @@ export const getSteps = async (
       return { steps: filteredSteps, workflowRunEnded: false };
     }
   } catch (error) {
-    if (isInstanceOf(error, WorkflowError) && error.status === 404) {
+    if (isInstanceOf(error, QstashError) && error.status === 404) {
       await dispatchDebug?.("onWarning", {
         warning:
           "Couldn't fetch workflow run steps. This can happen if the workflow run succesfully ends before some callback is executed.",
@@ -177,7 +177,7 @@ const DEFAULT_BULK_COUNT = 100;
  * // => { all: true, count: 100 }
  * ```
  *
- * @throws {WorkflowError} If an empty `dlqIds` or `workflowRunIds` array is provided
+ * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
  */
 export function buildBulkActionQueryParameters(
   request: WorkflowDLQActionFilters | WorkflowRunCancelFilters,
@@ -192,7 +192,7 @@ export function buildBulkActionQueryParameters(
   if ("dlqIds" in request) {
     const ids = request.dlqIds;
     if (Array.isArray(ids) && ids.length === 0) {
-      throw new WorkflowError(
+      throw new QstashError(
         "Empty dlqIds array provided. If you intend to target all DLQ messages, use { all: true } explicitly."
       );
     }
@@ -201,7 +201,7 @@ export function buildBulkActionQueryParameters(
 
   if ("workflowRunIds" in request && request.workflowRunIds) {
     if (request.workflowRunIds.length === 0) {
-      throw new WorkflowError(
+      throw new QstashError(
         "Empty workflowRunIds array provided. If you intend to target all workflow runs, use { all: true } explicitly."
       );
     }
@@ -212,7 +212,7 @@ export function buildBulkActionQueryParameters(
   const filter = request.filter as Record<string, unknown> | undefined;
 
   if (!filter) {
-    throw new WorkflowError(
+    throw new QstashError(
       "No filter provided. Use { filter: { ... } } with at least one filter field, or { all: true }."
     );
   }
@@ -225,7 +225,7 @@ export function buildBulkActionQueryParameters(
     const { workflowUrlStartingWith, workflowUrl, ...rest } = filter;
 
     if (workflowUrlStartingWith && workflowUrl) {
-      throw new WorkflowError(
+      throw new QstashError(
         "workflowUrl and workflowUrlStartingWith are mutually exclusive. " +
           "Use workflowUrl for exact match or workflowUrlStartingWith for prefix match."
       );
