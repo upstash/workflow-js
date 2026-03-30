@@ -2,6 +2,7 @@ import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
 import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
+import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
 
 /**
  * Makes a request to notify waiting workflows.
@@ -17,9 +18,7 @@ export const makeNotifyRequest = async (
   eventData?: unknown,
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
-  const path = workflowRunId
-    ? ["v2", "notify", workflowRunId, eventId]
-    : ["v2", "notify", eventId];
+  const path = workflowRunId ? ["v2", "notify", workflowRunId, eventId] : ["v2", "notify", eventId];
 
   const result = (await requester.request({
     path,
@@ -136,3 +135,121 @@ export const getSteps = async (
     }
   }
 };
+
+/**
+ * Normalizes a response cursor: converts empty string to `undefined`
+ * so that callers can reliably use `cursor` as a boolean presence check.
+ */
+export function normalizeCursor<T>(response: T): T {
+  const cursor = (response as { cursor?: string }).cursor;
+  return { ...response, cursor: cursor || undefined };
+}
+
+const DEFAULT_BULK_COUNT = 100;
+
+/**
+ * Builds query parameters for bulk actions (DLQ resume/restart/delete and workflow cancel).
+ *
+ * Validates that ID arrays are not empty and applies a default `count` of 100
+ * for filter-based and `{ all: true }` operations.
+ *
+ * @example DLQ action with dlqIds
+ * ```ts
+ * buildBulkActionQueryParameters({ dlqIds: ["dlq_1", "dlq_2"] })
+ * // => { dlqIds: ["dlq_1", "dlq_2"] }
+ * ```
+ *
+ * @example DLQ action targeting all with custom count
+ * ```ts
+ * buildBulkActionQueryParameters({ all: true, count: 50 })
+ * // => { all: true, count: 50 }
+ * ```
+ *
+ * @example Cancel with workflowRunIds
+ * ```ts
+ * buildBulkActionQueryParameters({ workflowRunIds: ["wfr_1", "wfr_2"] })
+ * // => { workflowRunIds: ["wfr_1", "wfr_2"] }
+ * ```
+ *
+ * @example Cancel targeting all (uses default count of 100)
+ * ```ts
+ * buildBulkActionQueryParameters({ all: true })
+ * // => { all: true, count: 100 }
+ * ```
+ *
+ * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
+ */
+export function buildBulkActionQueryParameters(
+  request: WorkflowDLQActionFilters | WorkflowRunCancelFilters,
+  options?: { translateWorkflowUrl?: boolean }
+) {
+  const cursor = "cursor" in request ? request.cursor : undefined;
+
+  if ("all" in request) {
+    return { count: request.count ?? DEFAULT_BULK_COUNT, cursor };
+  }
+
+  if ("dlqIds" in request) {
+    const ids = request.dlqIds;
+    if (Array.isArray(ids) && ids.length === 0) {
+      throw new QstashError(
+        "Empty dlqIds array provided. If you intend to target all DLQ messages, use { all: true } explicitly."
+      );
+    }
+    return { dlqIds: ids, cursor };
+  }
+
+  if ("workflowRunIds" in request && request.workflowRunIds) {
+    if (request.workflowRunIds.length === 0) {
+      throw new QstashError(
+        "Empty workflowRunIds array provided. If you intend to target all workflow runs, use { all: true } explicitly."
+      );
+    }
+    return { workflowRunIds: request.workflowRunIds };
+  }
+
+  // Filter branch
+  const filter = request.filter as Record<string, unknown> | undefined;
+
+  if (!filter) {
+    throw new QstashError(
+      "No filter provided. Use { filter: { ... } } with at least one filter field, or { all: true }."
+    );
+  }
+
+  // When translateWorkflowUrl is set (cancel filters), translate
+  // workflowUrl/workflowUrlStartingWith into the server's query params:
+  // - workflowUrl → workflowUrl + workflowUrlExactMatch=true (exact match)
+  // - workflowUrlStartingWith → workflowUrl (prefix match, server default)
+  if (options?.translateWorkflowUrl) {
+    const { workflowUrlStartingWith, workflowUrl, ...rest } = filter;
+
+    if (workflowUrlStartingWith && workflowUrl) {
+      throw new QstashError(
+        "workflowUrl and workflowUrlStartingWith are mutually exclusive. " +
+          "Use workflowUrl for exact match or workflowUrlStartingWith for prefix match."
+      );
+    }
+
+    const urlParams: Record<string, string | boolean> = {};
+    if (workflowUrlStartingWith) {
+      urlParams.workflowUrl = workflowUrlStartingWith as string;
+    } else if (workflowUrl) {
+      urlParams.workflowUrl = workflowUrl as string;
+      urlParams.workflowUrlExactMatch = true;
+    }
+
+    return {
+      ...rest,
+      ...urlParams,
+      count: request.count ?? DEFAULT_BULK_COUNT,
+      cursor,
+    };
+  }
+
+  return {
+    ...filter,
+    count: request.count ?? DEFAULT_BULK_COUNT,
+    cursor,
+  };
+}
