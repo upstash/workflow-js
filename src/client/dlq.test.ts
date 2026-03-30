@@ -993,7 +993,7 @@ describe("DLQ", () => {
       async () => {
         // trigger a workflow with a failureUrl that also returns 500
         // so the failure callback itself fails and lands in DLQ
-        await liveClient.trigger({
+        const { workflowRunId } = await liveClient.trigger({
           url: "https://mock.httpstatus.io/500",
           failureUrl: "https://mock.httpstatus.io/500",
           retries: 0,
@@ -1003,8 +1003,8 @@ describe("DLQ", () => {
         let dlqId: string | undefined;
         await eventually(
           async () => {
-            const { messages } = await liveClient.dlq.list();
-            const match = messages.find((m) => m.failureCallbackInfo);
+            const { messages } = await liveClient.dlq.list({ filter: { workflowRunId } });
+            const match = messages.find((m) => m.failureCallbackInfo?.state === "CALLBACK_FAIL");
             expect(match).toBeDefined();
             dlqId = match!.dlqId;
           },
