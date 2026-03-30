@@ -951,7 +951,14 @@ describe("workflow client", () => {
       await mockQStashServer({
         execute: async () => {
           await client.logs({
-            filter: {},
+            filter: {
+              state,
+              workflowCreatedAt,
+              workflowRunId,
+              workflowUrl,
+            },
+            count,
+            cursor,
           });
         },
         responseFields: {
@@ -962,12 +969,12 @@ describe("workflow client", () => {
           method: "GET",
           url:
             `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
+            `&cursor=${cursor}` +
+            `&count=${count}` +
             `&state=${state}` +
             `&workflowCreatedAt=${workflowCreatedAt}` +
             `&workflowRunId=${workflowRunId}` +
-            `&workflowUrl=${encodeURIComponent(workflowUrl)}` +
-            `&cursor=${cursor}` +
-            `&count=${count}`,
+            `&workflowUrl=${encodeURIComponent(workflowUrl)}`,
           token,
           body: "",
         },
