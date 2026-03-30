@@ -951,9 +951,7 @@ describe("workflow client", () => {
       await mockQStashServer({
         execute: async () => {
           await client.logs({
-            filter: {
-              
-            }
+            filter: {},
           });
         },
         responseFields: {
