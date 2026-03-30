@@ -657,7 +657,7 @@ describe("DLQ", () => {
         },
         responseFields: {
           status: 200,
-          body: { cursor: "", workflowRuns: [{ workflowRunId, workflowCreatedAt }] },
+          body: { workflowRunId, workflowCreatedAt },
         },
         receivesRequest: {
           method: "POST",

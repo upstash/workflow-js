@@ -510,9 +510,11 @@ describe("workflow client", () => {
       async () => {
         await liveClient.trigger({
           url: "http://requestcatcher.com/exact-match-test",
+          delay: "1d",
         });
         await liveClient.trigger({
           url: "http://requestcatcher.com/exact-match-test/sub-path",
+          delay: "1d",
         });
 
         // exact match should only cancel the exact URL
@@ -949,12 +951,9 @@ describe("workflow client", () => {
       await mockQStashServer({
         execute: async () => {
           await client.logs({
-            count,
-            cursor,
-            state,
-            workflowCreatedAt,
-            workflowRunId,
-            workflowUrl,
+            filter: {
+              
+            }
           });
         },
         responseFields: {
