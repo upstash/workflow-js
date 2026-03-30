@@ -122,5 +122,5 @@ export type WorkflowRunCancelFilters =
     } & WorkflowCancelCount);
 
 export type WorkflowLogsListFilters = UniversalFilterFields &
-  Pick<WorkflowFilterFields, "workflowUrl" | "workflowRunId"> &
+  Pick<WorkflowFilterFields, "workflowUrl" | "workflowRunId" | "workflowCreatedAt"> &
   WorkflowLogsFilterFields;

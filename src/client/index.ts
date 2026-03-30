@@ -304,7 +304,7 @@ export class Client {
     workflowUrl?: string;
     /** @deprecated Use `filter.label` instead. */
     label?: string;
-    /** @deprecated No longer supported. */
+    /** @deprecated Use `filter.workflowCreatedAt` instead. */
     workflowCreatedAt?: number;
   }): Promise<WorkflowRunLogs> {
     const { cursor, count, filter, ...legacyFilter } = params ?? {};
