@@ -446,6 +446,7 @@ export type TriggerOptions = {
   };
 };
 
+/** @deprecated Use `resume(dlqId)` or `resume([dlqId1, dlqId2])` instead of `resume({ dlqId })` */
 export type DLQResumeRestartOptions<TDLQId extends string | string[] = string | string[]> = {
   dlqId: TDLQId;
 } & Pick<TriggerOptions, "flowControl" | "retries">;

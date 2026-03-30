@@ -790,7 +790,7 @@ describe("Workflow Requests", () => {
     const workflowClient = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
     afterAll(async () => {
-      await workflowClient.cancel({ urlStartingWith: WORKFLOW_ENDPOINT });
+      await workflowClient.cancel({ filter: { workflowUrl: WORKFLOW_ENDPOINT } });
     });
 
     test(
@@ -838,7 +838,7 @@ describe("Workflow Requests", () => {
 
         const warnSpy = spyOn(console, "warn");
 
-        await workflowClient.cancel({ ids: [workflowRunId] });
+        await workflowClient.cancel([workflowRunId]);
 
         const result = await triggerRouteFunction({
           onStep: async () => {
@@ -888,7 +888,7 @@ describe("Workflow Requests", () => {
           useJSONContent: false,
         });
 
-        await workflowClient.cancel({ ids: [workflowRunId] });
+        await workflowClient.cancel([workflowRunId]);
 
         const result = await triggerRouteFunction({
           onStep: async () => {
@@ -942,7 +942,7 @@ describe("Workflow Requests", () => {
 
         await triggerFirstInvocation({ workflowContext: context, useJSONContent: false });
 
-        await workflowClient.cancel({ ids: [workflowRunId] });
+        await workflowClient.cancel([workflowRunId]);
 
         const warnSpy = spyOn(console, "warn");
 
