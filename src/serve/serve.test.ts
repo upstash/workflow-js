@@ -12,7 +12,13 @@ import {
 import { nanoid } from "../utils";
 import { Client } from "@upstash/qstash";
 import { Client as WorkflowClient } from "../client";
-import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
+import type {
+  FinishCondition,
+  RouteFunction,
+  Step,
+  WorkflowClient as WorkflowQStashClient,
+  WorkflowServeOptions,
+} from "../types";
 import {
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
@@ -1233,5 +1239,91 @@ describe("serve", () => {
       },
     });
     expect(called).toBeTrue();
+  });
+
+  test("should not validate callback payloads with workflow schema", async () => {
+    const callbackWorkflowRunId = `wfr_${nanoid()}`;
+    const childWorkflowRunId = `wfr_${nanoid()}`;
+    const stepName = "call workflow";
+    const publishedRequests: unknown[] = [];
+    const fakeQstashClient = {
+      http: {},
+      publishJSON: async (request: unknown) => {
+        publishedRequests.push(request);
+        return { messageId: "msgId" };
+      },
+    } as unknown as WorkflowQStashClient;
+    const callbackPayload = {
+      status: 200,
+      header: {
+        "Content-Type": ["text/plain;charset=UTF-8"],
+        "Upstash-Workflow-Sdk": ["v1.0.0"],
+      },
+      body: btoa(
+        JSON.stringify({
+          workflowRunId: childWorkflowRunId,
+          finishCondition: "success",
+        })
+      ),
+      sourceMessageId: `msg_${nanoid()}`,
+      url: `${WORKFLOW_ENDPOINT}/workflow-b`,
+      method: "POST",
+      sourceBody: btoa(JSON.stringify({ brandId: nanoid() })),
+      maxRetries: 2,
+    };
+
+    const { handler: endpoint } = serve(
+      async () => {
+        throw new Error("workflow should not run for callback requests");
+      },
+      {
+        qstashClient: fakeQstashClient,
+        receiver: undefined,
+        schema: z.object({ brandId: z.string() }),
+      }
+    );
+
+    const request = new Request(WORKFLOW_ENDPOINT, {
+      method: "POST",
+      body: JSON.stringify(callbackPayload),
+      headers: {
+        "Upstash-Workflow-Callback": "true",
+        "Upstash-Workflow-StepId": "3",
+        "Upstash-Workflow-StepName": stepName,
+        "Upstash-Workflow-StepType": "Call",
+        "Upstash-Workflow-Concurrent": "1",
+        "Upstash-Workflow-ContentType": "application/json",
+        [WORKFLOW_ID_HEADER]: callbackWorkflowRunId,
+      },
+    });
+
+    const response = await endpoint(request);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      workflowRunId: string;
+      finishCondition: FinishCondition;
+    };
+    expect(body.workflowRunId).toBe(callbackWorkflowRunId);
+    expect(body.finishCondition).toBe("fromCallback");
+    expect(publishedRequests).toEqual([
+      expect.objectContaining({
+        method: "POST",
+        url: WORKFLOW_ENDPOINT,
+        body: {
+          stepId: 3,
+          stepName,
+          stepType: "Call",
+          out: JSON.stringify({
+            status: 200,
+            body: JSON.stringify({
+              workflowRunId: childWorkflowRunId,
+              finishCondition: "success",
+            }),
+            header: callbackPayload.header,
+          }),
+          concurrent: 1,
+        },
+      }),
+    ]);
   });
 });

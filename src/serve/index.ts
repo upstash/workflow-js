@@ -2,6 +2,7 @@ import { makeCancelRequest } from "../client/utils";
 import {
   SDK_TELEMETRY,
   WORKFLOW_CREATED_AT_HEADER,
+  WORKFLOW_ID_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
@@ -148,6 +149,35 @@ export const serveBase = <
       );
     }
 
+    // check if request is a third party call result
+    const callReturnCheck = await handleThirdPartyCallResult({
+      request,
+      requestPayload: rawInitialPayload,
+      client: regionalClient,
+      workflowUrl,
+      telemetry,
+      middlewareManager,
+    });
+    if (callReturnCheck.isErr()) {
+      throw callReturnCheck.error;
+    } else if (callReturnCheck.value === "workflow-ended") {
+      return responseGenerator(
+        createResponseData(request.headers.get(WORKFLOW_ID_HEADER) ?? workflowRunId, {
+          condition: "workflow-already-ended",
+        })
+      );
+    } else if (
+      callReturnCheck.value === "is-call-return" ||
+      callReturnCheck.value === "call-will-retry"
+    ) {
+      // response to QStash in call cases
+      return responseGenerator(
+        createResponseData(request.headers.get(WORKFLOW_ID_HEADER) ?? workflowRunId, {
+          condition: "fromCallback",
+        })
+      );
+    }
+
     // check if the request is a failure callback
     const failureCheck = await handleFailure<TInitialPayload>({
       request,
@@ -225,95 +255,69 @@ export const serveBase = <
       );
     }
 
-    // check if request is a third party call result
-    const callReturnCheck = await handleThirdPartyCallResult({
-      request,
-      requestPayload: rawInitialPayload,
-      client: regionalClient,
-      workflowUrl,
-      telemetry,
-      middlewareManager,
-    });
-    if (callReturnCheck.isErr()) {
-      throw callReturnCheck.error;
-    } else if (callReturnCheck.value === "continue-workflow") {
-      // request is not third party call. Continue workflow as usual
-      const result = isFirstInvocation
-        ? await triggerFirstInvocation({
-            workflowContext,
-            useJSONContent,
-            telemetry,
-            invokeCount,
-            middlewareManager,
-            unknownSdk,
-          })
-        : await triggerRouteFunction({
-            onStep: async () => {
-              if (steps.length === 1) {
-                await middlewareManager.dispatchLifecycle("runStarted", {});
-              }
-              return await routeFunction(workflowContext);
-            },
-            onCleanup: async (result) => {
-              await middlewareManager.dispatchLifecycle("runCompleted", {
-                result,
-              });
-              await triggerWorkflowDelete(
-                workflowContext,
-                result,
-                false,
-                middlewareManager.dispatchDebug.bind(middlewareManager)
-              );
-            },
-            onCancel: async () => {
-              await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
-            },
-            middlewareManager,
-          });
-
-      if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
-        return responseGenerator(
-          createResponseData(workflowRunId, {
-            condition: "non-retryable-error",
-            result: result.value,
-          })
-        );
-      }
-
-      if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
-        return responseGenerator(
-          createResponseData(workflowRunId, {
-            condition: "retry-after-error",
-            result: result.value,
-          })
-        );
-      }
-
-      if (result.isErr()) {
-        // error while running the workflow or when cleaning up
-        throw result.error;
-      }
-
-      // Returns a Response with `workflowRunId` at the end of each step.
-      await middlewareManager.dispatchDebug("onInfo", {
-        info: `Workflow endpoint execution completed successfully.`,
-      });
-      return responseGenerator(
-        createResponseData(workflowContext.workflowRunId, {
-          condition: "success",
+    const result = isFirstInvocation
+      ? await triggerFirstInvocation({
+          workflowContext,
+          useJSONContent,
+          telemetry,
+          invokeCount,
+          middlewareManager,
+          unknownSdk,
         })
-      );
-    } else if (callReturnCheck.value === "workflow-ended") {
+      : await triggerRouteFunction({
+          onStep: async () => {
+            if (steps.length === 1) {
+              await middlewareManager.dispatchLifecycle("runStarted", {});
+            }
+            return await routeFunction(workflowContext);
+          },
+          onCleanup: async (result) => {
+            await middlewareManager.dispatchLifecycle("runCompleted", {
+              result,
+            });
+            await triggerWorkflowDelete(
+              workflowContext,
+              result,
+              false,
+              middlewareManager.dispatchDebug.bind(middlewareManager)
+            );
+          },
+          onCancel: async () => {
+            await makeCancelRequest(workflowContext.qstashClient.http, workflowRunId);
+          },
+          middlewareManager,
+        });
+
+    if (result.isOk() && isInstanceOf(result.value, WorkflowNonRetryableError)) {
       return responseGenerator(
-        createResponseData(workflowContext.workflowRunId, {
-          condition: "workflow-already-ended",
+        createResponseData(workflowRunId, {
+          condition: "non-retryable-error",
+          result: result.value,
         })
       );
     }
-    // response to QStash in call cases
+
+    if (result.isOk() && isInstanceOf(result.value, WorkflowRetryAfterError)) {
+      return responseGenerator(
+        createResponseData(workflowRunId, {
+          condition: "retry-after-error",
+          result: result.value,
+        })
+      );
+    }
+
+    if (result.isErr()) {
+      // error while running the workflow or when cleaning up
+      throw result.error;
+    }
+
+    // Returns a Response with `workflowRunId` at the end of each step.
+    await middlewareManager.dispatchDebug("onInfo", {
+      info: `Workflow endpoint execution completed successfully.`,
+    });
     return responseGenerator(
       createResponseData(workflowContext.workflowRunId, {
-        condition: "fromCallback",
+        condition: "success",
       })
     );
   };

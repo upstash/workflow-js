@@ -10,6 +10,7 @@ import {
 } from "./error";
 import type { WorkflowContext } from "./context";
 import {
+  WORKFLOW_CALLBACK_HEADER,
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
   TELEMETRY_HEADER_SDK,
@@ -334,7 +335,7 @@ export const handleThirdPartyCallResult = async ({
   | Err<never, Error>
 > => {
   try {
-    if (request.headers.get("Upstash-Workflow-Callback")) {
+    if (request.headers.get(WORKFLOW_CALLBACK_HEADER)) {
       let callbackPayload: string;
       if (requestPayload) {
         callbackPayload = requestPayload;
@@ -469,7 +470,7 @@ export const handleThirdPartyCallResult = async ({
       return ok("continue-workflow");
     }
   } catch (error) {
-    const isCallReturn = request.headers.get("Upstash-Workflow-Callback");
+    const isCallReturn = request.headers.get(WORKFLOW_CALLBACK_HEADER);
     return err(
       new WorkflowError(`Error when handling call return (isCallReturn=${isCallReturn}): ${error}`)
     );
