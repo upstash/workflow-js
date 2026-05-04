@@ -81,6 +81,7 @@ export class DisabledWorkflowContext<
       qstashClient: new Client({
         baseUrl: "disabled-client",
         token: "disabled-client",
+        devMode: false,
       }),
       workflowRunId: context.workflowRunId,
       workflowRunCreatedAt: context.workflowRunCreatedAt,

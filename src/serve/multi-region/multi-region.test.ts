@@ -423,6 +423,81 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       expect(result.defaultReceiver).toBeUndefined();
     });
 
+    test("should create dev-mode receiver when QSTASH_DEV=true and signing keys are missing", () => {
+      const environment = createEnvironment({
+        QSTASH_DEV: "true",
+      });
+
+      const result = getQStashHandlerOptions({
+        environment,
+        receiverConfig: "not-set",
+      });
+
+      expect(result.defaultReceiver).toBeInstanceOf(Receiver);
+    });
+
+    test("should create dev-mode receiver when QSTASH_DEV=1", () => {
+      const environment = createEnvironment({
+        QSTASH_DEV: "1",
+      });
+
+      const result = getQStashHandlerOptions({
+        environment,
+        receiverConfig: "not-set",
+      });
+
+      expect(result.defaultReceiver).toBeInstanceOf(Receiver);
+    });
+
+    test("should ignore QSTASH_DEV when receiver is set-to-undefined", () => {
+      const environment = createEnvironment({
+        QSTASH_DEV: "true",
+      });
+
+      const result = getQStashHandlerOptions({
+        environment,
+        receiverConfig: "set-to-undefined",
+      });
+
+      expect(result.defaultReceiver).toBeUndefined();
+    });
+
+    test("should prefer QSTASH_DEV over real signing keys in env", async () => {
+      const environment = createEnvironment({
+        QSTASH_DEV: "true",
+        QSTASH_CURRENT_SIGNING_KEY: "real-current",
+        QSTASH_NEXT_SIGNING_KEY: "real-next",
+      });
+
+      const result = getQStashHandlerOptions({
+        environment,
+        receiverConfig: "not-set",
+      });
+
+      // The dev-mode receiver should reject signatures forged with the real keys
+      // we passed in env, because qstash-js swaps in the well-known dev keys.
+      expect(result.defaultReceiver).toBeInstanceOf(Receiver);
+      await expect(
+        result.defaultReceiver!.verify({
+          signature: "not-a-valid-signature",
+          body: "{}",
+        })
+      ).rejects.toThrow();
+    });
+
+    test("should not enter dev mode for QSTASH_DEV=false", () => {
+      const environment = createEnvironment({
+        QSTASH_DEV: "false",
+      });
+
+      const result = getQStashHandlerOptions({
+        environment,
+        receiverConfig: "not-set",
+      });
+
+      expect(result.defaultReceiver).toBeUndefined();
+    });
+
     test("should create region-specific receivers in multi-region mode", () => {
       const environment = createEnvironment({
         QSTASH_REGION: "US_EAST_1",
