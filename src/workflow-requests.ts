@@ -299,13 +299,13 @@ export const recreateUserHeaders = (headers: Headers): Headers => {
 /**
  * Checks if the incoming request is a third party call result coming from QStash
  * by looking for the `Upstash-Workflow-Callback` header.
- * 
+ *
  * @param request incoming request
  * @returns true if the request is a third party call result, false otherwise
  */
 export const isThirdPartyCallResult = (request: Request): boolean => {
   return request.headers.get("Upstash-Workflow-Callback") !== null;
-}
+};
 
 /**
  * Checks if the request is from a third party call result. If so,

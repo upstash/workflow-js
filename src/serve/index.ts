@@ -193,7 +193,9 @@ export const serveBase = <
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient: regionalClient,
       workflowRunId,
-      initialPayload: isThirdPartyCallResult(request) ? JSON.parse(rawInitialPayload) : initialPayloadParser(rawInitialPayload),
+      initialPayload: isThirdPartyCallResult(request)
+        ? JSON.parse(rawInitialPayload)
+        : initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
       url: workflowUrl,
