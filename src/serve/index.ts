@@ -19,6 +19,7 @@ import { RouteFunction, Telemetry, WorkflowServeOptions } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
+  isThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
@@ -192,7 +193,9 @@ export const serveBase = <
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient: regionalClient,
       workflowRunId,
-      initialPayload: initialPayloadParser(rawInitialPayload),
+      initialPayload: isThirdPartyCallResult(request)
+        ? JSON.parse(rawInitialPayload)
+        : initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
       url: workflowUrl,
