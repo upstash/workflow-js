@@ -109,7 +109,7 @@
     "typescript-eslint": "^8.18.0"
   },
   "dependencies": {
-    "@upstash/qstash": "0.0.0-ci.1b5fb2ababd59013bd59be1ebd35cbf6680df255-20260504212348"
+    "@upstash/qstash": "^2.11.0"
   },
   "directories": {
     "example": "examples"
