@@ -90,6 +90,7 @@ export class DisabledWorkflowContext<
       initialPayload: context.requestPayload,
       env: context.env,
       label: context.label,
+      retried: context.retried,
     });
 
     try {
