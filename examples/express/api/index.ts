@@ -169,6 +169,10 @@ const ciRouter = serve(
 
 app.post("/ci", ciRouter);
 
-app.listen(3001, () => {
-  console.log('Server running on port 3001');
-});
+if (require.main === module) {
+  app.listen(3001, () => {
+    console.log('Server running on port 3001');
+  });
+}
+
+export default app;
