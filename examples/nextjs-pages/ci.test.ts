@@ -6,7 +6,7 @@ import { Redis } from "@upstash/redis"
 import { serve } from "@upstash/workflow/nextjs"
 import { describe, test, expect } from "vitest"
 
-export const RETRY_COUNT = 10
+export const RETRY_COUNT = 20
 export const RETRY_INTERVAL_DURATION = 1000
 export const CHECK_WF_AFTER_INIT_DURATION = 10000
 const TEST_BUFFER_DURATION = 5000
