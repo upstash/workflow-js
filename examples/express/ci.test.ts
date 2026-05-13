@@ -157,13 +157,22 @@ const testEndpoint = ({
     expect(result?.result).toBe(expectedResult)
 
     if (expectedLog) {
-      const logs = await client.logs({
-        workflowRunId
-      })
-      
+      let logs: Awaited<ReturnType<typeof client.logs>> | undefined
+      for (let i=1; i<=RETRY_COUNT; i++) {
+        logs = await client.logs({
+          workflowRunId
+        })
+        if (logs.runs.length === 1) {
+          break
+        }
+        if (i!==RETRY_COUNT) {
+          await new Promise(r => setTimeout(r, RETRY_INTERVAL_DURATION));
+        }
+      }
+
       expect(logs).toBeDefined()
-      expect(logs.runs.length).toBe(1)
-      expect(logs.runs[0]).toEqual(expectedLog)
+      expect(logs!.runs.length).toBe(1)
+      expect(logs!.runs[0]).toEqual(expectedLog)
     }
   }, TEST_TIMEOUT_DURATION)
 }
