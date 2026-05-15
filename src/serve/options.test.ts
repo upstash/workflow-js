@@ -18,6 +18,7 @@ import {
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_ID_HEADER,
+  VERSION,
 } from "../constants";
 import { DetailedFinishCondition, RouteFunction, WorkflowServeOptions } from "../types";
 
@@ -114,7 +115,7 @@ describe("createResponseData", () => {
         status: 400,
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          "Upstash-workflow-sdk": "v1.0.0",
+          "Upstash-workflow-sdk": VERSION,
         },
         body: {
           message: AUTH_FAIL_MESSAGE,
@@ -153,7 +154,7 @@ describe("createResponseData", () => {
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
           "Upstash-NonRetryable-Error": "true",
-          "Upstash-workflow-sdk": "v1.0.0",
+          "Upstash-workflow-sdk": VERSION,
         },
         body: {
           error: "WorkflowNonRetryableError",
@@ -193,7 +194,7 @@ describe("createResponseData", () => {
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
           "Retry-After": retryAfter.toString(),
-          "Upstash-workflow-sdk": "v1.0.0",
+          "Upstash-workflow-sdk": VERSION,
         },
         body: {
           error: "WorkflowRetryAfterError",
@@ -245,7 +246,7 @@ describe("createResponseData", () => {
         status: 200,
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          "Upstash-workflow-sdk": "v1.0.0",
+          "Upstash-workflow-sdk": VERSION,
         },
         body: {
           result: JSON.stringify(failureFunctionResult),
@@ -288,7 +289,7 @@ describe("createResponseData", () => {
         status: 200,
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-          "Upstash-workflow-sdk": "v1.0.0",
+          "Upstash-workflow-sdk": VERSION,
         },
         body: {
           result: undefined,
@@ -335,7 +336,7 @@ describe("createResponseData", () => {
       expect(result.status).toBe(200);
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(JSON.stringify({ result: callbackResult }));
     });
@@ -349,7 +350,7 @@ describe("createResponseData", () => {
       expect(result.status).toBe(200);
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(JSON.stringify({ result: undefined }));
     });
@@ -379,7 +380,7 @@ describe("createResponseData", () => {
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
           "Upstash-Workflow-Failure-Callback-Notfound": "true",
-          "Upstash-workflow-sdk": "v1.0.0",
+          "Upstash-workflow-sdk": VERSION,
         },
         body: {
           // when handleFailure is working, endpoint consideers the request as new invocation.
@@ -423,7 +424,7 @@ describe("createResponseData", () => {
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
         "Upstash-Workflow-Failure-Callback-Notfound": "true",
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(
         JSON.stringify({
@@ -443,7 +444,7 @@ describe("createResponseData", () => {
       expect(result.status).toBe(200);
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(
         JSON.stringify({
@@ -459,7 +460,7 @@ describe("createResponseData", () => {
       expect(result.status).toBe(200);
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(
         JSON.stringify({
@@ -475,7 +476,7 @@ describe("createResponseData", () => {
       expect(result.status).toBe(200);
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(
         JSON.stringify({
@@ -491,7 +492,7 @@ describe("createResponseData", () => {
       expect(result.status).toBe(200);
       expect(result.headers).toEqual({
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
-        "Upstash-workflow-sdk": "v1.0.0",
+        "Upstash-workflow-sdk": VERSION,
       });
       expect(result.text).toBe(
         JSON.stringify({

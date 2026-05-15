@@ -9,6 +9,7 @@ import {
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_RETRIED_HEADER,
   WORKFLOW_UNKOWN_SDK_VERSION_HEADER,
 } from "./constants";
 import type {
@@ -414,6 +415,7 @@ export const handleFailure = async <TInitialPayload>({
     }
 
     const userHeaders = recreateUserHeaders(request.headers as Headers);
+    const retried = Number(request.headers.get(WORKFLOW_RETRIED_HEADER) ?? "0");
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
@@ -428,6 +430,7 @@ export const handleFailure = async <TInitialPayload>({
       env,
       telemetry: undefined, // not going to make requests in authentication check
       label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,
+      retried,
       workflowRunCreatedAt: workflowCreatedAt,
       middlewareManager: undefined,
     });

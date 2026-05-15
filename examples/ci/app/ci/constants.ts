@@ -63,6 +63,10 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
     route: "call/workflow",
   },
   {
+    // checks context.call with a zod schema validating the initial payload
+    route: "call/with-schema",
+  },
+  {
     // check the error when wf early returns
     route: "returns-before-step",
   },
@@ -115,6 +119,9 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   },
   {
     route: "invoke-parent-failure/workflow",
+  },
+  {
+    route: "retried",
   }
 
   /**

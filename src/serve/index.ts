@@ -6,6 +6,7 @@ import {
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_RETRIED_HEADER,
 } from "../constants";
 import { WorkflowContext } from "../context";
 import {
@@ -19,6 +20,7 @@ import { RouteFunction, Telemetry, WorkflowServeOptions } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
+  isThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
@@ -185,6 +187,7 @@ export const serveBase = <
     }
 
     const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
+    const retried = Number(request.headers.get(WORKFLOW_RETRIED_HEADER) ?? "0");
     const label = request.headers.get(WORKFLOW_LABEL_HEADER) ?? undefined;
     const workflowRunCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER)!;
 
@@ -192,7 +195,9 @@ export const serveBase = <
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient: regionalClient,
       workflowRunId,
-      initialPayload: initialPayloadParser(rawInitialPayload),
+      initialPayload: isThirdPartyCallResult(request)
+        ? JSON.parse(rawInitialPayload)
+        : initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
       url: workflowUrl,
@@ -200,6 +205,7 @@ export const serveBase = <
       telemetry,
       invokeCount,
       label,
+      retried,
       workflowRunCreatedAt: Number(workflowRunCreatedAt),
       middlewareManager,
     });

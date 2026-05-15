@@ -8,6 +8,7 @@ export const WORKFLOW_FAILURE_HEADER = "Upstash-Workflow-Is-Failure";
 export const WORKFLOW_FAILURE_CALLBACK_HEADER = "Upstash-Workflow-Failure-Callback";
 export const WORKFLOW_FEATURE_HEADER = "Upstash-Feature-Set";
 export const WORKFLOW_INVOKE_COUNT_HEADER = "Upstash-Workflow-Invoke-Count";
+export const WORKFLOW_RETRIED_HEADER = "Upstash-Retried";
 export const WORKFLOW_LABEL_HEADER = "Upstash-Label";
 export const WORKFLOW_UNKOWN_SDK_VERSION_HEADER = "Upstash-Workflow-Unknown-Sdk";
 export const WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER = "upstash-workflow-trigger-by-sdk";
@@ -21,7 +22,7 @@ export const NO_CONCURRENCY = 1;
 export const NOT_SET = "not-set";
 export const DEFAULT_RETRIES = 3;
 
-export const VERSION = "v1.0.0";
+export const VERSION = "v1.2.1";
 export const SDK_TELEMETRY = `@upstash/workflow@${VERSION}`;
 
 export const TELEMETRY_HEADER_SDK = "Upstash-Telemetry-Sdk" as const;

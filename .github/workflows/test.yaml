@@ -97,7 +97,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Install Dependencies
         run: pnpm install
@@ -294,7 +294,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Install Dependencies
         run: pnpm install
@@ -683,7 +683,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Deploy
         run: |
@@ -714,7 +714,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Install example
         run: |
@@ -768,7 +768,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Deploy
         run: |
@@ -799,7 +799,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Deploy
         run: |
@@ -830,7 +830,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Deploy
         run: |
@@ -861,7 +861,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2
         with:
-          version: latest
+          version: 10
 
       - name: Deploy
         run: |
