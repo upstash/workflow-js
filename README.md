@@ -108,6 +108,16 @@ const result = await client.getWaiters({
 });
 ```
 
+## Local Development
+
+For local development, set `QSTASH_DEV=true` in your environment and the SDK will automatically download and run a local QStash dev server. No tokens or signing keys required: workflow endpoints will verify signatures against the dev server's keys automatically.
+
+```bash .env
+QSTASH_DEV=true
+```
+
+See [Local Development](https://upstash.com/docs/workflow/howto/local-development/development-server) for details.
+
 ## Telemetry
 
 This sdk sends anonymous telemetry headers to help us improve your experience.

@@ -168,6 +168,10 @@ const getReceiver = (
       return undefined;
     }
 
+    if (isQStashDevModeEnabled(environment)) {
+      return new Receiver({ devMode: true });
+    }
+
     const receiverEnv = readReceiverEnvironmentVariables(environment, region);
     return receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
       ? new Receiver({
@@ -178,6 +182,16 @@ const getReceiver = (
   } else {
     return receiverConfig;
   }
+};
+
+/**
+ * Mirrors qstash-js's `shouldUseDevelopmentMode` for the env-only case so we
+ * decide whether to construct a Receiver. The strict parsing (rejecting garbage
+ * values, etc.) is left to qstash-js itself when the Receiver/Client run.
+ */
+const isQStashDevModeEnabled = (env: Record<string, string | undefined>): boolean => {
+  const value = env.QSTASH_DEV;
+  return value === "true" || value === "1";
 };
 
 export const getQStashHandlerOptions = (
