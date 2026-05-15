@@ -119,6 +119,9 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   },
   {
     route: "invoke-parent-failure/workflow",
+  },
+  {
+    route: "retried",
   }
 
   /**

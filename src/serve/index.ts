@@ -6,6 +6,7 @@ import {
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_RETRIED_HEADER,
 } from "../constants";
 import { WorkflowContext } from "../context";
 import {
@@ -186,6 +187,7 @@ export const serveBase = <
     }
 
     const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
+    const retried = Number(request.headers.get(WORKFLOW_RETRIED_HEADER) ?? "0");
     const label = request.headers.get(WORKFLOW_LABEL_HEADER) ?? undefined;
     const workflowRunCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER)!;
 
@@ -203,6 +205,7 @@ export const serveBase = <
       telemetry,
       invokeCount,
       label,
+      retried,
       workflowRunCreatedAt: Number(workflowRunCreatedAt),
       middlewareManager,
     });

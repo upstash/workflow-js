@@ -155,6 +155,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly label?: string;
 
+  /**
+   * Number of times QStash has retried delivering the current request.
+   *
+   * Sourced from the `Upstash-Retried` header. `0` on the first delivery,
+   * `1` on the first retry, `2` on the second, and so on.
+   */
+  public readonly retried: number;
+
   constructor({
     qstashClient,
     workflowRunId,
@@ -167,6 +175,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     telemetry,
     invokeCount,
     label,
+    retried,
     middlewareManager,
   }: {
     qstashClient: WorkflowClient;
@@ -180,6 +189,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     telemetry?: Telemetry;
     invokeCount?: number;
     label?: string;
+    retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {
     this.qstashClient = qstashClient;
@@ -191,6 +201,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.requestPayload = initialPayload;
     this.env = env ?? {};
     this.label = label;
+    this.retried = retried ?? 0;
 
     const middlewareManagerInstance =
       middlewareManager ?? new MiddlewareManager<TInitialPayload, unknown>([]);
