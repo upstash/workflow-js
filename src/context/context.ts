@@ -28,6 +28,7 @@ import { WorkflowApi } from "./api";
 import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 import { MiddlewareManager } from "../middleware/manager";
 import { QstashError } from "@upstash/qstash";
+import { validateFlowControl, validateLabel } from "../utils";
 
 /**
  * Upstash Workflow context
@@ -340,8 +341,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: CallSettings | (LazyInvokeStepParams<TBody, unknown> & Pick<CallSettings, "timeout">)
   ): Promise<CallResponse<TResult | { workflowRunId: string }>> {
+    validateFlowControl(settings.flowControl);
     let callStep: LazyCallStep<TResult | { workflowRunId: string }>;
     if ("workflow" in settings) {
+      validateLabel(settings.label);
       const url = getNewUrlFromWorkflowId(this.url, settings.workflow.workflowId);
       const stringBody =
         typeof settings.body === "string"
@@ -473,6 +476,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
   ) {
+    validateLabel(settings.label);
+    validateFlowControl(settings.flowControl);
     return await this.addStep(
       new LazyInvokeStep<TResult, TInitialPayload>(this, stepName, settings)
     );

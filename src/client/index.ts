@@ -1,7 +1,7 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
 import { buildBulkActionQueryParameters, makeGetWaitersRequest, makeNotifyRequest } from "./utils";
-import { getWorkflowRunId } from "../utils";
+import { getWorkflowRunId, validateFlowControl, validateLabel } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
@@ -220,6 +220,9 @@ export class Client {
     const options = isBatchInput ? params : [params];
 
     const invocations = options.map((option) => {
+      validateLabel(option.label);
+      validateFlowControl(option.flowControl);
+
       const failureUrl = option.failureUrl ?? option.url;
       const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
 

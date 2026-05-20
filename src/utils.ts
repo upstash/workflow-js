@@ -1,8 +1,27 @@
-import { WorkflowError } from "./error";
+import { WorkflowError, WorkflowNonRetryableError } from "./error";
+import type { FlowControl } from "@upstash/qstash";
 import { WorkflowClient } from "./types";
 
 const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 const NANOID_LENGTH = 21;
+
+const RESOURCE_NAME_PATTERN = /^[a-zA-Z0-9\-_.]+$/;
+
+export function validateLabel(label: string | undefined): void {
+  if (label !== undefined && !RESOURCE_NAME_PATTERN.test(label)) {
+    throw new WorkflowNonRetryableError(
+      `Invalid label "${label}": must be alphanumeric, hyphen, underscore, or period.`
+    );
+  }
+}
+
+export function validateFlowControl(flowControl: FlowControl | undefined): void {
+  if (flowControl?.key !== undefined && !RESOURCE_NAME_PATTERN.test(flowControl.key)) {
+    throw new WorkflowNonRetryableError(
+      `Invalid flow control key "${flowControl.key}": must be alphanumeric, hyphen, underscore, or period.`
+    );
+  }
+}
 
 function getRandomInt() {
   return Math.floor(Math.random() * NANOID_CHARS.length);
