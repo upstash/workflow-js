@@ -4,7 +4,7 @@ import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../
 import { WorkflowContext } from "./context";
 import { Client } from "@upstash/qstash";
 import { nanoid } from "../utils";
-import { WorkflowCancelAbort, WorkflowError } from "../error";
+import { WorkflowCancelAbort, WorkflowError, WorkflowNonRetryableError } from "../error";
 import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
@@ -1077,6 +1077,107 @@ describe("context tests", () => {
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
+                "upstash-workflow-init": "false",
+                "upstash-workflow-runid": "wfr-id",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+              },
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  describe("label and flow control validation", () => {
+    const buildContext = () =>
+      new WorkflowContext({
+        qstashClient,
+        initialPayload: "my-payload",
+        steps: [],
+        url: WORKFLOW_ENDPOINT,
+        headers: new Headers() as Headers,
+        workflowRunId: "wfr-id",
+        workflowRunCreatedAt: 0,
+      });
+
+    test("context.invoke should reject invalid label", async () => {
+      const context = buildContext();
+      const promise = context.invoke("invoke-step", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        workflow: { workflowId: "some-workflow" } as any,
+        body: undefined,
+        label: "bad label!",
+      });
+      expect(promise).rejects.toThrow(WorkflowNonRetryableError);
+      expect(promise).rejects.toThrow(/Invalid label/);
+    });
+
+    test("context.invoke should reject invalid flow control key", async () => {
+      const context = buildContext();
+      const promise = context.invoke("invoke-step", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        workflow: { workflowId: "some-workflow" } as any,
+        body: undefined,
+        flowControl: { key: "bad key!", parallelism: 1 },
+      });
+      expect(promise).rejects.toThrow(WorkflowNonRetryableError);
+      expect(promise).rejects.toThrow(/Invalid flow control key/);
+    });
+
+    test("context.call should reject invalid flow control key", async () => {
+      const context = buildContext();
+      const promise = context.call("call-step", {
+        url: "https://some-website.com",
+        flowControl: { key: "bad key!", parallelism: 1 },
+      });
+      expect(promise).rejects.toThrow(WorkflowNonRetryableError);
+      expect(promise).rejects.toThrow(/Invalid flow control key/);
+    });
+
+    test("context.call should accept valid flow control key and forward headers", async () => {
+      const context = buildContext();
+      await mockQStashServer({
+        execute: () => {
+          const throws = () =>
+            context.call("call-step", {
+              url: "https://some-website.com",
+              flowControl: { key: "valid-key_1.0", parallelism: 3 },
+            });
+          expect(throws).toThrowError("Aborting workflow after executing step 'call-step'.");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: "https://some-website.com",
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-callback": WORKFLOW_ENDPOINT,
+                "upstash-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-callback-forward-upstash-workflow-callback": "true",
+                "upstash-callback-forward-upstash-workflow-concurrent": "1",
+                "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
+                "upstash-callback-forward-upstash-workflow-stepid": "1",
+                "upstash-callback-forward-upstash-workflow-stepname": "call-step",
+                "upstash-callback-forward-upstash-workflow-steptype": "Call",
+                "upstash-callback-workflow-calltype": "fromCallback",
+                "upstash-callback-workflow-init": "false",
+                "upstash-callback-workflow-runid": "wfr-id",
+                "upstash-callback-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-feature-set": "WF_NoDelete,InitialBody",
+                "upstash-flow-control-key": "valid-key_1.0",
+                "upstash-flow-control-value": "parallelism=3",
+                "upstash-method": "GET",
+                "upstash-retries": "0",
+                "upstash-workflow-calltype": "toCallback",
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-id",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,

@@ -10,6 +10,7 @@ import { Client as QStashClient } from "@upstash/qstash";
 import { getWorkflowRunId, nanoid } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
+import { WorkflowNonRetryableError } from "../error";
 
 describe("workflow client", () => {
   const token = nanoid();
@@ -1294,5 +1295,82 @@ describe("workflow client", () => {
         timeout: 60000,
       }
     );
+  });
+
+  describe("trigger - input validation", () => {
+    test("should throw when label contains invalid characters", () => {
+      const promise = client.trigger({
+        url: WORKFLOW_ENDPOINT,
+        label: "bad label!",
+      });
+      expect(promise).rejects.toThrow(WorkflowNonRetryableError);
+      expect(promise).rejects.toThrow(/Invalid label/);
+    });
+
+    test("should throw when flowControl key contains invalid characters", () => {
+      const promise = client.trigger({
+        url: WORKFLOW_ENDPOINT,
+        flowControl: { key: "bad key!", parallelism: 1 },
+      });
+      expect(promise).rejects.toThrow(WorkflowNonRetryableError);
+      expect(promise).rejects.toThrow(/Invalid flow control key/);
+    });
+
+    test("should forward valid label and flow control headers", async () => {
+      const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
+      await mockQStashServer({
+        execute: async () => {
+          await client.trigger({
+            url: WORKFLOW_ENDPOINT,
+            workflowRunId: myWorkflowRunId,
+            label: "valid_label.1",
+            flowControl: { key: "valid-key_1.0", parallelism: 5 },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: [{ messageId: "msgId" }],
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-init": "true",
+                "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
+                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-forward-upstash-label": "valid_label.1",
+                "upstash-label": "valid_label.1",
+                "upstash-flow-control-key": "valid-key_1.0",
+                "upstash-flow-control-value": "parallelism=5",
+                "upstash-telemetry-framework": "unknown",
+                "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
+                "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
+                "upstash-workflow-sdk-version": "1",
+                "upstash-failure-callback-forward-upstash-label": "valid_label.1",
+                "upstash-failure-callback": "https://requestcatcher.com/api",
+                "upstash-failure-callback-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-failure-callback-flow-control-key": "valid-key_1.0",
+                "upstash-failure-callback-flow-control-value": "parallelism=5",
+                "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
+                "upstash-failure-callback-forward-upstash-workflow-is-failure": "true",
+                "upstash-failure-callback-workflow-calltype": "failureCall",
+                "upstash-failure-callback-workflow-init": "false",
+                "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
+                "upstash-failure-callback-workflow-url": "https://requestcatcher.com/api",
+              },
+            },
+          ],
+        },
+      });
+    });
   });
 });
