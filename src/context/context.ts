@@ -154,7 +154,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * });
    * ```
    */
-  public readonly label?: string;
+  public readonly label?: string | string[];
 
   /**
    * Number of times QStash has retried delivering the current request.
@@ -189,7 +189,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env?: Record<string, string | undefined>;
     telemetry?: Telemetry;
     invokeCount?: number;
-    label?: string;
+    label?: string | string[];
     retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {

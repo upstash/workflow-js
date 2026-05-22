@@ -7,12 +7,25 @@ const NANOID_LENGTH = 21;
 
 const RESOURCE_NAME_PATTERN = /^[a-zA-Z0-9\-_.]+$/;
 
-export function validateLabel(label: string | undefined): void {
-  if (label !== undefined && !RESOURCE_NAME_PATTERN.test(label)) {
-    throw new WorkflowNonRetryableError(
-      `Invalid label "${label}": must be alphanumeric, hyphen, underscore, or period.`
-    );
+export function validateLabel(label: string | string[] | undefined): void {
+  if (label === undefined) return;
+  const labels = Array.isArray(label) ? label : [label];
+  for (const value of labels) {
+    if (!RESOURCE_NAME_PATTERN.test(value)) {
+      throw new WorkflowNonRetryableError(
+        `Invalid label "${value}": must be alphanumeric, hyphen, underscore, or period.`
+      );
+    }
   }
+}
+
+/**
+ * Serializes a label (string or array of strings) into the header value.
+ * Arrays are joined with `,` so multiple labels can be sent in a single
+ * `Upstash-Label` header.
+ */
+export function serializeLabel(label: string | string[]): string {
+  return Array.isArray(label) ? label.join(",") : label;
 }
 
 export function validateFlowControl(flowControl: FlowControl | undefined): void {

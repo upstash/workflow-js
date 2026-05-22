@@ -33,6 +33,7 @@ import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
 import { DispatchDebug } from "./middleware/types";
 import { MiddlewareManager } from "./middleware/manager";
+import { serializeLabel } from "./utils";
 import { TriggerOptions } from "./client/types";
 
 type TriggerFirstInvocationParams<TInitialPayload> = {
@@ -112,7 +113,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
        * sets the label of the workflow run.
        */
       if (workflowContext.label) {
-        headers[WORKFLOW_LABEL_HEADER] = workflowContext.label;
+        headers[WORKFLOW_LABEL_HEADER] = serializeLabel(workflowContext.label);
       }
 
       const body =

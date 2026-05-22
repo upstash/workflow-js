@@ -1,7 +1,7 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
 import { buildBulkActionQueryParameters, makeGetWaitersRequest, makeNotifyRequest } from "./utils";
-import { getWorkflowRunId, validateFlowControl, validateLabel } from "../utils";
+import { getWorkflowRunId, serializeLabel, validateFlowControl, validateLabel } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
@@ -230,7 +230,7 @@ export class Client {
         qstashClient: this.client,
         headers: new Headers({
           ...(option.headers ?? {}),
-          ...(option.label ? { [WORKFLOW_LABEL_HEADER]: option.label } : {}),
+          ...(option.label ? { [WORKFLOW_LABEL_HEADER]: serializeLabel(option.label) } : {}),
         }) as Headers,
         initialPayload: option.body,
         steps: [],

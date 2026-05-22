@@ -579,6 +579,34 @@ describe("workflow client", () => {
       },
       { timeout: 15000 }
     );
+
+    test(
+      "should trigger with multiple labels (comma-separated header)",
+      async () => {
+        const labelOne = `multi-a-${nanoid()}`;
+        const labelTwo = `multi-b-${nanoid()}`;
+
+        const { workflowRunId } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/200",
+          label: [labelOne, labelTwo],
+          delay: "1h",
+        });
+
+        try {
+          // each label individually should match the run
+          const cancelByFirst = await liveClient.cancel({ filter: { label: labelOne } });
+          expect(cancelByFirst).toEqual({ cancelled: 1 });
+
+          // second cancel is a no-op since the run is already cancelled
+          const cancelBySecond = await liveClient.cancel({ filter: { label: labelTwo } });
+          expect(cancelBySecond).toEqual({ cancelled: 0 });
+        } finally {
+          // safety net in case the assertions above didn't cancel
+          await liveClient.cancel(workflowRunId).catch(() => {});
+        }
+      },
+      { timeout: 15000 }
+    );
   });
 
   test("should send notify", async () => {

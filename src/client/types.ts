@@ -417,8 +417,11 @@ export type TriggerOptions = {
    * Label to apply to the workflow run.
    *
    * Can be used to filter the workflow run logs.
+   *
+   * Pass an array to attach multiple labels to a single workflow run; they are
+   * sent as a comma-separated value in the `Upstash-Label` header.
    */
-  label?: string;
+  label?: string | string[];
   /**
    * By default, Workflow SDK sends telemetry about SDK version, framework or runtime.
    *
