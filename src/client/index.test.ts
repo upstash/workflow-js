@@ -1074,6 +1074,45 @@ describe("workflow client", () => {
       });
     });
 
+    test(
+      "should return both labels in the log entry - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        const labelOne = `log-label-a-${nanoid()}`;
+        const labelTwo = `log-label-b-${nanoid()}`;
+
+        const { workflowRunId } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/200",
+          label: [labelOne, labelTwo],
+          delay: "1h",
+        });
+
+        try {
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ workflowRunId });
+              expect(logs.runs.length).toBe(1);
+
+              const run = logs.runs[0];
+
+              // legacy `label` only carries the first label
+              expect(run.label).toBe(labelOne);
+              // new `labels` carries all of them
+              expect(run.labels).toEqual([labelOne, labelTwo]);
+            },
+            { timeout: 5000, interval: 250 }
+          );
+        } finally {
+          await liveClient.cancel(workflowRunId).catch(() => {});
+        }
+      },
+      { timeout: 15000 }
+    );
+
     test.skip(
       "should get logs - live",
       async () => {
