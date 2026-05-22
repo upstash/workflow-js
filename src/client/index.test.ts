@@ -1032,6 +1032,26 @@ describe("workflow client", () => {
       });
     });
 
+    test("should send logs request with multiple labels (OR filter)", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.logs({ filter: { label: ["label-a", "label-b"] } });
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "GET",
+          url:
+            `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
+            `&label=label-a&label=label-b`,
+          token,
+          body: "",
+        },
+      });
+    });
+
     test("should send logs request with all parameters including label", async () => {
       const count = 5;
       const cursor = "cursor-abc";
@@ -1111,6 +1131,60 @@ describe("workflow client", () => {
         }
       },
       { timeout: 15000 }
+    );
+
+    test(
+      "should filter logs by multiple labels (OR) - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        // unique label per slot so the filter only matches runs from this test
+        const labelOne = `or-1-${nanoid()}`;
+        const labelTwo = `or-2-${nanoid()}`;
+        const labelThree = `or-3-${nanoid()}`;
+
+        // run 1: [labelOne, labelTwo]
+        // run 2: [labelTwo, labelThree]
+        // run 3 (control): [labelThree]
+        const { workflowRunId: runOneTwo } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/200",
+          label: [labelOne, labelTwo],
+          delay: "1h",
+        });
+        const { workflowRunId: runTwoThree } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/200",
+          label: [labelTwo, labelThree],
+          delay: "1h",
+        });
+        const { workflowRunId: runThree } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/200",
+          label: labelThree,
+          delay: "1h",
+        });
+
+        try {
+          // filtering by [labelOne, labelTwo] should return runOneTwo (matches both)
+          // and runTwoThree (shares labelTwo), but NOT runThree.
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({
+                filter: { label: [labelOne, labelTwo] },
+              });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(runOneTwo);
+              expect(ids).toContain(runTwoThree);
+              expect(ids).not.toContain(runThree);
+            },
+            { timeout: 5000, interval: 250 }
+          );
+        } finally {
+          await liveClient.cancel([runOneTwo, runTwoThree, runThree]).catch(() => {});
+        }
+      },
+      { timeout: 20000 }
     );
 
     test.skip(
