@@ -9,7 +9,12 @@ const RESOURCE_NAME_PATTERN = /^[a-zA-Z0-9\-_.]+$/;
 
 export function validateLabel(label: string | string[] | undefined): void {
   if (label === undefined) return;
+
   const labels = Array.isArray(label) ? label : [label];
+  if (labels.length === 0) {
+    throw new WorkflowNonRetryableError("Invalid label: label array must not be empty.");
+  }
+
   for (const value of labels) {
     if (!RESOURCE_NAME_PATTERN.test(value)) {
       throw new WorkflowNonRetryableError(
