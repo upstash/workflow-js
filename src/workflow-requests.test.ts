@@ -65,7 +65,7 @@ describe("Workflow Requests", () => {
       workflowRunCreatedAt: 0,
     });
 
-    expect(context.label).toBe(label);
+    expect(context.labels).toEqual([label]);
     expect(context.headers.get("upstash-label")).toBe(label);
 
     await mockQStashServer({
