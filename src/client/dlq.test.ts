@@ -1041,7 +1041,11 @@ describe("DLQ", () => {
             expect(ids).toContain(runTwoThree);
             expect(ids).toContain(runThree);
           },
-          { timeout: 90000, interval: 2000 }
+          // all three runs must land in the DLQ before the filter assertion
+          // below is meaningful (otherwise `not.toContain(runThree)` passes
+          // trivially). Delivery latency for failing runs varies, so give it a
+          // generous window.
+          { timeout: 120000, interval: 2000 }
         );
 
         // filtering by [labelOne, labelTwo] should match runOneTwo and runTwoThree
@@ -1060,7 +1064,7 @@ describe("DLQ", () => {
           .delete({ filter: { label: [labelOne, labelTwo, labelThree] } })
           .catch(() => {});
       },
-      { timeout: 150000 }
+      { timeout: 180000 }
     );
 
     test(
