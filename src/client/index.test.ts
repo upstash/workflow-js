@@ -589,7 +589,7 @@ describe("workflow client", () => {
         const { workflowRunId } = await liveClient.trigger({
           url: "https://mock.httpstatus.io/200",
           label: [labelOne, labelTwo],
-          delay: "1h",
+          delay: "1m",
         });
 
         try {
@@ -1108,7 +1108,7 @@ describe("workflow client", () => {
         const { workflowRunId } = await liveClient.trigger({
           url: "https://mock.httpstatus.io/200",
           label: [labelOne, labelTwo],
-          delay: "1h",
+          delay: "1m",
         });
 
         try {
@@ -1152,17 +1152,17 @@ describe("workflow client", () => {
         const { workflowRunId: runOneTwo } = await liveClient.trigger({
           url: "https://mock.httpstatus.io/200",
           label: [labelOne, labelTwo],
-          delay: "1h",
+          delay: "1m",
         });
         const { workflowRunId: runTwoThree } = await liveClient.trigger({
           url: "https://mock.httpstatus.io/200",
           label: [labelTwo, labelThree],
-          delay: "1h",
+          delay: "1m",
         });
         const { workflowRunId: runThree } = await liveClient.trigger({
           url: "https://mock.httpstatus.io/200",
           label: labelThree,
-          delay: "1h",
+          delay: "1m",
         });
 
         try {
