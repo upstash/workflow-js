@@ -511,11 +511,11 @@ describe("workflow client", () => {
       async () => {
         await liveClient.trigger({
           url: "http://requestcatcher.com/exact-match-test",
-          delay: "1d",
+          delay: "1m",
         });
         await liveClient.trigger({
           url: "http://requestcatcher.com/exact-match-test/sub-path",
-          delay: "1d",
+          delay: "1m",
         });
 
         // exact match should only cancel the exact URL
