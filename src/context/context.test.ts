@@ -27,8 +27,57 @@ describe("context tests", () => {
       workflowRunCreatedAt: 0,
       label,
     });
+    expect(context.labels).toEqual([label]);
     expect(context.label).toBe(label);
     expect(context.headers.get("upstash-label")).toBe(label);
+  });
+
+  test("should set multiple labels in context", () => {
+    const labels = ["label-1", "label-2"];
+    const context = new WorkflowContext({
+      qstashClient,
+      initialPayload: "my-payload",
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      headers: new Headers({ "upstash-label": labels.join(",") }) as Headers,
+      workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
+      label: labels,
+    });
+    expect(context.labels).toEqual(labels);
+    // deprecated `label` only returns the first
+    expect(context.label).toBe(labels[0]);
+  });
+
+  test("should parse comma-separated label header into labels array", () => {
+    const labels = ["label-1", "label-2"];
+    const context = new WorkflowContext({
+      qstashClient,
+      initialPayload: "my-payload",
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      headers: new Headers({ "upstash-label": labels.join(",") }) as Headers,
+      workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
+      // simulating the parser, which passes the raw comma-joined header value
+      label: labels.join(","),
+    });
+    expect(context.labels).toEqual(labels);
+    expect(context.label).toBe(labels[0]);
+  });
+
+  test("should default labels to empty array when no label is set", () => {
+    const context = new WorkflowContext({
+      qstashClient,
+      initialPayload: "my-payload",
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      headers: new Headers() as Headers,
+      workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
+    });
+    expect(context.labels).toEqual([]);
+    expect(context.label).toBeUndefined();
   });
   const token = btoa(JSON.stringify({ UserID: nanoid() }));
   const qstashClient = new Client({

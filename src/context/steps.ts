@@ -22,6 +22,7 @@ import {
   getQStashUrl,
   getUserIdFromToken,
   getWorkflowRunId,
+  serializeLabel,
   stringifyBody,
 } from "../utils";
 import { WorkflowContext } from "./context";
@@ -751,8 +752,9 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     triggerHeaders["Upstash-Workflow-Invoke"] = "true";
 
     if (label) {
-      triggerHeaders[WORKFLOW_LABEL_HEADER] = label;
-      triggerHeaders[`upstash-forward-${WORKFLOW_LABEL_HEADER}`] = label;
+      const labelHeader = serializeLabel(label);
+      triggerHeaders[WORKFLOW_LABEL_HEADER] = labelHeader;
+      triggerHeaders[`upstash-forward-${WORKFLOW_LABEL_HEADER}`] = labelHeader;
     }
 
     return { headers: triggerHeaders, contentType };

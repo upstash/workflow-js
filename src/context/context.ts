@@ -140,9 +140,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
   public readonly env: Record<string, string | undefined>;
 
   /**
-   * Label to apply to the workflow run.
+   * Labels attached to the workflow run.
    *
-   * Can be used to filter the workflow run logs.
+   * Can be used to filter the workflow run logs. A run can have multiple
+   * labels when triggered with `label: string[]`.
    *
    * Can be set by passing a `label` parameter when triggering the workflow
    * with `client.trigger`:
@@ -150,11 +151,21 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ```ts
    * await client.trigger({
    *   url: "https://workflow-endpoint.com",
-   *   label: "my-label"
+   *   label: ["label-1", "label-2"]
    * });
    * ```
    */
-  public readonly label?: string;
+  public readonly labels: string[];
+
+  /**
+   * Label of the workflow run.
+   *
+   * @deprecated Use `labels` instead. When a run has multiple labels, this
+   *   only returns the first one.
+   */
+  public get label(): string | undefined {
+    return this.labels[0];
+  }
 
   /**
    * Number of times QStash has retried delivering the current request.
@@ -189,7 +200,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     env?: Record<string, string | undefined>;
     telemetry?: Telemetry;
     invokeCount?: number;
-    label?: string;
+    label?: string | string[];
     retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
   }) {
@@ -201,7 +212,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.headers = headers;
     this.requestPayload = initialPayload;
     this.env = env ?? {};
-    this.label = label;
+    // The `Upstash-Label` header carries labels as a comma-separated string,
+    // so normalize both that and the array form into a single array.
+    this.labels =
+      label === undefined ? [] : Array.isArray(label) ? label : label ? label.split(",") : [];
     this.retried = retried ?? 0;
 
     const middlewareManagerInstance =

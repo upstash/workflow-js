@@ -98,6 +98,23 @@ describe("DLQ", () => {
       });
     });
 
+    test("should list DLQ messages with multiple labels (OR filter)", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.dlq.list({ filter: { label: ["label-a", "label-b"] } });
+        },
+        responseFields: {
+          status: 200,
+          body: { messages: [], cursor: undefined },
+        },
+        receivesRequest: {
+          method: "GET",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?label=label-a&label=label-b&source=workflow`,
+          token,
+        },
+      });
+    });
+
     test("should list DLQ messages with filter options", async () => {
       const filter = {
         fromDate: 1640995200000, // 2022-01-01
@@ -986,6 +1003,64 @@ describe("DLQ", () => {
         expect(result.deleted).toBeGreaterThanOrEqual(2);
       },
       { timeout: 60000 }
+    );
+
+    test(
+      "should filter DLQ messages by multiple labels (OR)",
+      async () => {
+        const labelOne = `dlq-or-1-${nanoid()}`;
+        const labelTwo = `dlq-or-2-${nanoid()}`;
+        const labelThree = `dlq-or-3-${nanoid()}`;
+
+        // run 1: [labelOne, labelTwo], run 2: [labelTwo, labelThree], run 3: [labelThree]
+        const { workflowRunId: runOneTwo } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/500",
+          label: [labelOne, labelTwo],
+          retries: 0,
+        });
+        const { workflowRunId: runTwoThree } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/500",
+          label: [labelTwo, labelThree],
+          retries: 0,
+        });
+        const { workflowRunId: runThree } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/500",
+          label: labelThree,
+          retries: 0,
+        });
+
+        // wait for all three to land in DLQ
+        await eventually(
+          async () => {
+            const { messages } = await liveClient.dlq.list({
+              count: 100,
+              filter: { label: [labelOne, labelTwo, labelThree] },
+            });
+            const ids = messages.map((m) => m.workflowRunId);
+            expect(ids).toContain(runOneTwo);
+            expect(ids).toContain(runTwoThree);
+            expect(ids).toContain(runThree);
+          },
+          { timeout: 90000, interval: 2000 }
+        );
+
+        // filtering by [labelOne, labelTwo] should match runOneTwo and runTwoThree
+        // (both share labelTwo) but NOT runThree.
+        const { messages } = await liveClient.dlq.list({
+          count: 100,
+          filter: { label: [labelOne, labelTwo] },
+        });
+        const ids = messages.map((m) => m.workflowRunId);
+        expect(ids).toContain(runOneTwo);
+        expect(ids).toContain(runTwoThree);
+        expect(ids).not.toContain(runThree);
+
+        // clean up so we don't leave noise in the DLQ
+        await liveClient.dlq
+          .delete({ filter: { label: [labelOne, labelTwo, labelThree] } })
+          .catch(() => {});
+      },
+      { timeout: 150000 }
     );
 
     test(

@@ -19,7 +19,31 @@ const getLogKey = (workflowRunId: string) => {
 }
 
 /**
- * Helper to check expected logs in Redis for a given workflow run
+ * Checks whether a received log line matches an expected one, supporting the
+ * ANY_STRING wildcard placeholder (same semantics as `expect`).
+ */
+const logMatches = (received: string, expected: string) => {
+  if (expected.includes(ANY_STRING)) {
+    const pattern = expected.replace(
+      new RegExp(ANY_STRING.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+      '.*'
+    )
+    return new RegExp(`^${pattern}$`).test(received)
+  }
+  return received === expected
+}
+
+/**
+ * Helper to check expected logs in Redis for a given workflow run.
+ *
+ * Logs are accumulated across multiple workflow invocations, and each
+ * invocation is a separate HTTP request. The ordering of logs emitted around
+ * invocation boundaries is not deterministic: the trailing
+ * "...completed successfully." of one invocation is pushed at the end of its
+ * request while QStash has already started the next invocation, which pushes
+ * "Run id identified...". Those two rpush calls race, so adjacent boundary logs
+ * can swap. We therefore compare the logs as an unordered multiset instead of
+ * by index.
  */
 const checkLogs = async (workflowRunId: string, expectedLogs: string[]) => {
   const key = getLogKey(workflowRunId)
@@ -31,8 +55,15 @@ const checkLogs = async (workflowRunId: string, expectedLogs: string[]) => {
 
   expect(logs.length, expectedLogs.length)
 
-  for (let i = 0; i < expectedLogs.length; i++) {
-    expect(logs[i], expectedLogs[i])
+  const remaining = [...logs]
+  for (const expected of expectedLogs) {
+    const index = remaining.findIndex((log) => logMatches(log, expected))
+    if (index === -1) {
+      throw new Error(
+        `Expected log not found: "${expected}"\n\tReceived logs: ${JSON.stringify(logs, null, 2)}`
+      )
+    }
+    remaining.splice(index, 1)
   }
 }
 
