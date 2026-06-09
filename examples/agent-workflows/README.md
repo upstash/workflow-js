@@ -5,7 +5,7 @@ multi-agent apps feel like writing a few lines of config. You define agents,
 serve them with one call, and call them with a type-safe function — while every
 agent streams what it's doing to the browser in real time.
 
-## The whole surface (4 exports)
+## The whole surface (3 imports)
 
 ```ts
 import { defineAgent } from "./app/_sdk/define-agent";
@@ -16,7 +16,7 @@ import { useRealtime } from "./app/_sdk/realtime-client";
 | Export | Wraps | What it gives you |
 | --- | --- | --- |
 | `defineAgent(config)` | `createWorkflow` + `agentWorkflow` | An independently invokable, durable agent with zod-validated input, a built-in `log` tool, and per-step realtime events. |
-| `serveAgents({ baseUrl, agents })` | `serveMany` + `Client` | A single route for all agents **and** a typed `trigger(name, input)` that validates the name + input before dispatching. |
+| `serveAgents({ baseUrl, agents })` | `serveMany` + `Client` | A single route for all agents **and** a type-safe `trigger(name, input)` that validates the name + input before dispatching. |
 | `trigger(name, input)` | `client.trigger` | Returned by `serveAgents`. Compile-time + runtime checked. Returns the realtime `channel` to watch. |
 | `useRealtime(...)` | `@upstash/realtime` | Typed React hook; subscribe to a run's channel and render the live feed. |
 
