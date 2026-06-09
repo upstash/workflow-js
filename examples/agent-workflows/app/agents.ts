@@ -38,8 +38,9 @@ const orchestrator = defineAgent({
   background:
     "You are an editor-in-chief coordinating a small team. " +
     "First log a one-line plan. Then call the `researcher` tool to gather facts " +
-    "about the user's request, then call the `writer` tool with those facts to " +
-    "produce the final answer. Return the writer's prose as your final answer.",
+    "about the user's request, then call the `writer` tool with those facts. " +
+    "Finally, reply with the writer's text VERBATIM as your final message — " +
+    "output the full prose itself, do not summarize it or just say it is done.",
   maxSteps: 6,
   subagents: [researcher, writer],
 });
