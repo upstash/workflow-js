@@ -715,7 +715,7 @@ describe("serve", () => {
               destination: "some-url",
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://requestcatcher.com/api",
+                "upstash-callback": "https://wf-test.requestcatcher.com/api",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -730,7 +730,7 @@ describe("serve", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
-                "upstash-callback-workflow-url": "https://requestcatcher.com/api",
+                "upstash-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-test": "headers",
                 "upstash-method": "PATCH",
@@ -744,7 +744,7 @@ describe("serve", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-foo",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: "body",
             },
@@ -1156,7 +1156,7 @@ describe("serve", () => {
     });
 
     test("allow https://", async () => {
-      const url = "https://requestcatcher.com";
+      const url = "https://wf-test.requestcatcher.com";
       const { handler } = serve(
         async (context) => {
           await context.sleep("sleeping", 1);
@@ -1195,7 +1195,7 @@ describe("serve", () => {
         }
       );
 
-      const response = await handler(new Request("https://requestcatcher.com", { method: "POST" }));
+      const response = await handler(new Request("https://wf-test.requestcatcher.com", { method: "POST" }));
       expect(response.status).toBe(500);
       const content = await response.json();
       expect(content).toEqual({

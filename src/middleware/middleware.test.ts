@@ -248,7 +248,7 @@ describe("middleware", () => {
         await context.sleep(stepThreeName, 10);
       };
 
-      const qstashClient = new Client({ baseUrl: "https://requestcatcher.com", token: "token" });
+      const qstashClient = new Client({ baseUrl: "https://wf-test.requestcatcher.com", token: "token" });
       qstashClient.http.request = jest.fn();
 
       const runMiddlewareTest = async (
@@ -257,11 +257,11 @@ describe("middleware", () => {
       ) => {
         const { middleware, accumulator } = createLoggingMiddleware();
 
-        const request = getRequest("https://requestcatcher.com", "wfr-id", undefined, steps);
+        const request = getRequest("https://wf-test.requestcatcher.com", "wfr-id", undefined, steps);
 
         const { POST: handler } = serve(routeFunction, {
           middlewares: [middleware],
-          url: "https://requestcatcher.com",
+          url: "https://wf-test.requestcatcher.com",
           receiver: undefined,
           qstashClient,
         });

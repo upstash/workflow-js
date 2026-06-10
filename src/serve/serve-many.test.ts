@@ -195,13 +195,13 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowTwo"],
+              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowTwo"],
               "content-type": ["application/json"],
               "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
             workflowRunId: "wfr_id",
             workflowRunCreatedAt: Number(workflowCreatedAt),
-            workflowUrl: "https://requestcatcher.com/api/workflowTwo",
+            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowTwo",
             step: {
               stepId: 1,
               concurrent: 1,
@@ -245,10 +245,10 @@ describe("serveMany", () => {
           body: [
             {
               body: '{"count":99}',
-              destination: "https://requestcatcher.com/api/workflowOne",
+              destination: "https://wf-test.requestcatcher.com/api/workflowOne",
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://requestcatcher.com/api/workflowThree",
+                "upstash-callback": "https://wf-test.requestcatcher.com/api/workflowThree",
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
@@ -261,7 +261,7 @@ describe("serveMany", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowThree",
+                "upstash-callback-workflow-url": "https://wf-test.requestcatcher.com/api/workflowThree",
                 "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
@@ -273,7 +273,7 @@ describe("serveMany", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api/workflowThree",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api/workflowThree",
               },
             },
           ],
@@ -302,12 +302,12 @@ describe("serveMany", () => {
           body: [
             {
               body: "hello world",
-              destination: "https://requestcatcher.com/api/workflowTwo",
+              destination: "https://wf-test.requestcatcher.com/api/workflowTwo",
               headers: {
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "content-type": "application/json",
-                "upstash-callback": "https://requestcatcher.com/api/workflowFour",
+                "upstash-callback": "https://wf-test.requestcatcher.com/api/workflowFour",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -317,7 +317,7 @@ describe("serveMany", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowFour",
+                "upstash-callback-workflow-url": "https://wf-test.requestcatcher.com/api/workflowFour",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
@@ -328,7 +328,7 @@ describe("serveMany", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api/workflowFour",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api/workflowFour",
               },
             },
           ],
@@ -370,12 +370,12 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowFive"],
+              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowFive"],
               "content-type": ["application/json"],
             },
             workflowRunId: "wfr_id",
             workflowRunCreatedAt: Number(workflowCreatedAt),
-            workflowUrl: "https://requestcatcher.com/api/workflowFive",
+            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowFive",
             step: {
               stepId: 1,
               concurrent: 1,
@@ -420,7 +420,7 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowSix"],
+              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowSix"],
               "content-type": ["application/json"],
             },
             step: {
@@ -430,7 +430,7 @@ describe("serveMany", () => {
               stepType: "Invoke",
             },
             workflowRunId: "wfr_id",
-            workflowUrl: "https://requestcatcher.com/api/workflowSix",
+            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowSix",
             workflowRunCreatedAt: Number(workflowCreatedAt),
           },
         },
@@ -457,10 +457,10 @@ describe("serveMany", () => {
           token,
           body: [
             {
-              destination: "https://requestcatcher.com/api/workflowFour",
+              destination: "https://wf-test.requestcatcher.com/api/workflowFour",
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-callback": "https://wf-test.requestcatcher.com/api/workflowSeven",
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
@@ -472,7 +472,7 @@ describe("serveMany", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-callback-workflow-url": "https://wf-test.requestcatcher.com/api/workflowSeven",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
@@ -483,7 +483,7 @@ describe("serveMany", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api/workflowSeven",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api/workflowSeven",
               },
             },
           ],
@@ -525,12 +525,12 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://requestcatcher.com/api/workflowEight"],
+              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowEight"],
               "content-type": ["application/json"],
             },
             workflowRunId: "wfr_id",
             workflowRunCreatedAt: Number(workflowCreatedAt),
-            workflowUrl: "https://requestcatcher.com/api/workflowEight",
+            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowEight",
             step: {
               stepId: 1,
               concurrent: 1,
@@ -553,27 +553,27 @@ describe("serveMany", () => {
 
   describe("getNewUrlFromWorkflowId", () => {
     test("should return new url", () => {
-      const url = "https://requestcatcher.com/api/original_workflow";
+      const url = "https://wf-test.requestcatcher.com/api/original_workflow";
       const workflowId = "workflowId";
       const newUrl = getNewUrlFromWorkflowId(url, workflowId);
 
-      expect(newUrl).toBe("https://requestcatcher.com/api/workflowId");
+      expect(newUrl).toBe("https://wf-test.requestcatcher.com/api/workflowId");
     });
 
     test("should ignore query parameters", () => {
-      const url = "https://requestcatcher.com/api/original_workflow?query=param";
+      const url = "https://wf-test.requestcatcher.com/api/original_workflow?query=param";
       const workflowId = "workflowId";
       const newUrl = getNewUrlFromWorkflowId(url, workflowId);
 
-      expect(newUrl).toBe("https://requestcatcher.com/api/workflowId");
+      expect(newUrl).toBe("https://wf-test.requestcatcher.com/api/workflowId");
     });
 
     test("shuold ignore hash parameters", () => {
-      const url = "https://requestcatcher.com/api/original_workflow#hash";
+      const url = "https://wf-test.requestcatcher.com/api/original_workflow#hash";
       const workflowId = "workflowId";
       const newUrl = getNewUrlFromWorkflowId(url, workflowId);
 
-      expect(newUrl).toBe("https://requestcatcher.com/api/workflowId");
+      expect(newUrl).toBe("https://wf-test.requestcatcher.com/api/workflowId");
     });
   });
 });
