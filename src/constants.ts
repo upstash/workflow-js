@@ -12,6 +12,7 @@ export const WORKFLOW_RETRIED_HEADER = "Upstash-Retried";
 export const WORKFLOW_LABEL_HEADER = "Upstash-Label";
 export const WORKFLOW_UNKOWN_SDK_VERSION_HEADER = "Upstash-Workflow-Unknown-Sdk";
 export const WORKFLOW_UNKOWN_SDK_TRIGGER_HEADER = "upstash-workflow-trigger-by-sdk";
+export const WORKFLOW_ERROR_STEP_NAME_HEADER = "Upstash-Error-Step-Name";
 
 export const WORKFLOW_PROTOCOL_VERSION = "1";
 export const WORKFLOW_PROTOCOL_VERSION_HEADER = "Upstash-Workflow-Sdk-Version";

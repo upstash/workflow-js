@@ -112,6 +112,43 @@ export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
 };
 
 /**
+ * An error that may carry the name of the step that was executing when it was
+ * thrown. The serve handler reads this to report the failing step name to QStash
+ * via the `Upstash-Error-Step-Name` response header (so it shows up in Workflow Logs).
+ */
+type ErrorWithStepName = {
+  errorStepName?: string;
+};
+
+/**
+ * Records the name of the currently executing step on an error so it can be
+ * surfaced later when building the error response. The first recorded name wins,
+ * so the step closest to where the error originated is preserved.
+ *
+ * @param error error thrown while executing a step
+ * @param stepName name of the step that was executing
+ */
+export const attachStepNameToError = (error: unknown, stepName: string): void => {
+  if (typeof error === "object" && error !== null && !("errorStepName" in error)) {
+    (error as ErrorWithStepName).errorStepName = stepName;
+  }
+};
+
+/**
+ * Reads the step name recorded by `attachStepNameToError`.
+ *
+ * @param error error to read the step name from
+ * @returns the recorded step name, or undefined if none was recorded
+ */
+export const getStepNameFromError = (error: unknown): string | undefined => {
+  if (typeof error === "object" && error !== null) {
+    const stepName = (error as ErrorWithStepName).errorStepName;
+    return typeof stepName === "string" ? stepName : undefined;
+  }
+  return undefined;
+};
+
+/**
  * Gets the constructor name of an object.
  *
  * @param obj object to get constructor name from
