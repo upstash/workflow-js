@@ -871,7 +871,8 @@ describe("workflow client", () => {
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
               "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               "upstash-delay": "1s",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/some-failure-callback",
+              "upstash-failure-callback":
+                "https://wf-test.requestcatcher.com/some-failure-callback",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-feature-set":
