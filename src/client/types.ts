@@ -192,6 +192,13 @@ type StepLogGroup =
        */
       steps: {
         messageId: string;
+        /**
+         * name of the step being run.
+         *
+         * only available when the SDK reported it while the step was failing
+         * (via the `Upstash-Error-Step-Name` response header).
+         */
+        stepName?: string;
         state: "STEP_PROGRESS" | "STEP_RETRY" | "STEP_FAILED" | "STEP_CANCELED";
         /**
          * retries
