@@ -129,8 +129,13 @@ type ErrorWithStepName = {
  * @param stepName name of the step that was executing
  */
 export const attachStepNameToError = (error: unknown, stepName: string): void => {
-  if (typeof error === "object" && error !== null && !("errorStepName" in error)) {
+  if (typeof error !== "object" || error === null) return;
+  if ("errorStepName" in error) return;
+  if (!Object.isExtensible(error)) return;
+  try {
     (error as ErrorWithStepName).errorStepName = stepName;
+  } catch {
+    // best-effort metadata only; never mask the original error
   }
 };
 

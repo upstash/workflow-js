@@ -338,8 +338,13 @@ export const serveBase = <
         error: isInstanceOf(error, Error) ? error : new Error(formattedError.message),
       });
       // if the error happened while executing a known step, report its name so
-      // it can be shown in Workflow Logs when the step is retried
-      const stepName = getStepNameFromError(error);
+      // it can be shown in Workflow Logs when the step is retried.
+      const stepName = getStepNameFromError(error)
+        // strip control characters (e.g. CR/LF) so an invalid step name
+        // can't produce an invalid header value and break the 500 response
+        // eslint-disable-next-line no-control-regex
+        ?.replace(/[\u0000-\u001F\u007F]+/g, " ")
+        .trim();
       return new Response(JSON.stringify(formattedError), {
         status: 500,
         headers: {

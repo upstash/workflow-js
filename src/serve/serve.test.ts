@@ -399,6 +399,35 @@ describe("serve", () => {
     expect(onErrorCalled).toBeTrue();
   });
 
+  test("should strip control characters from the reported step name", async () => {
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await context.run("wrong\r\nstep", async () => {
+          throw new Error("some-error");
+        });
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+      }
+    );
+
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
+    let called = false;
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(500);
+        // CR/LF replaced so the header value stays valid
+        expect(response.headers.get(WORKFLOW_ERROR_STEP_NAME_HEADER)).toBe("wrong step");
+        called = true;
+      },
+      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
+      receivesRequest: false,
+    });
+    expect(called).toBeTrue();
+  });
+
   test("should report the failing step name when a parallel step throws", async () => {
     const { handler: endpoint } = serve(
       async (context) => {
@@ -1195,7 +1224,9 @@ describe("serve", () => {
         }
       );
 
-      const response = await handler(new Request("https://wf-test.requestcatcher.com", { method: "POST" }));
+      const response = await handler(
+        new Request("https://wf-test.requestcatcher.com", { method: "POST" })
+      );
       expect(response.status).toBe(500);
       const content = await response.json();
       expect(content).toEqual({
