@@ -10,8 +10,8 @@ import {
 export const MOCK_QSTASH_SERVER_PORT = 8080;
 export const MOCK_QSTASH_SERVER_URL = `http://localhost:${MOCK_QSTASH_SERVER_PORT}`;
 
-export const MOCK_SERVER_URL = "https://requestcatcher.com/";
-export const WORKFLOW_ENDPOINT = "https://requestcatcher.com/api";
+export const MOCK_SERVER_URL = "https://wf-test.requestcatcher.com/";
+export const WORKFLOW_ENDPOINT = "https://wf-test.requestcatcher.com/api";
 
 export type ResponseFields = {
   body: unknown;

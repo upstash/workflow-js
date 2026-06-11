@@ -4,6 +4,7 @@ import {
   WORKFLOW_CREATED_AT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
+  WORKFLOW_ERROR_STEP_NAME_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_RETRIED_HEADER,
@@ -11,6 +12,7 @@ import {
 import { WorkflowContext } from "../context";
 import {
   formatWorkflowError,
+  getStepNameFromError,
   isInstanceOf,
   WorkflowNonRetryableError,
   WorkflowRetryAfterError,
@@ -335,10 +337,19 @@ export const serveBase = <
       await middlewareManager.dispatchDebug("onError", {
         error: isInstanceOf(error, Error) ? error : new Error(formattedError.message),
       });
+      // if the error happened while executing a known step, report its name so
+      // it can be shown in Workflow Logs when the step is retried.
+      const stepName = getStepNameFromError(error)
+        // strip control characters (e.g. CR/LF) so an invalid step name
+        // can't produce an invalid header value and break the 500 response
+        // eslint-disable-next-line no-control-regex
+        ?.replace(/[\u0000-\u001F\u007F]+/g, " ")
+        .trim();
       return new Response(JSON.stringify(formattedError), {
         status: 500,
         headers: {
           [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+          ...(stepName ? { [WORKFLOW_ERROR_STEP_NAME_HEADER]: stepName } : {}),
         },
       }) as TResponse;
     }

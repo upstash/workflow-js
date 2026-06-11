@@ -1,4 +1,4 @@
-import { isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
+import { attachStepNameToError, isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
@@ -265,9 +265,13 @@ export class AutoExecutor {
           ) {
             throw error;
           }
-          throw new WorkflowError(
+          const wrappedError = new WorkflowError(
             `Error submitting steps to QStash in partial parallel step execution: ${error}`
           );
+          // preserve the failing step name through the re-wrap so it still
+          // reaches the error response header
+          attachStepNameToError(wrappedError, parallelSteps[stepIndex].stepName);
+          throw wrappedError;
         }
         break;
       }

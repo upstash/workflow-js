@@ -128,7 +128,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "default-token",
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -140,7 +140,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":1,"stepName":"step1","stepType":"Run","out":"\\"workflow result\\"","concurrent":1}`,
             },
@@ -203,7 +203,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "us-token", // Should use US token
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -215,7 +215,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_us_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":1,"stepName":"step1","stepType":"Run","out":"\\"us workflow result\\"","concurrent":1}`,
             },
@@ -287,7 +287,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "us-token", // Should use US token based on region header
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -299,7 +299,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_us_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":2,"stepName":"step2","stepType":"Run","out":"\\"step 2 result\\"","concurrent":1}`,
             },
@@ -362,7 +362,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "eu-token", // Should use EU token
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -374,7 +374,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_eu_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":1,"stepName":"step1","stepType":"Run","out":"\\"eu workflow result\\"","concurrent":1}`,
             },
@@ -445,7 +445,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "eu-token", // Should use EU token based on region header
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -457,7 +457,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_eu_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":2,"stepName":"step2","stepType":"Run","out":"\\"step 2 result\\"","concurrent":1}`,
             },
@@ -577,7 +577,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "us-token",
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -589,7 +589,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_config_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":1,"stepName":"step1","stepType":"Run","out":"\\"result\\"","concurrent":1}`,
             },
@@ -764,7 +764,7 @@ describe("Multi-Region Integration Tests", () => {
           token: "custom-token", // Should use custom client token, not region tokens
           body: [
             {
-              destination: "https://requestcatcher.com/api",
+              destination: "https://wf-test.requestcatcher.com/api",
               headers: {
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -776,7 +776,7 @@ describe("Multi-Region Integration Tests", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_custom_123",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: `{"stepId":1,"stepName":"step1","stepType":"Run","out":"\\"result\\"","concurrent":1}`,
             },

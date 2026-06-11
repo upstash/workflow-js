@@ -1,5 +1,5 @@
 import { NO_CONCURRENCY } from "../constants";
-import { WorkflowAbort } from "../error";
+import { attachStepNameToError, WorkflowAbort } from "../error";
 import { Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
@@ -109,7 +109,15 @@ export const submitSingleStep = async ({
     stepName: lazyStep.stepName,
   });
 
-  const resultStep = await lazyStep.getResultStep(concurrency, stepId);
+  let resultStep;
+  try {
+    resultStep = await lazyStep.getResultStep(concurrency, stepId);
+  } catch (error) {
+    // The step function threw. Remember which step failed so the serve handler
+    // can report it to QStash via the `Upstash-Error-Step-Name` header.
+    attachStepNameToError(error, lazyStep.stepName);
+    throw error;
+  }
 
   const { headers } = lazyStep.getHeaders({
     context,

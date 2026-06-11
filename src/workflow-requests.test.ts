@@ -708,7 +708,7 @@ describe("Workflow Requests", () => {
         "Upstash-Failure-Callback-Workflow-Calltype": "failureCall",
         "Upstash-Failure-Callback-Workflow-Init": "false",
         "Upstash-Failure-Callback-Workflow-Runid": workflowRunId,
-        "Upstash-Failure-Callback-Workflow-Url": "https://requestcatcher.com/api",
+        "Upstash-Failure-Callback-Workflow-Url": "https://wf-test.requestcatcher.com/api",
         "Upstash-Failure-Callback": failureUrl,
         "content-type": "application/json",
         "Upstash-Failure-Callback-Flow-Control-Key": "failure-key",
@@ -763,9 +763,9 @@ describe("Workflow Requests", () => {
       });
       expect(typeof body).toBe("string");
       expect(JSON.parse(body)).toEqual({
-        url: "https://requestcatcher.com/api",
+        url: "https://wf-test.requestcatcher.com/api",
         timeout: "20s",
-        timeoutUrl: "https://requestcatcher.com/api",
+        timeoutUrl: "https://wf-test.requestcatcher.com/api",
         timeoutHeaders: {
           "Upstash-Workflow-Init": ["false"],
           "Upstash-Workflow-RunId": [workflowRunId],
