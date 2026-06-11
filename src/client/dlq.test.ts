@@ -115,6 +115,35 @@ describe("DLQ", () => {
       });
     });
 
+    test("should surface both label and labels from the response", async () => {
+      const labelOne = "label-one";
+      const labelTwo = "label-two";
+      const message = {
+        ...MOCK_DLQ_MESSAGES[0],
+        label: labelOne,
+        labels: [labelOne, labelTwo],
+      };
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.list();
+          // legacy `label` only carries the first label
+          expect(result.messages[0].label).toBe(labelOne);
+          // new `labels` carries all of them
+          expect(result.messages[0].labels).toEqual([labelOne, labelTwo]);
+        },
+        responseFields: {
+          status: 200,
+          body: { messages: [message], cursor: undefined },
+        },
+        receivesRequest: {
+          method: "GET",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?source=workflow`,
+          token,
+        },
+      });
+    });
+
     test("should list DLQ messages with filter options", async () => {
       const filter = {
         fromDate: 1640995200000, // 2022-01-01
@@ -1105,6 +1134,42 @@ describe("DLQ", () => {
         await liveClient.dlq
           .delete({ filter: { label: [labelOne, labelTwo, labelThree] } })
           .catch(() => {});
+      },
+      { timeout: 180000 }
+    );
+
+    test(
+      "should return both label and labels on a DLQ message",
+      async () => {
+        const labelOne = `dlq-labels-1-${nanoid()}`;
+        const labelTwo = `dlq-labels-2-${nanoid()}`;
+
+        const { workflowRunId } = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/500",
+          label: [labelOne, labelTwo],
+          retries: 0,
+        });
+
+        try {
+          await eventually(
+            async () => {
+              const { messages } = await liveClient.dlq.list({
+                count: 100,
+                filter: { label: [labelOne, labelTwo] },
+              });
+              const message = messages.find((m) => m.workflowRunId === workflowRunId);
+              expect(message).toBeDefined();
+              // legacy `label` only carries the first label
+              expect(message!.label).toBe(labelOne);
+              // new `labels` carries all of them
+              expect(message!.labels).toEqual([labelOne, labelTwo]);
+            },
+            { timeout: 120000, interval: 2000 }
+          );
+        } finally {
+          // clean up so we don't leave noise in the DLQ
+          await liveClient.dlq.delete({ filter: { label: [labelOne, labelTwo] } }).catch(() => {});
+        }
       },
       { timeout: 180000 }
     );

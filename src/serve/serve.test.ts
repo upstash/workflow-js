@@ -15,6 +15,7 @@ import { Client as WorkflowClient } from "../client";
 import type { FinishCondition, RouteFunction, Step, WorkflowServeOptions } from "../types";
 import {
   WORKFLOW_FAILURE_HEADER,
+  WORKFLOW_ERROR_STEP_NAME_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
@@ -381,6 +382,8 @@ describe("serve", () => {
         const response = await endpoint(request);
         expect(response.status).toBe(500);
         expect(response.statusText).toBe("");
+        // failing step name is reported so Workflow Logs can show it on retry
+        expect(response.headers.get(WORKFLOW_ERROR_STEP_NAME_HEADER)).toBe("wrong step");
         const result = await response.json();
         expect(result).toEqual({
           error: "Error",
@@ -394,6 +397,75 @@ describe("serve", () => {
     });
     expect(called).toBeTrue();
     expect(onErrorCalled).toBeTrue();
+  });
+
+  test("should strip control characters from the reported step name", async () => {
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await context.run("wrong\r\nstep", async () => {
+          throw new Error("some-error");
+        });
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+      }
+    );
+
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
+    let called = false;
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(500);
+        // CR/LF replaced so the header value stays valid
+        expect(response.headers.get(WORKFLOW_ERROR_STEP_NAME_HEADER)).toBe("wrong step");
+        called = true;
+      },
+      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
+      receivesRequest: false,
+    });
+    expect(called).toBeTrue();
+  });
+
+  test("should report the failing step name when a parallel step throws", async () => {
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await Promise.all([
+          context.run("parallel step 1", () => "result 1"),
+          context.run("parallel step 2", () => {
+            throw new Error("parallel-error");
+          }),
+        ]);
+      },
+      {
+        qstashClient,
+        receiver: undefined,
+      }
+    );
+
+    // partial parallel execution: QStash is calling back to run the second
+    // parallel step (targetStep 2), which is the one that throws.
+    // prettier-ignore
+    const planSteps: Step[] = [
+      { stepId: 0, stepName: "parallel step 1", stepType: "Run", concurrent: 2, targetStep: 1 },
+      { stepId: 0, stepName: "parallel step 2", stepType: "Run", concurrent: 2, targetStep: 2 },
+    ];
+    const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", planSteps);
+    let called = false;
+    await mockQStashServer({
+      execute: async () => {
+        const response = await endpoint(request);
+        expect(response.status).toBe(500);
+        // the failing parallel step's name is reported, even though the error is
+        // re-wrapped on the partial parallel execution path
+        expect(response.headers.get(WORKFLOW_ERROR_STEP_NAME_HEADER)).toBe("parallel step 2");
+        called = true;
+      },
+      responseFields: { body: { messageId: "some-message-id" }, status: 200 },
+      receivesRequest: false,
+    });
+    expect(called).toBeTrue();
   });
 
   describe("duplicate checks", () => {
@@ -672,7 +744,7 @@ describe("serve", () => {
               destination: "some-url",
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://requestcatcher.com/api",
+                "upstash-callback": "https://wf-test.requestcatcher.com/api",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -687,7 +759,7 @@ describe("serve", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
-                "upstash-callback-workflow-url": "https://requestcatcher.com/api",
+                "upstash-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-test": "headers",
                 "upstash-method": "PATCH",
@@ -701,7 +773,7 @@ describe("serve", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-foo",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://requestcatcher.com/api",
+                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
               },
               body: "body",
             },
@@ -1113,7 +1185,7 @@ describe("serve", () => {
     });
 
     test("allow https://", async () => {
-      const url = "https://requestcatcher.com";
+      const url = "https://wf-test.requestcatcher.com";
       const { handler } = serve(
         async (context) => {
           await context.sleep("sleeping", 1);
@@ -1152,7 +1224,9 @@ describe("serve", () => {
         }
       );
 
-      const response = await handler(new Request("https://requestcatcher.com", { method: "POST" }));
+      const response = await handler(
+        new Request("https://wf-test.requestcatcher.com", { method: "POST" })
+      );
       expect(response.status).toBe(500);
       const content = await response.json();
       expect(content).toEqual({

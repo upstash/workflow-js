@@ -45,9 +45,18 @@ type DLQMessage = {
    */
   failureCallbackInfo?: FailureCallbackInfo;
   /**
-   * label passed when triggering workflow
+   * Label passed when triggering the workflow run.
+   *
+   * @deprecated Use `labels` instead. When a run has multiple labels, this
+   *   field only contains the first one.
    */
   label?: string;
+  /**
+   * Labels attached to the workflow run.
+   *
+   * A run can have multiple labels when triggered with `label: string[]`.
+   */
+  labels?: string[];
 };
 
 type PublicDLQMessage = Pick<
@@ -68,6 +77,7 @@ type PublicDLQMessage = Pick<
   | "failureCallback"
   | "failureCallbackInfo"
   | "label"
+  | "labels"
 >;
 
 function buildResumeRestartHeaders(options?: ResumeRestartOptions): Record<string, string> {
