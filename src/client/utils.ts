@@ -5,6 +5,21 @@ import { DispatchDebug } from "../middleware/types";
 import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
 
 /**
+ * Guards single-resource endpoints against an empty identifier.
+ *
+ * An empty id would otherwise either be joined into the path as a trailing
+ * slash (e.g. `v2/waiters/`) or sent as an empty value in a bulk action
+ * filter (e.g. `dlqIds=`), both of which the server resolves to a
+ * collection/bulk operation. For destructive methods this silently affects
+ * unintended resources, so we fail fast instead.
+ */
+export const assertNonEmptyId = (id: string, label = "id"): void => {
+  if (id.length === 0) {
+    throw new QstashError(`${label} cannot be empty`);
+  }
+};
+
+/**
  * Makes a request to notify waiting workflows.
  *
  * @param requester QStash HTTP requester
@@ -18,6 +33,7 @@ export const makeNotifyRequest = async (
   eventData?: unknown,
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
+  assertNonEmptyId(eventId, "Event id");
   const path = workflowRunId ? ["v2", "notify", workflowRunId, eventId] : ["v2", "notify", eventId];
 
   const result = (await requester.request({
@@ -39,6 +55,7 @@ export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string
 ): Promise<Required<Waiter>[]> => {
+  assertNonEmptyId(eventId, "Event id");
   const result = (await requester.request({
     path: ["v2", "waiters", eventId],
     method: "GET",

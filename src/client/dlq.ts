@@ -1,6 +1,6 @@
 import { Client as QStashClient, FlowControl } from "@upstash/qstash";
 import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
-import { buildBulkActionQueryParameters, normalizeCursor } from "./utils";
+import { assertNonEmptyId, buildBulkActionQueryParameters, normalizeCursor } from "./utils";
 import { WorkflowDLQActionFilters, WorkflowDLQListFilters } from "./filter-types";
 import { prepareFlowControl } from "../qstash/headers";
 
@@ -179,7 +179,10 @@ export class DLQ {
     }
 
     // New format
-    if (typeof request === "string") request = [request];
+    if (typeof request === "string") {
+      assertNonEmptyId(request, "DLQ id");
+      request = [request];
+    }
     if (Array.isArray(request) && request.length === 0) return { workflowRuns: [] };
     const filters: WorkflowDLQActionFilters = Array.isArray(request)
       ? { dlqIds: request }
@@ -258,7 +261,10 @@ export class DLQ {
     }
 
     // New format
-    if (typeof request === "string") request = [request];
+    if (typeof request === "string") {
+      assertNonEmptyId(request, "DLQ id");
+      request = [request];
+    }
     if (Array.isArray(request) && request.length === 0) return { workflowRuns: [] };
     const filters: WorkflowDLQActionFilters = Array.isArray(request)
       ? { dlqIds: request }
@@ -285,6 +291,7 @@ export class DLQ {
    * @returns response with workflow run information
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
+    assertNonEmptyId(dlqId, "DLQ id");
     const response = await this.client.http.request<DLQResumeRestartResponse>({
       path: ["v2", "workflows", "dlq", "callback", dlqId],
       method: "POST",
@@ -314,7 +321,10 @@ export class DLQ {
    * ```
    */
   async delete(request: string | string[] | WorkflowDLQActionFilters) {
-    if (typeof request === "string") request = [request];
+    if (typeof request === "string") {
+      assertNonEmptyId(request, "DLQ id");
+      request = [request];
+    }
     if (Array.isArray(request) && request.length === 0) return { deleted: 0 };
     const filters: WorkflowDLQActionFilters = Array.isArray(request)
       ? { dlqIds: request }

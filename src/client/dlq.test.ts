@@ -256,6 +256,16 @@ describe("DLQ", () => {
       });
     });
 
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: () => {
+          expect(client.dlq.resume("")).rejects.toThrow("DLQ id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should throw when dlqIds is empty in filter format", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -501,6 +511,16 @@ describe("DLQ", () => {
       });
     });
 
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: () => {
+          expect(client.dlq.restart("")).rejects.toThrow("DLQ id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should throw when dlqIds is empty in filter format", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -683,6 +703,18 @@ describe("DLQ", () => {
         },
       });
     });
+
+    test("should not send request when dlqId is an empty string", async () => {
+      await mockQStashServer({
+        execute: () => {
+          expect(client.dlq.retryFailureFunction({ dlqId: "" })).rejects.toThrow(
+            "DLQ id cannot be empty"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
   });
 
   describe("delete", () => {
@@ -733,6 +765,16 @@ describe("DLQ", () => {
         execute: async () => {
           const result = await client.dlq.delete([]);
           expect(result.deleted).toBe(0);
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: () => {
+          expect(client.dlq.delete("")).rejects.toThrow("DLQ id cannot be empty");
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
