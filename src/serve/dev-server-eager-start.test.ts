@@ -31,6 +31,7 @@ const astro = await import("../../platforms/astro");
 const tanstack = await import("../../platforms/tanstack");
 const nextjs = await import("../../platforms/nextjs");
 const reactRouter = await import("../../platforms/react-router");
+const baseServe = await import("./index");
 
 const routeFunction = async () => {};
 
@@ -49,6 +50,7 @@ const factories: { name: string; defineRoute: () => unknown }[] = [
   { name: "nextjs.serve", defineRoute: () => nextjs.serve(routeFunction) },
   { name: "nextjs.servePagesRouter", defineRoute: () => nextjs.servePagesRouter(routeFunction) },
   { name: "reactRouter.serve", defineRoute: () => reactRouter.serve(routeFunction) },
+  { name: "serve (framework-agnostic root)", defineRoute: () => baseServe.serve(routeFunction) },
 ];
 
 // serveMany factories. For most adapters serveMethod is the adapter `serve`, so
