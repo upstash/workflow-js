@@ -292,8 +292,8 @@ describe("DLQ", () => {
 
     test("should not send request when called with an empty string", async () => {
       await mockQStashServer({
-        execute: () => {
-          expect(client.dlq.resume("")).rejects.toThrow("DLQ id cannot be empty");
+        execute: async () => {
+          await expect(client.dlq.resume("")).rejects.toThrow("DLQ id cannot be empty");
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
@@ -547,8 +547,8 @@ describe("DLQ", () => {
 
     test("should not send request when called with an empty string", async () => {
       await mockQStashServer({
-        execute: () => {
-          expect(client.dlq.restart("")).rejects.toThrow("DLQ id cannot be empty");
+        execute: async () => {
+          await expect(client.dlq.restart("")).rejects.toThrow("DLQ id cannot be empty");
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
@@ -740,8 +740,8 @@ describe("DLQ", () => {
 
     test("should not send request when dlqId is an empty string", async () => {
       await mockQStashServer({
-        execute: () => {
-          expect(client.dlq.retryFailureFunction({ dlqId: "" })).rejects.toThrow(
+        execute: async () => {
+          await expect(client.dlq.retryFailureFunction({ dlqId: "" })).rejects.toThrow(
             "DLQ id cannot be empty"
           );
         },
@@ -807,8 +807,20 @@ describe("DLQ", () => {
 
     test("should not send request when called with an empty string", async () => {
       await mockQStashServer({
-        execute: () => {
-          expect(client.dlq.delete("")).rejects.toThrow("DLQ id cannot be empty");
+        execute: async () => {
+          await expect(client.dlq.delete("")).rejects.toThrow("DLQ id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when an array contains an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.delete(["valid-id", ""])).rejects.toThrow(
+            "DLQ id cannot be empty"
+          );
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,

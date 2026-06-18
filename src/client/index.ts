@@ -1,10 +1,10 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
 import {
-  assertNonEmptyId,
   buildBulkActionQueryParameters,
   makeGetWaitersRequest,
   makeNotifyRequest,
+  toNonEmptyIdArray,
 } from "./utils";
 import { getWorkflowRunId, serializeLabel, validateFlowControl, validateLabel } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
@@ -81,11 +81,11 @@ export class Client {
       }
     }
 
-    if (typeof request === "string") {
-      assertNonEmptyId(request, "Workflow run id");
-      request = [request];
+    if (typeof request === "string" || Array.isArray(request)) {
+      const ids = toNonEmptyIdArray(request, "Workflow run id");
+      if (ids.length === 0) return { cancelled: 0 };
+      request = ids;
     }
-    if (Array.isArray(request) && request.length === 0) return { cancelled: 0 };
     const filters: WorkflowRunCancelFilters = Array.isArray(request)
       ? { workflowRunIds: request }
       : (request as WorkflowRunCancelFilters);

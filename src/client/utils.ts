@@ -12,11 +12,30 @@ import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-typ
  * filter (e.g. `dlqIds=`), both of which the server resolves to a
  * collection/bulk operation. For destructive methods this silently affects
  * unintended resources, so we fail fast instead.
+ *
+ * The check is a falsy guard rather than `id.length === 0` so that a plain-JS
+ * consumer passing `undefined`/`null` gets the same `QstashError` instead of a
+ * `TypeError` from reading `.length`.
  */
 export const assertNonEmptyId = (id: string, label = "id"): void => {
-  if (id.length === 0) {
+  if (!id) {
     throw new QstashError(`${label} cannot be empty`);
   }
+};
+
+/**
+ * Normalizes a single id or array of ids into an array, asserting that every
+ * id in it is non-empty.
+ *
+ * An empty id placed in a bulk filter (e.g. `workflowRunIds=` or `dlqIds=`) is
+ * resolved server-side as a collection/bulk operation, so passing `[""]` would
+ * silently affect unintended resources. We fail fast on it instead. An empty
+ * array is left untouched (callers treat it as a no-op).
+ */
+export const toNonEmptyIdArray = (request: string | string[], label = "id"): string[] => {
+  const ids = typeof request === "string" ? [request] : request;
+  for (const id of ids) assertNonEmptyId(id, label);
+  return ids;
 };
 
 /**
@@ -34,7 +53,11 @@ export const makeNotifyRequest = async (
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
   assertNonEmptyId(eventId, "Event id");
-  const path = workflowRunId ? ["v2", "notify", workflowRunId, eventId] : ["v2", "notify", eventId];
+  if (workflowRunId !== undefined) assertNonEmptyId(workflowRunId, "Workflow run id");
+  const path =
+    workflowRunId === undefined
+      ? ["v2", "notify", eventId]
+      : ["v2", "notify", workflowRunId, eventId];
 
   const result = (await requester.request({
     path,

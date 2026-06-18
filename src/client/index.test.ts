@@ -164,8 +164,20 @@ describe("workflow client", () => {
 
     test("should not send request when called with an empty string", async () => {
       await mockQStashServer({
-        execute: () => {
-          expect(client.cancel("")).rejects.toThrow("Workflow run id cannot be empty");
+        execute: async () => {
+          await expect(client.cancel("")).rejects.toThrow("Workflow run id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when an array contains an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.cancel(["valid-id", ""])).rejects.toThrow(
+            "Workflow run id cannot be empty"
+          );
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
@@ -663,8 +675,8 @@ describe("workflow client", () => {
 
   test("should not send notify request when eventId is an empty string", async () => {
     await mockQStashServer({
-      execute: () => {
-        expect(client.notify({ eventId: "", eventData: "data" })).rejects.toThrow(
+      execute: async () => {
+        await expect(client.notify({ eventId: "", eventData: "data" })).rejects.toThrow(
           "Event id cannot be empty"
         );
       },
@@ -675,8 +687,10 @@ describe("workflow client", () => {
 
   test("should not send getWaiters request when eventId is an empty string", async () => {
     await mockQStashServer({
-      execute: () => {
-        expect(client.getWaiters({ eventId: "" })).rejects.toThrow("Event id cannot be empty");
+      execute: async () => {
+        await expect(client.getWaiters({ eventId: "" })).rejects.toThrow(
+          "Event id cannot be empty"
+        );
       },
       responseFields: { status: 200, body: {} },
       receivesRequest: false,
