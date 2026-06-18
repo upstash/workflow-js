@@ -11,7 +11,12 @@ import {
 import { nanoid } from "../utils";
 import type { NotifyResponse, NotifyStepResponse, Step } from "../types";
 import { Client, FlowControl } from "@upstash/qstash";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
+import {
+  MOCK_DESTINATION_HOST,
+  MOCK_QSTASH_SERVER_URL,
+  mockQStashServer,
+  WORKFLOW_ENDPOINT,
+} from "../test-utils";
 import { WorkflowError } from "../error";
 import { WorkflowContext } from "./context";
 
@@ -668,7 +673,7 @@ describe("test steps", () => {
         expect(result.timeout).toBe(false);
         expect(result.request).toBeInstanceOf(Request);
         expect(result.request && result.request.method).toBe("POST");
-        expect(result.request && result.request.url).toBe("https://example.com/api/endpoint");
+        expect(result.request && result.request.url).toBe(`${MOCK_DESTINATION_HOST}/api/endpoint`);
       });
 
       test("should parse webhook wait response with GET request (no body)", () => {
@@ -703,7 +708,7 @@ describe("test steps", () => {
         expect(result.timeout).toBe(false);
         expect(result.request).toBeInstanceOf(Request);
         expect(result.request && result.request.method).toBe("GET");
-        expect(result.request && result.request.url).toBe("https://example.com/api/data");
+        expect(result.request && result.request.url).toBe(`${MOCK_DESTINATION_HOST}/api/data`);
         expect(result.request && result.request.body).toBeNull();
       });
 

@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import {
+  MOCK_DESTINATION_HOST,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
@@ -419,7 +420,7 @@ describe("workflow client", () => {
       "should cancel single workflow run id",
       async () => {
         const { workflowRunId } = await liveClient.trigger({
-          url: "http://requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
         });
 
         const cancel = await liveClient.cancel(workflowRunId);
@@ -437,10 +438,10 @@ describe("workflow client", () => {
       "should cancel multiple workflow run ids",
       async () => {
         const { workflowRunId: workflowRunIdOne } = await liveClient.trigger({
-          url: "http://requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
         });
         const { workflowRunId: workflowRunIdTwo } = await liveClient.trigger({
-          url: "http://requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
         });
 
         const firstCancel = await liveClient.cancel([
@@ -467,16 +468,16 @@ describe("workflow client", () => {
       "should cancel with workflowUrlStartingWith (prefix match)",
       async () => {
         await liveClient.trigger({
-          url: "https://wf-test.requestcatcher.com//first",
+          url: `${MOCK_DESTINATION_HOST}//first`,
           delay: "2s",
         });
         await liveClient.trigger({
-          url: "https://wf-test.requestcatcher.com//second",
+          url: `${MOCK_DESTINATION_HOST}//second`,
           delay: "2s",
         });
 
         const cancel = await liveClient.cancel({
-          urlStartingWith: "https://wf-test.requestcatcher.com//",
+          urlStartingWith: `${MOCK_DESTINATION_HOST}//`,
         });
 
         expect(cancel).toEqual({ cancelled: 2 });
@@ -492,16 +493,16 @@ describe("workflow client", () => {
         const label = `test-label-${nanoid()}`;
 
         await liveClient.trigger({
-          url: "http://requestcatcher.com/label-test",
+          url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
         });
         await liveClient.trigger({
-          url: "http://requestcatcher.com/label-test",
+          url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
         });
         // different label, should not be cancelled
         const { workflowRunId: id3 } = await liveClient.trigger({
-          url: "http://requestcatcher.com/label-test",
+          url: `${MOCK_DESTINATION_HOST}/label-test`,
           label: `other-label-${nanoid()}`,
         });
 
@@ -520,25 +521,25 @@ describe("workflow client", () => {
       "should cancel with workflowUrl (exact match)",
       async () => {
         await liveClient.trigger({
-          url: "http://requestcatcher.com/exact-match-test",
+          url: `${MOCK_DESTINATION_HOST}/exact-match-test`,
           delay: "1m",
         });
         await liveClient.trigger({
-          url: "http://requestcatcher.com/exact-match-test/sub-path",
+          url: `${MOCK_DESTINATION_HOST}/exact-match-test/sub-path`,
           delay: "1m",
         });
 
         // exact match should only cancel the exact URL
         const cancel = await liveClient.cancel({
           filter: {
-            workflowUrl: "http://requestcatcher.com/exact-match-test",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/exact-match-test`,
           },
         });
         expect(cancel).toEqual({ cancelled: 1 });
 
         // clean up the remaining workflow (prefix match)
         const cleanup = await liveClient.cancel({
-          filter: { workflowUrlStartingWith: "http://requestcatcher.com/exact-match-test" },
+          filter: { workflowUrlStartingWith: `${MOCK_DESTINATION_HOST}/exact-match-test` },
         });
         expect(cleanup).toEqual({ cancelled: 1 });
       },
@@ -553,18 +554,18 @@ describe("workflow client", () => {
         const label = `combined-label-${nanoid()}`;
 
         await liveClient.trigger({
-          url: "http://requestcatcher.com/combined-test",
+          url: `${MOCK_DESTINATION_HOST}/combined-test`,
           label,
         });
         // same URL, different label — should NOT be cancelled
         const { workflowRunId: otherId } = await liveClient.trigger({
-          url: "http://requestcatcher.com/combined-test",
+          url: `${MOCK_DESTINATION_HOST}/combined-test`,
           label: `other-${nanoid()}`,
         });
 
         const cancel = await liveClient.cancel({
           filter: {
-            workflowUrl: "http://requestcatcher.com/combined-test",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/combined-test`,
             label,
           },
         });
@@ -581,8 +582,8 @@ describe("workflow client", () => {
     test.skip(
       "should cancel all",
       async () => {
-        await liveClient.trigger({ url: "http://requestcatcher.com/cancel-all-1" });
-        await liveClient.trigger({ url: "http://requestcatcher.com/cancel-all-2" });
+        await liveClient.trigger({ url: `${MOCK_DESTINATION_HOST}/cancel-all-1` });
+        await liveClient.trigger({ url: `${MOCK_DESTINATION_HOST}/cancel-all-2` });
 
         const cancel = await liveClient.cancel({ all: true });
         expect(cancel.cancelled).toBeGreaterThanOrEqual(2);
@@ -717,7 +718,7 @@ describe("workflow client", () => {
               "upstash-retry-delay": "1000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-delay": "1s",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -728,7 +729,7 @@ describe("workflow client", () => {
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
               "upstash-failure-callback-forward-upstash-label": "test-label",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-failure-callback-feature-set":
                 "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
@@ -739,7 +740,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
             },
             body,
           },
@@ -799,7 +800,7 @@ describe("workflow client", () => {
               "upstash-retry-delay": "1000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-delay": "1s",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -807,7 +808,7 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-failure-callback-feature-set":
                 "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
@@ -818,7 +819,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
             },
             body,
           },
@@ -832,7 +833,7 @@ describe("workflow client", () => {
               "upstash-retry-delay": "2000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId2}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-not-before": "4102444800",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -840,7 +841,7 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-failure-callback-feature-set":
                 "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
@@ -851,7 +852,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId2}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
             },
             body: body2,
           },
@@ -873,7 +874,7 @@ describe("workflow client", () => {
           retries: 15,
           retryDelay: "1000",
           delay: 1,
-          failureUrl: "https://wf-test.requestcatcher.com/some-failure-callback",
+          failureUrl: `${MOCK_DESTINATION_HOST}/some-failure-callback`,
           flowControl: {
             key: "failure-flow-key",
             rate: 5,
@@ -901,10 +902,9 @@ describe("workflow client", () => {
               "upstash-retry-delay": "1000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-delay": "1s",
-              "upstash-failure-callback":
-                "https://wf-test.requestcatcher.com/some-failure-callback",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/some-failure-callback`,
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-feature-set":
@@ -917,7 +917,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
@@ -977,7 +977,7 @@ describe("workflow client", () => {
           body,
           workflowRunId: myWorkflowRunId,
           redact: { body: true, header: true },
-          failureUrl: "https://wf-test.requestcatcher.com/some-failure-callback",
+          failureUrl: `${MOCK_DESTINATION_HOST}/some-failure-callback`,
         });
       },
       responseFields: {
@@ -1390,7 +1390,7 @@ describe("workflow client", () => {
             url: "https://httpstat.us/400",
             workflowRunCreatedAt: 0,
           }),
-          failureUrl: "https://400check.requestcatcher.com/",
+          failureUrl: `${MOCK_DESTINATION_HOST}/`,
           retries: 0,
         });
         expect(result.isOk()).toBe(true);
@@ -1517,7 +1517,7 @@ describe("workflow client", () => {
                 "upstash-method": "POST",
                 "upstash-workflow-init": "true",
                 "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+                "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-label": "valid_label.1",
@@ -1529,7 +1529,7 @@ describe("workflow client", () => {
                 "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
                 "upstash-workflow-sdk-version": "1",
                 "upstash-failure-callback-forward-upstash-label": "valid_label.1",
-                "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+                "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
                 "upstash-failure-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-failure-callback-flow-control-key": "valid-key_1.0",
@@ -1539,7 +1539,7 @@ describe("workflow client", () => {
                 "upstash-failure-callback-workflow-calltype": "failureCall",
                 "upstash-failure-callback-workflow-init": "false",
                 "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-                "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+                "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               },
             },
           ],
