@@ -6,6 +6,7 @@ import type { RouteFunction, WorkflowServeOptions, Telemetry, InvokableWorkflow 
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 const appTelemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -34,6 +35,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
+  void startDevServer();
+
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
     appTelemetry,
@@ -80,6 +83,8 @@ export const servePagesRouter = <TInitialPayload = unknown, TResult = unknown>(
 ): {
   handler: NextApiHandler;
 } => {
+  void startDevServer();
+
   const { handler: serveHandler } = serveBase(routeFunction, pagesTelemetry, options, undefined);
 
   const handler = async (request_: NextApiRequest, res: NextApiResponse) => {

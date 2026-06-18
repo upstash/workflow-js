@@ -597,4 +597,49 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       expect(result.defaultClient.http).toBeDefined();
     });
   });
+
+  describe("Client Dev Mode (derived from environment)", () => {
+    // Pins the fix for the receiver-dev / client-prod split: a single
+    // QSTASH_DEV=true (e.g. a Cloudflare `.dev.vars` binding, where the QStash
+    // Client's own process.env lookup is blind) must put the *client* in dev
+    // mode too, matching the receiver. Asserted on the constructed serve Client.
+    const getServeClientHttp = (environment: Record<string, string | undefined>) => {
+      // Entering dev mode makes the Client fire a fire-and-forget dev-server
+      // spawn. NODE_ENV=production short-circuits the spawn while leaving
+      // credential resolution in dev mode, keeping this a pure unit test.
+      const processEnv = process.env as Record<string, string | undefined>;
+      const previousNodeEnv = processEnv.NODE_ENV;
+      processEnv.NODE_ENV = "production";
+      try {
+        const result = getQStashHandlerOptions({ environment, receiverConfig: "not-set" });
+        return result.defaultClient.http as unknown as { baseUrl: string; devMode?: boolean };
+      } finally {
+        if (previousNodeEnv === undefined) delete processEnv.NODE_ENV;
+        else processEnv.NODE_ENV = previousNodeEnv;
+      }
+    };
+
+    test("should put the serve client in dev mode when QSTASH_DEV=true", () => {
+      const http = getServeClientHttp(createEnvironment({ QSTASH_DEV: "true" }));
+      expect(http.devMode).toBe(true);
+      expect(http.baseUrl).toContain("127.0.0.1");
+    });
+
+    test("should put the serve client in dev mode when QSTASH_DEV=1", () => {
+      const http = getServeClientHttp(createEnvironment({ QSTASH_DEV: "1" }));
+      expect(http.devMode).toBe(true);
+      expect(http.baseUrl).toContain("127.0.0.1");
+    });
+
+    test("should keep the serve client pointed at production without QSTASH_DEV", () => {
+      const http = getServeClientHttp(
+        createEnvironment({
+          QSTASH_URL: "https://qstash.upstash.io",
+          QSTASH_TOKEN: "test-token",
+        })
+      );
+      expect(http.devMode).toBe(false);
+      expect(http.baseUrl).toBe("https://qstash.upstash.io");
+    });
+  });
 });

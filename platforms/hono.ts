@@ -4,6 +4,7 @@ import { serveBase } from "../src/serve";
 import { Variables } from "hono/types";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -36,6 +37,8 @@ export const serve = <
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): ((context: Context<{ Bindings: TBindings; Variables: TVariables }>) => Promise<Response>) => {
+  void startDevServer();
+
   const handler = async (context: Context<{ Bindings: TBindings; Variables: TVariables }>) => {
     const environment = context.env
       ? context.env

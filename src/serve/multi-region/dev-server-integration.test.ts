@@ -44,8 +44,6 @@ describe("workflow dev server integration", () => {
       },
       { url: workflowUrl }
     ).handler;
-
-    client = new Client({ devMode: true });
   });
 
   afterAll(() => {
@@ -59,10 +57,37 @@ describe("workflow dev server integration", () => {
     while (Date.now() < deadline && !predicate()) await Bun.sleep(100);
   };
 
+  const isDevServerReachable = async () => {
+    try {
+      // Any HTTP response (even an error status) means the dev server is up.
+      await fetch(`http://127.0.0.1:${INTEGRATION_PORT}`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const waitForAsync = async (predicate: () => Promise<boolean>, timeoutMs = 60_000) => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline && !(await predicate())) await Bun.sleep(100);
+  };
+
+  test(
+    "dev server is reachable after serve() and before any inbound request",
+    async () => {
+      // The only thing that has run is serve() in beforeAll — no workflow request
+      // has been published yet. This is the new eager-start guarantee.
+      await waitForAsync(isDevServerReachable);
+      expect(await isDevServerReachable()).toBe(true);
+    },
+    { timeout: 60_000 }
+  );
+
   test(
     "multi-step workflow: every dev-server delivery verifies and steps run in order",
     async () => {
       ranSteps.length = 0;
+      client = new Client({ devMode: true });
       const { messageId } = await client.publishJSON({ url: workflowUrl, body: "world" });
       expect(messageId).toBeTruthy();
 

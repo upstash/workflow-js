@@ -3,6 +3,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import type { WorkflowServeOptions, RouteFunction, Telemetry } from "../src";
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
+import { startDevServer } from "@upstash/qstash";
 
 /**
  * Serve method to serve a Upstash Workflow in a SolidJS project
@@ -17,6 +18,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
+  void startDevServer();
+
   const telemetry: Telemetry = {
     sdk: SDK_TELEMETRY,
     framework: "solidjs",
