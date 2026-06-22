@@ -264,6 +264,7 @@ type FailureFunctionLog = {
    * Status code of the response from the failure function
    */
   responseStatus?: number;
+  nextDeliveryTime?: number;
 };
 
 export type WorkflowRunLog = {
