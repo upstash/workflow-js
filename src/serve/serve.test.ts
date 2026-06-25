@@ -5,6 +5,7 @@ import {
   driveWorkflow,
   getRequest,
   getRequestBody,
+  MOCK_DESTINATION_HOST,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
@@ -744,7 +745,7 @@ describe("serve", () => {
               destination: "some-url",
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://wf-test.requestcatcher.com/api",
+                "upstash-callback": `${MOCK_DESTINATION_HOST}/api`,
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -759,7 +760,7 @@ describe("serve", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr-foo",
-                "upstash-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+                "upstash-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-forward-test": "headers",
                 "upstash-method": "PATCH",
@@ -773,7 +774,7 @@ describe("serve", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr-foo",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+                "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               },
               body: "body",
             },
@@ -1163,7 +1164,7 @@ describe("serve", () => {
     const client = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
     test("allow http://", async () => {
-      const url = "http://requestcatcher.com";
+      const url = MOCK_DESTINATION_HOST;
       const { handler } = serve(
         async (context) => {
           await context.sleep("sleeping", 1);
@@ -1185,7 +1186,7 @@ describe("serve", () => {
     });
 
     test("allow https://", async () => {
-      const url = "https://wf-test.requestcatcher.com";
+      const url = MOCK_DESTINATION_HOST;
       const { handler } = serve(
         async (context) => {
           await context.sleep("sleeping", 1);
@@ -1224,9 +1225,7 @@ describe("serve", () => {
         }
       );
 
-      const response = await handler(
-        new Request("https://wf-test.requestcatcher.com", { method: "POST" })
-      );
+      const response = await handler(new Request(MOCK_DESTINATION_HOST, { method: "POST" }));
       expect(response.status).toBe(500);
       const content = await response.json();
       expect(content).toEqual({

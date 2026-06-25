@@ -1,7 +1,7 @@
 import { describe, test, expect, jest } from "bun:test";
 import { WorkflowMiddleware } from "./middleware";
 import { Client } from "@upstash/qstash";
-import { getRequest } from "../test-utils";
+import { getRequest, MOCK_DESTINATION_HOST } from "../test-utils";
 import { nanoid } from "../utils";
 import { serve } from "../../platforms/nextjs";
 import { RouteFunction, Step } from "../types";
@@ -249,7 +249,7 @@ describe("middleware", () => {
       };
 
       const qstashClient = new Client({
-        baseUrl: "https://wf-test.requestcatcher.com",
+        baseUrl: MOCK_DESTINATION_HOST,
         token: "token",
       });
       qstashClient.http.request = jest.fn();
@@ -260,16 +260,11 @@ describe("middleware", () => {
       ) => {
         const { middleware, accumulator } = createLoggingMiddleware();
 
-        const request = getRequest(
-          "https://wf-test.requestcatcher.com",
-          "wfr-id",
-          undefined,
-          steps
-        );
+        const request = getRequest(MOCK_DESTINATION_HOST, "wfr-id", undefined, steps);
 
         const { POST: handler } = serve(routeFunction, {
           middlewares: [middleware],
-          url: "https://wf-test.requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
           receiver: undefined,
           qstashClient,
         });

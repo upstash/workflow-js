@@ -10,8 +10,14 @@ import {
 export const MOCK_QSTASH_SERVER_PORT = 8080;
 export const MOCK_QSTASH_SERVER_URL = `http://localhost:${MOCK_QSTASH_SERVER_PORT}`;
 
-export const MOCK_SERVER_URL = "https://wf-test.requestcatcher.com/";
-export const WORKFLOW_ENDPOINT = "https://wf-test.requestcatcher.com/api";
+// Stable, IANA-reserved host used as a throwaway destination/placeholder in tests.
+// It has a valid TLS cert and harmlessly returns 200, so it replaces the old
+// requestcatcher.com dependency that was failing live deliveries with cert errors.
+// When a test needs to *inspect* a delivered request, use the local Bun.serve mock
+// (see mockQStashServer below) instead of an external service.
+export const MOCK_DESTINATION_HOST = "https://example.com";
+export const MOCK_SERVER_URL = `${MOCK_DESTINATION_HOST}/`;
+export const WORKFLOW_ENDPOINT = `${MOCK_DESTINATION_HOST}/api`;
 
 export type ResponseFields = {
   body: unknown;

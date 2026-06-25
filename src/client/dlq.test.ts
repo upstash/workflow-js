@@ -1,5 +1,10 @@
 import { describe, test, expect } from "bun:test";
-import { MOCK_QSTASH_SERVER_URL, mockQStashServer, eventually } from "../test-utils";
+import {
+  MOCK_DESTINATION_HOST,
+  MOCK_QSTASH_SERVER_URL,
+  mockQStashServer,
+  eventually,
+} from "../test-utils";
 import { Client } from ".";
 import { nanoid } from "../utils";
 
@@ -15,7 +20,7 @@ const MOCK_DLQ_MESSAGES = [
     callerIP: "192.168.0.100",
     workflowRunId: `wfr-${nanoid()}`,
     workflowCreatedAt: 1645000000000,
-    workflowUrl: "https://example.com/all-params-1",
+    workflowUrl: `${MOCK_DESTINATION_HOST}/all-params-1`,
     responseStatus: 422,
     responseHeader: { "content-length": ["100"] },
     responseBody: "Validation Error",
@@ -25,7 +30,7 @@ const MOCK_DLQ_MESSAGES = [
       responseBody: "Internal Server Error",
       responseHeaders: { "content-type": ["application/json"] },
     },
-    failureCallback: "https://example.com/failure-callback",
+    failureCallback: `${MOCK_DESTINATION_HOST}/failure-callback`,
     label: WORKFLOW_LABEL,
   },
   {
@@ -38,11 +43,11 @@ const MOCK_DLQ_MESSAGES = [
     callerIP: "192.168.0.101",
     workflowRunId: `wfr-${nanoid()}`,
     workflowCreatedAt: 1645100000000,
-    workflowUrl: "https://example.com/all-params-2",
+    workflowUrl: `${MOCK_DESTINATION_HOST}/all-params-2`,
     responseStatus: 503,
     responseHeader: { "retry-after": ["60"] },
     responseBody: "Service Unavailable",
-    failureCallback: "https://example.com/failure-callback",
+    failureCallback: `${MOCK_DESTINATION_HOST}/failure-callback`,
   },
 ] as Awaited<ReturnType<Client["dlq"]["list"]>>["messages"];
 
@@ -148,7 +153,7 @@ describe("DLQ", () => {
       const filter = {
         fromDate: 1640995200000, // 2022-01-01
         toDate: 1672531200000, // 2023-01-01
-        workflowUrl: "https://example.com",
+        workflowUrl: MOCK_DESTINATION_HOST,
       };
 
       await mockQStashServer({
@@ -175,7 +180,7 @@ describe("DLQ", () => {
       const filter = {
         fromDate: new Date(fromDateMs),
         toDate: new Date(toDateMs),
-        workflowUrl: "https://example.com",
+        workflowUrl: MOCK_DESTINATION_HOST,
       };
 
       await mockQStashServer({
@@ -202,7 +207,7 @@ describe("DLQ", () => {
       const nextCursor = `next-${cursor}`;
       const filter = {
         fromDate: 1640995200000,
-        workflowUrl: "https://example.com",
+        workflowUrl: MOCK_DESTINATION_HOST,
       };
 
       await mockQStashServer({
@@ -285,6 +290,16 @@ describe("DLQ", () => {
       });
     });
 
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.resume("")).rejects.toThrow("DLQ id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should throw when dlqIds is empty in filter format", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -328,7 +343,7 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.resume({
-            filter: { label: "my-label", workflowUrl: "https://example.com/workflow" },
+            filter: { label: "my-label", workflowUrl: `${MOCK_DESTINATION_HOST}/workflow` },
           });
           expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
@@ -338,7 +353,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&workflowUrl=${encodeURIComponent(`${MOCK_DESTINATION_HOST}/workflow`)}&count=100`,
           token,
         },
       });
@@ -530,6 +545,16 @@ describe("DLQ", () => {
       });
     });
 
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.restart("")).rejects.toThrow("DLQ id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should throw when dlqIds is empty in filter format", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -573,7 +598,7 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.restart({
-            filter: { label: "my-label", workflowUrl: "https://example.com/workflow" },
+            filter: { label: "my-label", workflowUrl: `${MOCK_DESTINATION_HOST}/workflow` },
           });
           expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
         },
@@ -583,7 +608,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "POST",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/restart?label=my-label&workflowUrl=${encodeURIComponent(`${MOCK_DESTINATION_HOST}/workflow`)}&count=100`,
           token,
         },
       });
@@ -712,6 +737,18 @@ describe("DLQ", () => {
         },
       });
     });
+
+    test("should not send request when dlqId is an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.retryFailureFunction({ dlqId: "" })).rejects.toThrow(
+            "DLQ id cannot be empty"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
   });
 
   describe("delete", () => {
@@ -762,6 +799,28 @@ describe("DLQ", () => {
         execute: async () => {
           const result = await client.dlq.delete([]);
           expect(result.deleted).toBe(0);
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.delete("")).rejects.toThrow("DLQ id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when an array contains an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.delete(["valid-id", ""])).rejects.toThrow(
+            "DLQ id cannot be empty"
+          );
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
@@ -827,7 +886,7 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           const result = await client.dlq.delete({
-            filter: { workflowUrl: "https://example.com/workflow" },
+            filter: { workflowUrl: `${MOCK_DESTINATION_HOST}/workflow` },
           });
           expect(result.deleted).toBe(deleted);
         },
@@ -837,7 +896,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?workflowUrl=${encodeURIComponent("https://example.com/workflow")}&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?workflowUrl=${encodeURIComponent(`${MOCK_DESTINATION_HOST}/workflow`)}&count=100`,
           token,
         },
       });
@@ -898,7 +957,7 @@ describe("DLQ", () => {
           const result = await client.dlq.delete({
             filter: {
               label: "my-label",
-              workflowUrl: "https://example.com/workflow",
+              workflowUrl: `${MOCK_DESTINATION_HOST}/workflow`,
               fromDate: new Date(fromDateMs),
             },
           });
@@ -910,7 +969,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&fromDate=${fromDateMs}&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent(`${MOCK_DESTINATION_HOST}/workflow`)}&fromDate=${fromDateMs}&count=100`,
           token,
         },
       });
@@ -924,7 +983,7 @@ describe("DLQ", () => {
           const result = await client.dlq.delete({
             filter: {
               label: "my-label",
-              workflowUrl: "https://example.com/workflow",
+              workflowUrl: `${MOCK_DESTINATION_HOST}/workflow`,
               fromDate: 1640995200000,
             },
           });
@@ -936,7 +995,7 @@ describe("DLQ", () => {
         },
         receivesRequest: {
           method: "DELETE",
-          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent("https://example.com/workflow")}&fromDate=1640995200000&count=100`,
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq?label=my-label&workflowUrl=${encodeURIComponent(`${MOCK_DESTINATION_HOST}/workflow`)}&fromDate=1640995200000&count=100`,
           token,
         },
       });
