@@ -6,11 +6,18 @@ type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> }[keyof T];
 
 // ── Filter Field Groups ───────────────────────────────────────
 
-/** Shared filter fields accepted by every qstash & workflow endpoint. */
+/**
+ * Shared filter fields accepted by every qstash & workflow endpoint.
+ *
+ * Most fields support multi-value filtering: pass an array to match a record
+ * whose value equals any of the given values (OR semantics). Separate filters
+ * are combined with AND semantics.
+ */
 type UniversalFilterFields = {
   fromDate?: Date | number;
   toDate?: Date | number;
-  callerIp?: string;
+  /** Filter by the IP address of the publisher. Supports multiple values. */
+  callerIp?: string | string[];
   /**
    * Filter by label.
    *
@@ -19,12 +26,14 @@ type UniversalFilterFields = {
    * filtering by `[label_1, label_2]` returns both.
    */
   label?: string | string[];
-  flowControlKey?: string;
+  /** Filter by Flow Control Key. Supports multiple values. */
+  flowControlKey?: string | string[];
 };
 
 /** Workflow-specific filter fields for DLQ and bulk endpoints. */
 type WorkflowFilterFields = {
-  workflowUrl?: string;
+  /** Filter by workflow URL. Supports multiple values. */
+  workflowUrl?: string | string[];
   workflowRunId?: string;
   workflowCreatedAt?: number;
   failureFunctionState?: string;
@@ -39,35 +48,22 @@ type WorkflowLogsFilterFields = {
 
 type DLQActionFilterFields = UniversalFilterFields & WorkflowFilterFields;
 
-/**
- * Universal filter fields with multi-value support, for the bulk cancel endpoint.
- *
- * A run matches if its value equals any of the given values (OR logic), and
- * separate filters are combined with AND logic. Pass an array to match any value.
- */
-type CancelUniversalFilterFields = Omit<UniversalFilterFields, "callerIp" | "flowControlKey"> & {
-  /** Filter by the IP address of the publisher. Supports multiple values. */
-  callerIp?: string | string[];
-  /** Filter by Flow Control Key. Supports multiple values. */
-  flowControlKey?: string | string[];
-};
-
 /** Cancel filter: exact URL match. Cannot combine with `workflowUrlStartingWith`. */
-type CancelFilterWithExactUrl = CancelUniversalFilterFields & {
+type CancelFilterWithExactUrl = UniversalFilterFields & {
   /** Filter by exact workflow URL. Supports multiple values. */
   workflowUrl: string | string[];
   workflowUrlStartingWith?: never;
 };
 
 /** Cancel filter: URL prefix match. Cannot combine with `workflowUrl`. */
-type CancelFilterWithPrefixUrl = CancelUniversalFilterFields & {
+type CancelFilterWithPrefixUrl = UniversalFilterFields & {
   /** Filter by workflow URL prefix. Supports multiple values. */
   workflowUrlStartingWith: string | string[];
   workflowUrl?: never;
 };
 
 /** Cancel filter: no URL. Requires at least one other filter field. */
-type CancelFilterWithoutUrl = RequireAtLeastOne<CancelUniversalFilterFields> & {
+type CancelFilterWithoutUrl = RequireAtLeastOne<UniversalFilterFields> & {
   workflowUrl?: never;
   workflowUrlStartingWith?: never;
 };

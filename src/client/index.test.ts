@@ -642,6 +642,30 @@ describe("workflow client", () => {
     );
 
     test(
+      "should cancel with multiple workflowUrls (exact match, OR semantics)",
+      async () => {
+        const urlA = `${MOCK_DESTINATION_HOST}/multi-exact-a-${nanoid()}`;
+        const urlB = `${MOCK_DESTINATION_HOST}/multi-exact-b-${nanoid()}`;
+        const urlC = `${MOCK_DESTINATION_HOST}/multi-exact-c-${nanoid()}`;
+
+        await liveClient.trigger({ url: urlA, delay: "1m" });
+        await liveClient.trigger({ url: urlB, delay: "1m" });
+        const { workflowRunId: idC } = await liveClient.trigger({ url: urlC, delay: "1m" });
+
+        // Cancelling [urlA, urlB] with exact match cancels exactly those two, not urlC.
+        const cancel = await liveClient.cancel({ filter: { workflowUrl: [urlA, urlB] } });
+        expect(cancel).toEqual({ cancelled: 2 });
+
+        // clean up the untouched run
+        const cleanup = await liveClient.cancel(idC);
+        expect(cleanup).toEqual({ cancelled: 1 });
+      },
+      {
+        timeout: 15000,
+      }
+    );
+
+    test(
       "should cancel with combined filters (label + workflowUrl)",
       async () => {
         const label = `combined-label-${nanoid()}`;
@@ -1310,6 +1334,42 @@ describe("workflow client", () => {
           );
         } finally {
           await liveClient.cancel([runOneTwo, runTwoThree, runThree]).catch(() => {});
+        }
+      },
+      { timeout: 20000 }
+    );
+
+    test(
+      "should filter logs by multiple workflowUrls (OR) - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        // unique urls so the filter only matches runs from this test
+        const urlA = `${MOCK_DESTINATION_HOST}/log-url-a-${nanoid()}`;
+        const urlB = `${MOCK_DESTINATION_HOST}/log-url-b-${nanoid()}`;
+        const urlC = `${MOCK_DESTINATION_HOST}/log-url-c-${nanoid()}`;
+
+        const { workflowRunId: runA } = await liveClient.trigger({ url: urlA, delay: "1m" });
+        const { workflowRunId: runB } = await liveClient.trigger({ url: urlB, delay: "1m" });
+        const { workflowRunId: runC } = await liveClient.trigger({ url: urlC, delay: "1m" });
+
+        try {
+          // filtering by [urlA, urlB] should return runA and runB but NOT runC.
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { workflowUrl: [urlA, urlB] } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(runA);
+              expect(ids).toContain(runB);
+              expect(ids).not.toContain(runC);
+            },
+            { timeout: 5000, interval: 250 }
+          );
+        } finally {
+          await liveClient.cancel([runA, runB, runC]).catch(() => {});
         }
       },
       { timeout: 20000 }

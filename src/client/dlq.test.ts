@@ -120,6 +120,31 @@ describe("DLQ", () => {
       });
     });
 
+    test("should list DLQ messages with multi-value workflowUrl/callerIp/flowControlKey", async () => {
+      const urlA = `${MOCK_DESTINATION_HOST}/a`;
+      const urlB = `${MOCK_DESTINATION_HOST}/b`;
+      await mockQStashServer({
+        execute: async () => {
+          await client.dlq.list({
+            filter: {
+              workflowUrl: [urlA, urlB],
+              callerIp: ["1.2.3.4", "5.6.7.8"],
+              flowControlKey: ["key-1", "key-2"],
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { messages: [], cursor: undefined },
+        },
+        receivesRequest: {
+          method: "GET",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?workflowUrl=${encodeURIComponent(urlA)}&workflowUrl=${encodeURIComponent(urlB)}&callerIp=1.2.3.4&callerIp=5.6.7.8&flowControlKey=key-1&flowControlKey=key-2&source=workflow`,
+          token,
+        },
+      });
+    });
+
     test("should surface both label and labels from the response", async () => {
       const labelOne = "label-one";
       const labelTwo = "label-two";
