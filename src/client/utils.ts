@@ -271,11 +271,11 @@ export function buildBulkActionQueryParameters(
       );
     }
 
-    const urlParams: Record<string, string | boolean> = {};
+    const urlParams: Record<string, string | string[] | boolean> = {};
     if (workflowUrlStartingWith) {
-      urlParams.workflowUrl = workflowUrlStartingWith as string;
+      urlParams.workflowUrl = workflowUrlStartingWith as string | string[];
     } else if (workflowUrl) {
-      urlParams.workflowUrl = workflowUrl as string;
+      urlParams.workflowUrl = workflowUrl as string | string[];
       urlParams.workflowUrlExactMatch = true;
     }
 

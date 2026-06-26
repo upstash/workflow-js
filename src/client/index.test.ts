@@ -133,6 +133,87 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel with multiple workflowUrls (exact match)", async () => {
+      const url1 = "https://a.workflow-endpoint.com";
+      const url2 = "https://b.workflow-endpoint.com";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ filter: { workflowUrl: [url1, url2] } });
+          expect(result).toEqual({ cancelled: 4 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 4 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(url1)}&workflowUrl=${encodeURIComponent(url2)}&workflowUrlExactMatch=true&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multiple workflowUrlStartingWith (prefix match)", async () => {
+      const url1 = "https://a.workflow-endpoint.com/path";
+      const url2 = "https://b.workflow-endpoint.com/path";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({
+            filter: { workflowUrlStartingWith: [url1, url2] },
+          });
+          expect(result).toEqual({ cancelled: 2 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(url1)}&workflowUrl=${encodeURIComponent(url2)}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multi-value callerIp and flowControlKey filters", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({
+            filter: {
+              callerIp: ["1.2.3.4", "5.6.7.8"],
+              flowControlKey: ["key-1", "key-2"],
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?callerIp=1.2.3.4&callerIp=5.6.7.8&flowControlKey=key-1&flowControlKey=key-2&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multiple labels (OR semantics)", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { label: ["label-1", "label-2"] } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=label-1&label=label-2&count=100`,
+          token,
+        },
+      });
+    });
+
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {

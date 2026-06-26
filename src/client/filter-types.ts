@@ -39,20 +39,35 @@ type WorkflowLogsFilterFields = {
 
 type DLQActionFilterFields = UniversalFilterFields & WorkflowFilterFields;
 
+/**
+ * Universal filter fields with multi-value support, for the bulk cancel endpoint.
+ *
+ * A run matches if its value equals any of the given values (OR logic), and
+ * separate filters are combined with AND logic. Pass an array to match any value.
+ */
+type CancelUniversalFilterFields = Omit<UniversalFilterFields, "callerIp" | "flowControlKey"> & {
+  /** Filter by the IP address of the publisher. Supports multiple values. */
+  callerIp?: string | string[];
+  /** Filter by Flow Control Key. Supports multiple values. */
+  flowControlKey?: string | string[];
+};
+
 /** Cancel filter: exact URL match. Cannot combine with `workflowUrlStartingWith`. */
-type CancelFilterWithExactUrl = UniversalFilterFields & {
-  workflowUrl: string;
+type CancelFilterWithExactUrl = CancelUniversalFilterFields & {
+  /** Filter by exact workflow URL. Supports multiple values. */
+  workflowUrl: string | string[];
   workflowUrlStartingWith?: never;
 };
 
 /** Cancel filter: URL prefix match. Cannot combine with `workflowUrl`. */
-type CancelFilterWithPrefixUrl = UniversalFilterFields & {
-  workflowUrlStartingWith: string;
+type CancelFilterWithPrefixUrl = CancelUniversalFilterFields & {
+  /** Filter by workflow URL prefix. Supports multiple values. */
+  workflowUrlStartingWith: string | string[];
   workflowUrl?: never;
 };
 
 /** Cancel filter: no URL. Requires at least one other filter field. */
-type CancelFilterWithoutUrl = RequireAtLeastOne<UniversalFilterFields> & {
+type CancelFilterWithoutUrl = RequireAtLeastOne<CancelUniversalFilterFields> & {
   workflowUrl?: never;
   workflowUrlStartingWith?: never;
 };
