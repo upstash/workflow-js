@@ -214,6 +214,23 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel with host and path filters", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { host: ["a.com", "b.com"], path: "/webhook" } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?host=a.com&host=b.com&path=%2Fwebhook&count=100`,
+          token,
+        },
+      });
+    });
+
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -690,6 +707,28 @@ describe("workflow client", () => {
 
         // clean up
         await liveClient.cancel(otherId);
+      },
+      {
+        timeout: 15000,
+      }
+    );
+
+    test(
+      "should cancel by destination host and path",
+      async () => {
+        const comPath = `/cancel-host-com-${nanoid()}`;
+        const orgPath = `/cancel-host-org-${nanoid()}`;
+
+        await liveClient.trigger({ url: `https://example.com${comPath}`, delay: "1m" });
+        await liveClient.trigger({ url: `https://example.org${orgPath}`, delay: "1m" });
+
+        // host example.org must not touch the example.com run
+        const byHost = await liveClient.cancel({ filter: { host: "example.org" } });
+        expect(byHost).toEqual({ cancelled: 1 });
+
+        // the example.com run survived — cancel it via its unique path
+        const byPath = await liveClient.cancel({ filter: { path: comPath } });
+        expect(byPath).toEqual({ cancelled: 1 });
       },
       {
         timeout: 15000,
@@ -1373,6 +1412,55 @@ describe("workflow client", () => {
         }
       },
       { timeout: 20000 }
+    );
+
+    test(
+      "should filter logs by destination host and path - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        const comPath = `/log-host-com-${nanoid()}`;
+        const orgPath = `/log-host-org-${nanoid()}`;
+
+        const { workflowRunId: comRun } = await liveClient.trigger({
+          url: `https://example.com${comPath}`,
+          delay: "1m",
+        });
+        const { workflowRunId: orgRun } = await liveClient.trigger({
+          url: `https://example.org${orgPath}`,
+          delay: "1m",
+        });
+
+        try {
+          // host discriminates: example.org excludes the example.com run
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { host: "example.org" } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(orgRun);
+              expect(ids).not.toContain(comRun);
+            },
+            { timeout: 10000, interval: 500 }
+          );
+
+          // path discriminates: the unique example.com path excludes the example.org run
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { path: comPath } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(comRun);
+              expect(ids).not.toContain(orgRun);
+            },
+            { timeout: 10000, interval: 500 }
+          );
+        } finally {
+          await liveClient.cancel([comRun, orgRun]).catch(() => {});
+        }
+      },
+      { timeout: 25000 }
     );
 
     test.skip(

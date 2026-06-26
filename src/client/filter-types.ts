@@ -44,26 +44,41 @@ type WorkflowLogsFilterFields = {
   messageId?: string;
 };
 
+/**
+ * Filter by the host/path of the workflow URL.
+ *
+ * Supported by the cancel and logs endpoints (the DLQ endpoint rejects these).
+ * Each supports multiple values: pass an array to match any value.
+ */
+type HostPathFilterFields = {
+  /** Filter by the host of the workflow URL. Supports multiple values. */
+  host?: string | string[];
+  /** Filter by the path of the workflow URL. Supports multiple values. */
+  path?: string | string[];
+};
+
 // ── Composed Filter Field Types ───────────────────────────────
 
 type DLQActionFilterFields = UniversalFilterFields & WorkflowFilterFields;
 
 /** Cancel filter: exact URL match. Cannot combine with `workflowUrlStartingWith`. */
-type CancelFilterWithExactUrl = UniversalFilterFields & {
-  /** Filter by exact workflow URL. Supports multiple values. */
-  workflowUrl: string | string[];
-  workflowUrlStartingWith?: never;
-};
+type CancelFilterWithExactUrl = UniversalFilterFields &
+  HostPathFilterFields & {
+    /** Filter by exact workflow URL. Supports multiple values. */
+    workflowUrl: string | string[];
+    workflowUrlStartingWith?: never;
+  };
 
 /** Cancel filter: URL prefix match. Cannot combine with `workflowUrl`. */
-type CancelFilterWithPrefixUrl = UniversalFilterFields & {
-  /** Filter by workflow URL prefix. Supports multiple values. */
-  workflowUrlStartingWith: string | string[];
-  workflowUrl?: never;
-};
+type CancelFilterWithPrefixUrl = UniversalFilterFields &
+  HostPathFilterFields & {
+    /** Filter by workflow URL prefix. Supports multiple values. */
+    workflowUrlStartingWith: string | string[];
+    workflowUrl?: never;
+  };
 
 /** Cancel filter: no URL. Requires at least one other filter field. */
-type CancelFilterWithoutUrl = RequireAtLeastOne<UniversalFilterFields> & {
+type CancelFilterWithoutUrl = RequireAtLeastOne<UniversalFilterFields & HostPathFilterFields> & {
   workflowUrl?: never;
   workflowUrlStartingWith?: never;
 };
@@ -141,4 +156,5 @@ export type WorkflowRunCancelFilters =
 
 export type WorkflowLogsListFilters = UniversalFilterFields &
   Pick<WorkflowFilterFields, "workflowUrl" | "workflowRunId" | "workflowCreatedAt"> &
+  HostPathFilterFields &
   WorkflowLogsFilterFields;
