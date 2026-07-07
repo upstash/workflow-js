@@ -3,6 +3,8 @@ import type {
   CallSettings,
   LazyInvokeStepParams,
   NotifyStepResponse,
+  RunStepPromise,
+  StepSettings,
   Telemetry,
   WaitEventOptions,
   WaitStepResponse,
@@ -189,6 +191,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     label,
     retried,
     middlewareManager,
+    discoveryMode,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -203,6 +206,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
     label?: string | string[];
     retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
+    /**
+     * whether the context is used for a discovery replay: replays
+     * memoized steps and throws `WorkflowDiscoveryAbort` when reaching a
+     * step which hasn't executed yet, without executing it.
+     *
+     * @internal not part of the public API
+     */
+    discoveryMode?: boolean;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -228,7 +239,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
       middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
       middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
       telemetry,
-      invokeCount
+      invokeCount,
+      discoveryMode
     );
   }
 
@@ -255,17 +267,47 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ])
    * ```
    *
+   * Step-level settings can be attached by chaining `withSettings`,
+   * overriding the settings the workflow run was triggered with for
+   * this step only:
+   *
+   * ```typescript
+   * const result = await context
+   *   .run("step 1", () => {
+   *     return "result"
+   *   })
+   *   .withSettings({
+   *     flowControl: { key: "custom-key", parallelism: 3 },
+   *     retries: 5,
+   *   })
+   * ```
+   *
+   * `withSettings` must be chained synchronously on the `context.run`
+   * call as shown above.
+   *
    * @param stepName name of the step
    * @param stepFunction step function to be executed
    * @returns result of the step function
    */
-  public async run<TResult>(
+  public run<TResult>(
     stepName: string,
     stepFunction: StepFunction<TResult>
-  ): Promise<TResult> {
+  ): RunStepPromise<TResult> {
     const wrappedStepFunction = (() =>
       this.executor.wrapStep(stepName, stepFunction)) as StepFunction<TResult>;
-    return await this.addStep<TResult>(new LazyFunctionStep(this, stepName, wrappedStepFunction));
+    const lazyStep = new LazyFunctionStep(this, stepName, wrappedStepFunction);
+
+    // `withSettings` must be called synchronously on the promise, before the
+    // auto executor starts processing the step (which is deferred with
+    // microtasks in `AutoExecutor.addStep`). This way, the settings are
+    // available once the step is processed.
+    const promise = this.addStep<TResult>(lazyStep) as RunStepPromise<TResult>;
+    promise.withSettings = (settings: StepSettings) => {
+      validateFlowControl(settings.flowControl);
+      lazyStep.stepSettings = settings;
+      return promise;
+    };
+    return promise;
   }
 
   /**

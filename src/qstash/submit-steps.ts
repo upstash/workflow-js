@@ -1,13 +1,17 @@
 import { NO_CONCURRENCY } from "../constants";
 import { attachStepNameToError, WorkflowAbort } from "../error";
-import { Telemetry } from "../types";
+import { Step, StepSettings, Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
-import { getHeaders } from "./headers";
+import { getHeaders, getStepSettingsHeaders } from "./headers";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
 /**
  * Submits parallel steps to QStash.
+ *
+ * Each plan step carries the step-level settings (flow control, retries)
+ * of its target step, since the delivery of a plan step is what executes
+ * the target step.
  *
  * @param context workflow context
  * @param steps list of lazy steps to submit
@@ -40,7 +44,7 @@ export const submitParallelSteps = async ({
   });
 
   const result = (await context.qstashClient.batch(
-    planSteps.map((planStep) => {
+    planSteps.map((planStep, index) => {
       const { headers } = getHeaders({
         initHeaderValue: "false",
         workflowConfig: {
@@ -52,7 +56,10 @@ export const submitParallelSteps = async ({
       });
 
       return {
-        headers,
+        headers: {
+          ...headers,
+          ...getStepSettingsHeaders(steps[index].stepSettings),
+        },
         method: "POST",
         url: context.url,
         body: JSON.stringify(planStep),
@@ -72,6 +79,115 @@ export const submitParallelSteps = async ({
   }
 
   throw new WorkflowAbort(planSteps[0].stepName, planSteps[0]);
+};
+
+/**
+ * Executes a lazy step and returns its result step, without submitting
+ * it to QStash.
+ *
+ * @param lazyStep lazy step to execute
+ * @param stepId step ID
+ * @param concurrency concurrency level
+ * @param dispatchLifecycle lifecycle event dispatcher
+ */
+export const executeStep = async ({
+  lazyStep,
+  stepId,
+  concurrency,
+  dispatchLifecycle,
+}: {
+  lazyStep: BaseLazyStep;
+  stepId: number;
+  concurrency: number;
+  dispatchLifecycle: DispatchLifecycle;
+}): Promise<Step> => {
+  await dispatchLifecycle("beforeExecution", {
+    stepName: lazyStep.stepName,
+  });
+
+  try {
+    return await lazyStep.getResultStep(concurrency, stepId);
+  } catch (error) {
+    // The step function threw. Remember which step failed so the serve handler
+    // can report it to QStash via the `Upstash-Error-Step-Name` header.
+    attachStepNameToError(error, lazyStep.stepName);
+    throw error;
+  }
+};
+
+/**
+ * Submits an executed step's result to QStash.
+ *
+ * If `nextStepSettings` is passed, the step-level settings of the next
+ * step are attached to the request. Since the delivery of this request
+ * is what executes the next step, this is how step-level settings
+ * (flow control, retries) are applied to the next step.
+ *
+ * @param context workflow context
+ * @param lazyStep lazy step which was executed
+ * @param resultStep result step to submit
+ * @param invokeCount current invoke count
+ * @param concurrency concurrency level
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ * @param nextStepSettings step-level settings of the next step
+ */
+export const submitStepResult = async ({
+  context,
+  lazyStep,
+  resultStep,
+  invokeCount,
+  concurrency,
+  telemetry,
+  dispatchDebug,
+  nextStepSettings,
+}: {
+  context: WorkflowContext;
+  lazyStep: BaseLazyStep;
+  resultStep: Step;
+  invokeCount: number;
+  concurrency: number;
+  telemetry?: Telemetry;
+  dispatchDebug: DispatchDebug;
+  nextStepSettings?: StepSettings;
+}) => {
+  const { headers } = lazyStep.getHeaders({
+    context,
+    step: resultStep,
+    invokeCount,
+    telemetry,
+  });
+
+  const finalHeaders = {
+    ...headers,
+    ...getStepSettingsHeaders(nextStepSettings),
+  };
+
+  const body = lazyStep.getBody({
+    context,
+    step: resultStep,
+    headers: finalHeaders,
+    invokeCount,
+    telemetry,
+  });
+
+  const submitResult = await lazyStep.submitStep({
+    context,
+    body,
+    headers: finalHeaders,
+    isParallel: concurrency !== NO_CONCURRENCY,
+    invokeCount,
+    step: resultStep,
+    telemetry,
+  });
+
+  if (submitResult && submitResult[0]) {
+    await dispatchDebug("onInfo", {
+      info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
+    });
+  }
+
+  return resultStep;
 };
 
 /**
@@ -105,49 +221,20 @@ export const submitSingleStep = async ({
   dispatchDebug: DispatchDebug;
   dispatchLifecycle: DispatchLifecycle;
 }) => {
-  await dispatchLifecycle("beforeExecution", {
-    stepName: lazyStep.stepName,
+  const resultStep = await executeStep({
+    lazyStep,
+    stepId,
+    concurrency,
+    dispatchLifecycle,
   });
 
-  let resultStep;
-  try {
-    resultStep = await lazyStep.getResultStep(concurrency, stepId);
-  } catch (error) {
-    // The step function threw. Remember which step failed so the serve handler
-    // can report it to QStash via the `Upstash-Error-Step-Name` header.
-    attachStepNameToError(error, lazyStep.stepName);
-    throw error;
-  }
-
-  const { headers } = lazyStep.getHeaders({
+  return await submitStepResult({
     context,
-    step: resultStep,
+    lazyStep,
+    resultStep,
     invokeCount,
+    concurrency,
     telemetry,
+    dispatchDebug,
   });
-  const body = lazyStep.getBody({
-    context,
-    step: resultStep,
-    headers,
-    invokeCount,
-    telemetry,
-  });
-
-  const submitResult = await lazyStep.submitStep({
-    context,
-    body,
-    headers,
-    isParallel: concurrency !== NO_CONCURRENCY,
-    invokeCount,
-    step: resultStep,
-    telemetry,
-  });
-
-  if (submitResult && submitResult[0]) {
-    await dispatchDebug("onInfo", {
-      info: `Submitted step "${resultStep.stepName}" with messageId: ${submitResult[0].messageId}.`,
-    });
-  }
-
-  return resultStep;
 };

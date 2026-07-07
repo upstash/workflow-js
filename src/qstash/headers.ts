@@ -5,15 +5,17 @@ import {
   WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
+  WORKFLOW_FEATURE_SET,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
+  WORKFLOW_STEP_CONFIG_FEATURE,
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { BaseLazyStep, LazyCallStep } from "../context/steps";
-import { Step, Telemetry } from "../types";
+import { Step, StepSettings, Telemetry } from "../types";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
 
 export type WorkflowConfig = {
@@ -111,7 +113,7 @@ class WorkflowHeaders {
       [WORKFLOW_INIT_HEADER]: this.initHeaderValue,
       [WORKFLOW_ID_HEADER]: this.workflowConfig.workflowRunId,
       [WORKFLOW_URL_HEADER]: this.workflowConfig.workflowUrl,
-      [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+      [WORKFLOW_FEATURE_HEADER]: WORKFLOW_FEATURE_SET,
       [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
       ...(this.workflowConfig.telemetry ? getTelemetryHeaders(this.workflowConfig.telemetry) : {}),
     };
@@ -213,8 +215,7 @@ class WorkflowHeaders {
     this.headers.failureHeaders["Workflow-Init"] = "false";
     this.headers.failureHeaders["Workflow-Url"] = this.workflowConfig.workflowUrl;
     this.headers.failureHeaders["Workflow-Calltype"] = "failureCall";
-    this.headers.failureHeaders["Feature-Set"] =
-      "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig";
+    this.headers.failureHeaders["Feature-Set"] = WORKFLOW_FEATURE_SET;
     if (
       this.workflowConfig.retries !== undefined &&
       this.workflowConfig.retries !== DEFAULT_RETRIES
@@ -300,6 +301,47 @@ export const prepareFlowControl = (flowControl: FlowControl) => {
     flowControlKey: flowControl.key,
     flowControlValue: controlValue.join(", "),
   };
+};
+
+/**
+ * Prepares the headers carrying the step-level settings of a step.
+ *
+ * These headers are attached to the request whose delivery will execute
+ * the step, so that QStash applies the step-level settings (instead of
+ * the settings the workflow run was triggered with) when delivering it.
+ *
+ * When any setting is present, the feature set is extended with
+ * `WF_StepConfig` to signal QStash to keep the message's own settings.
+ *
+ * @param stepSettings step-level settings to convert to headers
+ */
+export const getStepSettingsHeaders = (stepSettings?: StepSettings): Record<string, string> => {
+  if (!stepSettings) {
+    return {};
+  }
+
+  const headers: Record<string, string> = {};
+
+  if (stepSettings.flowControl) {
+    const { flowControlKey, flowControlValue } = prepareFlowControl(stepSettings.flowControl);
+    headers["Upstash-Flow-Control-Key"] = flowControlKey;
+    headers["Upstash-Flow-Control-Value"] = flowControlValue;
+  }
+  if (stepSettings.retries !== undefined) {
+    headers["Upstash-Retries"] = stepSettings.retries.toString();
+  }
+  if (stepSettings.retryDelay) {
+    headers["Upstash-Retry-Delay"] = stepSettings.retryDelay;
+  }
+  if (stepSettings.timeout) {
+    headers["Upstash-Timeout"] = stepSettings.timeout.toString();
+  }
+
+  if (Object.keys(headers).length > 0) {
+    headers[WORKFLOW_FEATURE_HEADER] = `${WORKFLOW_FEATURE_SET},${WORKFLOW_STEP_CONFIG_FEATURE}`;
+  }
+
+  return headers;
 };
 
 /**

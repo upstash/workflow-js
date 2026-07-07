@@ -116,7 +116,7 @@ export type Step<TResult = unknown, TBody = unknown> = {
 export type RawStep = {
   messageId: string;
   body: string; // body is a base64 encoded step or payload
-  callType: "step" | "toCallback" | "fromCallback";
+  callType: "step" | "toCallback" | "fromCallback" | "discovery";
 };
 
 export type SyncStepFunction<TResult> = () => TResult;
@@ -137,6 +137,7 @@ export type FinishCondition =
   | "failure-callback-executed"
   | "failure-callback-undefined"
   | "workflow-already-ended"
+  | "step-settings-redelivery"
   | WorkflowNonRetryableError;
 
 export type DetailedFinishCondition =
@@ -381,6 +382,88 @@ export interface WaitEventOptions {
    */
   timeout?: number | Duration;
 }
+
+/**
+ * Step-level settings which override the workflow run settings
+ * passed in `client.trigger` for the execution of a single step.
+ *
+ * Set by chaining `withSettings` on `context.run`:
+ *
+ * ```ts
+ * const result = await context
+ *   .run("step", () => { ... })
+ *   .withSettings({
+ *     flowControl: { key: "custom-key", parallelism: 3 },
+ *     retries: 5,
+ *   });
+ * ```
+ *
+ * The settings are applied to the request whose delivery executes the
+ * step:
+ *
+ * - after a `context.run`/`context.sleep`/`context.sleepUntil` step, the
+ *   settings ride on the previous step's result submission
+ * - after a `context.call` step, the settings are discovered when the
+ *   call result arrives and are attached to the call result submission
+ * - after a `context.invoke` step, the settings are discovered when the
+ *   invoke result arrives; the step is then executed with a redelivery
+ *   which has the settings applied
+ * - steps running in parallel carry their own step-level settings on
+ *   their plan steps
+ *
+ * There are still cases where the settings can not be applied and the
+ * workflow falls back to the settings passed when triggering the
+ * workflow:
+ *
+ * - when the step is the first step of the workflow (the trigger request
+ *   is what executes the first step)
+ * - when the previous step is a `context.waitForEvent` or
+ *   `context.waitForWebhook` step
+ * - when the step comes right after a parallel step group
+ */
+export type StepSettings = {
+  /**
+   * Settings for controlling the number of active requests
+   * and number of requests per second with the same key
+   * while executing this step.
+   *
+   * Overrides the flow control settings passed when triggering
+   * the workflow for this step only.
+   */
+  flowControl?: FlowControl;
+  /**
+   * Number of times QStash will retry the delivery which executes
+   * this step.
+   *
+   * Overrides the retries passed when triggering the workflow for
+   * this step only.
+   */
+  retries?: number;
+  /**
+   * Delay between retries of the delivery which executes this step.
+   */
+  retryDelay?: string;
+  /**
+   * Maximum duration QStash will wait for the endpoint to respond
+   * while executing this step. in seconds or as a duration string.
+   */
+  timeout?: number | Duration;
+};
+
+/**
+ * Promise returned by `context.run`, allowing step-level settings
+ * to be attached with `withSettings`.
+ *
+ * `withSettings` must be chained synchronously on the `context.run`
+ * call (before awaiting it).
+ */
+export type RunStepPromise<TResult> = Promise<TResult> & {
+  /**
+   * Sets step-level settings (flow control, retries etc.), overriding
+   * the settings passed when triggering the workflow for this step only.
+   */
+  withSettings: (settings: StepSettings) => RunStepPromise<TResult>;
+};
 
 export type CallSettings = {
   url: string;

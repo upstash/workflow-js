@@ -121,7 +121,12 @@ export const checkRedisForResults = async (
   const retryCount = retryOverride ?? RETRY_COUNT
   for ( let i=1; i <= retryCount; i++ ) {
     testResult = await redis.get<RedisResult>(key)
-    if (testResult) {
+    // wait until the result is found with the expected call count.
+    // The workflow may write the result with a lower call count first:
+    // code after the last step of the workflow also runs in the
+    // invocation which executed the last step, before the final
+    // invocation replays it with the final call count.
+    if (testResult && testResult.callCount === expectedCallCount) {
       break
     }
     if (i !== retryCount) {

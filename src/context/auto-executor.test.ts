@@ -7,6 +7,7 @@ import { nanoid } from "../utils";
 import { AutoExecutor } from "./auto-executor";
 import type { Step } from "../types";
 import { WorkflowAbort, WorkflowError } from "../error";
+import { flushPendingStep } from "../workflow-requests";
 
 class SpyAutoExecutor extends AutoExecutor {
   public declare getParallelCallState;
@@ -104,11 +105,15 @@ describe("auto-executor", () => {
       const spyRunParallel = spyOn(context.executor, "runParallel");
 
       await mockQStashServer({
-        execute: () => {
-          const throws = context.run("attemptCharge", () => {
+        execute: async () => {
+          // the step executes and its result is returned. The submission is
+          // deferred until the next step is discovered or the workflow
+          // function ends (flushPendingStep):
+          const result = await context.run("attemptCharge", () => {
             return { input: context.requestPayload, success: false };
           });
-          expect(throws).rejects.toThrowError(WorkflowAbort);
+          expect(result).toEqual({ input: initialPayload, success: false });
+          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -589,6 +594,179 @@ describe("auto-executor", () => {
               '    Step Types expected: ["SleepUntil","SleepUntil"]'
           )
         );
+      });
+    });
+  });
+
+  describe("step-level settings", () => {
+    test("should attach the next step's settings to the current step's submission", async () => {
+      const context = getContext([initialStep]);
+
+      await mockQStashServer({
+        execute: async () => {
+          // the step executes and returns its result, so that the workflow
+          // function can continue and reveal the next step:
+          const result = await context.run("attemptCharge", () => {
+            return { input: context.requestPayload, success: false };
+          });
+          expect(result).toEqual({ input: initialPayload, success: false });
+
+          // the result of the branching depends on the step result. The
+          // settings of the discovered next step are attached to the
+          // submission of the previous step's result:
+          const throws = result.success
+            ? context.run("unexpected-branch", () => "not-executed")
+            : context
+                .run("second-step", () => "not-executed")
+                .withSettings({
+                  flowControl: { key: "step-flow-key", parallelism: 2, rate: 10 },
+                  retries: 5,
+                  retryDelay: "1000",
+                  timeout: "30s",
+                });
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+                "upstash-flow-control-key": "step-flow-key",
+                "upstash-flow-control-value": "parallelism=2, rate=10",
+                "upstash-retries": "5",
+                "upstash-retry-delay": "1000",
+                "upstash-timeout": "30s",
+              },
+              body: JSON.stringify({
+                ...singleStep,
+              }),
+            },
+          ],
+        },
+      });
+    });
+
+    test("should not attach settings when the next step has none", async () => {
+      const context = getContext([initialStep]);
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await context.run("attemptCharge", () => {
+            return { input: context.requestPayload, success: false };
+          });
+          expect(result).toEqual({ input: initialPayload, success: false });
+
+          const throws = context.run("second-step", () => "not-executed");
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+              },
+              body: JSON.stringify({
+                ...singleStep,
+              }),
+            },
+          ],
+        },
+      });
+    });
+
+    test("should attach each parallel step's own settings to its plan step", async () => {
+      const context = getContext([initialStep]);
+
+      await mockQStashServer({
+        execute: async () => {
+          expect(context.executor.getParallelCallState(2, 1)).toBe("first");
+          const throws = Promise.all([
+            context
+              .run("parallel-step-1", () => "result-1")
+              .withSettings({ flowControl: { key: "fc-key-1", parallelism: 1 } }),
+            context.run("parallel-step-2", () => "result-2").withSettings({ retries: 0 }),
+          ]);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '{"stepId":0,"stepName":"parallel-step-1","stepType":"Run","concurrent":2,"targetStep":1}',
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+                "upstash-flow-control-key": "fc-key-1",
+                "upstash-flow-control-value": "parallelism=1",
+              },
+            },
+            {
+              body: '{"stepId":0,"stepName":"parallel-step-2","stepType":"Run","concurrent":2,"targetStep":2}',
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+                "upstash-retries": "0",
+              },
+            },
+          ],
+        },
       });
     });
   });
