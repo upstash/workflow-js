@@ -30,9 +30,9 @@ export type NextStepDiscoveryParams = {
  * Returns undefined if there is no next step, if the next step has no
  * settings or if the discovery fails.
  */
-export type NextStepDiscovery = (params: NextStepDiscoveryParams) => Promise<
-  StepSettings | undefined
->;
+export type NextStepDiscovery = (
+  params: NextStepDiscoveryParams
+) => Promise<StepSettings | undefined>;
 
 /**
  * Creates a function which discovers the next step of the workflow by
