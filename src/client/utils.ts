@@ -217,7 +217,8 @@ const DEFAULT_BULK_COUNT = 100;
  * // => { all: true, count: 100 }
  * ```
  *
- * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
+ * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided,
+ * or if any filter field is an empty array
  */
 export function buildBulkActionQueryParameters(
   request: WorkflowDLQActionFilters | WorkflowRunCancelFilters,
@@ -255,6 +256,17 @@ export function buildBulkActionQueryParameters(
     throw new QstashError(
       "No filter provided. Use { filter: { ... } } with at least one filter field, or { all: true }."
     );
+  }
+
+  // An empty array serializes to no query parameter at all, silently widening
+  // the scope of a destructive bulk action. Fail fast instead.
+  for (const [field, value] of Object.entries(filter)) {
+    if (Array.isArray(value) && value.length === 0) {
+      throw new QstashError(
+        `Empty array provided for filter field '${field}'. ` +
+          "If you intend to target all records, use { all: true } explicitly."
+      );
+    }
   }
 
   // When translateWorkflowUrl is set (cancel filters), translate

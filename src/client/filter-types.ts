@@ -2,7 +2,9 @@
 
 import { WorkflowRunLog } from "./types";
 
-type RequireAtLeastOne<T> = { [K in keyof T]-?: Required<Pick<T, K>> }[keyof T];
+// Intersecting with T keeps every field visible to autocomplete/inference;
+// the single-property union alone only enforces the "at least one" constraint.
+type RequireAtLeastOne<T> = T & { [K in keyof T]-?: Required<Pick<T, K>> }[keyof T];
 
 // ── Filter Field Groups ───────────────────────────────────────
 

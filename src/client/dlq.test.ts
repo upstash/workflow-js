@@ -337,6 +337,18 @@ describe("DLQ", () => {
       });
     });
 
+    test("should throw when a filter field is an empty array", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.resume({ filter: { workflowUrl: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrl'"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should resume DLQ messages with filters", async () => {
       const responses = [
         { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },

@@ -270,6 +270,24 @@ describe("workflow client", () => {
       });
     });
 
+    test("should throw when a filter field is an empty array", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.cancel({ filter: { workflowUrl: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrl'"
+          );
+          await expect(
+            client.cancel({ filter: { workflowUrlStartingWith: [] } })
+          ).rejects.toThrow("Empty array provided for filter field 'workflowUrlStartingWith'");
+          await expect(client.cancel({ filter: { callerIp: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'callerIp'"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should not send request when an array contains an empty string", async () => {
       await mockQStashServer({
         execute: async () => {
