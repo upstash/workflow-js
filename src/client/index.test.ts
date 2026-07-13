@@ -276,9 +276,9 @@ describe("workflow client", () => {
           await expect(client.cancel({ filter: { workflowUrl: [] } })).rejects.toThrow(
             "Empty array provided for filter field 'workflowUrl'"
           );
-          await expect(
-            client.cancel({ filter: { workflowUrlStartingWith: [] } })
-          ).rejects.toThrow("Empty array provided for filter field 'workflowUrlStartingWith'");
+          await expect(client.cancel({ filter: { workflowUrlStartingWith: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrlStartingWith'"
+          );
           await expect(client.cancel({ filter: { callerIp: [] } })).rejects.toThrow(
             "Empty array provided for filter field 'callerIp'"
           );
