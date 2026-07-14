@@ -15,7 +15,7 @@ type ResumeRestartOptions = {
 };
 
 type FailureCallbackInfo = {
-  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS";
+  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS" | "CALLBACK_CANCELED";
   responseStatus?: number;
   responseBody?: string;
   responseHeaders?: Record<string, string[]>;
