@@ -43,6 +43,11 @@ export class Client {
    * - With other filters: `cancel({ filter: { label: "my-label" } })`
    * - To target all: `cancel({ all: true })`
    *
+   * Filters support multiple values: pass an array to match a run whose value
+   * equals any of the given values (OR logic). Separate filters are combined with
+   * AND logic. For example:
+   * `cancel({ filter: { workflowUrl: ["https://a.com", "https://b.com"] } })`
+   *
    * Cancels up to `count` workflow runs per call (defaults to 100).
    *
    * ```ts
