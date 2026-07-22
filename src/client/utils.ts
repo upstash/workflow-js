@@ -5,6 +5,40 @@ import { DispatchDebug } from "../middleware/types";
 import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
 
 /**
+ * Guards single-resource endpoints against an empty identifier.
+ *
+ * An empty id would otherwise either be joined into the path as a trailing
+ * slash (e.g. `v2/waiters/`) or sent as an empty value in a bulk action
+ * filter (e.g. `dlqIds=`), both of which the server resolves to a
+ * collection/bulk operation. For destructive methods this silently affects
+ * unintended resources, so we fail fast instead.
+ *
+ * The check is a falsy guard rather than `id.length === 0` so that a plain-JS
+ * consumer passing `undefined`/`null` gets the same `QstashError` instead of a
+ * `TypeError` from reading `.length`.
+ */
+export const assertNonEmptyId = (id: string, label = "id"): void => {
+  if (!id) {
+    throw new QstashError(`${label} cannot be empty`);
+  }
+};
+
+/**
+ * Normalizes a single id or array of ids into an array, asserting that every
+ * id in it is non-empty.
+ *
+ * An empty id placed in a bulk filter (e.g. `workflowRunIds=` or `dlqIds=`) is
+ * resolved server-side as a collection/bulk operation, so passing `[""]` would
+ * silently affect unintended resources. We fail fast on it instead. An empty
+ * array is left untouched (callers treat it as a no-op).
+ */
+export const toNonEmptyIdArray = (request: string | string[], label = "id"): string[] => {
+  const ids = typeof request === "string" ? [request] : request;
+  for (const id of ids) assertNonEmptyId(id, label);
+  return ids;
+};
+
+/**
  * Makes a request to notify waiting workflows.
  *
  * @param requester QStash HTTP requester
@@ -18,7 +52,12 @@ export const makeNotifyRequest = async (
   eventData?: unknown,
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
-  const path = workflowRunId ? ["v2", "notify", workflowRunId, eventId] : ["v2", "notify", eventId];
+  assertNonEmptyId(eventId, "Event id");
+  if (workflowRunId !== undefined) assertNonEmptyId(workflowRunId, "Workflow run id");
+  const path =
+    workflowRunId === undefined
+      ? ["v2", "notify", eventId]
+      : ["v2", "notify", workflowRunId, eventId];
 
   const result = (await requester.request({
     path,
@@ -39,6 +78,7 @@ export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string
 ): Promise<Required<Waiter>[]> => {
+  assertNonEmptyId(eventId, "Event id");
   const result = (await requester.request({
     path: ["v2", "waiters", eventId],
     method: "GET",
@@ -177,7 +217,8 @@ const DEFAULT_BULK_COUNT = 100;
  * // => { all: true, count: 100 }
  * ```
  *
- * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
+ * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided,
+ * or if any filter field is an empty array
  */
 export function buildBulkActionQueryParameters(
   request: WorkflowDLQActionFilters | WorkflowRunCancelFilters,
@@ -217,6 +258,17 @@ export function buildBulkActionQueryParameters(
     );
   }
 
+  // An empty array serializes to no query parameter at all, silently widening
+  // the scope of a destructive bulk action. Fail fast instead.
+  for (const [field, value] of Object.entries(filter)) {
+    if (Array.isArray(value) && value.length === 0) {
+      throw new QstashError(
+        `Empty array provided for filter field '${field}'. ` +
+          "If you intend to target all records, use { all: true } explicitly."
+      );
+    }
+  }
+
   // When translateWorkflowUrl is set (cancel filters), translate
   // workflowUrl/workflowUrlStartingWith into the server's query params:
   // - workflowUrl → workflowUrl + workflowUrlExactMatch=true (exact match)
@@ -231,11 +283,11 @@ export function buildBulkActionQueryParameters(
       );
     }
 
-    const urlParams: Record<string, string | boolean> = {};
+    const urlParams: Record<string, string | string[] | boolean> = {};
     if (workflowUrlStartingWith) {
-      urlParams.workflowUrl = workflowUrlStartingWith as string;
+      urlParams.workflowUrl = workflowUrlStartingWith as string | string[];
     } else if (workflowUrl) {
-      urlParams.workflowUrl = workflowUrl as string;
+      urlParams.workflowUrl = workflowUrl as string | string[];
       urlParams.workflowUrlExactMatch = true;
     }
 

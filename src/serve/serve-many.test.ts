@@ -4,6 +4,7 @@ import { WorkflowContext } from "../context";
 import { Client } from "@upstash/qstash";
 import {
   getRequest,
+  MOCK_DESTINATION_HOST,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
@@ -195,13 +196,13 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowTwo"],
+              "Upstash-Workflow-Url": [`${MOCK_DESTINATION_HOST}/api/workflowTwo`],
               "content-type": ["application/json"],
               "upstash-forward-x-vercel-protection-bypass": ["testing"],
             },
             workflowRunId: "wfr_id",
             workflowRunCreatedAt: Number(workflowCreatedAt),
-            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowTwo",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/api/workflowTwo`,
             step: {
               stepId: 1,
               concurrent: 1,
@@ -245,10 +246,10 @@ describe("serveMany", () => {
           body: [
             {
               body: '{"count":99}',
-              destination: "https://wf-test.requestcatcher.com/api/workflowOne",
+              destination: `${MOCK_DESTINATION_HOST}/api/workflowOne`,
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://wf-test.requestcatcher.com/api/workflowThree",
+                "upstash-callback": `${MOCK_DESTINATION_HOST}/api/workflowThree`,
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
@@ -261,8 +262,7 @@ describe("serveMany", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url":
-                  "https://wf-test.requestcatcher.com/api/workflowThree",
+                "upstash-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api/workflowThree`,
                 "upstash-forward-upstash-workflow-invoke-count": "1",
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
@@ -274,7 +274,7 @@ describe("serveMany", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api/workflowThree",
+                "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api/workflowThree`,
               },
             },
           ],
@@ -303,12 +303,12 @@ describe("serveMany", () => {
           body: [
             {
               body: "hello world",
-              destination: "https://wf-test.requestcatcher.com/api/workflowTwo",
+              destination: `${MOCK_DESTINATION_HOST}/api/workflowTwo`,
               headers: {
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "content-type": "application/json",
-                "upstash-callback": "https://wf-test.requestcatcher.com/api/workflowFour",
+                "upstash-callback": `${MOCK_DESTINATION_HOST}/api/workflowFour`,
                 "upstash-callback-forward-upstash-workflow-callback": "true",
                 "upstash-callback-forward-upstash-workflow-concurrent": "1",
                 "upstash-callback-forward-upstash-workflow-contenttype": "application/json",
@@ -318,8 +318,7 @@ describe("serveMany", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url":
-                  "https://wf-test.requestcatcher.com/api/workflowFour",
+                "upstash-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api/workflowFour`,
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
@@ -330,7 +329,7 @@ describe("serveMany", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api/workflowFour",
+                "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api/workflowFour`,
               },
             },
           ],
@@ -372,12 +371,12 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowFive"],
+              "Upstash-Workflow-Url": [`${MOCK_DESTINATION_HOST}/api/workflowFive`],
               "content-type": ["application/json"],
             },
             workflowRunId: "wfr_id",
             workflowRunCreatedAt: Number(workflowCreatedAt),
-            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowFive",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/api/workflowFive`,
             step: {
               stepId: 1,
               concurrent: 1,
@@ -422,7 +421,7 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowSix"],
+              "Upstash-Workflow-Url": [`${MOCK_DESTINATION_HOST}/api/workflowSix`],
               "content-type": ["application/json"],
             },
             step: {
@@ -432,7 +431,7 @@ describe("serveMany", () => {
               stepType: "Invoke",
             },
             workflowRunId: "wfr_id",
-            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowSix",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/api/workflowSix`,
             workflowRunCreatedAt: Number(workflowCreatedAt),
           },
         },
@@ -459,10 +458,10 @@ describe("serveMany", () => {
           token,
           body: [
             {
-              destination: "https://wf-test.requestcatcher.com/api/workflowFour",
+              destination: `${MOCK_DESTINATION_HOST}/api/workflowFour`,
               headers: {
                 "content-type": "application/json",
-                "upstash-callback": "https://wf-test.requestcatcher.com/api/workflowSeven",
+                "upstash-callback": `${MOCK_DESTINATION_HOST}/api/workflowSeven`,
                 "upstash-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-callback-forward-upstash-workflow-callback": "true",
@@ -474,8 +473,7 @@ describe("serveMany", () => {
                 "upstash-callback-workflow-calltype": "fromCallback",
                 "upstash-callback-workflow-init": "false",
                 "upstash-callback-workflow-runid": "wfr_id",
-                "upstash-callback-workflow-url":
-                  "https://wf-test.requestcatcher.com/api/workflowSeven",
+                "upstash-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api/workflowSeven`,
                 "upstash-feature-set": "WF_NoDelete,InitialBody",
                 "upstash-method": "POST",
                 "upstash-retries": "0",
@@ -486,7 +484,7 @@ describe("serveMany", () => {
                 "upstash-workflow-init": "false",
                 "upstash-workflow-runid": "wfr_id",
                 "upstash-workflow-sdk-version": "1",
-                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api/workflowSeven",
+                "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api/workflowSeven`,
               },
             },
           ],
@@ -528,12 +526,12 @@ describe("serveMany", () => {
               "Upstash-Workflow-RunId": ["wfr_id"],
               "Upstash-Workflow-Runid": ["wfr_id"],
               "Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Workflow-Url": ["https://wf-test.requestcatcher.com/api/workflowEight"],
+              "Upstash-Workflow-Url": [`${MOCK_DESTINATION_HOST}/api/workflowEight`],
               "content-type": ["application/json"],
             },
             workflowRunId: "wfr_id",
             workflowRunCreatedAt: Number(workflowCreatedAt),
-            workflowUrl: "https://wf-test.requestcatcher.com/api/workflowEight",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/api/workflowEight`,
             step: {
               stepId: 1,
               concurrent: 1,
@@ -556,27 +554,27 @@ describe("serveMany", () => {
 
   describe("getNewUrlFromWorkflowId", () => {
     test("should return new url", () => {
-      const url = "https://wf-test.requestcatcher.com/api/original_workflow";
+      const url = `${MOCK_DESTINATION_HOST}/api/original_workflow`;
       const workflowId = "workflowId";
       const newUrl = getNewUrlFromWorkflowId(url, workflowId);
 
-      expect(newUrl).toBe("https://wf-test.requestcatcher.com/api/workflowId");
+      expect(newUrl).toBe(`${MOCK_DESTINATION_HOST}/api/workflowId`);
     });
 
     test("should ignore query parameters", () => {
-      const url = "https://wf-test.requestcatcher.com/api/original_workflow?query=param";
+      const url = `${MOCK_DESTINATION_HOST}/api/original_workflow?query=param`;
       const workflowId = "workflowId";
       const newUrl = getNewUrlFromWorkflowId(url, workflowId);
 
-      expect(newUrl).toBe("https://wf-test.requestcatcher.com/api/workflowId");
+      expect(newUrl).toBe(`${MOCK_DESTINATION_HOST}/api/workflowId`);
     });
 
     test("shuold ignore hash parameters", () => {
-      const url = "https://wf-test.requestcatcher.com/api/original_workflow#hash";
+      const url = `${MOCK_DESTINATION_HOST}/api/original_workflow#hash`;
       const workflowId = "workflowId";
       const newUrl = getNewUrlFromWorkflowId(url, workflowId);
 
-      expect(newUrl).toBe("https://wf-test.requestcatcher.com/api/workflowId");
+      expect(newUrl).toBe(`${MOCK_DESTINATION_HOST}/api/workflowId`);
     });
   });
 });

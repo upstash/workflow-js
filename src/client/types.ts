@@ -231,7 +231,7 @@ type FailureFunctionLog = {
   /**
    * State of the message published for failure
    */
-  state: "CALLBACK_INPROGRESS" | "CALLBACK_SUCCESS" | "CALLBACK_FAIL";
+  state: "CALLBACK_INPROGRESS" | "CALLBACK_SUCCESS" | "CALLBACK_FAIL" | "CALLBACK_CANCELED";
   /**
    * Headers received from the step which caused the workflow to fail
    */
@@ -264,6 +264,7 @@ type FailureFunctionLog = {
    * Status code of the response from the failure function
    */
   responseStatus?: number;
+  nextDeliveryTime?: number;
 };
 
 export type WorkflowRunLog = {

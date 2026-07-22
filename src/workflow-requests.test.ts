@@ -23,6 +23,7 @@ import {
 } from "./constants";
 import {
   FinishState,
+  MOCK_DESTINATION_HOST,
   MOCK_QSTASH_SERVER_URL,
   MOCK_SERVER_URL,
   mockQStashServer,
@@ -318,7 +319,7 @@ describe("Workflow Requests", () => {
     const token = "myToken";
 
     const context = new WorkflowContext({
-      qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token, retry: false }),
+      qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, retry: false }),
       workflowRunId: workflowRunId,
       initialPayload: undefined,
       headers: new Headers({}) as Headers,
@@ -327,14 +328,17 @@ describe("Workflow Requests", () => {
       workflowRunCreatedAt: 0,
     });
 
-    const spy = spyOn(context.qstashClient.http, "request");
-    await triggerWorkflowDelete(context, "hello world");
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenLastCalledWith({
-      path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=false`],
-      body: '"hello world"',
-      method: "DELETE",
-      parseResponseAsJson: false,
+    await mockQStashServer({
+      execute: async () => {
+        await triggerWorkflowDelete(context, "hello world");
+      },
+      responseFields: { body: "msgId", status: 200 },
+      receivesRequest: {
+        method: "DELETE",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/${workflowRunId}?cancel=false`,
+        token,
+        body: "hello world",
+      },
     });
   });
 
@@ -708,7 +712,7 @@ describe("Workflow Requests", () => {
         "Upstash-Failure-Callback-Workflow-Calltype": "failureCall",
         "Upstash-Failure-Callback-Workflow-Init": "false",
         "Upstash-Failure-Callback-Workflow-Runid": workflowRunId,
-        "Upstash-Failure-Callback-Workflow-Url": "https://wf-test.requestcatcher.com/api",
+        "Upstash-Failure-Callback-Workflow-Url": `${MOCK_DESTINATION_HOST}/api`,
         "Upstash-Failure-Callback": failureUrl,
         "content-type": "application/json",
         "Upstash-Failure-Callback-Flow-Control-Key": "failure-key",
@@ -763,9 +767,9 @@ describe("Workflow Requests", () => {
       });
       expect(typeof body).toBe("string");
       expect(JSON.parse(body)).toEqual({
-        url: "https://wf-test.requestcatcher.com/api",
+        url: `${MOCK_DESTINATION_HOST}/api`,
         timeout: "20s",
-        timeoutUrl: "https://wf-test.requestcatcher.com/api",
+        timeoutUrl: `${MOCK_DESTINATION_HOST}/api`,
         timeoutHeaders: {
           "Upstash-Workflow-Init": ["false"],
           "Upstash-Workflow-RunId": [workflowRunId],

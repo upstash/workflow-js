@@ -1,6 +1,11 @@
 import { NotifyResponse, Waiter } from "../types";
 import { Client as QStashClient } from "@upstash/qstash";
-import { buildBulkActionQueryParameters, makeGetWaitersRequest, makeNotifyRequest } from "./utils";
+import {
+  buildBulkActionQueryParameters,
+  makeGetWaitersRequest,
+  makeNotifyRequest,
+  toNonEmptyIdArray,
+} from "./utils";
 import { getWorkflowRunId, serializeLabel, validateFlowControl, validateLabel } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -37,6 +42,11 @@ export class Client {
    * - By URL prefix: `cancel({ filter: { workflowUrlStartingWith: "https://..." } })`
    * - With other filters: `cancel({ filter: { label: "my-label" } })`
    * - To target all: `cancel({ all: true })`
+   *
+   * Filters support multiple values: pass an array to match a run whose value
+   * equals any of the given values (OR logic). Separate filters are combined with
+   * AND logic. For example:
+   * `cancel({ filter: { workflowUrl: ["https://a.com", "https://b.com"] } })`
    *
    * Cancels up to `count` workflow runs per call (defaults to 100).
    *
@@ -76,8 +86,11 @@ export class Client {
       }
     }
 
-    if (typeof request === "string") request = [request];
-    if (Array.isArray(request) && request.length === 0) return { cancelled: 0 };
+    if (typeof request === "string" || Array.isArray(request)) {
+      const ids = toNonEmptyIdArray(request, "Workflow run id");
+      if (ids.length === 0) return { cancelled: 0 };
+      request = ids;
+    }
     const filters: WorkflowRunCancelFilters = Array.isArray(request)
       ? { workflowRunIds: request }
       : (request as WorkflowRunCancelFilters);

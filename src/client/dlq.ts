@@ -1,6 +1,11 @@
 import { Client as QStashClient, FlowControl } from "@upstash/qstash";
 import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
-import { buildBulkActionQueryParameters, normalizeCursor } from "./utils";
+import {
+  assertNonEmptyId,
+  buildBulkActionQueryParameters,
+  normalizeCursor,
+  toNonEmptyIdArray,
+} from "./utils";
 import { WorkflowDLQActionFilters, WorkflowDLQListFilters } from "./filter-types";
 import { prepareFlowControl } from "../qstash/headers";
 
@@ -10,7 +15,7 @@ type ResumeRestartOptions = {
 };
 
 type FailureCallbackInfo = {
-  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS";
+  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS" | "CALLBACK_CANCELED";
   responseStatus?: number;
   responseBody?: string;
   responseHeaders?: Record<string, string[]>;
@@ -189,8 +194,11 @@ export class DLQ {
     }
 
     // New format
-    if (typeof request === "string") request = [request];
-    if (Array.isArray(request) && request.length === 0) return { workflowRuns: [] };
+    if (typeof request === "string" || Array.isArray(request)) {
+      const ids = toNonEmptyIdArray(request, "DLQ id");
+      if (ids.length === 0) return { workflowRuns: [] };
+      request = ids;
+    }
     const filters: WorkflowDLQActionFilters = Array.isArray(request)
       ? { dlqIds: request }
       : request;
@@ -268,8 +276,11 @@ export class DLQ {
     }
 
     // New format
-    if (typeof request === "string") request = [request];
-    if (Array.isArray(request) && request.length === 0) return { workflowRuns: [] };
+    if (typeof request === "string" || Array.isArray(request)) {
+      const ids = toNonEmptyIdArray(request, "DLQ id");
+      if (ids.length === 0) return { workflowRuns: [] };
+      request = ids;
+    }
     const filters: WorkflowDLQActionFilters = Array.isArray(request)
       ? { dlqIds: request }
       : request;
@@ -295,6 +306,7 @@ export class DLQ {
    * @returns response with workflow run information
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
+    assertNonEmptyId(dlqId, "DLQ id");
     const response = await this.client.http.request<DLQResumeRestartResponse>({
       path: ["v2", "workflows", "dlq", "callback", dlqId],
       method: "POST",
@@ -324,8 +336,11 @@ export class DLQ {
    * ```
    */
   async delete(request: string | string[] | WorkflowDLQActionFilters) {
-    if (typeof request === "string") request = [request];
-    if (Array.isArray(request) && request.length === 0) return { deleted: 0 };
+    if (typeof request === "string" || Array.isArray(request)) {
+      const ids = toNonEmptyIdArray(request, "DLQ id");
+      if (ids.length === 0) return { deleted: 0 };
+      request = ids;
+    }
     const filters: WorkflowDLQActionFilters = Array.isArray(request)
       ? { dlqIds: request }
       : request;

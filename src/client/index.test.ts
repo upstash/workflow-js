@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import {
+  MOCK_DESTINATION_HOST,
   MOCK_QSTASH_SERVER_URL,
   mockQStashServer,
   WORKFLOW_ENDPOINT,
@@ -132,6 +133,104 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel with multiple workflowUrls (exact match)", async () => {
+      const url1 = "https://a.workflow-endpoint.com";
+      const url2 = "https://b.workflow-endpoint.com";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ filter: { workflowUrl: [url1, url2] } });
+          expect(result).toEqual({ cancelled: 4 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 4 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(url1)}&workflowUrl=${encodeURIComponent(url2)}&workflowUrlExactMatch=true&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multiple workflowUrlStartingWith (prefix match)", async () => {
+      const url1 = "https://a.workflow-endpoint.com/path";
+      const url2 = "https://b.workflow-endpoint.com/path";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({
+            filter: { workflowUrlStartingWith: [url1, url2] },
+          });
+          expect(result).toEqual({ cancelled: 2 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(url1)}&workflowUrl=${encodeURIComponent(url2)}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multi-value callerIp and flowControlKey filters", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({
+            filter: {
+              callerIp: ["1.2.3.4", "5.6.7.8"],
+              flowControlKey: ["key-1", "key-2"],
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?callerIp=1.2.3.4&callerIp=5.6.7.8&flowControlKey=key-1&flowControlKey=key-2&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multiple labels (OR semantics)", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { label: ["label-1", "label-2"] } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=label-1&label=label-2&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with host and path filters", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { host: ["a.com", "b.com"], path: "/webhook" } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?host=a.com&host=b.com&path=%2Fwebhook&count=100`,
+          token,
+        },
+      });
+    });
+
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -155,6 +254,46 @@ describe("workflow client", () => {
         execute: async () => {
           const result = await client.cancel([]);
           expect(result).toEqual({ cancelled: 0 });
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when called with an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.cancel("")).rejects.toThrow("Workflow run id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should throw when a filter field is an empty array", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.cancel({ filter: { workflowUrl: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrl'"
+          );
+          await expect(client.cancel({ filter: { workflowUrlStartingWith: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrlStartingWith'"
+          );
+          await expect(client.cancel({ filter: { callerIp: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'callerIp'"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should not send request when an array contains an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.cancel(["valid-id", ""])).rejects.toThrow(
+            "Workflow run id cannot be empty"
+          );
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
@@ -409,7 +548,7 @@ describe("workflow client", () => {
       "should cancel single workflow run id",
       async () => {
         const { workflowRunId } = await liveClient.trigger({
-          url: "http://requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
         });
 
         const cancel = await liveClient.cancel(workflowRunId);
@@ -427,10 +566,10 @@ describe("workflow client", () => {
       "should cancel multiple workflow run ids",
       async () => {
         const { workflowRunId: workflowRunIdOne } = await liveClient.trigger({
-          url: "http://requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
         });
         const { workflowRunId: workflowRunIdTwo } = await liveClient.trigger({
-          url: "http://requestcatcher.com",
+          url: MOCK_DESTINATION_HOST,
         });
 
         const firstCancel = await liveClient.cancel([
@@ -457,16 +596,16 @@ describe("workflow client", () => {
       "should cancel with workflowUrlStartingWith (prefix match)",
       async () => {
         await liveClient.trigger({
-          url: "https://wf-test.requestcatcher.com//first",
+          url: `${MOCK_DESTINATION_HOST}//first`,
           delay: "2s",
         });
         await liveClient.trigger({
-          url: "https://wf-test.requestcatcher.com//second",
+          url: `${MOCK_DESTINATION_HOST}//second`,
           delay: "2s",
         });
 
         const cancel = await liveClient.cancel({
-          urlStartingWith: "https://wf-test.requestcatcher.com//",
+          urlStartingWith: `${MOCK_DESTINATION_HOST}//`,
         });
 
         expect(cancel).toEqual({ cancelled: 2 });
@@ -482,16 +621,16 @@ describe("workflow client", () => {
         const label = `test-label-${nanoid()}`;
 
         await liveClient.trigger({
-          url: "http://requestcatcher.com/label-test",
+          url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
         });
         await liveClient.trigger({
-          url: "http://requestcatcher.com/label-test",
+          url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
         });
         // different label, should not be cancelled
         const { workflowRunId: id3 } = await liveClient.trigger({
-          url: "http://requestcatcher.com/label-test",
+          url: `${MOCK_DESTINATION_HOST}/label-test`,
           label: `other-label-${nanoid()}`,
         });
 
@@ -510,26 +649,50 @@ describe("workflow client", () => {
       "should cancel with workflowUrl (exact match)",
       async () => {
         await liveClient.trigger({
-          url: "http://requestcatcher.com/exact-match-test",
+          url: `${MOCK_DESTINATION_HOST}/exact-match-test`,
           delay: "1m",
         });
         await liveClient.trigger({
-          url: "http://requestcatcher.com/exact-match-test/sub-path",
+          url: `${MOCK_DESTINATION_HOST}/exact-match-test/sub-path`,
           delay: "1m",
         });
 
         // exact match should only cancel the exact URL
         const cancel = await liveClient.cancel({
           filter: {
-            workflowUrl: "http://requestcatcher.com/exact-match-test",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/exact-match-test`,
           },
         });
         expect(cancel).toEqual({ cancelled: 1 });
 
         // clean up the remaining workflow (prefix match)
         const cleanup = await liveClient.cancel({
-          filter: { workflowUrlStartingWith: "http://requestcatcher.com/exact-match-test" },
+          filter: { workflowUrlStartingWith: `${MOCK_DESTINATION_HOST}/exact-match-test` },
         });
+        expect(cleanup).toEqual({ cancelled: 1 });
+      },
+      {
+        timeout: 15000,
+      }
+    );
+
+    test(
+      "should cancel with multiple workflowUrls (exact match, OR semantics)",
+      async () => {
+        const urlA = `${MOCK_DESTINATION_HOST}/multi-exact-a-${nanoid()}`;
+        const urlB = `${MOCK_DESTINATION_HOST}/multi-exact-b-${nanoid()}`;
+        const urlC = `${MOCK_DESTINATION_HOST}/multi-exact-c-${nanoid()}`;
+
+        await liveClient.trigger({ url: urlA, delay: "1m" });
+        await liveClient.trigger({ url: urlB, delay: "1m" });
+        const { workflowRunId: idC } = await liveClient.trigger({ url: urlC, delay: "1m" });
+
+        // Cancelling [urlA, urlB] with exact match cancels exactly those two, not urlC.
+        const cancel = await liveClient.cancel({ filter: { workflowUrl: [urlA, urlB] } });
+        expect(cancel).toEqual({ cancelled: 2 });
+
+        // clean up the untouched run
+        const cleanup = await liveClient.cancel(idC);
         expect(cleanup).toEqual({ cancelled: 1 });
       },
       {
@@ -543,18 +706,18 @@ describe("workflow client", () => {
         const label = `combined-label-${nanoid()}`;
 
         await liveClient.trigger({
-          url: "http://requestcatcher.com/combined-test",
+          url: `${MOCK_DESTINATION_HOST}/combined-test`,
           label,
         });
         // same URL, different label — should NOT be cancelled
         const { workflowRunId: otherId } = await liveClient.trigger({
-          url: "http://requestcatcher.com/combined-test",
+          url: `${MOCK_DESTINATION_HOST}/combined-test`,
           label: `other-${nanoid()}`,
         });
 
         const cancel = await liveClient.cancel({
           filter: {
-            workflowUrl: "http://requestcatcher.com/combined-test",
+            workflowUrl: `${MOCK_DESTINATION_HOST}/combined-test`,
             label,
           },
         });
@@ -568,11 +731,33 @@ describe("workflow client", () => {
       }
     );
 
+    test(
+      "should cancel by destination host and path",
+      async () => {
+        const comPath = `/cancel-host-com-${nanoid()}`;
+        const orgPath = `/cancel-host-org-${nanoid()}`;
+
+        await liveClient.trigger({ url: `https://example.com${comPath}`, delay: "1m" });
+        await liveClient.trigger({ url: `https://example.org${orgPath}`, delay: "1m" });
+
+        // host example.org must not touch the example.com run
+        const byHost = await liveClient.cancel({ filter: { host: "example.org" } });
+        expect(byHost).toEqual({ cancelled: 1 });
+
+        // the example.com run survived — cancel it via its unique path
+        const byPath = await liveClient.cancel({ filter: { path: comPath } });
+        expect(byPath).toEqual({ cancelled: 1 });
+      },
+      {
+        timeout: 15000,
+      }
+    );
+
     test.skip(
       "should cancel all",
       async () => {
-        await liveClient.trigger({ url: "http://requestcatcher.com/cancel-all-1" });
-        await liveClient.trigger({ url: "http://requestcatcher.com/cancel-all-2" });
+        await liveClient.trigger({ url: `${MOCK_DESTINATION_HOST}/cancel-all-1` });
+        await liveClient.trigger({ url: `${MOCK_DESTINATION_HOST}/cancel-all-2` });
 
         const cancel = await liveClient.cancel({ all: true });
         expect(cancel.cancelled).toBeGreaterThanOrEqual(2);
@@ -650,6 +835,30 @@ describe("workflow client", () => {
     });
   });
 
+  test("should not send notify request when eventId is an empty string", async () => {
+    await mockQStashServer({
+      execute: async () => {
+        await expect(client.notify({ eventId: "", eventData: "data" })).rejects.toThrow(
+          "Event id cannot be empty"
+        );
+      },
+      responseFields: { status: 200, body: {} },
+      receivesRequest: false,
+    });
+  });
+
+  test("should not send getWaiters request when eventId is an empty string", async () => {
+    await mockQStashServer({
+      execute: async () => {
+        await expect(client.getWaiters({ eventId: "" })).rejects.toThrow(
+          "Event id cannot be empty"
+        );
+      },
+      responseFields: { status: 200, body: {} },
+      receivesRequest: false,
+    });
+  });
+
   test("should trigger workflow run", async () => {
     const myWorkflowRunId = `mock-${getWorkflowRunId()}`;
     const body = "request-body";
@@ -685,7 +894,7 @@ describe("workflow client", () => {
               "upstash-retry-delay": "1000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-delay": "1s",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -696,7 +905,7 @@ describe("workflow client", () => {
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
               "upstash-failure-callback-forward-upstash-label": "test-label",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-failure-callback-feature-set":
                 "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
@@ -707,7 +916,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
             },
             body,
           },
@@ -767,7 +976,7 @@ describe("workflow client", () => {
               "upstash-retry-delay": "1000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-delay": "1s",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -775,7 +984,7 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-failure-callback-feature-set":
                 "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
@@ -786,7 +995,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
             },
             body,
           },
@@ -800,7 +1009,7 @@ describe("workflow client", () => {
               "upstash-retry-delay": "2000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId2}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-not-before": "4102444800",
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -808,7 +1017,7 @@ describe("workflow client", () => {
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
               "upstash-workflow-sdk-version": "1",
-              "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-failure-callback-feature-set":
                 "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-forward-upstash-workflow-failure-callback": "true",
@@ -819,7 +1028,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId2}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
             },
             body: body2,
           },
@@ -841,7 +1050,7 @@ describe("workflow client", () => {
           retries: 15,
           retryDelay: "1000",
           delay: 1,
-          failureUrl: "https://wf-test.requestcatcher.com/some-failure-callback",
+          failureUrl: `${MOCK_DESTINATION_HOST}/some-failure-callback`,
           flowControl: {
             key: "failure-flow-key",
             rate: 5,
@@ -869,10 +1078,9 @@ describe("workflow client", () => {
               "upstash-retry-delay": "1000",
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-delay": "1s",
-              "upstash-failure-callback":
-                "https://wf-test.requestcatcher.com/some-failure-callback",
+              "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/some-failure-callback`,
               "content-type": "application/json",
               "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
               "upstash-failure-callback-feature-set":
@@ -885,7 +1093,7 @@ describe("workflow client", () => {
               "upstash-failure-callback-workflow-calltype": "failureCall",
               "upstash-failure-callback-workflow-init": "false",
               "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-              "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+              "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               "upstash-telemetry-framework": "unknown",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
@@ -945,7 +1153,7 @@ describe("workflow client", () => {
           body,
           workflowRunId: myWorkflowRunId,
           redact: { body: true, header: true },
-          failureUrl: "https://wf-test.requestcatcher.com/some-failure-callback",
+          failureUrl: `${MOCK_DESTINATION_HOST}/some-failure-callback`,
         });
       },
       responseFields: {
@@ -1188,6 +1396,91 @@ describe("workflow client", () => {
       { timeout: 20000 }
     );
 
+    test(
+      "should filter logs by multiple workflowUrls (OR) - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        // unique urls so the filter only matches runs from this test
+        const urlA = `${MOCK_DESTINATION_HOST}/log-url-a-${nanoid()}`;
+        const urlB = `${MOCK_DESTINATION_HOST}/log-url-b-${nanoid()}`;
+        const urlC = `${MOCK_DESTINATION_HOST}/log-url-c-${nanoid()}`;
+
+        const { workflowRunId: runA } = await liveClient.trigger({ url: urlA, delay: "1m" });
+        const { workflowRunId: runB } = await liveClient.trigger({ url: urlB, delay: "1m" });
+        const { workflowRunId: runC } = await liveClient.trigger({ url: urlC, delay: "1m" });
+
+        try {
+          // filtering by [urlA, urlB] should return runA and runB but NOT runC.
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { workflowUrl: [urlA, urlB] } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(runA);
+              expect(ids).toContain(runB);
+              expect(ids).not.toContain(runC);
+            },
+            { timeout: 5000, interval: 250 }
+          );
+        } finally {
+          await liveClient.cancel([runA, runB, runC]).catch(() => {});
+        }
+      },
+      { timeout: 20000 }
+    );
+
+    test(
+      "should filter logs by destination host and path - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        const comPath = `/log-host-com-${nanoid()}`;
+        const orgPath = `/log-host-org-${nanoid()}`;
+
+        const { workflowRunId: comRun } = await liveClient.trigger({
+          url: `https://example.com${comPath}`,
+          delay: "1m",
+        });
+        const { workflowRunId: orgRun } = await liveClient.trigger({
+          url: `https://example.org${orgPath}`,
+          delay: "1m",
+        });
+
+        try {
+          // host discriminates: example.org excludes the example.com run
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { host: "example.org" } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(orgRun);
+              expect(ids).not.toContain(comRun);
+            },
+            { timeout: 10000, interval: 500 }
+          );
+
+          // path discriminates: the unique example.com path excludes the example.org run
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { path: comPath } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(comRun);
+              expect(ids).not.toContain(orgRun);
+            },
+            { timeout: 10000, interval: 500 }
+          );
+        } finally {
+          await liveClient.cancel([comRun, orgRun]).catch(() => {});
+        }
+      },
+      { timeout: 25000 }
+    );
+
     test.skip(
       "should get logs - live",
       async () => {
@@ -1358,7 +1651,7 @@ describe("workflow client", () => {
             url: "https://httpstat.us/400",
             workflowRunCreatedAt: 0,
           }),
-          failureUrl: "https://400check.requestcatcher.com/",
+          failureUrl: `${MOCK_DESTINATION_HOST}/`,
           retries: 0,
         });
         expect(result.isOk()).toBe(true);
@@ -1485,7 +1778,7 @@ describe("workflow client", () => {
                 "upstash-method": "POST",
                 "upstash-workflow-init": "true",
                 "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
-                "upstash-workflow-url": "https://wf-test.requestcatcher.com/api",
+                "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
                 "content-type": "application/json",
                 "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-label": "valid_label.1",
@@ -1497,7 +1790,7 @@ describe("workflow client", () => {
                 "upstash-telemetry-sdk": expect.stringContaining("@upstash/workflow"),
                 "upstash-workflow-sdk-version": "1",
                 "upstash-failure-callback-forward-upstash-label": "valid_label.1",
-                "upstash-failure-callback": "https://wf-test.requestcatcher.com/api",
+                "upstash-failure-callback": `${MOCK_DESTINATION_HOST}/api`,
                 "upstash-failure-callback-feature-set":
                   "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-failure-callback-flow-control-key": "valid-key_1.0",
@@ -1507,7 +1800,7 @@ describe("workflow client", () => {
                 "upstash-failure-callback-workflow-calltype": "failureCall",
                 "upstash-failure-callback-workflow-init": "false",
                 "upstash-failure-callback-workflow-runid": `wfr_${myWorkflowRunId}`,
-                "upstash-failure-callback-workflow-url": "https://wf-test.requestcatcher.com/api",
+                "upstash-failure-callback-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
               },
             },
           ],

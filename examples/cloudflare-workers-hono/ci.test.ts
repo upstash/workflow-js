@@ -6,6 +6,9 @@ import { serve } from "@upstash/workflow/nextjs"
 import { describe, test, expect } from "vitest"
 import { RedisEntry } from "./src/app"
 
+// Stable throwaway destination with a valid TLS cert (replaces requestcatcher.com)
+const MOCK_DESTINATION_URL = "https://example.com/"
+
 export const RETRY_COUNT = 10
 export const RETRY_INTERVAL_DURATION = 1000
 export const CHECK_WF_AFTER_INIT_DURATION = 10000
@@ -129,7 +132,7 @@ describe("cloudflare workers", () => {
   test("should send first invocation", async () => {
 
     const qstashClient = new Client({
-      baseUrl: "https://workflow-tests.requestcatcher.com/",
+      baseUrl: MOCK_DESTINATION_URL,
       token: "mock"
     })
     
@@ -147,7 +150,7 @@ describe("cloudflare workers", () => {
       }
     )
 
-    const request = new Request("https://workflow-tests.requestcatcher.com/")
+    const request = new Request(MOCK_DESTINATION_URL)
     const response = await serveHandler(request)
 
     // it should send a request, but get failed to parse error because
