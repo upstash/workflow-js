@@ -7,6 +7,7 @@ import {
   eventually,
 } from "../test-utils";
 import { Client } from ".";
+import type { WorkflowRunCancelFilters } from "./filter-types";
 import { Client as QStashClient } from "@upstash/qstash";
 import { getWorkflowRunId, nanoid } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
@@ -544,6 +545,23 @@ describe("workflow client", () => {
       token: process.env.QSTASH_TOKEN!,
     });
 
+    // Cancel-by-filter on live QStash is eventually consistent: a run triggered
+    // moments ago may not be matched by the very next cancel call. Poll,
+    // accumulating cancelled counts, until the expected total is reached (or the
+    // deadline passes) so indexing lag doesn't flake the assertions below.
+    const cancelExpecting = async (
+      request: WorkflowRunCancelFilters | { urlStartingWith: string },
+      expected: number
+    ): Promise<number> => {
+      let cancelled = 0;
+      const deadline = Date.now() + 10_000;
+      for (;;) {
+        cancelled += (await liveClient.cancel(request)).cancelled;
+        if (cancelled >= expected || Date.now() > deadline) return cancelled;
+        await Bun.sleep(500);
+      }
+    };
+
     test(
       "should cancel single workflow run id",
       async () => {
@@ -595,23 +613,15 @@ describe("workflow client", () => {
     test(
       "should cancel with workflowUrlStartingWith (prefix match)",
       async () => {
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}//first`,
-          delay: "2s",
-        });
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}//second`,
-          delay: "2s",
-        });
+        // unique per run so leftovers from an earlier failed run can't inflate the count
+        const prefix = `${MOCK_DESTINATION_HOST}/prefix-${nanoid()}/`;
+        await liveClient.trigger({ url: `${prefix}first`, delay: "1m" });
+        await liveClient.trigger({ url: `${prefix}second`, delay: "1m" });
 
-        const cancel = await liveClient.cancel({
-          urlStartingWith: `${MOCK_DESTINATION_HOST}//`,
-        });
-
-        expect(cancel).toEqual({ cancelled: 2 });
+        expect(await cancelExpecting({ urlStartingWith: prefix }, 2)).toBe(2);
       },
       {
-        timeout: 10000,
+        timeout: 30000,
       }
     );
 
@@ -620,59 +630,53 @@ describe("workflow client", () => {
       async () => {
         const label = `test-label-${nanoid()}`;
 
+        // delay keeps the runs pending: without it prod can deliver (and finish)
+        // a run before the cancel-by-label lands, undercounting the result
         await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
+          delay: "1m",
         });
         await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
+          delay: "1m",
         });
         // different label, should not be cancelled
         const { workflowRunId: id3 } = await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/label-test`,
           label: `other-label-${nanoid()}`,
+          delay: "1m",
         });
 
-        const cancel = await liveClient.cancel({ filter: { label } });
-        expect(cancel).toEqual({ cancelled: 2 });
-
-        // clean up the remaining workflow
-        await liveClient.cancel(id3);
+        try {
+          expect(await cancelExpecting({ filter: { label } }, 2)).toBe(2);
+        } finally {
+          // clean up the remaining workflow
+          await liveClient.cancel(id3).catch(() => {});
+        }
       },
       {
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
     test(
       "should cancel with workflowUrl (exact match)",
       async () => {
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}/exact-match-test`,
-          delay: "1m",
-        });
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}/exact-match-test/sub-path`,
-          delay: "1m",
-        });
+        // unique per run so leftovers from an earlier failed run can't inflate the count
+        const base = `${MOCK_DESTINATION_HOST}/exact-match-${nanoid()}`;
+        await liveClient.trigger({ url: base, delay: "1m" });
+        await liveClient.trigger({ url: `${base}/sub-path`, delay: "1m" });
 
         // exact match should only cancel the exact URL
-        const cancel = await liveClient.cancel({
-          filter: {
-            workflowUrl: `${MOCK_DESTINATION_HOST}/exact-match-test`,
-          },
-        });
-        expect(cancel).toEqual({ cancelled: 1 });
+        expect(await cancelExpecting({ filter: { workflowUrl: base } }, 1)).toBe(1);
 
         // clean up the remaining workflow (prefix match)
-        const cleanup = await liveClient.cancel({
-          filter: { workflowUrlStartingWith: `${MOCK_DESTINATION_HOST}/exact-match-test` },
-        });
-        expect(cleanup).toEqual({ cancelled: 1 });
+        expect(await cancelExpecting({ filter: { workflowUrlStartingWith: base } }, 1)).toBe(1);
       },
       {
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
@@ -688,15 +692,14 @@ describe("workflow client", () => {
         const { workflowRunId: idC } = await liveClient.trigger({ url: urlC, delay: "1m" });
 
         // Cancelling [urlA, urlB] with exact match cancels exactly those two, not urlC.
-        const cancel = await liveClient.cancel({ filter: { workflowUrl: [urlA, urlB] } });
-        expect(cancel).toEqual({ cancelled: 2 });
+        expect(await cancelExpecting({ filter: { workflowUrl: [urlA, urlB] } }, 2)).toBe(2);
 
         // clean up the untouched run
         const cleanup = await liveClient.cancel(idC);
         expect(cleanup).toEqual({ cancelled: 1 });
       },
       {
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
@@ -708,32 +711,41 @@ describe("workflow client", () => {
         await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/combined-test`,
           label,
+          delay: "1m",
         });
         // same URL, different label — should NOT be cancelled
         const { workflowRunId: otherId } = await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/combined-test`,
           label: `other-${nanoid()}`,
+          delay: "1m",
         });
 
-        const cancel = await liveClient.cancel({
-          filter: {
-            workflowUrl: `${MOCK_DESTINATION_HOST}/combined-test`,
-            label,
-          },
-        });
-        expect(cancel).toEqual({ cancelled: 1 });
-
-        // clean up
-        await liveClient.cancel(otherId);
+        try {
+          expect(
+            await cancelExpecting(
+              { filter: { workflowUrl: `${MOCK_DESTINATION_HOST}/combined-test`, label } },
+              1
+            )
+          ).toBe(1);
+        } finally {
+          // clean up
+          await liveClient.cancel(otherId).catch(() => {});
+        }
       },
       {
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
     test(
       "should cancel by destination host and path",
       async () => {
+        // The hosts are shared across runs (prod refuses trigger URLs whose host
+        // doesn't resolve, so they can't be made unique) — sweep leftovers from
+        // earlier failed runs so they can't inflate this run's counts.
+        await liveClient.cancel({ filter: { host: "example.org" } }).catch(() => {});
+        await liveClient.cancel({ filter: { host: "example.com" } }).catch(() => {});
+
         const comPath = `/cancel-host-com-${nanoid()}`;
         const orgPath = `/cancel-host-org-${nanoid()}`;
 
@@ -741,15 +753,13 @@ describe("workflow client", () => {
         await liveClient.trigger({ url: `https://example.org${orgPath}`, delay: "1m" });
 
         // host example.org must not touch the example.com run
-        const byHost = await liveClient.cancel({ filter: { host: "example.org" } });
-        expect(byHost).toEqual({ cancelled: 1 });
+        expect(await cancelExpecting({ filter: { host: "example.org" } }, 1)).toBe(1);
 
         // the example.com run survived — cancel it via its unique path
-        const byPath = await liveClient.cancel({ filter: { path: comPath } });
-        expect(byPath).toEqual({ cancelled: 1 });
+        expect(await cancelExpecting({ filter: { path: comPath } }, 1)).toBe(1);
       },
       {
-        timeout: 15000,
+        timeout: 30000,
       }
     );
 
@@ -779,8 +789,7 @@ describe("workflow client", () => {
 
         try {
           // each label individually should match the run
-          const cancelByFirst = await liveClient.cancel({ filter: { label: labelOne } });
-          expect(cancelByFirst).toEqual({ cancelled: 1 });
+          expect(await cancelExpecting({ filter: { label: labelOne } }, 1)).toBe(1);
 
           // second cancel is a no-op since the run is already cancelled
           const cancelBySecond = await liveClient.cancel({ filter: { label: labelTwo } });
@@ -790,7 +799,7 @@ describe("workflow client", () => {
           await liveClient.cancel(workflowRunId).catch(() => {});
         }
       },
-      { timeout: 15000 }
+      { timeout: 30000 }
     );
   });
 
