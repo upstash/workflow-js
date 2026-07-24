@@ -3,7 +3,7 @@
  * Tests credential resolution and region handling.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Client, Receiver } from "@upstash/qstash";
 import {
   getRegionFromEnvironment,
@@ -12,6 +12,25 @@ import {
   readReceiverEnvironmentVariables,
 } from "./utils";
 import { getQStashHandlerOptions } from "./handlers";
+
+// Constructing handler options with QSTASH_DEV=true makes the QStash Client
+// fire a fire-and-forget dev-server spawn, which also latches a process-wide
+// singleton inside @upstash/qstash — a later startDevServer() in the same bun
+// process (dev-server-integration.test.ts) then no-ops on its own port.
+// NODE_ENV=production short-circuits the spawn while leaving dev-mode
+// credential resolution intact, keeping this file a pure unit test.
+const processEnvironment = process.env as Record<string, string | undefined>;
+let previousNodeEnvironment: string | undefined;
+
+beforeAll(() => {
+  previousNodeEnvironment = processEnvironment.NODE_ENV;
+  processEnvironment.NODE_ENV = "production";
+});
+
+afterAll(() => {
+  if (previousNodeEnvironment === undefined) delete processEnvironment.NODE_ENV;
+  else processEnvironment.NODE_ENV = previousNodeEnvironment;
+});
 
 // Helper to create a clean environment for each test
 const createEnvironment = (
