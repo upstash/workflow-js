@@ -425,7 +425,10 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # node 24 so we get npm 11: npm 10 (bundled with node 20) crashes
+          # with "Cannot read properties of null (reading 'edgesOut')" on the
+          # vite 8 / @vitejs/devtools peer-dependency cycle pulled in by nuxt.
+          node-version: 24
 
       - name: Install Dependencies
         run: npm install

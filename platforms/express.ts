@@ -8,6 +8,7 @@ import {
   RequestHandler,
 } from "express";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 const isEmptyRequest = (req: ExpressRequest) => {
   return (
@@ -83,6 +84,8 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): Router {
+  void startDevServer();
+
   const router = Router();
 
   const handler: RequestHandler = createExpressHandler([routeFunction, options]);
@@ -108,6 +111,10 @@ export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
   options?: Parameters<typeof serveManyBase>[0]["options"]
 ) => {
+  // serveMany's serveMethod uses createExpressHandler (not serve), so start the
+  // dev server here too. No-op unless QSTASH_DEV is set.
+  void startDevServer();
+
   const router = Router();
 
   const { handler } = serveManyBase<ReturnType<typeof createExpressHandler>>({

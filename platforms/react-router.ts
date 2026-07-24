@@ -2,6 +2,7 @@ import type { WorkflowServeOptions, RouteFunction, Telemetry, InvokableWorkflow 
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 const telemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -39,6 +40,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
+  void startDevServer();
+
   const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
     routeFunction,
     telemetry,

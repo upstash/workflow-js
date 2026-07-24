@@ -2,6 +2,7 @@ import type { InvokableWorkflow, WorkflowServeOptions, RouteFunction, Telemetry 
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveBase } from "../src/serve";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 export type WorkflowBindings = {
   QSTASH_TOKEN: string;
@@ -69,6 +70,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 ): {
   fetch: (...args: PagesHandlerArgs | WorkersHandlerArgs) => Promise<Response>;
 } => {
+  void startDevServer();
+
   const fetch = async (...args: PagesHandlerArgs | WorkersHandlerArgs) => {
     const { request, env } = getArgs(args);
     const { handler: serveHandler } = serveBase(routeFunction, telemetry, {

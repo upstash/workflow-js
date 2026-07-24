@@ -58,7 +58,7 @@ const createRegionalHandler = (
   environment: Record<string, string | undefined>,
   receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set",
   region?: QStashRegion,
-  clientOptions?: Omit<ConstructorParameters<typeof Client>[0], "baseUrl" | "token">
+  clientOptions?: QStashClientExtraConfig
 ): RegionalHandler => {
   const clientEnv = readClientEnvironmentVariables(environment, region);
 
@@ -66,6 +66,12 @@ const createRegionalHandler = (
     ...clientOptions,
     baseUrl: clientEnv.QSTASH_URL!,
     token: clientEnv.QSTASH_TOKEN!,
+    // Mirror the receiver's dev-mode decision so a single QSTASH_DEV=true points
+    // the client at the local dev server too. Without this the QStash Client
+    // re-derives dev mode from its own process.env, which is blind to the
+    // Cloudflare worker `env` binding that actually carries QSTASH_DEV there.
+    // An explicit devMode in the user's client config still wins.
+    devMode: clientOptions?.devMode ?? isQStashDevModeEnabled(environment),
   });
   const receiver = getReceiver(environment, receiverConfig, region);
 
@@ -151,6 +157,8 @@ const getQStashHandlers = ({
                 ...qstashClientOption,
                 baseUrl: environment.QSTASH_URL!,
                 token: environment.QSTASH_TOKEN!,
+                // Mirror the receiver's dev-mode decision (see createRegionalHandler).
+                devMode: qstashClientOption?.devMode ?? isQStashDevModeEnabled(environment),
               }),
         receiver: getReceiver(environment, receiverConfig),
       },
