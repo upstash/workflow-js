@@ -1,5 +1,5 @@
 import { Client as QStashClient, FlowControl } from "@upstash/qstash";
-import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
+import { DLQResumeRestartOptions, DLQResumeRestartResponse, FailureFunctionState } from "./types";
 import {
   assertNonEmptyId,
   buildBulkActionQueryParameters,
@@ -15,7 +15,7 @@ type ResumeRestartOptions = {
 };
 
 type FailureCallbackInfo = {
-  state?: "CALLBACK_FAIL" | "CALLBACK_SUCCESS" | "CALLBACK_INPROGRESS" | "CALLBACK_CANCELED";
+  state?: FailureFunctionState;
   responseStatus?: number;
   responseBody?: string;
   responseHeaders?: Record<string, string[]>;

@@ -1,6 +1,6 @@
 // ── Filter Utility Types ──────────────────────────────────────
 
-import { WorkflowRunLog } from "./types";
+import { FailureFunctionState, WorkflowRunLog } from "./types";
 
 // Intersecting with T keeps every field visible to autocomplete/inference;
 // the single-property union alone only enforces the "at least one" constraint.
@@ -38,7 +38,11 @@ type WorkflowFilterFields = {
   workflowUrl?: string | string[];
   workflowRunId?: string;
   workflowCreatedAt?: number;
-  failureFunctionState?: string;
+  /**
+   * Filter by the state of the failure function call. Supports multiple values:
+   * pass an array to match runs in any of the given states (OR semantics).
+   */
+  failureFunctionState?: FailureFunctionState | FailureFunctionState[];
 };
 
 type WorkflowLogsFilterFields = {

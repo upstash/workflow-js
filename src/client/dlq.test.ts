@@ -396,6 +396,30 @@ describe("DLQ", () => {
       });
     });
 
+    test("should resume DLQ messages with multiple failureFunctionStates (OR filter)", async () => {
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume({
+            filter: { failureFunctionState: ["CALLBACK_FAIL", "CALLBACK_CANCELED"] },
+          });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?failureFunctionState=CALLBACK_FAIL&failureFunctionState=CALLBACK_CANCELED&count=100`,
+          token,
+        },
+      });
+    });
+
     test("should resume all DLQ messages", async () => {
       const responses = [
         { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
