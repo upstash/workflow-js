@@ -5,9 +5,8 @@ import { Client } from "@upstash/qstash";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { nanoid } from "../utils";
 import { AutoExecutor } from "./auto-executor";
-import type { Step } from "../types";
+import type { Step, StepSettings } from "../types";
 import { WorkflowAbort, WorkflowError } from "../error";
-import { flushPendingStep } from "../workflow-requests";
 
 class SpyAutoExecutor extends AutoExecutor {
   public declare getParallelCallState;
@@ -84,13 +83,14 @@ describe("auto-executor", () => {
     },
   ];
 
-  const getContext = (steps: Step[]) => {
+  const getContext = (steps: Step[], discoveryTargets?: Set<number>) => {
     return new SpyWorkflowContext({
       qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false }),
       workflowRunId,
       initialPayload,
       headers: new Headers({}) as Headers,
       steps,
+      discoveryTargets,
       url: WORKFLOW_ENDPOINT,
       invokeCount: 7,
       workflowRunCreatedAt: 0,
@@ -105,15 +105,11 @@ describe("auto-executor", () => {
       const spyRunParallel = spyOn(context.executor, "runParallel");
 
       await mockQStashServer({
-        execute: async () => {
-          // the step executes and its result is returned. The submission is
-          // deferred until the next step is discovered or the workflow
-          // function ends (flushPendingStep):
-          const result = await context.run("attemptCharge", () => {
+        execute: () => {
+          const throws = context.run("attemptCharge", () => {
             return { input: context.requestPayload, success: false };
           });
-          expect(result).toEqual({ input: initialPayload, success: false });
-          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
+          expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -599,31 +595,73 @@ describe("auto-executor", () => {
   });
 
   describe("step-level settings", () => {
-    test("should attach the next step's settings to the current step's submission", async () => {
+    const settings: StepSettings = {
+      flowControl: { key: "step-flow-key", parallelism: 2, rate: 10 },
+      retries: 5,
+      retryDelay: "1000",
+      timeout: "30s",
+    };
+
+    test("should request a redelivery instead of executing a step with settings", async () => {
       const context = getContext([initialStep]);
 
+      let stepExecuted = false;
       await mockQStashServer({
         execute: async () => {
-          // the step executes and returns its result, so that the workflow
-          // function can continue and reveal the next step:
-          const result = await context.run("attemptCharge", () => {
-            return { input: context.requestPayload, success: false };
-          });
-          expect(result).toEqual({ input: initialPayload, success: false });
+          const throws = context
+            .run("attemptCharge", () => {
+              stepExecuted = true;
+              return "result";
+            })
+            .withSettings(settings);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: { messageId: "msgId" },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          // the target step makes the request unique per step, so that
+          // QStash doesn't deduplicate redeliveries of different steps
+          body: { discoveryTargetStep: 1 },
+          headers: {
+            "upstash-workflow-calltype": "discovery",
+            "upstash-workflow-runid": workflowRunId,
+            "upstash-workflow-init": "false",
+            "upstash-workflow-url": WORKFLOW_ENDPOINT,
+            "upstash-feature-set":
+              "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+            "upstash-flow-control-key": "step-flow-key",
+            "upstash-flow-control-value": "parallelism=2, rate=10",
+            "upstash-retries": "5",
+            "upstash-retry-delay": "1000",
+            "upstash-timeout": "30s",
+          },
+        },
+      });
 
-          // the result of the branching depends on the step result. The
-          // settings of the discovered next step are attached to the
-          // submission of the previous step's result:
-          const throws = result.success
-            ? context.run("unexpected-branch", () => "not-executed")
-            : context
-                .run("second-step", () => "not-executed")
-                .withSettings({
-                  flowControl: { key: "step-flow-key", parallelism: 2, rate: 10 },
-                  retries: 5,
-                  retryDelay: "1000",
-                  timeout: "30s",
-                });
+      // the step must not run in the ungated delivery. It runs when
+      // QStash delivers the redelivery published above.
+      expect(stepExecuted).toBeFalse();
+    });
+
+    test("should execute the step when its redelivery was already published", async () => {
+      // the run already has a discovery entry targeting step 1, so the
+      // delivery we are in is the gated one
+      const context = getContext([initialStep], new Set([1]));
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          const throws = context
+            .run("attemptCharge", () => {
+              stepExecuted = true;
+              return { input: context.requestPayload, success: false };
+            })
+            .withSettings(settings);
           await expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
@@ -640,40 +678,37 @@ describe("auto-executor", () => {
               headers: {
                 "upstash-workflow-sdk-version": "1",
                 "content-type": "application/json",
-                "upstash-feature-set":
-                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                // the result submission carries no step settings: the
+                // settings belonged to the delivery which executed the step
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
                 "upstash-workflow-runid": workflowRunId,
                 "upstash-workflow-init": "false",
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-forward-upstash-workflow-invoke-count": "7",
-                "upstash-flow-control-key": "step-flow-key",
-                "upstash-flow-control-value": "parallelism=2, rate=10",
-                "upstash-retries": "5",
-                "upstash-retry-delay": "1000",
-                "upstash-timeout": "30s",
               },
-              body: JSON.stringify({
-                ...singleStep,
-              }),
+              body: JSON.stringify({ ...singleStep }),
             },
           ],
         },
       });
+
+      expect(stepExecuted).toBeTrue();
     });
 
-    test("should not attach settings when the next step has none", async () => {
+    test("should not redeliver a step whose settings produce no headers", async () => {
       const context = getContext([initialStep]);
 
+      let stepExecuted = false;
       await mockQStashServer({
         execute: async () => {
-          const result = await context.run("attemptCharge", () => {
-            return { input: context.requestPayload, success: false };
-          });
-          expect(result).toEqual({ input: initialPayload, success: false });
-
-          const throws = context.run("second-step", () => "not-executed");
+          const throws = context
+            .run("attemptCharge", () => {
+              stepExecuted = true;
+              return { input: context.requestPayload, success: false };
+            })
+            .withSettings({});
           await expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
@@ -698,16 +733,18 @@ describe("auto-executor", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-forward-upstash-workflow-invoke-count": "7",
               },
-              body: JSON.stringify({
-                ...singleStep,
-              }),
+              body: JSON.stringify({ ...singleStep }),
             },
           ],
         },
       });
+
+      expect(stepExecuted).toBeTrue();
     });
 
     test("should attach each parallel step's own settings to its plan step", async () => {
+      // a plan step's delivery is what executes its target step, so the
+      // settings ride on the plan step and no redelivery is needed
       const context = getContext([initialStep]);
 
       await mockQStashServer({

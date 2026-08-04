@@ -189,7 +189,6 @@ describe("serveMany", () => {
             headers: {
               "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Result": ["true"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
               "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1/)],
@@ -365,7 +364,6 @@ describe("serveMany", () => {
             headers: {
               "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Result": ["true"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
               "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1/)],
@@ -416,7 +414,6 @@ describe("serveMany", () => {
             headers: {
               "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Result": ["true"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
               "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1/)],
@@ -522,7 +519,6 @@ describe("serveMany", () => {
             headers: {
               "Upstash-Feature-Set": ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],
               "Upstash-Forward-Upstash-Workflow-Sdk-Version": ["1"],
-              "Upstash-Forward-Upstash-Workflow-Invoke-Result": ["true"],
               "Upstash-Telemetry-Framework": ["nextjs"],
               "Upstash-Telemetry-Runtime": [expect.any(String)],
               "Upstash-Telemetry-Sdk": [expect.stringMatching(/^@upstash\/workflow@v1/)],

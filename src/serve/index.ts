@@ -3,7 +3,6 @@ import {
   SDK_TELEMETRY,
   WORKFLOW_CREATED_AT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
-  WORKFLOW_INVOKE_RESULT_HEADER,
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_ERROR_STEP_NAME_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
@@ -31,7 +30,6 @@ import {
   verifyRequest,
 } from "../workflow-requests";
 import { DisabledWorkflowContext } from "./authorization";
-import { makeNextStepDiscovery, publishStepSettingsRedelivery } from "./discovery";
 import { getHandlersForRequest } from "./multi-region/handlers";
 import {
   AUTH_FAIL_MESSAGE,
@@ -127,15 +125,16 @@ export const serveBase = <
     });
 
     // parse steps
-    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest({
-      requestPayload,
-      isFirstInvocation,
-      unknownSdk,
-      workflowRunId,
-      requester: regionalClient.http,
-      messageId: request.headers.get("upstash-message-id")!,
-      dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
-    });
+    const { rawInitialPayload, steps, discoveryTargets, isLastDuplicate, workflowRunEnded } =
+      await parseRequest({
+        requestPayload,
+        isFirstInvocation,
+        unknownSdk,
+        workflowRunId,
+        requester: regionalClient.http,
+        messageId: request.headers.get("upstash-message-id")!,
+        dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
+      });
 
     if (workflowRunEnded) {
       return responseGenerator(
@@ -204,6 +203,7 @@ export const serveBase = <
         : initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
+      discoveryTargets,
       url: workflowUrl,
       env,
       telemetry,
@@ -235,15 +235,6 @@ export const serveBase = <
       );
     }
 
-    // discovers the step-level settings of the next step by replaying
-    // the route function, so that the settings can be applied to the
-    // request which will execute the next step
-    const discoverNextStep = makeNextStepDiscovery({
-      routeFunction,
-      workflowContext,
-      initialPayloadParser,
-    });
-
     // check if request is a third party call result
     const callReturnCheck = await handleThirdPartyCallResult({
       request,
@@ -252,45 +243,10 @@ export const serveBase = <
       workflowUrl,
       telemetry,
       middlewareManager,
-      discoverNextStep,
     });
     if (callReturnCheck.isErr()) {
       throw callReturnCheck.error;
     } else if (callReturnCheck.value === "continue-workflow") {
-      // If this delivery carries the result of a context.invoke step
-      // (marked by the SDK when submitting the invoke), discover the next
-      // step before executing it: when the next step has step-level
-      // settings, this delivery was made without them, so instead of
-      // executing the step, request a redelivery with the settings
-      // applied. The redelivery is not marked, so it executes the step
-      // as usual.
-      if (!isFirstInvocation && request.headers.get(WORKFLOW_INVOKE_RESULT_HEADER) === "true") {
-        const nextStepSettings = await discoverNextStep({
-          steps,
-          rawInitialPayload,
-          invokeCount,
-        });
-        if (nextStepSettings) {
-          await middlewareManager.dispatchDebug("onInfo", {
-            info: `Discovered step-level settings for the next step. Requesting a redelivery with the settings applied.`,
-          });
-          await publishStepSettingsRedelivery({
-            client: regionalClient,
-            workflowRunId,
-            workflowUrl,
-            stepSettings: nextStepSettings,
-            targetStep: steps.length,
-            invokeCount,
-            telemetry,
-          });
-          return responseGenerator(
-            createResponseData(workflowRunId, {
-              condition: "step-settings-redelivery",
-            })
-          );
-        }
-      }
-
       // request is not third party call. Continue workflow as usual
       const result = isFirstInvocation
         ? await triggerFirstInvocation({
@@ -308,7 +264,6 @@ export const serveBase = <
               }
               return await routeFunction(workflowContext);
             },
-            workflowContext,
             onCleanup: async (result) => {
               await middlewareManager.dispatchLifecycle("runCompleted", {
                 result,

@@ -8,13 +8,11 @@ import { expect, testServe } from "app/ci/utils";
  * this route tests step-level flow control on a step which comes right
  * after a context.invoke step.
  *
- * When the invoked workflow finishes, QStash delivers the result step to
- * the invoker endpoint with a marker header. Seeing the marker, the SDK
- * first discovers the next step by replaying the workflow: since the
- * next step has step-level settings, the SDK requests a redelivery with
- * the settings applied instead of executing the step in the ungated
- * delivery. The redelivery executes the step under the step-level flow
- * control.
+ * When the invoked workflow finishes, QStash delivers its result to the
+ * invoker endpoint. That delivery is published by QStash itself and
+ * isn't gated by the step settings, so on reaching `increment` the SDK
+ * publishes a hidden redelivery carrying the settings and the step
+ * executes there.
  *
  * the test triggers multiple concurrent runs. The `increment` step has
  * step-level parallelism of 1: only one run at a time may execute it,

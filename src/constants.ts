@@ -9,23 +9,12 @@ export const WORKFLOW_FAILURE_CALLBACK_HEADER = "Upstash-Workflow-Failure-Callba
 export const WORKFLOW_FEATURE_HEADER = "Upstash-Feature-Set";
 export const WORKFLOW_FEATURE_SET = "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig";
 /**
- * header which marks the delivery carrying the result of a
- * `context.invoke` step.
- *
- * Sent by the SDK in the invoker headers of a `context.invoke`
- * submission (as a forwarded header), so that QStash includes it in the
- * request which delivers the invoke result back to the invoker workflow.
- *
- * When the SDK receives a request with this header, it discovers the
- * next step of the workflow before executing it: if the next step has
- * step-level settings, a redelivery with the settings is requested
- * instead of executing the step in the current (ungated) delivery.
- */
-export const WORKFLOW_INVOKE_RESULT_HEADER = "Upstash-Workflow-Invoke-Result";
-/**
  * call type of the hidden helper request which makes QStash call the
  * workflow endpoint again with step-level settings applied. QStash
  * doesn't treat it as a step and hides it from the step logs.
+ *
+ * The SDK publishes one when it is about to execute a step which has
+ * step-level settings in a delivery which wasn't gated by them.
  */
 export const WORKFLOW_DISCOVERY_CALL_TYPE = "discovery";
 /**

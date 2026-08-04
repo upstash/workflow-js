@@ -21,22 +21,22 @@ this and saves `...-ok` or `...-violated` as its result.
 
 ## Routes
 
-Step-level settings are applied to the request whose delivery executes the
-step. Each route covers a different way that request is produced:
+Step-level settings must be on the request whose delivery executes the step.
+The SDK only learns about a step when the workflow function is replayed, which
+happens in a delivery published before the step was known. So when the executor
+reaches a step with settings in an ungated delivery, it publishes a hidden
+`discovery` request carrying the settings instead of executing the step; QStash
+delivers that request gated by the step-level flow control and the step runs
+there. The three routes cover the ways the ungated delivery is produced:
 
-- **`step`**: the gated step comes after a `context.run` step. The settings
-  are discovered by continuing the workflow function after the previous step
-  executes (deferred submission), and ride on the previous step's result
-  submission.
-- **`call`**: the gated step comes after a `context.call` step. The settings
-  can only be discovered when the call result arrives: the SDK fetches the
-  run's steps, replays the workflow with the result (discovery mode) and
-  attaches the discovered settings to the call result submission.
-- **`invoke`**: the gated step comes after a `context.invoke` step. The
-  invoke result delivery carries a marker header; seeing it, the SDK replays
-  the workflow with the delivered steps (no extra fetch) before executing
-  anything. Since the next step has settings, the SDK requests a hidden
-  redelivery with the settings applied instead of executing the step in the
-  ungated delivery. The redelivery then executes the step under the
-  step-level flow control. (When the next step has no settings, the step is
-  executed directly in the same delivery, without the extra request.)
+- **`step`**: the gated step comes after a `context.run` step, so the ungated
+  delivery is the one carrying the previous step's result.
+- **`call`**: the gated step comes after a `context.call` step, so the ungated
+  delivery is the one carrying the call result the SDK republished.
+- **`invoke`**: the gated step comes after a `context.invoke` step, so the
+  ungated delivery is the one QStash publishes with the invoked run's result.
+
+The mechanism is the same in all three; the routes exist to prove it doesn't
+depend on how the previous step's result reached the endpoint. Steps running in
+parallel are the one case which needs no extra request: each carries its
+settings on its own plan step, whose delivery executes it.

@@ -1,6 +1,6 @@
-import { NO_CONCURRENCY } from "../constants";
+import { NO_CONCURRENCY, WORKFLOW_DISCOVERY_CALL_TYPE } from "../constants";
 import { attachStepNameToError, WorkflowAbort } from "../error";
-import { Step, StepSettings, Telemetry } from "../types";
+import { Step, Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
 import { getHeaders, getStepSettingsHeaders } from "./headers";
@@ -118,11 +118,6 @@ export const executeStep = async ({
 /**
  * Submits an executed step's result to QStash.
  *
- * If `nextStepSettings` is passed, the step-level settings of the next
- * step are attached to the request. Since the delivery of this request
- * is what executes the next step, this is how step-level settings
- * (flow control, retries) are applied to the next step.
- *
  * @param context workflow context
  * @param lazyStep lazy step which was executed
  * @param resultStep result step to submit
@@ -130,7 +125,6 @@ export const executeStep = async ({
  * @param concurrency concurrency level
  * @param telemetry optional telemetry information
  * @param dispatchDebug debug event dispatcher
- * @param nextStepSettings step-level settings of the next step
  */
 export const submitStepResult = async ({
   context,
@@ -140,7 +134,6 @@ export const submitStepResult = async ({
   concurrency,
   telemetry,
   dispatchDebug,
-  nextStepSettings,
 }: {
   context: WorkflowContext;
   lazyStep: BaseLazyStep;
@@ -149,7 +142,6 @@ export const submitStepResult = async ({
   concurrency: number;
   telemetry?: Telemetry;
   dispatchDebug: DispatchDebug;
-  nextStepSettings?: StepSettings;
 }) => {
   const { headers } = lazyStep.getHeaders({
     context,
@@ -158,15 +150,10 @@ export const submitStepResult = async ({
     telemetry,
   });
 
-  const finalHeaders = {
-    ...headers,
-    ...getStepSettingsHeaders(nextStepSettings),
-  };
-
   const body = lazyStep.getBody({
     context,
     step: resultStep,
-    headers: finalHeaders,
+    headers,
     invokeCount,
     telemetry,
   });
@@ -174,7 +161,7 @@ export const submitStepResult = async ({
   const submitResult = await lazyStep.submitStep({
     context,
     body,
-    headers: finalHeaders,
+    headers,
     isParallel: concurrency !== NO_CONCURRENCY,
     invokeCount,
     step: resultStep,
@@ -237,4 +224,83 @@ export const submitSingleStep = async ({
     telemetry,
     dispatchDebug,
   });
+};
+
+/**
+ * Publishes a hidden helper request which makes QStash call the workflow
+ * endpoint again, this time with the step-level settings of the step
+ * which is about to execute.
+ *
+ * A step's settings must be on the request whose delivery executes the
+ * step. The request delivered to the endpoint right now was published
+ * before the step was known, so it carries the settings of the run
+ * instead. Rather than executing the step in this (ungated) delivery, we
+ * publish this request with the settings: QStash delivers it gated by
+ * the step-level flow control / retries, and that delivery executes the
+ * step.
+ *
+ * The request has the `discovery` call type: QStash doesn't treat it as
+ * a step and hides it from the step logs. Its body carries the target
+ * step id, which
+ * - makes the request unique per step, so that QStash's content based
+ *   deduplication doesn't collapse the redeliveries of two steps, while
+ *   still collapsing a duplicate publish for the same step (which is
+ *   what happens when a delivery is retried after publishing it), and
+ * - lets the executor recognize, on the redelivery, that the step it is
+ *   about to run was already gated (see `parseDiscoveryTargets`).
+ *
+ * @param context workflow context
+ * @param lazyStep lazy step whose settings are applied
+ * @param targetStep id of the step which the redelivery will execute
+ * @param invokeCount current invoke count
+ * @param telemetry optional telemetry information
+ * @param dispatchDebug debug event dispatcher
+ */
+export const publishStepSettingsRedelivery = async ({
+  context,
+  lazyStep,
+  targetStep,
+  invokeCount,
+  telemetry,
+  dispatchDebug,
+}: {
+  context: WorkflowContext;
+  lazyStep: BaseLazyStep;
+  targetStep: number;
+  invokeCount: number;
+  telemetry?: Telemetry;
+  dispatchDebug: DispatchDebug;
+}) => {
+  const { headers } = getHeaders({
+    initHeaderValue: "false",
+    workflowConfig: {
+      workflowRunId: context.workflowRunId,
+      workflowUrl: context.url,
+      telemetry,
+    },
+    invokeCount,
+  });
+
+  await dispatchDebug("onInfo", {
+    info:
+      `Step "${lazyStep.stepName}" (${targetStep}) has step-level settings.` +
+      ` Requesting a redelivery with the settings applied.`,
+  });
+
+  const result = (await context.qstashClient.publishJSON({
+    headers: {
+      ...headers,
+      ...getStepSettingsHeaders(lazyStep.stepSettings),
+      "Upstash-Workflow-CallType": WORKFLOW_DISCOVERY_CALL_TYPE,
+    },
+    method: "POST",
+    body: { discoveryTargetStep: targetStep },
+    url: context.url,
+  })) as { messageId?: string };
+
+  if (result?.messageId) {
+    await dispatchDebug("onInfo", {
+      info: `Requested redelivery for step "${lazyStep.stepName}" with messageId: ${result.messageId}.`,
+    });
+  }
 };

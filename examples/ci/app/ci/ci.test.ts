@@ -18,12 +18,16 @@ describe("workflow integration tests", () => {
   // must gate the runs even though the trigger-level flow control is
   // permissive. Each run asserts that it never observed more concurrency
   // than the step-level parallelism allows.
+  // the routes differ in how the ungated delivery which reaches the
+  // gated step is produced.
   const flowControlRoutes = [
-    // step after context.run (settings attached with deferred submission)
+    // the gated step is the first step of the run
+    "flow-control/first-step",
+    // the gated step comes after a context.run step
     "flow-control/step",
-    // step after context.call (settings discovered when the call result arrives)
+    // the gated step comes after a context.call step
     "flow-control/call",
-    // step after context.invoke (settings discovered when the invoke result arrives)
+    // the gated step comes after a context.invoke step
     "flow-control/invoke/workflows/invokerParent",
   ]
 

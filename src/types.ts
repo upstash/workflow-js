@@ -137,7 +137,6 @@ export type FinishCondition =
   | "failure-callback-executed"
   | "failure-callback-undefined"
   | "workflow-already-ended"
-  | "step-settings-redelivery"
   | WorkflowNonRetryableError;
 
 export type DetailedFinishCondition =
@@ -398,28 +397,20 @@ export interface WaitEventOptions {
  *   });
  * ```
  *
- * The settings are applied to the request whose delivery executes the
- * step:
+ * The settings must be applied to the request whose delivery executes
+ * the step:
  *
- * - after a `context.run`/`context.sleep`/`context.sleepUntil` step, the
- *   settings ride on the previous step's result submission
- * - after a `context.call` step, the settings are discovered when the
- *   call result arrives and are attached to the call result submission
- * - after a `context.invoke` step, the settings are discovered when the
- *   invoke result arrives; the step is then executed with a redelivery
- *   which has the settings applied
- * - steps running in parallel carry their own step-level settings on
- *   their plan steps
- *
- * There are still cases where the settings can not be applied and the
- * workflow falls back to the settings passed when triggering the
- * workflow:
- *
- * - when the step is the first step of the workflow (the trigger request
- *   is what executes the first step)
- * - when the previous step is a `context.waitForEvent` or
- *   `context.waitForWebhook` step
- * - when the step comes right after a parallel step group
+ * - a step running in parallel with others carries its settings on its
+ *   own plan step, whose delivery is what executes the step. No extra
+ *   request is made.
+ * - otherwise, the SDK can only learn about the step once the workflow
+ *   function has been replayed, which happens in a delivery that was
+ *   published before the step was known. So instead of executing the
+ *   step in that (ungated) delivery, a hidden request carrying the
+ *   settings is published and the step executes when QStash delivers it.
+ *   This costs one extra message and one extra endpoint invocation per
+ *   step which uses `withSettings`. QStash hides the request from the
+ *   step logs.
  */
 export type StepSettings = {
   /**

@@ -1,36 +1,16 @@
-import {
-  attachStepNameToError,
-  isInstanceOf,
-  WorkflowAbort,
-  WorkflowDiscoveryAbort,
-  WorkflowError,
-} from "../error";
+import { attachStepNameToError, isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step, StepSettings, Telemetry } from "../types";
+import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
 import { QstashError } from "@upstash/qstash";
 import {
-  executeStep,
+  publishStepSettingsRedelivery,
   submitParallelSteps,
   submitSingleStep,
-  submitStepResult,
 } from "../qstash/submit-steps";
+import { getStepSettingsHeaders } from "../qstash/headers";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 import { NO_CONCURRENCY } from "../constants";
-
-/**
- * An executed step whose result is not submitted to QStash yet.
- *
- * The submission is deferred so that the workflow function can continue
- * with the result and reveal the next step. If the next step has
- * step-level settings (flow control, retries), they are attached to the
- * submission, since the delivery of the submitted request is what will
- * execute the next step.
- */
-type PendingStepSubmission = {
-  lazyStep: BaseLazyStep;
-  resultStep: Step;
-};
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -51,31 +31,15 @@ export class AutoExecutor {
   protected executingStep: string | false = false;
 
   /**
-   * an executed step whose result hasn't been submitted to QStash yet.
+   * ids of the steps which already have a step-level settings redelivery
+   * published (read off the hidden `discovery` entries of the run).
    *
-   * Set when a step which supports deferred submission executes. Flushed
-   * (submitted) when the next step is discovered or when the workflow
-   * function ends.
+   * When the executor is about to run a step with step-level settings, it
+   * uses this to tell whether the current delivery was gated by those
+   * settings: if the step is in this set, the redelivery was already
+   * published and this delivery is it, so the step is executed.
    */
-  private pendingSubmission?: PendingStepSubmission;
-  /**
-   * the ongoing flush of `pendingSubmission`. Always rejects with
-   * `WorkflowAbort` (or a submission error).
-   */
-  private pendingFlush?: Promise<never>;
-
-  /**
-   * whether the executor is in discovery mode.
-   *
-   * In discovery mode, memoized steps replay as usual but when a step
-   * which hasn't executed yet is reached, `WorkflowDiscoveryAbort` is
-   * thrown (carrying the step's step-level settings) instead of executing
-   * the step or making any requests.
-   *
-   * Used to discover the next step of a workflow (and its settings) when
-   * the result of a `context.call`/`context.invoke` step arrives.
-   */
-  private readonly discoveryMode: boolean;
+  private readonly discoveryTargets: Set<number>;
 
   /**
    * @param context workflow context
@@ -84,7 +48,8 @@ export class AutoExecutor {
    * @param dispatchLifecycle lifecycle event dispatcher
    * @param telemetry optional telemetry information
    * @param invokeCount optional invoke count
-   * @param discoveryMode whether the executor is in discovery mode
+   * @param discoveryTargets ids of the steps which already have a
+   *   step-level settings redelivery published
    */
   constructor(
     context: WorkflowContext,
@@ -93,7 +58,7 @@ export class AutoExecutor {
     dispatchLifecycle: DispatchLifecycle,
     telemetry?: Telemetry,
     invokeCount?: number,
-    discoveryMode?: boolean
+    discoveryTargets?: Set<number>
   ) {
     this.context = context;
     this.steps = steps;
@@ -101,7 +66,7 @@ export class AutoExecutor {
     this.dispatchLifecycle = dispatchLifecycle;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
-    this.discoveryMode = discoveryMode ?? false;
+    this.discoveryTargets = discoveryTargets ?? new Set<number>();
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -144,19 +109,6 @@ export class AutoExecutor {
     const index = this.indexInCurrentList++;
 
     const requestComplete = this.deferExecution().then(async () => {
-      // If a step was executed in this invocation and its result wasn't
-      // submitted yet, this new step is the next step of the workflow.
-      // Submit the previous step's result with the step-level settings of
-      // this step attached and abort. This step itself will be executed
-      // in the delivery of the submitted request.
-      const pendingFlush = this.flushPendingSubmission(
-        lazyStepList.length === 1 ? lazyStepList[0].stepSettings : undefined
-      );
-      if (pendingFlush) {
-        // always rejects with WorkflowAbort
-        await pendingFlush;
-      }
-
       if (!this.promises.has(lazyStepList)) {
         const promise = this.getExecutionPromise(lazyStepList);
         this.promises.set(lazyStepList, promise);
@@ -223,37 +175,20 @@ export class AutoExecutor {
       return parsedOut;
     }
 
-    if (this.discoveryMode) {
-      // reached the next step of the workflow during a discovery replay:
-      // report its settings without executing it.
-      throw new WorkflowDiscoveryAbort(lazyStep.stepName, lazyStep.stepSettings);
-    }
-
-    if (lazyStep.supportsDeferredSubmission) {
-      // Execute the step but don't submit its result yet. The result is
-      // returned so that the workflow function continues and reveals the
-      // next step, whose step-level settings (flow control, retries) must
-      // be attached to the submission of this step's result: the delivery
-      // of the submitted request is what will execute the next step.
-      //
-      // The pending submission is flushed either when the next step is
-      // added (see `addStep`) or when the workflow function ends
-      // (see `flushPendingSubmission` usage in `serve`).
-      const resultStep = await executeStep({
+    if (this.needsSettingsRedelivery(lazyStep, this.stepCount)) {
+      // The step has step-level settings but the delivery we are running
+      // in was published before the step was known, so it isn't gated by
+      // them. Request a redelivery carrying the settings instead of
+      // executing the step here; the step runs in that delivery.
+      await publishStepSettingsRedelivery({
+        context: this.context,
         lazyStep,
-        stepId: this.stepCount,
-        concurrency: NO_CONCURRENCY,
-        dispatchLifecycle: this.dispatchLifecycle,
+        targetStep: this.stepCount,
+        invokeCount: this.invokeCount,
+        telemetry: this.telemetry,
+        dispatchDebug: this.dispatchDebug,
       });
-      this.pendingSubmission = { lazyStep, resultStep };
-
-      // return the result after passing it through serialization, so that
-      // the workflow function observes the exact same value in this
-      // invocation and in the replays of the later invocations.
-      return lazyStep.parseOut({
-        ...resultStep,
-        out: resultStep.out === undefined ? undefined : JSON.stringify(resultStep.out),
-      });
+      throw new WorkflowAbort(lazyStep.stepName);
     }
 
     const resultStep = await submitSingleStep({
@@ -270,42 +205,24 @@ export class AutoExecutor {
   }
 
   /**
-   * Submits the result of the pending (executed but not yet submitted)
-   * step to QStash, attaching the step-level settings of the next step
-   * if provided.
+   * Decides whether a step which is about to execute must first be
+   * redelivered with its step-level settings applied.
    *
-   * Returns a promise which always rejects: with `WorkflowAbort` once the
-   * submission succeeds, or with the submission error otherwise.
+   * True when the step has settings which translate to headers and no
+   * redelivery was published for it yet. False once the redelivery has
+   * been published, since the delivery we are running in is then the
+   * gated one which is meant to execute the step.
    *
-   * Returns undefined if there is no pending submission.
-   *
-   * @param nextStepSettings step-level settings of the discovered next step
+   * @param lazyStep step which is about to execute
+   * @param stepId id the step will be submitted with
    */
-  public flushPendingSubmission(nextStepSettings?: StepSettings): Promise<never> | undefined {
-    if (!this.pendingSubmission) {
-      // if a flush is already in progress, return it so that concurrent
-      // callers (parallel steps added together) all reject the same way
-      return this.pendingFlush;
+  private needsSettingsRedelivery(lazyStep: BaseLazyStep, stepId: number): boolean {
+    if (!lazyStep.stepSettings || this.discoveryTargets.has(stepId)) {
+      return false;
     }
-
-    const { lazyStep, resultStep } = this.pendingSubmission;
-    this.pendingSubmission = undefined;
-
-    this.pendingFlush = (async (): Promise<never> => {
-      await submitStepResult({
-        context: this.context,
-        lazyStep,
-        resultStep,
-        invokeCount: this.invokeCount,
-        concurrency: NO_CONCURRENCY,
-        telemetry: this.telemetry,
-        dispatchDebug: this.dispatchDebug,
-        nextStepSettings,
-      });
-      throw new WorkflowAbort(lazyStep.stepName, resultStep);
-    })();
-
-    return this.pendingFlush;
+    // settings which produce no headers (`withSettings({})`) would make
+    // the redelivery a pointless extra hop
+    return Object.keys(getStepSettingsHeaders(lazyStep.stepSettings)).length > 0;
   }
 
   /**
@@ -347,14 +264,6 @@ export class AutoExecutor {
           planStepCount: this.planStepCount,
         }),
     });
-
-    if (this.discoveryMode && (parallelCallState === "first" || parallelCallState === "partial")) {
-      // reached parallel steps which haven't run yet during a discovery
-      // replay. No settings are reported: each parallel step's settings
-      // are attached to its own plan step when the plan steps are
-      // submitted in the next invocation.
-      throw new WorkflowDiscoveryAbort(parallelSteps[0].stepName);
-    }
 
     switch (parallelCallState) {
       case "first": {

@@ -7,10 +7,10 @@ import { saveResult, redis } from "app/ci/upstash/redis"
  * this route tests step-level flow control on a step which comes right
  * after a context.call step.
  *
- * the settings of the step after the call can only be discovered when
- * the call result arrives: the SDK replays the workflow with the call
- * result (discovery) and attaches the discovered settings to the call
- * result submission.
+ * the delivery which carries the call result back into the workflow is
+ * published before the SDK knows about the `increment` step, so it isn't
+ * gated. Reaching the step in that delivery, the SDK publishes a hidden
+ * redelivery carrying the step settings and the step executes there.
  *
  * the test triggers multiple concurrent runs. The `increment` step has
  * step-level parallelism of 1: only one run at a time may execute it,
@@ -63,8 +63,9 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    // trigger + call callback + call result (executes increment) + final
-    expectedCallCount: 4,
+    // trigger + call callback + call result (discovery, requests the
+    // gated redelivery) + redelivery (executes increment) + final
+    expectedCallCount: 5,
     expectedResult: "call-flow-control-ok",
     payload: undefined,
     triggerConfig: {

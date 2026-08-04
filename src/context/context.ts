@@ -191,7 +191,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     label,
     retried,
     middlewareManager,
-    discoveryMode,
+    discoveryTargets,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -207,13 +207,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
     retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
     /**
-     * whether the context is used for a discovery replay: replays
-     * memoized steps and throws `WorkflowDiscoveryAbort` when reaching a
-     * step which hasn't executed yet, without executing it.
+     * ids of the steps which already have a step-level settings
+     * redelivery published for them, parsed from the steps of the run.
      *
      * @internal not part of the public API
      */
-    discoveryMode?: boolean;
+    discoveryTargets?: Set<number>;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -240,7 +239,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
       telemetry,
       invokeCount,
-      discoveryMode
+      discoveryTargets
     );
   }
 

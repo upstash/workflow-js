@@ -143,22 +143,9 @@ describe("Workflow Requests", () => {
     });
   });
 
-  // context for tests which don't add any steps: has no pending
-  // step submission, so flushing it in triggerRouteFunction is a no-op
-  const contextWithoutPendingStep = new WorkflowContext({
-    qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "mock-token" }),
-    workflowRunId: "wfr-no-pending-step",
-    initialPayload: undefined,
-    headers: new Headers({}) as Headers,
-    steps: [],
-    url: WORKFLOW_ENDPOINT,
-    workflowRunCreatedAt: 0,
-  });
-
   describe("triggerRouteFunction", () => {
     test("should get step-finished when WorkflowAbort is thrown", async () => {
       const result = await triggerRouteFunction({
-        workflowContext: contextWithoutPendingStep,
         onStep: () => {
           throw new WorkflowAbort("name");
         },
@@ -176,7 +163,6 @@ describe("Workflow Requests", () => {
 
     test("should get workflow-finished when no error is thrown", async () => {
       const result = await triggerRouteFunction({
-        workflowContext: contextWithoutPendingStep,
         onStep: async () => {
           await Promise.resolve();
         },
@@ -194,7 +180,6 @@ describe("Workflow Requests", () => {
 
     test("should get Err if onStep throws error", async () => {
       const result = await triggerRouteFunction({
-        workflowContext: contextWithoutPendingStep,
         onStep: () => {
           throw new Error("Something went wrong!");
         },
@@ -210,7 +195,6 @@ describe("Workflow Requests", () => {
 
     test("should get Err if onCleanup throws error", async () => {
       const result = await triggerRouteFunction({
-        workflowContext: contextWithoutPendingStep,
         onStep: async () => {
           await Promise.resolve();
         },
@@ -241,7 +225,6 @@ describe("Workflow Requests", () => {
 
     const finished = new FinishState();
     const result = await triggerRouteFunction({
-      workflowContext: context,
       onStep: async () => {
         await context.cancel();
         await context.run("shouldn't call", () => {
@@ -263,7 +246,6 @@ describe("Workflow Requests", () => {
 
   test("should fail workflow and return ok if WorkflowNonRetryableError is thrown", async () => {
     const result = await triggerRouteFunction({
-      workflowContext: contextWithoutPendingStep,
       onStep: async () => {
         throw new WorkflowNonRetryableError("This is a non-retryable error");
       },
@@ -281,7 +263,6 @@ describe("Workflow Requests", () => {
 
   test("should retry workflow and return ok if WorkflowRetryAfterError is thrown", async () => {
     const result = await triggerRouteFunction({
-      workflowContext: contextWithoutPendingStep,
       onStep: async () => {
         throw new WorkflowRetryAfterError("This is a retry-after error", 5);
       },
@@ -315,7 +296,6 @@ describe("Workflow Requests", () => {
 
     const finished = new FinishState();
     const result = await triggerRouteFunction({
-      workflowContext: context,
       onStep: async () => {
         await context.run("should call cancel", async () => {
           await context.cancel();
@@ -806,84 +786,6 @@ describe("Workflow Requests", () => {
     });
   });
 
-  describe("next step discovery on call result", () => {
-    const qstashClient = new Client({
-      token: process.env.QSTASH_TOKEN!,
-    });
-
-    test(
-      "should attach discovered next step settings when submitting the call result",
-      async () => {
-        const workflowRunId = `wfr-${nanoid()}`;
-        const context = new WorkflowContext({
-          qstashClient,
-          workflowRunId,
-          initialPayload: undefined,
-          headers: new Headers({}) as Headers,
-          steps: [],
-          url: WORKFLOW_ENDPOINT,
-          workflowRunCreatedAt: 0,
-        });
-
-        // create the run so that its steps can be fetched during discovery
-        await triggerFirstInvocation({ workflowContext: context, useJSONContent: false });
-
-        const request = new Request(WORKFLOW_ENDPOINT, {
-          method: "POST",
-          body: JSON.stringify({ status: 200, body: btoa("call-result") }),
-          headers: new Headers({
-            "Upstash-Workflow-Callback": "true",
-            "Upstash-Workflow-StepId": "1",
-            "Upstash-Workflow-StepName": "my-call",
-            "Upstash-Workflow-StepType": "Call",
-            "Upstash-Workflow-Concurrent": "1",
-            "Upstash-Workflow-ContentType": "application/json",
-            [WORKFLOW_ID_HEADER]: workflowRunId,
-            "Upstash-Message-Id": `msg-${nanoid()}`,
-          }),
-        });
-
-        const spy = spyOn(qstashClient, "publishJSON");
-
-        const result = await handleThirdPartyCallResult({
-          request,
-          requestPayload: await request.text(),
-          client: qstashClient,
-          workflowUrl: WORKFLOW_ENDPOINT,
-          discoverNextStep: async ({ steps }) => {
-            // the steps of the run are fetched and passed for discovery,
-            // with the arrived call result step appended at the end:
-            expect(steps.length >= 2).toBeTrue();
-            expect(steps.at(-1)?.stepName).toBe("my-call");
-            expect(steps.at(-1)?.stepType).toBe("Call");
-            return {
-              flowControl: { key: "discovered-step-key", parallelism: 2 },
-              retries: 4,
-            };
-          },
-        });
-
-        expect(result.isOk()).toBeTrue();
-        // @ts-expect-error value will be set since result isOk
-        expect(result.value).toBe("is-call-return");
-
-        expect(spy).toHaveBeenCalledTimes(1);
-        // the client converts the passed headers into a Headers instance
-        const publishArguments = spy.mock.calls[0][0] as {
-          headers: Record<string, string>;
-        };
-        const publishedHeaders = new Headers(publishArguments.headers);
-        expect(publishedHeaders.get("upstash-flow-control-key")).toBe("discovered-step-key");
-        expect(publishedHeaders.get("upstash-flow-control-value")).toBe("parallelism=2");
-        expect(publishedHeaders.get("upstash-retries")).toBe("4");
-        expect(publishedHeaders.get("upstash-feature-set")).toInclude("WF_StepConfig");
-
-        spy.mockRestore();
-      },
-      { timeout: 10000 }
-    );
-  });
-
   describe("should omit some errors", () => {
     const qstashClient = new Client({
       token: process.env.QSTASH_TOKEN!,
@@ -943,7 +845,6 @@ describe("Workflow Requests", () => {
         await workflowClient.cancel([workflowRunId]);
 
         const result = await triggerRouteFunction({
-          workflowContext: context,
           onStep: async () => {
             await context.sleep("sleeping", 10);
           },
@@ -994,7 +895,6 @@ describe("Workflow Requests", () => {
         await workflowClient.cancel([workflowRunId]);
 
         const result = await triggerRouteFunction({
-          workflowContext: context,
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
           },
@@ -1051,7 +951,6 @@ describe("Workflow Requests", () => {
         const warnSpy = spyOn(console, "warn");
 
         const result = await triggerRouteFunction({
-          workflowContext: context,
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
           },

@@ -9,7 +9,6 @@ import {
   WorkflowRetryAfterError,
 } from "./error";
 import type { WorkflowContext } from "./context";
-import type { AutoExecutor } from "./context/auto-executor";
 import {
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
@@ -21,9 +20,7 @@ import {
 } from "./constants";
 import type {
   CallResponse,
-  RawStep,
   Step,
-  StepSettings,
   StepType,
   Telemetry,
   WorkflowClient,
@@ -32,9 +29,7 @@ import type {
 import { StepTypes } from "./types";
 import { PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
 import { getSteps } from "./client/utils";
-import { getHeaders, getStepSettingsHeaders } from "./qstash/headers";
-import { parseRawSteps } from "./raw-steps";
-import type { NextStepDiscovery } from "./serve/discovery";
+import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
 import { DispatchDebug } from "./middleware/types";
 import { MiddlewareManager } from "./middleware/manager";
@@ -178,27 +173,6 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 };
 
 /**
- * Submits the result of an executed step whose submission was deferred
- * for next-step discovery, if there is one.
- *
- * Throws `WorkflowAbort` after submitting. No-op if there is no pending
- * submission.
- *
- * Not part of the public API: reaches the protected executor of the
- * context, which is why the cast is needed.
- *
- * @internal
- * @param workflowContext workflow context
- */
-export const flushPendingStep = async (workflowContext: WorkflowContext): Promise<void> => {
-  const { executor } = workflowContext as unknown as { executor: AutoExecutor };
-  const pendingFlush = executor.flushPendingSubmission();
-  if (pendingFlush) {
-    await pendingFlush;
-  }
-};
-
-/**
  * Triggers the route function and handles cleanup and cancellation.
  *
  * @param onStep function to execute the step
@@ -210,13 +184,11 @@ export const triggerRouteFunction = async <TResult = unknown>({
   onCleanup,
   onStep,
   onCancel,
-  workflowContext,
   middlewareManager,
 }: {
   onStep: () => Promise<TResult>;
   onCleanup: (result: TResult) => Promise<void>;
   onCancel: () => Promise<void>;
-  workflowContext: WorkflowContext;
   middlewareManager?: MiddlewareManager;
 }): Promise<
   | Ok<
@@ -234,36 +206,13 @@ export const triggerRouteFunction = async <TResult = unknown>({
     // `WorkflowCancelAbort`) to signal that the step has finished and control flow should abort.
     // This ensures that onCleanup is only called when no exception is thrown.
     const result = await onStep();
-
-    // If the last step executed but its result submission was deferred for
-    // next-step discovery, submit it now. Throws WorkflowAbort if there was
-    // a pending submission, marking this invocation as 'step finished'
-    // instead of 'workflow finished'.
-    await flushPendingStep(workflowContext);
-
     await onCleanup(result);
     return ok("workflow-finished");
   } catch (error) {
-    let error_ = error as Error;
-
-    // The workflow function may have thrown (or cancelled the run) after a
-    // step executed but before its result was submitted. Submit the pending
-    // result first so that the step isn't executed a second time; the
-    // error/cancel will occur again deterministically when the workflow
-    // continues and the function is replayed.
-    //
-    // No-op if there is no pending submission. Otherwise throws
-    // WorkflowAbort (or the submission error), which replaces the
-    // original error below.
-    try {
-      await flushPendingStep(workflowContext);
-    } catch (flushError) {
-      error_ = flushError as Error;
-    }
-
-    if (isInstanceOf(error_, QstashError) && error_.status === 400) {
+    const error_ = error as Error;
+    if (isInstanceOf(error, QstashError) && error.status === 400) {
       await middlewareManager?.dispatchDebug("onWarning", {
-        warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error_.message}`,
+        warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error.message}`,
       });
       return ok("workflow-was-finished");
     } else if (
@@ -351,7 +300,6 @@ export const handleThirdPartyCallResult = async ({
   workflowUrl,
   telemetry,
   middlewareManager,
-  discoverNextStep,
 }: {
   request: Request;
   requestPayload: string;
@@ -359,26 +307,16 @@ export const handleThirdPartyCallResult = async ({
   workflowUrl: string;
   telemetry?: Telemetry;
   middlewareManager?: MiddlewareManager;
-  /**
-   * discovers the step-level settings of the next step, so that they
-   * can be attached to the submitted result step. The delivery of the
-   * submitted result step is what will execute the next step.
-   */
-  discoverNextStep?: NextStepDiscovery;
 }): Promise<
   | Ok<"is-call-return" | "continue-workflow" | "call-will-retry" | "workflow-ended", never>
   | Err<never, Error>
 > => {
   try {
     if (isThirdPartyCallResult(request)) {
-      // raw steps of the run: fetched lazily when the callback payload
-      // is missing, and reused for next step discovery
-      let rawSteps: RawStep[] | undefined = undefined;
-
-      const fetchRawSteps = async (): Promise<RawStep[] | "workflow-ended"> => {
-        if (rawSteps) {
-          return rawSteps;
-        }
+      let callbackPayload: string;
+      if (requestPayload) {
+        callbackPayload = requestPayload;
+      } else {
         const workflowRunId = request.headers.get("upstash-workflow-runid");
         const messageId = request.headers.get("upstash-message-id");
 
@@ -393,29 +331,16 @@ export const handleThirdPartyCallResult = async ({
           middlewareManager?.dispatchDebug.bind(middlewareManager)
         );
         if (workflowRunEnded) {
-          return "workflow-ended";
-        }
-        rawSteps = steps;
-        return rawSteps;
-      };
-
-      let callbackPayload: string;
-      if (requestPayload) {
-        callbackPayload = requestPayload;
-      } else {
-        const messageId = request.headers.get("upstash-message-id");
-        const fetchResult = await fetchRawSteps();
-        if (fetchResult === "workflow-ended") {
           return ok("workflow-ended");
         }
-        const failingStep = fetchResult.find((step) => step.messageId === messageId);
+        const failingStep = steps.find((step) => step.messageId === messageId);
 
         if (!failingStep)
           throw new WorkflowError(
             "Failed to submit the context.call. " +
-              (fetchResult.length === 0
+              (steps.length === 0
                 ? "No steps found."
-                : `No step was found with matching messageId ${messageId} out of ${fetchResult.length} steps.`)
+                : `No step was found with matching messageId ${messageId} out of ${steps.length} steps.`)
           );
 
         callbackPayload = atob(failingStep.body);
@@ -502,41 +427,12 @@ export const handleThirdPartyCallResult = async ({
         concurrent: Number(concurrentString),
       };
 
-      // discover the settings of the next step so that they can be
-      // attached to the submission below: the delivery of the submitted
-      // result step is what will execute the next step.
-      let nextStepSettings: StepSettings | undefined = undefined;
-      if (discoverNextStep) {
-        try {
-          const fetchResult = await fetchRawSteps();
-          if (fetchResult === "workflow-ended") {
-            return ok("workflow-ended");
-          }
-          const { rawInitialPayload, steps } = parseRawSteps(fetchResult);
-          nextStepSettings = await discoverNextStep({
-            steps: [...steps, callResultStep],
-            rawInitialPayload,
-            invokeCount: Number(invokeCount),
-          });
-        } catch (error) {
-          // discovery is best effort: if it fails, the result step is
-          // submitted without step-level settings and the settings the
-          // run was triggered with apply.
-          await middlewareManager?.dispatchDebug("onWarning", {
-            warning: `Failed to discover the next step settings, continuing without them: ${error}`,
-          });
-        }
-      }
-
       await middlewareManager?.dispatchDebug("onInfo", {
         info: `Submitting third party call result, step ${stepName} (${stepIdString}).`,
       });
 
       await client.publishJSON({
-        headers: {
-          ...requestHeaders,
-          ...getStepSettingsHeaders(nextStepSettings),
-        },
+        headers: requestHeaders,
         method: "POST",
         body: callResultStep,
         url: workflowUrl,

@@ -304,6 +304,64 @@ describe("Workflow Parser", () => {
       expect(steps[1].stepId).toBe(remainingStepId);
       expect(isLastDuplicate).toBeFalse();
     });
+
+    test("should collect discovery targets and keep them out of the steps", async () => {
+      const payload = [
+        {
+          messageId: "msgId",
+          body: btoa("initial payload"),
+          callType: "step",
+        },
+        {
+          messageId: "msgId",
+          body: btoa(
+            JSON.stringify({
+              stepId: 1,
+              stepName: "first step",
+              stepType: "Run",
+              out: "result",
+              concurrent: 1,
+            })
+          ),
+          callType: "step",
+        },
+        // the hidden redelivery published for step 2:
+        {
+          messageId: "msgId",
+          body: btoa(JSON.stringify({ discoveryTargetStep: 2 })),
+          callType: "discovery",
+        },
+        // an unparsable discovery entry is ignored rather than failing
+        // the whole request:
+        {
+          messageId: "msgId",
+          body: btoa("not json"),
+          callType: "discovery",
+        },
+      ];
+
+      const request = new Request(WORKFLOW_ENDPOINT, {
+        body: JSON.stringify(payload),
+      });
+
+      const requestPayload = (await getPayload(request)) ?? "";
+      const { steps, discoveryTargets, workflowRunEnded } = await parseRequest({
+        requestPayload,
+        isFirstInvocation: false,
+        unknownSdk: false,
+        workflowRunId,
+        requester: qstashClient.http,
+      });
+      if (workflowRunEnded) {
+        throw new Error("failed test");
+      }
+
+      // discovery entries are not steps
+      expect(steps.length).toBe(2);
+      expect(steps[1].stepId).toBe(1);
+
+      expect([...discoveryTargets]).toEqual([2]);
+    });
   });
 
   describe("parseRequest with duplicates", () => {

@@ -1,5 +1,5 @@
 import { QstashError } from "@upstash/qstash";
-import type { Duration, FailureFunctionPayload, Step, StepSettings } from "./types";
+import type { Duration, FailureFunctionPayload, Step } from "./types";
 
 /**
  * Error raised during Workflow execution
@@ -32,39 +32,6 @@ export class WorkflowAbort extends Error {
     this.name = "WorkflowAbort";
     this.stepName = stepName;
     this.stepInfo = stepInfo;
-  }
-}
-
-/**
- * Raised by the auto executor in discovery mode when it reaches a step
- * which hasn't executed yet.
- *
- * Discovery mode is used to learn the next step of a workflow (and its
- * step-level settings) without executing it: when the result of a
- * `context.call`/`context.invoke` step arrives, the workflow function is
- * replayed with the result appended to the steps. The step which the
- * replay attempts to run next is the next step of the workflow, and its
- * settings must be attached to the request which will execute it.
- *
- * @internal not part of the public API
- */
-export class WorkflowDiscoveryAbort extends WorkflowAbort {
-  /**
-   * step-level settings of the discovered next step
-   */
-  public stepSettings?: StepSettings;
-
-  /**
-   * @param stepName name of the discovered step
-   * @param stepSettings step-level settings of the discovered step
-   */
-  constructor(stepName: string, stepSettings?: StepSettings) {
-    super(stepName);
-    this.name = "WorkflowDiscoveryAbort";
-    this.message =
-      "This is an Upstash Workflow error thrown during next step discovery." +
-      ` Found step '${stepName}' during discovery replay.`;
-    this.stepSettings = stepSettings;
   }
 }
 

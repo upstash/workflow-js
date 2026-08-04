@@ -13,7 +13,6 @@ import {
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { upstash } from "@upstash/qstash";
-import { flushPendingStep } from "../workflow-requests";
 
 describe("context tests", () => {
   test("should set label in context and headers", () => {
@@ -193,14 +192,12 @@ describe("context tests", () => {
     });
 
     await mockQStashServer({
-      execute: async () => {
-        const result = await context.run("my-step", () => {
-          return "my-result";
-        });
-        expect(result).toBe("my-result");
-        await expect(flushPendingStep(context)).rejects.toThrowError(
-          "Aborting workflow after executing step 'my-step'."
-        );
+      execute: () => {
+        const throws = () =>
+          context.run("my-step", () => {
+            return "my-result";
+          });
+        expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
       },
       responseFields: {
         status: 200,

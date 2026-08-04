@@ -32,7 +32,6 @@ import {
   DEFAULT_RETRIES,
   WORKFLOW_FEATURE_HEADER,
   WORKFLOW_INIT_HEADER,
-  WORKFLOW_INVOKE_RESULT_HEADER,
   WORKFLOW_LABEL_HEADER,
   WORKFLOW_URL_HEADER,
 } from "../constants";
@@ -63,20 +62,6 @@ export abstract class BaseLazyStep<TResult = unknown> {
    * settings the workflow run was triggered with, for this step only.
    */
   public stepSettings?: StepSettings;
-
-  /**
-   * whether the result of this step can be submitted lazily, after the
-   * workflow function progresses to the next step.
-   *
-   * Lazy submission makes it possible to discover the next step and
-   * attach its step-level settings (flow control, retries) to the request
-   * which will execute it.
-   *
-   * Only enabled for steps whose result is available in-process (run,
-   * sleep, sleepUntil, notify). Steps resolved by the server (call,
-   * invoke, wait) submit right away.
-   */
-  public readonly supportsDeferredSubmission: boolean = false;
 
   constructor(context: WorkflowContext, stepName: string) {
     this.context = context;
@@ -208,7 +193,6 @@ export class LazyFunctionStep<TResult = unknown> extends BaseLazyStep<TResult> {
   private readonly stepFunction: StepFunction<TResult>;
   stepType: StepType = "Run";
   allowUndefinedOut = true;
-  public readonly supportsDeferredSubmission = true;
 
   constructor(context: WorkflowContext, stepName: string, stepFunction: StepFunction<TResult>) {
     super(context, stepName);
@@ -248,7 +232,6 @@ export class LazySleepStep extends BaseLazyStep {
   private readonly sleep: number | Duration;
   stepType: StepType = "SleepFor";
   allowUndefinedOut = true;
-  public readonly supportsDeferredSubmission = true;
 
   constructor(context: WorkflowContext, stepName: string, sleep: number | Duration) {
     super(context, stepName);
@@ -296,7 +279,6 @@ export class LazySleepUntilStep extends BaseLazyStep {
   private readonly sleepUntil: number;
   stepType: StepType = "SleepUntil";
   allowUndefinedOut = true;
-  public readonly supportsDeferredSubmission = true;
 
   constructor(context: WorkflowContext, stepName: string, sleepUntil: number) {
     super(context, stepName);
@@ -732,11 +714,6 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     });
 
     invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
-    // mark the delivery which will carry the invoke result back to this
-    // workflow. When the marked delivery arrives, the SDK discovers the
-    // next step before executing it, so that the next step's step-level
-    // settings can be applied (see WORKFLOW_INVOKE_RESULT_HEADER):
-    invokerHeaders[`Upstash-Forward-${WORKFLOW_INVOKE_RESULT_HEADER}`] = "true";
 
     const request: InvokeWorkflowRequest = {
       body: stringifyBody(this.params.body),

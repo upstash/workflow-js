@@ -81,20 +81,53 @@ export const deduplicateSteps = (steps: Step[]): Step[] => {
 };
 
 /**
- * Converts the raw steps of a run into the initial payload and the
- * deduplicated steps list.
+ * body of a hidden discovery request published by the SDK.
  *
- * Used when the steps of the run are needed outside of `parseRequest`,
- * for example when discovering the next step of a workflow after a
- * `context.call` result arrives.
- *
- * @internal
- * @param rawSteps list of raw steps fetched from QStash
+ * @see `publishStepSettingsRedelivery`
  */
-export const parseRawSteps = (rawSteps: RawStep[]) => {
-  const { rawInitialPayload, steps } = processRawSteps(rawSteps);
-  return {
-    rawInitialPayload,
-    steps: deduplicateSteps(steps),
-  };
+type DiscoveryRequestBody = {
+  /**
+   * id of the step which the redelivery is meant to execute
+   */
+  discoveryTargetStep: number;
+};
+
+/**
+ * Collects the ids of the steps for which a step-level settings
+ * redelivery was already published, by reading the hidden `discovery`
+ * entries of the raw steps.
+ *
+ * The executor uses this to tell whether the current delivery is the
+ * gated redelivery of a step: if the step it is about to execute is in
+ * this set, the redelivery was already published (and this delivery is
+ * it), so the step is executed instead of being redelivered again.
+ *
+ * Reading the ids off the steps list instead of a request header keeps
+ * the decision deterministic across replays and QStash retries.
+ *
+ * @param rawSteps list of raw steps from QStash
+ * @returns ids of the steps which have a published redelivery
+ */
+export const parseDiscoveryTargets = (rawSteps: RawStep[]): Set<number> => {
+  const targets = new Set<number>();
+
+  for (const rawStep of rawSteps) {
+    if (rawStep.callType !== "discovery") {
+      continue;
+    }
+    try {
+      const { discoveryTargetStep } = JSON.parse(
+        decodeBase64(rawStep.body)
+      ) as DiscoveryRequestBody;
+      if (typeof discoveryTargetStep === "number") {
+        targets.add(discoveryTargetStep);
+      }
+    } catch {
+      // a discovery entry we can't parse is ignored. Worst case the
+      // redelivery is published a second time, which QStash deduplicates
+      // since the request content is identical.
+    }
+  }
+
+  return targets;
 };
