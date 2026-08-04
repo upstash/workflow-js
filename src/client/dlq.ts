@@ -1,4 +1,5 @@
-import { Client as QStashClient, FlowControl } from "@upstash/qstash";
+import { Client as QStashClient, FlowControl, QstashError } from "@upstash/qstash";
+import { isInstanceOf } from "../error";
 import { DLQResumeRestartOptions, DLQResumeRestartResponse, FailureFunctionState } from "./types";
 import {
   assertNonEmptyId,
@@ -313,6 +314,30 @@ export class DLQ {
     });
 
     return response;
+  }
+
+  /**
+   * Cancel the in-progress failure function (failureUrl/failureFunction) call
+   * of a workflow run.
+   *
+   * Fails if the run has no failure function call in progress.
+   *
+   * @param dlqId - The ID of the DLQ message whose failure function call will be canceled
+   */
+  async cancelFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
+    assertNonEmptyId(dlqId, "DLQ id");
+    try {
+      await this.client.http.request({
+        path: ["v2", "workflows", "dlq", "callback", dlqId],
+        method: "DELETE",
+        parseResponseAsJson: false,
+      });
+    } catch (error) {
+      // A successful cancel answers with 302 and an empty body, which the HTTP
+      // client rejects. Everything else is a genuine failure.
+      if (isInstanceOf(error, QstashError) && error.status === 302) return;
+      throw error;
+    }
   }
 
   /**

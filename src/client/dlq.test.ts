@@ -812,6 +812,59 @@ describe("DLQ", () => {
     });
   });
 
+  describe("cancelFailureFunction", () => {
+    test("should cancel the failure function of a DLQ message", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.dlq.cancelFailureFunction({ dlqId });
+        },
+        // a successful cancel answers with 302 and an empty body
+        responseFields: {
+          status: 302,
+          body: undefined,
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should throw when there is no failure function call to cancel", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.cancelFailureFunction({ dlqId })).rejects.toThrow();
+        },
+        responseFields: {
+          status: 400,
+          body: { error: "there is no in-progress failure callback to cancel" },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should not send request when dlqId is an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.cancelFailureFunction({ dlqId: "" })).rejects.toThrow(
+            "DLQ id cannot be empty"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+  });
+
   describe("delete", () => {
     test("should delete a single DLQ message", async () => {
       const dlqId = `dlq-${nanoid()}`;
