@@ -160,6 +160,64 @@ export type WorkflowRunCancelFilters =
       filter?: never;
     } & WorkflowCancelCount);
 
+/**
+ * Identifies a single workflow run.
+ *
+ * The server identifies a run by its id *and* its creation time, so both are
+ * required (custom `workflowRunId`s can be reused across runs, so only the
+ * pair is unique). Log entries return the creation time as
+ * `workflowRunCreatedAt`, DLQ messages as `workflowCreatedAt`.
+ */
+export type WorkflowRunRef = {
+  workflowRunId: string;
+  workflowCreatedAt: number;
+};
+
+/** Maximum number of runs the server will return in one `workflowRuns` query. */
+export const MAX_WORKFLOW_RUNS_PER_REQUEST = 100;
+
+/** Marks every field of T as forbidden. Used to make union branches mutually exclusive. */
+type ForbidFields<T> = { [K in keyof T]?: never };
+
+/** Pagination and filter params of `logs()`. */
+export type WorkflowLogsListRequest = {
+  cursor?: string;
+  count?: number;
+  filter?: WorkflowLogsListFilters;
+  /** @deprecated Use `filter.workflowRunId` instead. */
+  workflowRunId?: string;
+  /** @deprecated Use `filter.state` instead. */
+  state?: string;
+  /** @deprecated Use `filter.workflowUrl` instead. */
+  workflowUrl?: string;
+  /** @deprecated Use `filter.label` instead. */
+  label?: string;
+  /** @deprecated Use `filter.workflowCreatedAt` instead. */
+  workflowCreatedAt?: number;
+};
+
+/**
+ * `logs()` runs in one of two mutually exclusive modes: by explicit runs
+ * (`workflowRuns`) or by filter/pagination. The server drops every other
+ * filter and overrides `count` with the number of runs as soon as
+ * `workflowRuns` is set.
+ */
+export type WorkflowLogsRequest =
+  | ({
+      /**
+       * Fetch the logs of these workflow runs only. At most
+       * {@link MAX_WORKFLOW_RUNS_PER_REQUEST} runs per call.
+       *
+       * Cannot be combined with `filter`, `cursor` or `count`.
+       *
+       * A ref whose `workflowCreatedAt` doesn't match is silently omitted from
+       * the response (no error), so a missing run in the result means either
+       * the run doesn't exist or the timestamp is wrong.
+       */
+      workflowRuns: WorkflowRunRef[];
+    } & ForbidFields<WorkflowLogsListRequest>)
+  | ({ workflowRuns?: never } & WorkflowLogsListRequest);
+
 export type WorkflowLogsListFilters = UniversalFilterFields &
   Pick<WorkflowFilterFields, "workflowUrl" | "workflowRunId" | "workflowCreatedAt"> &
   HostPathFilterFields &

@@ -4,6 +4,7 @@ import {
   buildBulkActionQueryParameters,
   makeGetWaitersRequest,
   makeNotifyRequest,
+  serializeWorkflowRuns,
   toNonEmptyIdArray,
 } from "./utils";
 import { getWorkflowRunId, serializeLabel, validateFlowControl, validateLabel } from "../utils";
@@ -12,7 +13,7 @@ import { WorkflowContext } from "../context";
 import { DLQ } from "./dlq";
 import { TriggerOptions, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
-import { WorkflowLogsListFilters, WorkflowRunCancelFilters } from "./filter-types";
+import { WorkflowLogsRequest, WorkflowRunCancelFilters } from "./filter-types";
 
 type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
 
@@ -307,22 +308,30 @@ export class Client {
    *
    * const { runs: nextRuns, cursor: nextCursor } = await client.logs({ cursor, count: 2 });
    * ```
+   *
+   * @example
+   * Fetch logs for a set of workflow runs in a single call. The server
+   * identifies a run by its id *and* its creation time (run ids can be reused
+   * via custom `workflowRunId`s, so the pair is the unique key). Log entries
+   * carry the creation time as `workflowRunCreatedAt`, DLQ messages as
+   * `workflowCreatedAt`:
+   * ```typescript
+   * const { runs } = await client.logs({
+   *   workflowRuns: [{ workflowRunId: 'wfr_1', workflowCreatedAt: 1717000000000 }],
+   * });
+   * ```
    */
-  public async logs(params?: {
-    cursor?: string;
-    count?: number;
-    filter?: WorkflowLogsListFilters;
-    /** @deprecated Use `filter.workflowRunId` instead. */
-    workflowRunId?: string;
-    /** @deprecated Use `filter.state` instead. */
-    state?: string;
-    /** @deprecated Use `filter.workflowUrl` instead. */
-    workflowUrl?: string;
-    /** @deprecated Use `filter.label` instead. */
-    label?: string;
-    /** @deprecated Use `filter.workflowCreatedAt` instead. */
-    workflowCreatedAt?: number;
-  }): Promise<WorkflowRunLogs> {
+  public async logs(params?: WorkflowLogsRequest): Promise<WorkflowRunLogs> {
+    if (params?.workflowRuns) {
+      return await this.client.http.request<WorkflowRunLogs>({
+        path: ["v2", "workflows", "events"],
+        query: {
+          groupBy: "workflowRunId",
+          workflowRuns: serializeWorkflowRuns(params.workflowRuns),
+        },
+      });
+    }
+
     const { cursor, count, filter, ...legacyFilter } = params ?? {};
 
     return await this.client.http.request<WorkflowRunLogs>({

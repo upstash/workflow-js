@@ -1270,6 +1270,48 @@ describe("workflow client", () => {
       });
     });
 
+    test("should send logs request with workflowRuns as id@createdAt pairs", async () => {
+      const workflowRuns = [
+        { workflowRunId: "wfr-1", workflowCreatedAt: 1717000000001 },
+        { workflowRunId: "wfr-2", workflowCreatedAt: 1717000000002 },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.logs({ workflowRuns });
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "GET",
+          url:
+            `${MOCK_QSTASH_SERVER_URL}/v2/workflows/events?groupBy=workflowRunId` +
+            `&workflowRuns=wfr-1%401717000000001&workflowRuns=wfr-2%401717000000002`,
+          token,
+          body: "",
+        },
+      });
+    });
+
+    test("should reject empty workflowRuns and over-limit workflowRuns", async () => {
+      await expect(client.logs({ workflowRuns: [] })).rejects.toThrow(
+        "workflowRuns cannot be empty"
+      );
+      await expect(
+        client.logs({
+          workflowRuns: Array.from({ length: 101 }, (_, index) => ({
+            workflowRunId: `wfr-${index}`,
+            workflowCreatedAt: index,
+          })),
+        })
+      ).rejects.toThrow("workflowRuns accepts at most 100 runs per request, got 101");
+      await expect(
+        client.logs({ workflowRuns: [{ workflowRunId: "", workflowCreatedAt: 1 }] })
+      ).rejects.toThrow("workflowRunId cannot be empty");
+    });
+
     test("should send logs request with all parameters including label", async () => {
       const count = 5;
       const cursor = "cursor-abc";
@@ -1403,6 +1445,53 @@ describe("workflow client", () => {
         }
       },
       { timeout: 20000 }
+    );
+
+    test(
+      "should fetch logs for an explicit set of workflowRuns - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        const label = `wf-runs-${nanoid()}`;
+        const runIds: string[] = [];
+        for (let index = 0; index < 3; index++) {
+          const { workflowRunId } = await liveClient.trigger({
+            url: "https://mock.httpstatus.io/200",
+            label,
+            delay: "1m",
+          });
+          runIds.push(workflowRunId);
+        }
+
+        try {
+          // resolve workflowRunCreatedAt for the first two runs; the third is
+          // the control and must not come back
+          let refs: { workflowRunId: string; workflowCreatedAt: number }[] = [];
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { label } });
+              expect(logs.runs.length).toBe(3);
+              refs = logs.runs
+                .filter((run) => run.workflowRunId !== runIds[2])
+                .map((run) => ({
+                  workflowRunId: run.workflowRunId,
+                  workflowCreatedAt: run.workflowRunCreatedAt,
+                }));
+            },
+            { timeout: 10_000, interval: 250 }
+          );
+
+          const logs = await liveClient.logs({ workflowRuns: refs });
+          const ids = logs.runs.map((run) => run.workflowRunId).sort();
+          expect(ids).toEqual([runIds[0], runIds[1]].sort());
+        } finally {
+          await liveClient.cancel(runIds).catch(() => {});
+        }
+      },
+      { timeout: 30_000 }
     );
 
     test(

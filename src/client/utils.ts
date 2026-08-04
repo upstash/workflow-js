@@ -2,7 +2,12 @@ import { Client, QstashError } from "@upstash/qstash";
 import { NotifyResponse, RawStep, Waiter } from "../types";
 import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
-import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
+import {
+  MAX_WORKFLOW_RUNS_PER_REQUEST,
+  WorkflowDLQActionFilters,
+  WorkflowRunCancelFilters,
+  WorkflowRunRef,
+} from "./filter-types";
 
 /**
  * Guards single-resource endpoints against an empty identifier.
@@ -36,6 +41,25 @@ export const toNonEmptyIdArray = (request: string | string[], label = "id"): str
   const ids = typeof request === "string" ? [request] : request;
   for (const id of ids) assertNonEmptyId(id, label);
   return ids;
+};
+
+/**
+ * Serializes run refs into the `id@createdAt` wire format of the
+ * `workflowRuns` query parameter.
+ */
+export const serializeWorkflowRuns = (runs: WorkflowRunRef[]): string[] => {
+  if (runs.length === 0) {
+    throw new QstashError("workflowRuns cannot be empty");
+  }
+  if (runs.length > MAX_WORKFLOW_RUNS_PER_REQUEST) {
+    throw new QstashError(
+      `workflowRuns accepts at most ${MAX_WORKFLOW_RUNS_PER_REQUEST} runs per request, got ${runs.length}`
+    );
+  }
+  return runs.map((run) => {
+    assertNonEmptyId(run.workflowRunId, "workflowRunId");
+    return `${run.workflowRunId}@${run.workflowCreatedAt}`;
+  });
 };
 
 /**
