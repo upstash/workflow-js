@@ -261,8 +261,6 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
   });
 };
 
-export { recreateUserHeaders } from "./utils";
-
 /**
  * Checks if the incoming request is a third party call result coming from QStash
  * by looking for the `Upstash-Workflow-Callback` header.

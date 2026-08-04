@@ -23,12 +23,12 @@ import { getPayload, handleFailure, parseRequest, validateRequest } from "../wor
 import {
   handleThirdPartyCallResult,
   isThirdPartyCallResult,
-  recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
   triggerWorkflowDelete,
   verifyRequest,
 } from "../workflow-requests";
+import { recreateUserHeaders } from "../utils";
 import { DisabledWorkflowContext } from "./authorization";
 import { getHandlersForRequest } from "./multi-region/handlers";
 import {

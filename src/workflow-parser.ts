@@ -20,8 +20,7 @@ import type {
   RouteFunction,
 } from "./types";
 import { WorkflowContext } from "./context";
-import { recreateUserHeaders } from "./utils";
-import { decodeBase64, getWorkflowRunId } from "./utils";
+import { decodeBase64, getWorkflowRunId, recreateUserHeaders } from "./utils";
 import { deduplicateSteps, parseDiscoveryTargets, processRawSteps } from "./raw-steps";
 import { getSteps } from "./client/utils";
 import { Client } from "@upstash/qstash";
