@@ -1,6 +1,7 @@
-import { Client as QStashClient, FlowControl, QstashError } from "@upstash/qstash";
+import { Client as QStashClient, QstashError } from "@upstash/qstash";
+import type { FlowControl } from "@upstash/qstash";
 import { isInstanceOf } from "../error";
-import { DLQResumeRestartOptions, DLQResumeRestartResponse, FailureFunctionState } from "./types";
+import type { DLQResumeRestartOptions, DLQResumeRestartResponse, FailureFunctionState } from "./types";
 import {
   assertNonEmptyId,
   buildBulkActionQueryParameters,
