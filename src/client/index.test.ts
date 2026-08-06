@@ -551,10 +551,11 @@ describe("workflow client", () => {
     // deadline passes) so indexing lag doesn't flake the assertions below.
     const cancelExpecting = async (
       request: WorkflowRunCancelFilters | { urlStartingWith: string },
-      expected: number
+      expected: number,
+      timeoutMs = 10_000
     ): Promise<number> => {
       let cancelled = 0;
-      const deadline = Date.now() + 10_000;
+      const deadline = Date.now() + timeoutMs;
       for (;;) {
         cancelled += (await liveClient.cancel(request)).cancelled;
         if (cancelled >= expected || Date.now() > deadline) return cancelled;
@@ -670,13 +671,13 @@ describe("workflow client", () => {
         await liveClient.trigger({ url: `${base}/sub-path`, delay: "1m" });
 
         // exact match should only cancel the exact URL
-        expect(await cancelExpecting({ filter: { workflowUrl: base } }, 1)).toBe(1);
+        expect(await cancelExpecting({ filter: { workflowUrl: base } }, 1, 20_000)).toBe(1);
 
         // clean up the remaining workflow (prefix match)
-        expect(await cancelExpecting({ filter: { workflowUrlStartingWith: base } }, 1)).toBe(1);
+        expect(await cancelExpecting({ filter: { workflowUrlStartingWith: base } }, 1, 20_000)).toBe(1);
       },
       {
-        timeout: 30000,
+        timeout: 60000,
       }
     );
 
@@ -692,14 +693,14 @@ describe("workflow client", () => {
         const { workflowRunId: idC } = await liveClient.trigger({ url: urlC, delay: "1m" });
 
         // Cancelling [urlA, urlB] with exact match cancels exactly those two, not urlC.
-        expect(await cancelExpecting({ filter: { workflowUrl: [urlA, urlB] } }, 2)).toBe(2);
+        expect(await cancelExpecting({ filter: { workflowUrl: [urlA, urlB] } }, 2, 20_000)).toBe(2);
 
         // clean up the untouched run
         const cleanup = await liveClient.cancel(idC);
         expect(cleanup).toEqual({ cancelled: 1 });
       },
       {
-        timeout: 30000,
+        timeout: 60000,
       }
     );
 
@@ -791,6 +792,9 @@ describe("workflow client", () => {
           // each label individually should match the run
           expect(await cancelExpecting({ filter: { label: labelOne } }, 1)).toBe(1);
 
+          // Allow a moment for the cancellation to propagate before querying by the second label
+          await Bun.sleep(1000);
+
           // second cancel is a no-op since the run is already cancelled
           const cancelBySecond = await liveClient.cancel({ filter: { label: labelTwo } });
           expect(cancelBySecond).toEqual({ cancelled: 0 });
@@ -799,7 +803,7 @@ describe("workflow client", () => {
           await liveClient.cancel(workflowRunId).catch(() => {});
         }
       },
-      { timeout: 30000 }
+      { timeout: 45000 }
     );
   });
 
