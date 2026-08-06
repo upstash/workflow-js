@@ -1,6 +1,6 @@
 // ── Filter Utility Types ──────────────────────────────────────
 
-import { FailureFunctionState, WorkflowRunLog } from "./types";
+import type { FailureFunctionState, WorkflowRunLog } from "./types";
 
 // Intersecting with T keeps every field visible to autocomplete/inference;
 // the single-property union alone only enforces the "at least one" constraint.
