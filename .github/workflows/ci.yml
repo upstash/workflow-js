@@ -14,12 +14,12 @@ permissions:
 
 jobs:
   tests:
-    if: github.event_name != 'release'
+    if: github.repository_owner == 'upstash' && github.event_name != 'release'
     uses: ./.github/workflows/test.yaml
     secrets: inherit
 
   release:
-    if: github.event_name == 'release'
+    if: github.repository_owner == 'upstash' && github.event_name == 'release'
     uses: ./.github/workflows/release.yaml
     with:
       prerelease: ${{ github.event.release.prerelease }}
