@@ -69,23 +69,42 @@ means the invariant _delivery carries step configuration ⟺ marker present_
 cannot be broken by an SDK which sets the configuration but forgets the marker,
 and every SDK gets it without doing anything.
 
-Server-side backstops, which hold whatever a client does:
+Server-side backstops, which hold whatever a client does. They stop a loop in
+three different ways, and only the last one ends the run visibly:
 
-- QStash rejects a `stepConfig` request when the run's last entry is also a
-  `stepConfig`. Two of them with no `step` entry in between is always a bug:
-  every legitimate path puts a step entry between them.
+| Backstop                  | Fires when                                                                                | What the client sees                                                                        | What happens to the run                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Content deduplication** | a step config request for the same step is published twice                                | the publish succeeds, with `deduplicated: true`                                             | **Stalls.** No new message was created, so no further delivery follows. The run is neither finished nor failed; it simply stops. |
+| **Two in a row**          | a step config request is published while the run's last entry is also one                 | the publish returns 400, which the SDK reports as "tried to append to a cancelled workflow" | **Stalls**, as above. The delivery still returns 200.                                                                            |
+| **Entry limit**           | the run has appended more than `MaxEntriesPerCountableStep` messages per step it may take | the delivery is answered `-1 EXCEEDS_LIMIT` (429)                                           | **Fails.** The run is failed and the failure callback fires, like any other limit.                                               |
+
+The ordering is what makes the stalls acceptable: deduplication fires first and is
+usually not a bug at all — it is what happens when the delivery which published a
+step config request fails and QStash retries it, where the original request is
+still on its way and a second one would execute the step twice. Only a client
+which keeps asking for the same step reaches it in the looping sense, and that
+client is broken. The entry limit is the one that catches a loop which evades
+both, and it is the one that ends the run properly.
+
+A stalled run is the weak point here: nothing fails, no callback fires, and every
+delivery returned 200, so the only symptom is a run which never completes. The
+SDK therefore warns when its step config request comes back deduplicated, which
+is the only trace that case leaves.
+
+The rules themselves:
+
+- QStash rejects a step config request when the run's last entry is also one. Two
+  of them with no `step` entry in between is always a bug: every legitimate path
+  puts a step entry between them.
 - A run may append at most `MaxEntriesPerCountableStep` messages per step it is
-  allowed to take (`exceedsWorkflowLimit`). The rule above only catches two
-  step-config requests _in a row_, so a client alternating them with some other
-  message would slip past it; the step count limit does not catch that either,
-  because only result steps are countable. This bounds the total instead, using
-  a counter the run already maintains. Without it the only ceiling is the
-  context size limit, which a loop of small messages reaches after millions of
-  iterations.
-- A step config request is published with content based deduplication, so the
-  delivery which published one re-publishing it after a retry collapses into the
-  original rather than appending a second entry. The deduplication hash covers
-  the run id, so runs never collide.
+  allowed to take (`exceedsWorkflowLimit`). The rule above only catches two step
+  config requests _in a row_, so a client alternating them with some other
+  message slips past it; the step count limit does not catch that either, because
+  only result steps are countable. This bounds the total instead, using a counter
+  the run already maintains. Without it the only ceiling is the context size
+  limit, which a loop of small messages reaches after millions of iterations.
+- A step config request is published with content based deduplication. The
+  deduplication hash covers the run id, so runs never collide.
 
 ## Deferred submission
 

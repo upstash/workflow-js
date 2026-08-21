@@ -1,4 +1,4 @@
-  import { NO_CONCURRENCY, WORKFLOW_STEP_CONFIG_CALL_TYPE } from "../constants";
+import { NO_CONCURRENCY, WORKFLOW_STEP_CONFIG_CALL_TYPE } from "../constants";
 import { attachStepNameToError, WorkflowAbort } from "../error";
 import { Step, StepSettings, Telemetry } from "../types";
 import { WorkflowContext } from "../context";
@@ -310,9 +310,23 @@ export const publishStepConfigRequest = async ({
     body: { targetStep, invokeCount },
     url: context.url,
     contentBasedDeduplication: true,
-  })) as { messageId?: string };
+  })) as { messageId?: string; deduplicated?: boolean };
 
-  if (result?.messageId) {
+  if (result?.deduplicated) {
+    // A step config request for this step was already published. Either
+    // the delivery which published it failed and QStash is retrying it,
+    // in which case the original still produces the gated delivery and
+    // there is nothing to do here — or this SDK asked twice for the same
+    // step, which stalls the run: nothing new was published, so no
+    // further delivery follows. Worth a warning either way, since it is
+    // the only trace the second case leaves.
+    await dispatchDebug("onWarning", {
+      warning:
+        `A step config request for step "${lazyStep.stepName}" (${targetStep}) was already` +
+        ` published and this one was deduplicated. Expected when the delivery which published` +
+        ` it is being retried; otherwise the run stops here.`,
+    });
+  } else if (result?.messageId) {
     await dispatchDebug("onInfo", {
       info: `Requested a gated delivery for step "${lazyStep.stepName}" with messageId: ${result.messageId}.`,
     });
