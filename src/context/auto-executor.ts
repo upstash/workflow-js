@@ -7,7 +7,6 @@ import {
   executeStep,
   publishStepConfigRequest,
   submitParallelSteps,
-  submitSingleStep,
   submitStepResult,
 } from "../qstash/submit-steps";
 import { describeStepSettingsMismatch, type EffectiveConfig } from "../qstash/step-config";
@@ -15,12 +14,13 @@ import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 import { NO_CONCURRENCY } from "../constants";
 
 /**
- * An executed step whose result is not submitted to QStash yet.
+ * A step which executed but whose result QStash doesn't have yet: either
+ * still held, or already on its way. Never both, and never neither while
+ * a submission is outstanding.
  */
-type PendingStepSubmission = {
-  lazyStep: BaseLazyStep;
-  resultStep: Step;
-};
+type PendingStep =
+  | { status: "held"; lazyStep: BaseLazyStep; resultStep: Step }
+  | { status: "submitting"; submitted: Promise<WorkflowAbort> };
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -52,12 +52,7 @@ export class AutoExecutor {
    * Flushed when the next step is reached (see `addStep`) or when the
    * route function ends (see `flushPendingStep` in `serve`).
    */
-  private pendingSubmission?: PendingStepSubmission;
-  /**
-   * the ongoing flush of `pendingSubmission`. Always rejects with
-   * `WorkflowAbort` (or a submission error).
-   */
-  private pendingFlush?: Promise<never>;
+  private pendingStep?: PendingStep;
   /**
    * configuration QStash applied to the delivery being handled. A step
    * with step-level settings is gated by comparing its settings against
@@ -145,12 +140,11 @@ export class AutoExecutor {
       // function never executes here, and after the microtasks of
       // `deferExecution`, so a `withSettings` chained synchronously on
       // the returned promise has already applied.
-      const pendingFlush = this.flushPendingSubmission(
+      const abort = await this.submitPendingStep(
         lazyStepList.length === 1 ? lazyStepList[0].stepSettings : undefined
       );
-      if (pendingFlush) {
-        // always rejects with WorkflowAbort
-        await pendingFlush;
+      if (abort) {
+        throw abort;
       }
 
       if (!this.promises.has(lazyStepList)) {
@@ -219,24 +213,25 @@ export class AutoExecutor {
       return parsedOut;
     }
 
-    if (await this.gateStep(lazyStep, this.stepCount)) {
-      // a step config request was published; the step executes in the
-      // gated delivery it produces
+    if (await this.publishedStepConfigRequest(lazyStep, this.stepCount)) {
+      // the step executes in the gated delivery that request produces,
+      // not here
       throw new WorkflowAbort(lazyStep.stepName);
     }
 
+    const resultStep = await executeStep({
+      lazyStep,
+      stepId: this.stepCount,
+      concurrency: NO_CONCURRENCY,
+      dispatchLifecycle: this.dispatchLifecycle,
+    });
+
     if (lazyStep.supportsDeferredSubmission) {
-      // Execute the step but hold its result. Returning the result lets
-      // the route function continue and reveal what comes next, so that a
+      // Hold the result instead of submitting it. Returning it lets the
+      // route function continue and reveal what comes next, so that a
       // next step's settings can ride on this submission instead of
       // needing a step config request of their own.
-      const resultStep = await executeStep({
-        lazyStep,
-        stepId: this.stepCount,
-        concurrency: NO_CONCURRENCY,
-        dispatchLifecycle: this.dispatchLifecycle,
-      });
-      this.pendingSubmission = { lazyStep, resultStep };
+      this.pendingStep = { status: "held", lazyStep, resultStep };
 
       // return the result after passing it through serialization, so that
       // the route function observes the exact same value here and in the
@@ -247,15 +242,14 @@ export class AutoExecutor {
       });
     }
 
-    const resultStep = await submitSingleStep({
+    await submitStepResult({
       context: this.context,
       lazyStep,
-      stepId: this.stepCount,
+      resultStep,
       invokeCount: this.invokeCount,
       concurrency: NO_CONCURRENCY,
       telemetry: this.telemetry,
       dispatchDebug: this.dispatchDebug,
-      dispatchLifecycle: this.dispatchLifecycle,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
   }
@@ -284,7 +278,10 @@ export class AutoExecutor {
    * @returns whether a step config request was published, meaning the
    *   caller should abort instead of executing the step
    */
-  private async gateStep(lazyStep: BaseLazyStep, stepId: number): Promise<boolean> {
+  private async publishedStepConfigRequest(
+    lazyStep: BaseLazyStep,
+    stepId: number
+  ): Promise<boolean> {
     if (!lazyStep.stepSettings) {
       return false;
     }
@@ -318,13 +315,17 @@ export class AutoExecutor {
   }
 
   /**
-   * Submits the result of the pending (executed but not yet submitted)
-   * step to QStash, attaching the step-level settings of the next step
-   * when there are any.
+   * Submits the result of the step being held, if there is one, and
+   * returns the abort the caller has to throw to end the invocation.
    *
-   * Returns a promise which always rejects: with `WorkflowAbort` once the
-   * submission succeeds, or with the submission error otherwise. Returns
-   * undefined when there is nothing pending.
+   * Returns undefined when no step is being held, which is the caller's
+   * signal that there is nothing to end. Throws instead of returning
+   * when the submission itself fails, so that error reaches the caller
+   * rather than an abort claiming the step was submitted.
+   *
+   * Callers which arrive while a submission is already under way (the
+   * steps of a parallel group, added together) wait for that one and get
+   * the same abort, rather than submitting a second time.
    *
    * The next step's settings are attached whenever it has any, without
    * checking them against the current delivery: the executor only knows
@@ -333,18 +334,20 @@ export class AutoExecutor {
    * exactly when two gated steps follow each other.
    *
    * @param nextStepSettings step-level settings of the next step
+   * @returns the abort to throw, or undefined if no step was held
    */
-  public flushPendingSubmission(nextStepSettings?: StepSettings): Promise<never> | undefined {
-    if (!this.pendingSubmission) {
-      // if a flush is already in progress, return it so that concurrent
-      // callers (parallel steps added together) all reject the same way
-      return this.pendingFlush;
+  public async submitPendingStep(
+    nextStepSettings?: StepSettings
+  ): Promise<WorkflowAbort | undefined> {
+    if (!this.pendingStep) {
+      return undefined;
+    }
+    if (this.pendingStep.status === "submitting") {
+      return await this.pendingStep.submitted;
     }
 
-    const { lazyStep, resultStep } = this.pendingSubmission;
-    this.pendingSubmission = undefined;
-
-    this.pendingFlush = (async (): Promise<never> => {
+    const { lazyStep, resultStep } = this.pendingStep;
+    const submitted = (async () => {
       await submitStepResult({
         context: this.context,
         lazyStep,
@@ -355,10 +358,11 @@ export class AutoExecutor {
         dispatchDebug: this.dispatchDebug,
         nextStepSettings,
       });
-      throw new WorkflowAbort(lazyStep.stepName, resultStep);
+      return new WorkflowAbort(lazyStep.stepName, resultStep);
     })();
+    this.pendingStep = { status: "submitting", submitted };
 
-    return this.pendingFlush;
+    return await submitted;
   }
 
   /**
@@ -440,15 +444,20 @@ export class AutoExecutor {
         validateStep(parallelSteps[stepIndex], planStep);
         try {
           const parallelStep = parallelSteps[stepIndex];
-          const resultStep = await submitSingleStep({
-            context: this.context,
+          const resultStep = await executeStep({
             lazyStep: parallelStep,
             stepId: planStep.targetStep,
+            concurrency: parallelSteps.length,
+            dispatchLifecycle: this.dispatchLifecycle,
+          });
+          await submitStepResult({
+            context: this.context,
+            lazyStep: parallelStep,
+            resultStep,
             invokeCount: this.invokeCount,
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
             dispatchDebug: this.dispatchDebug,
-            dispatchLifecycle: this.dispatchLifecycle,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {

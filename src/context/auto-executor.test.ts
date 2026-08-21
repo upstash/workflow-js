@@ -835,6 +835,7 @@ describe("auto-executor", () => {
 
     test("should attach nothing when a parallel group comes next", async () => {
       const context = getContext([initialStep], ungatedConfig);
+      const spySubmit = spyOn(context.qstashClient, "batch");
 
       await mockQStashServer({
         execute: async () => {
@@ -849,6 +850,11 @@ describe("auto-executor", () => {
             context.run("p2", () => "r2"),
           ]);
           await expect(throws).rejects.toThrowError(WorkflowAbort);
+
+          // both parallel steps reach the held result, but it is
+          // submitted once: the second waits for the first submission
+          // rather than starting another
+          expect(spySubmit).toHaveBeenCalledTimes(1);
         },
         responseFields: {
           status: 200,

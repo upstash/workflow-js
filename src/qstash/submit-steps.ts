@@ -185,55 +185,6 @@ export const submitStepResult = async ({
 };
 
 /**
- * Submits a single step to QStash.
- *
- * @param context workflow context
- * @param lazyStep lazy step to submit
- * @param stepId step ID
- * @param invokeCount current invoke count
- * @param concurrency concurrency level
- * @param telemetry optional telemetry information
- * @param dispatchDebug debug event dispatcher
- * @param dispatchLifecycle lifecycle event dispatcher
- */
-export const submitSingleStep = async ({
-  context,
-  lazyStep,
-  stepId,
-  invokeCount,
-  concurrency,
-  telemetry,
-  dispatchDebug,
-  dispatchLifecycle,
-}: {
-  context: WorkflowContext;
-  lazyStep: BaseLazyStep;
-  stepId: number;
-  invokeCount: number;
-  concurrency: number;
-  telemetry?: Telemetry;
-  dispatchDebug: DispatchDebug;
-  dispatchLifecycle: DispatchLifecycle;
-}) => {
-  const resultStep = await executeStep({
-    lazyStep,
-    stepId,
-    concurrency,
-    dispatchLifecycle,
-  });
-
-  return await submitStepResult({
-    context,
-    lazyStep,
-    resultStep,
-    invokeCount,
-    concurrency,
-    telemetry,
-    dispatchDebug,
-  });
-};
-
-/**
  * Publishes a step config request: a hidden helper request which makes
  * QStash call the workflow endpoint again, this time with the
  * step-level settings of the step which is about to execute.
