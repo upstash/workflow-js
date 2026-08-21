@@ -22,6 +22,7 @@ import { RouteFunction, Telemetry, WorkflowServeOptions } from "../types";
 import { getPayload, handleFailure, parseRequest, validateRequest } from "../workflow-parser";
 import {
   handleThirdPartyCallResult,
+  flushPendingStep,
   isThirdPartyCallResult,
   triggerFirstInvocation,
   triggerRouteFunction,
@@ -262,9 +263,32 @@ export const serveBase = <
               if (steps.length === 1) {
                 await middlewareManager.dispatchLifecycle("runStarted", {});
               }
-              return await routeFunction(workflowContext);
+
+              // A step whose result is available in-process holds its
+              // submission so that the route function can continue and
+              // reveal what comes next. When the function ends before
+              // another step appears, the held result is submitted here:
+              // on the way out, so the invocation counts as 'step
+              // finished' rather than 'workflow finished', and on the way
+              // out of a throw too, so the step is not executed a second
+              // time. An error thrown after a step executed is therefore
+              // swallowed for this invocation; it happens again
+              // deterministically once the run continues and the function
+              // is replayed.
+              let result: TResult;
+              try {
+                result = await routeFunction(workflowContext);
+              } catch (error) {
+                // throws WorkflowAbort (or the submission error) when
+                // something was pending, replacing the error which got us
+                // here
+                await flushPendingStep(workflowContext);
+                throw error;
+              }
+
+              await flushPendingStep(workflowContext);
+              return result;
             },
-            workflowContext,
             onCleanup: async (result) => {
               await middlewareManager.dispatchLifecycle("runCompleted", {
                 result,

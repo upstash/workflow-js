@@ -262,7 +262,7 @@ describe("disabled workflow context", () => {
             return Promise.resolve("result");
           });
           expect(result).toBe("result");
-          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
+          await expect(context.run("next-step", () => undefined)).rejects.toThrowError(WorkflowAbort);
           called = true;
         },
         responseFields: {
