@@ -1243,6 +1243,81 @@ describe("serve", () => {
     });
   });
 
+  test("should submit a step which ran before the route function threw", async () => {
+    // A step whose result is available in-process is held so the route
+    // function can continue. If the function then throws, the step has
+    // already run: not submitting its result would leave QStash without
+    // it, and the step would run a second time on the next delivery.
+    const token = nanoid();
+    const workflowRunId = `wfr-${nanoid()}`;
+    let stepRunCount = 0;
+
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await context.run("step1", () => {
+          stepRunCount += 1;
+          return "step1-result";
+        });
+        throw new Error("thrown after the step ran");
+      },
+      {
+        qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+        receiver: undefined,
+        disableTelemetry: true,
+      }
+    );
+
+    const step1: Step = {
+      stepId: 1,
+      stepName: "step1",
+      stepType: "Run",
+      out: JSON.stringify("step1-result"),
+      concurrent: 1,
+    };
+
+    const statuses: number[] = [];
+    await driveWorkflow({
+      execute: async (initialPayload, steps) => {
+        const response = await endpoint(
+          getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps)
+        );
+        statuses.push(response.status);
+      },
+      initialPayload: "initial-payload",
+      iterations: [
+        {
+          // the step runs, is held, and the route function throws. The
+          // held result still reaches QStash
+          stepsToAdd: [],
+          responseFields: { body: [{ messageId: "msg-id" }], status: 200 },
+          receivesRequest: {
+            method: "POST",
+            url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+            token,
+            body: [
+              expect.objectContaining({
+                body: JSON.stringify({ ...step1, out: JSON.stringify("step1-result") }),
+              }),
+            ],
+          },
+        },
+        {
+          // replaying it, the step is memoized and nothing holds the
+          // throw back, so it surfaces with nothing left to submit
+          stepsToAdd: [step1],
+          responseFields: { body: [{ messageId: "msg-id" }], status: 200 },
+          receivesRequest: false,
+        },
+      ],
+    });
+
+    // ending as a finished step, then as the error
+    expect(statuses).toEqual([200, 500]);
+    // the step ran in the delivery which held it, and not again when the
+    // throw finally surfaced
+    expect(stepRunCount).toBe(1);
+  });
+
   test("should forward client headers", async () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
     let called = false;
