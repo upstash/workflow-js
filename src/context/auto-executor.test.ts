@@ -893,6 +893,53 @@ describe("auto-executor", () => {
       });
     });
 
+    test("should keep returning the same abort once a held step is submitted", async () => {
+      // Reaching a further step submits the held one and throws the abort
+      // from there, so the route function has already seen it by the time
+      // serve flushes again. That second flush has to report the same
+      // abort rather than "nothing was held", or an invocation whose abort
+      // the route function swallowed would carry on as if the step had
+      // never run.
+      const context = getContext([initialStep], ungatedConfig);
+      const spySubmit = spyOn(context.qstashClient, "batch");
+
+      await mockQStashServer({
+        execute: async () => {
+          await context.run("attemptCharge", () => "first-result");
+
+          let thrown: unknown;
+          try {
+            await context.run("second-step", () => "not-executed");
+          } catch (error) {
+            thrown = error;
+          }
+          expect(thrown).toBeInstanceOf(WorkflowAbort);
+
+          const submitted = (await flushPendingStep(context)) as never as {
+            value: { result: string; abort: WorkflowAbort };
+          };
+          expect(submitted.value.result).toBe("submitted-step");
+          expect(submitted.value.abort).toBe(thrown as WorkflowAbort);
+          // and it is not submitted a second time
+          expect(spySubmit).toHaveBeenCalledTimes(1);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            expect.objectContaining({
+              body: JSON.stringify({ ...singleStep, out: JSON.stringify("first-result") }),
+            }),
+          ],
+        },
+      });
+    });
+
     test("should attach nothing when a parallel group comes next", async () => {
       const context = getContext([initialStep], ungatedConfig);
       const spySubmit = spyOn(context.qstashClient, "batch");
