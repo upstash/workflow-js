@@ -1,3 +1,5 @@
+import type { Err, Ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { attachStepNameToError, isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
 import type { StepFunction, ParallelCallState, Step, StepSettings, Telemetry } from "../types";
@@ -12,6 +14,13 @@ import {
 import { describeStepSettingsMismatch, type EffectiveConfig } from "../qstash/step-config";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 import { NO_CONCURRENCY } from "../constants";
+
+/**
+ * What the executor is to do with a step whose step-level settings it has
+ * just looked at: run it in the delivery in hand, or leave it to the
+ * gated delivery a step config request produces.
+ */
+type StepSettingsOutcome = "execute-step" | "step-config-requested";
 
 /**
  * A step which executed but whose result QStash doesn't have yet: either
@@ -213,7 +222,11 @@ export class AutoExecutor {
       return parsedOut;
     }
 
-    if (await this.publishedStepConfigRequest(lazyStep, this.stepCount)) {
+    const settingsOutcome = await this.applyStepSettings(lazyStep, this.stepCount);
+    if (settingsOutcome.isErr()) {
+      throw settingsOutcome.error;
+    }
+    if (settingsOutcome.value === "step-config-requested") {
       // the step executes in the gated delivery that request produces,
       // not here
       throw new WorkflowAbort(lazyStep.stepName);
@@ -275,43 +288,48 @@ export class AutoExecutor {
    *
    * @param lazyStep step which is about to execute
    * @param stepId id the step will be submitted with
-   * @returns whether a step config request was published, meaning the
-   *   caller should abort instead of executing the step
+   * @returns `execute-step` when the step is to run in this delivery, or
+   *   `step-config-requested` when it is to run in the gated delivery the
+   *   request produces instead
    */
-  private async publishedStepConfigRequest(
+  private async applyStepSettings(
     lazyStep: BaseLazyStep,
     stepId: number
-  ): Promise<boolean> {
+  ): Promise<Ok<StepSettingsOutcome, never> | Err<never, Error>> {
     if (!lazyStep.stepSettings) {
-      return false;
+      return ok("execute-step");
     }
 
     const mismatch = describeStepSettingsMismatch(lazyStep.stepSettings, this.effectiveConfig);
     if (!mismatch) {
-      return false;
+      return ok("execute-step");
     }
 
-    if (this.effectiveConfig.hasStepConfig) {
-      // `dispatchDebug` writes warnings to the console itself, on top of
-      // handing them to any user middleware
-      await this.dispatchDebug("onWarning", {
-        warning:
-          `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
-          ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
-          ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
+    try {
+      if (this.effectiveConfig.hasStepConfig) {
+        // `dispatchDebug` writes warnings to the console itself, on top of
+        // handing them to any user middleware
+        await this.dispatchDebug("onWarning", {
+          warning:
+            `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
+            ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
+            ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
+        });
+        return ok("execute-step");
+      }
+
+      await publishStepConfigRequest({
+        context: this.context,
+        lazyStep,
+        targetStep: stepId,
+        invokeCount: this.invokeCount,
+        telemetry: this.telemetry,
+        dispatchDebug: this.dispatchDebug,
       });
-      return false;
+      return ok("step-config-requested");
+    } catch (error) {
+      return err(error as Error);
     }
-
-    await publishStepConfigRequest({
-      context: this.context,
-      lazyStep,
-      targetStep: stepId,
-      invokeCount: this.invokeCount,
-      telemetry: this.telemetry,
-      dispatchDebug: this.dispatchDebug,
-    });
-    return true;
   }
 
   /**

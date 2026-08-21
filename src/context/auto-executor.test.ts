@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { describe, expect, spyOn, test } from "bun:test";
 import { WorkflowContext } from "./context";
-import { Client } from "@upstash/qstash";
+import { Client, QstashError } from "@upstash/qstash";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { nanoid } from "../utils";
 import { AutoExecutor } from "./auto-executor";
@@ -665,6 +665,37 @@ describe("auto-executor", () => {
       });
 
       // the step must not run in the ungated delivery
+      expect(stepExecuted).toBeFalse();
+    });
+
+    test("should surface a failure to publish the step config request", async () => {
+      const context = getContext([initialStep], ungatedConfig);
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          const throws = context
+            .run("attemptCharge", () => {
+              stepExecuted = true;
+              return "result";
+            })
+            .withSettings(settings);
+          // nothing is gated and nothing was submitted, so the publish
+          // error has to surface rather than an abort claiming otherwise
+          await expect(throws).rejects.toThrowError(QstashError);
+        },
+        responseFields: {
+          status: 500,
+          body: "publish failed",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          body: { targetStep: 1, invokeCount: 7 },
+        },
+      });
+
       expect(stepExecuted).toBeFalse();
     });
 
