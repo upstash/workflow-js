@@ -23,6 +23,13 @@ import { NO_CONCURRENCY } from "../constants";
 type StepSettingsOutcome = "execute-step" | "step-config-requested";
 
 /**
+ * What came of submitting the step being held, if one was.
+ */
+export type PendingStepOutcome =
+  | { result: "submitted-step"; abort: WorkflowAbort }
+  | { result: "no-pending-step" };
+
+/**
  * A step which executed but whose result QStash doesn't have yet: either
  * still held, or already on its way. Never both, and never neither while
  * a submission is outstanding.
@@ -155,10 +162,10 @@ export class AutoExecutor {
       if (submitted.isErr()) {
         throw submitted.error;
       }
-      if (submitted.value) {
+      if (submitted.value.result === "submitted-step") {
         // the held step is on its way to QStash, so this invocation ends
         // here and the next step runs in the delivery it produces
-        throw submitted.value;
+        throw submitted.value.abort;
       }
 
       if (!this.promises.has(lazyStepList)) {
@@ -357,19 +364,20 @@ export class AutoExecutor {
    * exactly when two gated steps follow each other.
    *
    * @param nextStepSettings step-level settings of the next step
-   * @returns the abort which ends this invocation, or undefined when no
-   *   step was held and there is nothing to end
+   * @returns `submitted-step` with the abort which ends this invocation,
+   *   or `no-pending-step` when nothing was held and there is nothing to
+   *   end
    */
   public async submitPendingStep(
     nextStepSettings?: StepSettings
-  ): Promise<Ok<WorkflowAbort | undefined, never> | Err<never, Error>> {
+  ): Promise<Ok<PendingStepOutcome, never> | Err<never, Error>> {
     if (!this.pendingStep) {
-      return ok(undefined);
+      return ok({ result: "no-pending-step" });
     }
 
     try {
       if (this.pendingStep.status === "submitting") {
-        return ok(await this.pendingStep.submitted);
+        return ok({ result: "submitted-step", abort: await this.pendingStep.submitted });
       }
 
       const { lazyStep, resultStep } = this.pendingStep;
@@ -388,7 +396,7 @@ export class AutoExecutor {
       })();
       this.pendingStep = { status: "submitting", submitted };
 
-      return ok(await submitted);
+      return ok({ result: "submitted-step", abort: await submitted });
     } catch (error) {
       return err(error as Error);
     }

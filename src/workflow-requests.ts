@@ -182,12 +182,12 @@ export const triggerFirstInvocation = async <TInitialPayload>(
  *
  * @internal
  * @param workflowContext workflow context
- * @returns the abort which ends this invocation, or undefined when no
- *   step was held and there is nothing to end
+ * @returns `submitted-step` with the abort which ends this invocation,
+ *   or `no-pending-step` when nothing was held and there is nothing to end
  */
 export const flushPendingStep = async (
   workflowContext: WorkflowContext
-): Promise<Ok<WorkflowAbort | undefined, never> | Err<never, Error>> => {
+): ReturnType<AutoExecutor["submitPendingStep"]> => {
   const { executor } = workflowContext as unknown as { executor: AutoExecutor };
   return await executor.submitPendingStep();
 };

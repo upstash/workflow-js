@@ -207,7 +207,7 @@ describe("disabled workflow context", () => {
           });
           expect(result).toBe("result");
           const submitted = await flushPendingStep(context);
-          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
           called = true;
         },
         responseFields: {
@@ -323,7 +323,7 @@ describe("disabled workflow context", () => {
           });
           expect(result).toBe("result");
           const submitted = await flushPendingStep(context);
-          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
           called = true;
         },
         responseFields: {

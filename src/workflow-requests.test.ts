@@ -852,7 +852,7 @@ describe("Workflow Requests", () => {
             // result is submitted here, as `serve` does
             const submitted = await flushPendingStep(context);
             if (submitted.isErr()) throw submitted.error;
-            if (submitted.value) throw submitted.value;
+            if (submitted.value.result === "submitted-step") throw submitted.value.abort;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
@@ -905,7 +905,7 @@ describe("Workflow Requests", () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
             const submitted = await flushPendingStep(context);
             if (submitted.isErr()) throw submitted.error;
-            if (submitted.value) throw submitted.value;
+            if (submitted.value.result === "submitted-step") throw submitted.value.abort;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
@@ -964,7 +964,7 @@ describe("Workflow Requests", () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
             const submitted = await flushPendingStep(context);
             if (submitted.isErr()) throw submitted.error;
-            if (submitted.value) throw submitted.value;
+            if (submitted.value.result === "submitted-step") throw submitted.value.abort;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");

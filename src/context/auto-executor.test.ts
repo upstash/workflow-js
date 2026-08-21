@@ -116,7 +116,7 @@ describe("auto-executor", () => {
           });
           expect(result).toEqual({ input: initialPayload, success: false });
           const submitted = await flushPendingStep(context);
-          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
         },
         responseFields: {
           status: 200,
@@ -714,7 +714,7 @@ describe("auto-executor", () => {
             .withSettings(settings);
           expect(result).toEqual({ input: initialPayload, success: false });
           const submitted = await flushPendingStep(context);
-          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
         },
         responseFields: {
           status: 200,
@@ -775,7 +775,7 @@ describe("auto-executor", () => {
             })
             .withSettings(settings);
           const submitted = await flushPendingStep(context);
-          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
         },
         responseFields: {
           status: 200,

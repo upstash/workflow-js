@@ -200,8 +200,11 @@ describe("context tests", () => {
           return "my-result";
         });
         expect(result).toBe("my-result");
-        const submitted = await flushPendingStep(context);
-        expect(submitted._unsafeUnwrap()?.message).toInclude(
+        const submitted = (await flushPendingStep(context))._unsafeUnwrap();
+        if (submitted.result !== "submitted-step") {
+          throw new Error(`expected the held step to be submitted, got '${submitted.result}'`);
+        }
+        expect(submitted.abort.message).toInclude(
           "Aborting workflow after executing step 'my-step'."
         );
       },

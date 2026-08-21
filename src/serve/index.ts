@@ -282,12 +282,12 @@ export const serveBase = <
               if (submitted.isErr()) {
                 throw submitted.error;
               }
-              if (submitted.value) {
+              if (submitted.value.result === "submitted-step") {
                 // a step was held, so this invocation ends with its abort
                 // — and an error the function threw after running that
                 // step is dropped here. It happens again deterministically
                 // once the run continues and the function is replayed.
-                throw submitted.value;
+                throw submitted.value.abort;
               }
 
               if (!outcome.ran) {
