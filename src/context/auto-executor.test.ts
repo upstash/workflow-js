@@ -115,7 +115,8 @@ describe("auto-executor", () => {
             return { input: context.requestPayload, success: false };
           });
           expect(result).toEqual({ input: initialPayload, success: false });
-          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -712,7 +713,8 @@ describe("auto-executor", () => {
             })
             .withSettings(settings);
           expect(result).toEqual({ input: initialPayload, success: false });
-          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -772,7 +774,8 @@ describe("auto-executor", () => {
               return { input: context.requestPayload, success: false };
             })
             .withSettings(settings);
-          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrap()).toBeInstanceOf(WorkflowAbort);
         },
         responseFields: {
           status: 200,
@@ -821,7 +824,8 @@ describe("auto-executor", () => {
 
           // the step ran but its result never reached QStash, so the
           // failure has to surface rather than an abort saying it did
-          await expect(flushPendingStep(context)).rejects.toThrowError(QstashError);
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrapErr()).toBeInstanceOf(QstashError);
         },
         responseFields: {
           status: 500,

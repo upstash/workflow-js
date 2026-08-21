@@ -200,7 +200,8 @@ describe("context tests", () => {
           return "my-result";
         });
         expect(result).toBe("my-result");
-        await expect(flushPendingStep(context)).rejects.toThrowError(
+        const submitted = await flushPendingStep(context);
+        expect(submitted._unsafeUnwrap()?.message).toInclude(
           "Aborting workflow after executing step 'my-step'."
         );
       },

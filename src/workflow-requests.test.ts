@@ -849,7 +849,9 @@ describe("Workflow Requests", () => {
             await context.sleep("sleeping", 10);
             // the route function ends right after a step, so the held
             // result is submitted here, as `serve` does
-            await flushPendingStep(context);
+            const submitted = await flushPendingStep(context);
+            if (submitted.isErr()) throw submitted.error;
+            if (submitted.value) throw submitted.value;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
@@ -900,7 +902,9 @@ describe("Workflow Requests", () => {
         const result = await triggerRouteFunction({
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
-            await flushPendingStep(context);
+            const submitted = await flushPendingStep(context);
+            if (submitted.isErr()) throw submitted.error;
+            if (submitted.value) throw submitted.value;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
@@ -957,7 +961,9 @@ describe("Workflow Requests", () => {
         const result = await triggerRouteFunction({
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
-            await flushPendingStep(context);
+            const submitted = await flushPendingStep(context);
+            if (submitted.isErr()) throw submitted.error;
+            if (submitted.value) throw submitted.value;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");

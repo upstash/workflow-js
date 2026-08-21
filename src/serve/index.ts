@@ -266,28 +266,34 @@ export const serveBase = <
 
               // A step whose result is available in-process holds its
               // submission so that the route function can continue and
-              // reveal what comes next. When the function ends before
-              // another step appears, the held result is submitted here:
-              // on the way out, so the invocation counts as 'step
-              // finished' rather than 'workflow finished', and on the way
-              // out of a throw too, so the step is not executed a second
-              // time. An error thrown after a step executed is therefore
-              // swallowed for this invocation; it happens again
-              // deterministically once the run continues and the function
-              // is replayed.
-              let result: TResult;
+              // reveal what comes next. However the function ended, the
+              // held result is submitted before this invocation is: so
+              // that the invocation counts as 'step finished' rather than
+              // 'workflow finished', and so that the step is not executed
+              // a second time when the function threw after running it.
+              let outcome: { ran: true; result: TResult } | { ran: false; error: unknown };
               try {
-                result = await routeFunction(workflowContext);
+                outcome = { ran: true, result: await routeFunction(workflowContext) };
               } catch (error) {
-                // throws WorkflowAbort (or the submission error) when
-                // something was pending, replacing the error which got us
-                // here
-                await flushPendingStep(workflowContext);
-                throw error;
+                outcome = { ran: false, error };
               }
 
-              await flushPendingStep(workflowContext);
-              return result;
+              const submitted = await flushPendingStep(workflowContext);
+              if (submitted.isErr()) {
+                throw submitted.error;
+              }
+              if (submitted.value) {
+                // a step was held, so this invocation ends with its abort
+                // — and an error the function threw after running that
+                // step is dropped here. It happens again deterministically
+                // once the run continues and the function is replayed.
+                throw submitted.value;
+              }
+
+              if (!outcome.ran) {
+                throw outcome.error;
+              }
+              return outcome.result;
             },
             onCleanup: async (result) => {
               await middlewareManager.dispatchLifecycle("runCompleted", {

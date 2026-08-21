@@ -177,23 +177,19 @@ export const triggerFirstInvocation = async <TInitialPayload>(
  * Submits the result of a step which executed but whose submission was
  * held so that the route function could reveal what comes next.
  *
- * Throws `WorkflowAbort` after submitting. No-op when nothing is pending.
- *
  * Not part of the public API: reaches the protected executor of the
  * context, which is why the cast is needed.
  *
  * @internal
  * @param workflowContext workflow context
+ * @returns the abort which ends this invocation, or undefined when no
+ *   step was held and there is nothing to end
  */
-export const flushPendingStep = async (workflowContext: WorkflowContext): Promise<void> => {
+export const flushPendingStep = async (
+  workflowContext: WorkflowContext
+): Promise<Ok<WorkflowAbort | undefined, never> | Err<never, Error>> => {
   const { executor } = workflowContext as unknown as { executor: AutoExecutor };
-  const submitted = await executor.submitPendingStep();
-  if (submitted.isErr()) {
-    throw submitted.error;
-  }
-  if (submitted.value) {
-    throw submitted.value;
-  }
+  return await executor.submitPendingStep();
 };
 
 /**
