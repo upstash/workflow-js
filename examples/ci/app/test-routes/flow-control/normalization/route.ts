@@ -22,18 +22,27 @@ import { saveResult } from "app/ci/upstash/redis"
 
 const payloadFor = (route: string) => route
 
+/**
+ * Whether QStash reported that this delivery carried the step's own
+ * settings, rather than the ones the run was triggered with.
+ *
+ * The SDK keeps this off its public surface — it uses it internally to
+ * bound a comparison it gets wrong — but nothing else observes whether
+ * the header arrives, so the assertions below reach in for it.
+ */
+const isGatedDelivery = (context: { headers: Headers }) =>
+  (context as unknown as { effectiveConfig: { hasStepConfig: boolean } }).effectiveConfig
+    .hasStepConfig
+
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
       // parallelism only
       await context
         .run("parallelism-only", () => {
-          // QStash reports that this delivery carried the step's own
-          // settings. The SDK relies on this to bound a comparison it
-          // gets wrong, so it has to actually arrive.
-          // @ts-expect-error internal field, asserted here so a missing
-          // marker fails the suite rather than going unnoticed
-          expect(context.effectiveConfig.hasStepConfig, true)
+          // the guard marker has to actually arrive: nothing else
+          // observes it, so a missing one would go unnoticed
+          expect(isGatedDelivery(context), true)
           expect(context.flowControl?.key, "norm-parallelism")
           expect(context.flowControl?.parallelism, 2)
           expect(context.flowControl?.rate, 0)
@@ -111,8 +120,7 @@ export const { POST, GET } = testServe(
           // still a gated delivery: the previous step attaches this
           // step's settings whenever it has any, without checking them
           // against the delivery in hand
-          // @ts-expect-error internal field, see above
-          expect(context.effectiveConfig.hasStepConfig, true)
+          expect(isGatedDelivery(context), true)
           return "ok"
         })
         .withSettings({
@@ -125,8 +133,7 @@ export const { POST, GET } = testServe(
       // and the marker must be absent. Without this the assertions above
       // would also pass if QStash set the marker unconditionally.
       await context.run("no-settings", () => {
-        // @ts-expect-error internal field, see above
-        expect(context.effectiveConfig.hasStepConfig, false)
+        expect(isGatedDelivery(context), false)
         expect(context.flowControl?.key, "ci-trigger-flow-control-normalization")
         return "ok"
       })

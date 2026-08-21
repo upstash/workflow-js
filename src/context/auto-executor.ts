@@ -10,7 +10,7 @@ import {
   submitSingleStep,
   submitStepResult,
 } from "../qstash/submit-steps";
-import { describeStepSettingsMismatch } from "../qstash/step-config";
+import { describeStepSettingsMismatch, type EffectiveConfig } from "../qstash/step-config";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 import { NO_CONCURRENCY } from "../constants";
 
@@ -58,6 +58,12 @@ export class AutoExecutor {
    * `WorkflowAbort` (or a submission error).
    */
   private pendingFlush?: Promise<never>;
+  /**
+   * configuration QStash applied to the delivery being handled. A step
+   * with step-level settings is gated by comparing its settings against
+   * this.
+   */
+  private readonly effectiveConfig: EffectiveConfig;
 
   /**
    * @param context workflow context
@@ -66,6 +72,8 @@ export class AutoExecutor {
    * @param dispatchLifecycle lifecycle event dispatcher
    * @param telemetry optional telemetry information
    * @param invokeCount optional invoke count
+   * @param effectiveConfig configuration QStash applied to the delivery
+   *   being handled
    */
   constructor(
     context: WorkflowContext,
@@ -73,7 +81,8 @@ export class AutoExecutor {
     dispatchDebug: DispatchDebug,
     dispatchLifecycle: DispatchLifecycle,
     telemetry?: Telemetry,
-    invokeCount?: number
+    invokeCount?: number,
+    effectiveConfig?: EffectiveConfig
   ) {
     this.context = context;
     this.steps = steps;
@@ -81,6 +90,7 @@ export class AutoExecutor {
     this.dispatchLifecycle = dispatchLifecycle;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
+    this.effectiveConfig = effectiveConfig ?? { hasStepConfig: false };
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -279,15 +289,12 @@ export class AutoExecutor {
       return false;
     }
 
-    const mismatch = describeStepSettingsMismatch(
-      lazyStep.stepSettings,
-      this.context.effectiveConfig
-    );
+    const mismatch = describeStepSettingsMismatch(lazyStep.stepSettings, this.effectiveConfig);
     if (!mismatch) {
       return false;
     }
 
-    if (this.context.effectiveConfig.hasStepConfig) {
+    if (this.effectiveConfig.hasStepConfig) {
       // `dispatchDebug` writes warnings to the console itself, on top of
       // handing them to any user middleware
       await this.dispatchDebug("onWarning", {

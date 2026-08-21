@@ -3,7 +3,7 @@ import { attachStepNameToError, WorkflowAbort } from "../error";
 import { Step, StepSettings, Telemetry } from "../types";
 import { WorkflowContext } from "../context";
 import { BaseLazyStep } from "../context/steps";
-import { getHeaders, getStepSettingsHeaders } from "./headers";
+import { getHeaders } from "./headers";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 
 /**
@@ -53,13 +53,11 @@ export const submitParallelSteps = async ({
           telemetry,
         },
         invokeCount,
+        stepSettings: steps[index].stepSettings,
       });
 
       return {
-        headers: {
-          ...headers,
-          ...getStepSettingsHeaders(steps[index].stepSettings),
-        },
+        headers,
         method: "POST",
         url: context.url,
         body: JSON.stringify(planStep),
@@ -156,17 +154,13 @@ export const submitStepResult = async ({
     step: resultStep,
     invokeCount,
     telemetry,
+    stepSettings: nextStepSettings,
   });
-
-  const finalHeaders = {
-    ...headers,
-    ...getStepSettingsHeaders(nextStepSettings),
-  };
 
   const body = lazyStep.getBody({
     context,
     step: resultStep,
-    headers: finalHeaders,
+    headers,
     invokeCount,
     telemetry,
   });
@@ -174,7 +168,7 @@ export const submitStepResult = async ({
   const submitResult = await lazyStep.submitStep({
     context,
     body,
-    headers: finalHeaders,
+    headers,
     isParallel: concurrency !== NO_CONCURRENCY,
     invokeCount,
     step: resultStep,
@@ -292,6 +286,7 @@ export const publishStepConfigRequest = async ({
       telemetry,
     },
     invokeCount,
+    stepSettings: lazyStep.stepSettings,
   });
 
   await dispatchDebug("onInfo", {
@@ -303,7 +298,6 @@ export const publishStepConfigRequest = async ({
   const result = (await context.qstashClient.publishJSON({
     headers: {
       ...headers,
-      ...getStepSettingsHeaders(lazyStep.stepSettings),
       "Upstash-Workflow-CallType": WORKFLOW_STEP_CONFIG_CALL_TYPE,
     },
     method: "POST",

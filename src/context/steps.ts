@@ -39,7 +39,14 @@ import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
 
 type StepParams = { context: WorkflowContext } & Pick<HeaderParams, "telemetry"> &
   Required<Pick<HeaderParams, "step" | "invokeCount">>;
-type GetHeaderParams = StepParams;
+type GetHeaderParams = StepParams & {
+  /**
+   * step-level settings to apply to the message being published. Set
+   * when the next step has settings and this step's submission is what
+   * will produce the delivery that executes it.
+   */
+  stepSettings?: StepSettings;
+};
 type GetBodyParams = StepParams & Omit<HeadersResponse, "contentType">;
 type SubmitStepParams = StepParams &
   Pick<HeadersResponse, "headers"> & { body: string; isParallel: boolean };
@@ -173,7 +180,13 @@ export abstract class BaseLazyStep<TResult = unknown> {
     return JSON.stringify(step);
   }
 
-  getHeaders({ context, telemetry, invokeCount, step }: GetHeaderParams): HeadersResponse {
+  getHeaders({
+    context,
+    telemetry,
+    invokeCount,
+    step,
+    stepSettings,
+  }: GetHeaderParams): HeadersResponse {
     return getHeaders({
       initHeaderValue: "false",
       workflowConfig: {
@@ -187,6 +200,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
         step,
         lazyStep: this,
       },
+      stepSettings,
     });
   }
 

@@ -184,16 +184,16 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * This is the configuration of *this delivery*, not of the run: it is
    * the configuration the run was triggered with, except inside the
    * delivery which executes a step that has step-level settings, where
-   * it is that step's settings.
-   *
-   * @internal the parsed form; the individual fields below are public
+   * it is that step's settings. The fields below expose it; the executor
+   * gets it directly rather than reaching through the context.
    */
-  public readonly effectiveConfig: EffectiveConfig;
+  private readonly effectiveConfig: EffectiveConfig;
 
   /**
    * Flow control QStash applied to the request being handled, if any.
    *
-   * @see {@link effectiveConfig} for what "applied to the request" means
+   * This is the flow control of the request in hand, which is the one the
+   * run was triggered with except inside a step carrying its own.
    */
   public get flowControl(): NormalizedFlowControl | undefined {
     return this.effectiveConfig.flowControl;
@@ -206,7 +206,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Not to be confused with {@link retried}, which is how many retries
    * have already happened.
    *
-   * @see {@link effectiveConfig} for what "applied to the request" means
+   * @see {@link flowControl} for what "the request being handled" means
    */
   public get retries(): number | undefined {
     return this.effectiveConfig.retries;
@@ -216,7 +216,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Retry delay expression QStash applied to the request being handled,
    * if any.
    *
-   * @see {@link effectiveConfig} for what "applied to the request" means
+   * @see {@link flowControl} for what "the request being handled" means
    */
   public get retryDelay(): string | undefined {
     return this.effectiveConfig.retryDelay;
@@ -283,7 +283,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
       middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
       middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
       telemetry,
-      invokeCount
+      invokeCount,
+      this.effectiveConfig
     );
   }
 
