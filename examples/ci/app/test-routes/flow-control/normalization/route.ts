@@ -7,7 +7,7 @@ import { saveResult } from "app/ci/upstash/redis"
  * this route checks that the step-level settings the SDK publishes come
  * back from QStash in a form the SDK recognizes.
  *
- * The gate decision compares a step's settings against the configuration
+ * That decision compares a step's settings against the configuration
  * QStash reports on the delivery. The two sides format the same values
  * differently (QStash joins the flow control value without spaces and
  * reports periods in whole seconds; the SDK joins with ", " and sends
@@ -15,7 +15,7 @@ import { saveResult } from "app/ci/upstash/redis"
  * bug makes every delivery look mismatched, which is why this route
  * asserts the round trip for a range of shapes.
  *
- * The call count matters as much as the assertions: each gated step must
+ * The call count matters as much as the assertions: each step with settings must
  * cost exactly one step config request. A step which is republished over
  * and over would still pass the assertions below.
  */
@@ -30,7 +30,7 @@ const payloadFor = (route: string) => route
  * bound a comparison it gets wrong — but nothing else observes whether
  * the header arrives, so the assertions below reach in for it.
  */
-const isGatedDelivery = (context: { headers: Headers }) =>
+const carriesStepSettings = (context: { headers: Headers }) =>
   (context as unknown as { effectiveConfig: { hasStepConfig: boolean } }).effectiveConfig
     .hasStepConfig
 
@@ -42,7 +42,7 @@ export const { POST, GET } = testServe(
         .run("parallelism-only", () => {
           // the guard marker has to actually arrive: nothing else
           // observes it, so a missing one would go unnoticed
-          expect(isGatedDelivery(context), true)
+          expect(carriesStepSettings(context), true)
           expect(context.flowControl?.key, "norm-parallelism")
           expect(context.flowControl?.parallelism, 2)
           expect(context.flowControl?.rate, 0)
@@ -112,15 +112,15 @@ export const { POST, GET } = testServe(
         })
 
       // settings which match the configuration the run was triggered
-      // with: nothing to gate, so this step must cost no extra request.
+      // with: nothing to apply, so this step must cost no extra request.
       // This is the direction which loops when normalization is wrong.
       await context
         .run("same-as-trigger", () => {
           expect(context.flowControl?.key, "ci-trigger-flow-control-normalization")
-          // still a gated delivery: the previous step attaches this
+          // still carries them: the previous step attaches this
           // step's settings whenever it has any, without checking them
           // against the delivery in hand
-          expect(isGatedDelivery(context), true)
+          expect(carriesStepSettings(context), true)
           return "ok"
         })
         .withSettings({
@@ -133,7 +133,7 @@ export const { POST, GET } = testServe(
       // and the marker must be absent. Without this the assertions above
       // would also pass if QStash set the marker unconditionally.
       await context.run("no-settings", () => {
-        expect(isGatedDelivery(context), false)
+        expect(carriesStepSettings(context), false)
         expect(context.flowControl?.key, "ci-trigger-flow-control-normalization")
         return "ok"
       })
@@ -146,7 +146,7 @@ export const { POST, GET } = testServe(
     // 9 steps. Only the first needs a step config request: once a step
     // executes, the next step's settings ride on its submission.
     //
-    //   step config request for step 1 + its gated delivery  = 2
+    //   step config request for step 1 + its delivery  = 2
     //   steps 2..9, each executing on the delivery carrying
     //     the previous step's result                         = 8
     //   final replay                                         = 1

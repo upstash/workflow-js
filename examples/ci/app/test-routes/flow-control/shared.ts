@@ -40,7 +40,7 @@ export const ciHeaders = (context: WorkflowContext<unknown>) => ({
 });
 
 /**
- * Builds the body of the gated `increment` step.
+ * Builds the body of the `increment` step, which carries the settings.
  *
  * @param counterKey redis key of the counter shared by the workers
  * @returns the number of workers inside the step, including this one
@@ -73,5 +73,5 @@ export const incrementSettings = (flowControlKey: string) => ({
  *
  * @param observed values the workers observed inside `increment`
  */
-export const wasGated = (observed: number[]) =>
+export const withinStepParallelism = (observed: number[]) =>
   observed.length === WORKER_COUNT && observed.every((active) => active <= STEP_PARALLELISM);

@@ -8,7 +8,7 @@ for a single step only.
 
 Each route is triggered once, as a **coordinator** workflow which invokes
 `WORKER_COUNT` **workers** in parallel. The workers are the concurrency that
-the step-level flow control has to gate: each reaches an `increment` step
+the step-level flow control has to hold back: each reaches an `increment` step
 carrying step-level flow control of `parallelism: 1`, while the run itself is
 triggered with a permissive trigger-level flow control (`parallelism: 5`).
 
@@ -21,27 +21,27 @@ coordinator collects the observed values and saves `...-ok` or `...-violated`
 as the run's result.
 
 The shared pieces live in `shared.ts`; a route only defines what its worker
-does before the gated step.
+does before the step which carries the settings.
 
 ## Routes
 
 Step-level settings must be on the request whose delivery executes the step.
 The SDK only learns about a step when the workflow function is replayed, which
 happens in a delivery published before the step was known. So when the executor
-reaches a step with settings in an ungated delivery it publishes a hidden step
-config request carrying them, and the step runs in the gated delivery QStash
+reaches a step with settings in an ordinary delivery it publishes a hidden step
+config request carrying them, and the step runs in the delivery QStash
 produces. The exception is a step which follows one whose result the SDK
 computed itself — there the settings ride on that step's submission, and no
 extra request is needed.
 
-- **`first-step`**: the gated step is the first step of the worker, so there is
+- **`first-step`**: the step with settings is the first step of the worker, so there is
   no earlier step to carry its settings.
-- **`step`**: the gated step comes after a `context.run` step, so its settings
+- **`step`**: the step with settings comes after a `context.run` step, so its settings
   ride on that step's submission — the one case which costs no extra request.
-- **`call`**: the gated step comes after a `context.call` step, so the ungated
-  delivery is the one carrying the call result.
-- **`invoke`**: the gated step comes after a `context.invoke` step, so the
-  ungated delivery is the one QStash publishes with the invoked run's result.
+- **`call`**: the step with settings comes after a `context.call` step, so the
+  ordinary delivery is the one carrying the call result.
+- **`invoke`**: the step with settings comes after a `context.invoke` step, so the
+  ordinary delivery is the one QStash publishes with the invoked run's result.
 - **`normalization`**: not a concurrency test. A single run walks a range of
   settings shapes and asserts that each comes back from QStash in a form the
   SDK recognizes, and that the run costs exactly the expected number of

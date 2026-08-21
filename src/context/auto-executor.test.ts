@@ -613,17 +613,17 @@ describe("auto-executor", () => {
      * `settings`, in the shape QStash reports it back: the control value
      * joined without spaces, and the guard marker present.
      */
-    const gatedConfig: EffectiveConfig = {
+    const stepConfigured: EffectiveConfig = {
       flowControl: { key: "step-flow-key", parallelism: 2, rate: 10, period: 1 },
       retries: 5,
       retryDelay: "1000",
       hasStepConfig: true,
     };
 
-    const ungatedConfig: EffectiveConfig = { retries: 3, hasStepConfig: false };
+    const unstepConfigured: EffectiveConfig = { retries: 3, hasStepConfig: false };
 
-    test("should publish a step config request when the delivery is not gated", async () => {
-      const context = getContext([initialStep], ungatedConfig);
+    test("should publish a step config request when the delivery is ordinary", async () => {
+      const context = getContext([initialStep], unstepConfigured);
 
       let stepExecuted = false;
       await mockQStashServer({
@@ -665,12 +665,12 @@ describe("auto-executor", () => {
         },
       });
 
-      // the step must not run in the ungated delivery
+      // the step must not run in an ordinary delivery
       expect(stepExecuted).toBeFalse();
     });
 
     test("should surface a failure to publish the step config request", async () => {
-      const context = getContext([initialStep], ungatedConfig);
+      const context = getContext([initialStep], unstepConfigured);
 
       let stepExecuted = false;
       await mockQStashServer({
@@ -681,7 +681,7 @@ describe("auto-executor", () => {
               return "result";
             })
             .withSettings(settings);
-          // nothing is gated and nothing was submitted, so the publish
+          // no settings were applied and nothing was submitted, so the publish
           // error has to surface rather than an abort claiming otherwise
           await expect(throws).rejects.toThrowError(QstashError);
         },
@@ -701,7 +701,7 @@ describe("auto-executor", () => {
     });
 
     test("should execute the step when the delivery already has its settings", async () => {
-      const context = getContext([initialStep], gatedConfig);
+      const context = getContext([initialStep], stepConfigured);
 
       let stepExecuted = false;
       await mockQStashServer({
@@ -814,7 +814,7 @@ describe("auto-executor", () => {
     });
 
     test("should surface a failure to submit the held step", async () => {
-      const context = getContext([initialStep], ungatedConfig);
+      const context = getContext([initialStep], unstepConfigured);
 
       await mockQStashServer({
         execute: async () => {
@@ -840,7 +840,7 @@ describe("auto-executor", () => {
     });
 
     test("should attach the next step's settings to the pending submission", async () => {
-      const context = getContext([initialStep], ungatedConfig);
+      const context = getContext([initialStep], unstepConfigured);
 
       await mockQStashServer({
         execute: async () => {
@@ -852,7 +852,7 @@ describe("auto-executor", () => {
           expect(result).toEqual({ input: initialPayload, success: false });
 
           // reaching the next step flushes the pending submission with
-          // that step's settings attached, so its delivery is gated and
+          // that step's settings attached, so its delivery carries them and
           // no step config request is needed
           const throws = result.success
             ? context.run("unexpected-branch", () => "not-executed")
@@ -900,7 +900,7 @@ describe("auto-executor", () => {
       // abort rather than "nothing was held", or an invocation whose abort
       // the route function swallowed would carry on as if the step had
       // never run.
-      const context = getContext([initialStep], ungatedConfig);
+      const context = getContext([initialStep], unstepConfigured);
       const spySubmit = spyOn(context.qstashClient, "batch");
 
       await mockQStashServer({
@@ -941,7 +941,7 @@ describe("auto-executor", () => {
     });
 
     test("should attach nothing when a parallel group comes next", async () => {
-      const context = getContext([initialStep], ungatedConfig);
+      const context = getContext([initialStep], unstepConfigured);
       const spySubmit = spyOn(context.qstashClient, "batch");
 
       await mockQStashServer({
@@ -995,7 +995,7 @@ describe("auto-executor", () => {
     test("should attach each parallel step's own settings to its plan step", async () => {
       // a plan step's delivery is what executes its target step, so the
       // settings ride on the plan step and no step config request is needed
-      const context = getContext([initialStep], ungatedConfig);
+      const context = getContext([initialStep], unstepConfigured);
 
       await mockQStashServer({
         execute: async () => {

@@ -7,15 +7,15 @@ import {
   ciHeaders,
   incrementSettings,
   incrementStep,
-  wasGated,
+  withinStepParallelism,
   WORKER_COUNT,
 } from "../../../shared";
 
 /**
- * the gated step is the *first* step of the worker, so there is no
+ * the step which carries settings is the *first* step of the worker, so there is no
  * earlier step to carry its settings: the delivery which reaches it is
  * the one that started the run. The SDK publishes a step config request
- * and the step executes in the gated delivery that produces.
+ * and the step executes in the delivery that request produces.
  *
  * See `../../../shared.ts` for what the workers assert.
  */
@@ -41,10 +41,10 @@ const coordinator = createWorkflow(async (context: WorkflowContext<unknown>) => 
     )
   );
 
-  const gated = wasGated(results.map(({ body }) => body));
-  expect(gated, true);
+  const withinLimit = withinStepParallelism(results.map(({ body }) => body));
+  expect(withinLimit, true);
 
-  await saveResult(context, `first-step-flow-control-${gated ? "ok" : "violated"}`);
+  await saveResult(context, `first-step-flow-control-${withinLimit ? "ok" : "violated"}`);
 });
 
 export const { POST, GET } = testServe(

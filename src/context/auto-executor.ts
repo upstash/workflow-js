@@ -64,7 +64,7 @@ export class AutoExecutor {
   private pendingStep?: PendingStep;
   /**
    * configuration QStash applied to the delivery being handled. A step
-   * with step-level settings is gated by comparing its settings against
+   * with step-level settings is settled by comparing its settings against
    * this.
    */
   private readonly effectiveConfig: EffectiveConfig;
@@ -141,7 +141,7 @@ export class AutoExecutor {
       // pending: this new step list is what comes next. Submit the
       // pending result and abort. When what comes next is a single step
       // with step-level settings, the settings ride on that submission,
-      // so the delivery it produces is gated and executes the step. A
+      // so the delivery it produces is step-configured and executes the step. A
       // parallel group carries its settings on its own plan steps
       // instead, so nothing is attached for it.
       //
@@ -237,7 +237,7 @@ export class AutoExecutor {
     if (mismatch) {
       if (!this.effectiveConfig.hasStepConfig) {
         // This delivery was not published with step-level settings, so ask
-        // for one that is. The step runs in the gated delivery that
+        // for one that is. The step runs in the step-configured delivery that
         // request produces, not here.
         await publishStepConfigRequest({
           context: this.context,
@@ -316,9 +316,9 @@ export class AutoExecutor {
    *
    * The next step's settings are attached whenever it has any, without
    * checking them against the current delivery: the executor only knows
-   * the configuration of the delivery in hand, which inside a gated
+   * the configuration of the delivery in hand, which inside a
    * delivery is the *previous* step's, so such a check would be wrong
-   * exactly when two gated steps follow each other.
+   * exactly when two steps with settings follow each other.
    *
    * @param nextStepSettings step-level settings of the next step
    * @returns `submitted-step` with the abort which ends this invocation,

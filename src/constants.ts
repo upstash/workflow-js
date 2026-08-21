@@ -15,7 +15,7 @@ export const WORKFLOW_FEATURE_SET = "LazyFetch,InitialBody,WF_DetectTrigger,WF_T
  * logs.
  *
  * The SDK publishes one when it is about to execute a step which has
- * step-level settings in a delivery which wasn't gated by them.
+ * step-level settings in an ordinary delivery.
  */
 export const WORKFLOW_STEP_CONFIG_CALL_TYPE = "stepConfig";
 /**

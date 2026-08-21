@@ -11,15 +11,15 @@ SDK, or QStash itself) and later **delivered** to the workflow endpoint. The two
 halves matter separately, because a message's configuration is fixed when it is
 published but only takes effect when it is delivered.
 
-| Term                                       | Meaning                                                                                                                                                                                                                                                            |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Delivery**                               | One HTTP request from QStash to the workflow endpoint, i.e. one invocation of the route function. Every delivery replays the workflow from the top over the memoized steps.                                                                                        |
-| **Trigger request**                        | The message that starts a run (`Upstash-Workflow-Init: true`), published by `client.trigger` or by the endpoint on a direct POST. Carries the initial payload and establishes the run's trigger configuration.                                                     |
-| **Step request**                           | A message whose body is a step result (call type `step`). QStash records it as a step of the run; **its delivery is what executes the next step**.                                                                                                                 |
-| **Plan step request**                      | One message of the batch published when a parallel group starts. Names a `targetStep`; its delivery executes that step.                                                                                                                                            |
-| **Call request** / **call result request** | Call types `toCallback` / `fromCallback`: the outbound `context.call` and the result QStash posts back to the endpoint.                                                                                                                                            |
-| **Invoke result delivery**                 | The delivery QStash publishes to the invoker when a `context.invoke` child run finishes. Published by QStash, not by the SDK.                                                                                                                                      |
-| **Step-config request**                    | A message that carries **only configuration** — no step result, no body of consequence (call type `stepConfig`). It is not recorded as a step and is hidden from the step logs. Its sole purpose is to produce a gated delivery. Informally: an _empty republish_. |
+| Term                                       | Meaning                                                                                                                                                                                                                                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Delivery**                               | One HTTP request from QStash to the workflow endpoint, i.e. one invocation of the route function. Every delivery replays the workflow from the top over the memoized steps.                                                                                                  |
+| **Trigger request**                        | The message that starts a run (`Upstash-Workflow-Init: true`), published by `client.trigger` or by the endpoint on a direct POST. Carries the initial payload and establishes the run's trigger configuration.                                                               |
+| **Step request**                           | A message whose body is a step result (call type `step`). QStash records it as a step of the run; **its delivery is what executes the next step**.                                                                                                                           |
+| **Plan step request**                      | One message of the batch published when a parallel group starts. Names a `targetStep`; its delivery executes that step.                                                                                                                                                      |
+| **Call request** / **call result request** | Call types `toCallback` / `fromCallback`: the outbound `context.call` and the result QStash posts back to the endpoint.                                                                                                                                                      |
+| **Invoke result delivery**                 | The delivery QStash publishes to the invoker when a `context.invoke` child run finishes. Published by QStash, not by the SDK.                                                                                                                                                |
+| **Step-config request**                    | A message that carries **only configuration** — no step result, no body of consequence (call type `stepConfig`). It is not recorded as a step and is hidden from the step logs. Its sole purpose is to produce a step-configured delivery. Informally: an _empty republish_. |
 
 ## Configuration
 
@@ -28,24 +28,39 @@ published but only takes effect when it is delivered.
 | **Trigger configuration**                    | Flow control, retries, retry delay and failure callback supplied at trigger time. QStash re-applies it to every later message of the run (feature `WF_TriggerOnConfig`).                                                                                                                                                               |
 | **Step-level configuration** (step settings) | Flow control / retries / retry delay attached to a single step with `context.run(...).withSettings(...)`.                                                                                                                                                                                                                              |
 | **Effective configuration**                  | What QStash actually applied to the delivery in hand. Echoed back to the endpoint on every delivery as `Upstash-Flow-Control-Key`, `Upstash-Flow-Control-Value`, `Upstash-Max-Retries` and `Upstash-Retry-Delay` (`pkg/deliver/deliver.go`, `AddUpstashHeaders`). Exposed on the context as `flowControl`, `retries` and `retryDelay`. |
-| **Gated delivery**                           | A delivery whose message carried step-level configuration, so QStash applied it: the flow-control slot is held for the duration of this delivery and retries come from the step.                                                                                                                                                       |
-| **Ungated delivery**                         | A delivery running under the trigger configuration.                                                                                                                                                                                                                                                                                    |
+| **Step-configured delivery**                 | A delivery whose message carried step-level configuration, so QStash applied it: the flow-control slot is held for the duration of this delivery and retries come from the step.                                                                                                                                                       |
+| **Ordinary delivery**                        | A delivery running under the trigger configuration.                                                                                                                                                                                                                                                                                    |
 | **Config mismatch**                          | The executor is about to execute a step whose step-level configuration differs from the effective configuration of the delivery it is running in.                                                                                                                                                                                      |
 | **`WF_StepConfig`**                          | Publish-side feature flag telling QStash to keep the message's own configuration rather than overwriting it with the trigger configuration.                                                                                                                                                                                            |
-| **Guard marker**                             | `Upstash-Workflow-Step-Config: true` on a delivery, meaning "this message was published with step-level configuration". See [Gate decision](#gate-decision).                                                                                                                                                                           |
+| **Guard marker**                             | `Upstash-Workflow-Step-Config: true` on a delivery, meaning "this message was published with step-level configuration". See [Deciding about a step's settings](#deciding-about-a-steps-settings).                                                                                                                                      |
 
 ## Execution
 
-| Term                    | Meaning                                                                                                                                                                                                                                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Replay**              | Re-running the route function from the top on each delivery. Steps already recorded return their stored result; non-step code between steps runs again on every delivery.                                                                                                                      |
-| **Memoized step**       | A step whose result is already in the run's step list, returned without executing the step function.                                                                                                                                                                                           |
-| **Deferred submission** | Executing a step, holding its result instead of submitting immediately, and continuing the route function far enough to reach the next step — so that step's configuration can ride on the submission and no step-config request is needed. See [Deferred submission](#deferred-submission-1). |
+| Term                    | Meaning                                                                                                                                                                                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Replay**              | Re-running the route function from the top on each delivery. Steps already recorded return their stored result; non-step code between steps runs again on every delivery.                                                                                                                    |
+| **Memoized step**       | A step whose result is already in the run's step list, returned without executing the step function.                                                                                                                                                                                         |
+| **Deferred submission** | Executing a step, holding its result instead of submitting immediately, and continuing the route function far enough to reach the next step — so that step's configuration can ride on the submission and no step-config request is needed. See [Deferred submission](#deferred-submission). |
 
-## Gate decision
+## Deciding about a step's settings
 
-What the executor does on reaching a step that has step-level configuration and
-has not executed yet:
+Every step the SDK is about to run for the first time goes through this, and
+there is no other place a step's settings are considered:
+
+```mermaid
+flowchart TD
+    A["about to run a step for the first time"] --> B{"does it carry<br/>step-level settings?"}
+    B -- no --> RUN["run it in this delivery"]
+    B -- yes --> C{"do they match the settings<br/>this delivery is under?"}
+    C -- yes --> RUN
+    C -- no --> D{"was this delivery published<br/>with step-level settings?"}
+    D -- no --> E["publish a step config request<br/>and end the invocation"]
+    E --> F["the step runs in the delivery<br/>that request produces"]
+    D -- yes --> G["warn: the settings were published<br/>but are not recognized here"]
+    G --> RUN
+```
+
+Which is the same decision as:
 
 | Effective configuration | Guard marker | Action                               |
 | ----------------------- | ------------ | ------------------------------------ |
@@ -111,9 +126,34 @@ The rules themselves:
 Applies when the step that just executed can produce its result in-process. The
 route function continues until it reveals what comes next, and the pending result
 is then submitted with that step's configuration attached. Identical in both
-executing rows of the gate decision above — a step that ran in the degraded row
+executing rows of the decision above — a step that ran in the degraded row
 still needs the next step's configuration on its submission, and the next
 delivery re-decides from scratch.
+
+Its result is not submitted yet. The route function carries on with it, and what
+that function reaches next decides what the result is submitted with:
+
+```mermaid
+flowchart TD
+    A["a run step finishes"] --> B["hold the result,<br/>hand it to the route function"]
+    B --> C{"what does the function<br/>reach next?"}
+    C -- "one more step" --> D{"does that step carry<br/>step-level settings?"}
+    D -- yes --> E["submit the held result<br/>carrying those settings"]
+    D -- no --> F["submit the held result on its own"]
+    C -- "a parallel group" --> G["submit the held result on its own —<br/>each plan step carries its own settings"]
+    C -- "the end of the function" --> H["submit the held result on its own"]
+    C -- "a throw or a cancel" --> I["submit the held result on its own —<br/>the throw resurfaces on the next delivery"]
+    E --> Z["end the invocation"]
+    F --> Z
+    G --> Z
+    H --> Z
+    I --> Z
+```
+
+The left branch is the one that costs nothing: a step's settings reach QStash on
+a message that was going to be sent anyway. Every other branch leaves the next
+step to ask for its own delivery, which is the extra request a step config
+request pays for.
 
 Four outcomes, all ending in submit + abort:
 
@@ -129,8 +169,8 @@ Rules worth keeping in mind:
 - **Always attach the next step's settings if it has any**, rather than skipping
   when they look equal to the current delivery's effective configuration. The
   executor only knows the _current_ delivery's configuration, which inside a
-  gated delivery is the previous step's — so that comparison would be wrong
-  exactly in the consecutive-gated-steps case.
+  step-configured delivery is the previous step's — so that comparison would be wrong
+  exactly in the case of two steps with settings in a row.
 - **Deferrable means `getResultStep` produces the final `out`** — not "no server
   round trip". `LazyCreateWebhookStep` computes its result entirely in-process
   but does so in `getBody`, returning `out: undefined` from `getResultStep`, so
@@ -224,8 +264,8 @@ sequenceDiagram
     E->>Q: publish the held result,<br/>carrying the next step's settings
     E-->>Q: 200 (step finished)
     Note over Q: apply those settings to this message
-    Q->>E: deliver, gated by them
-    Note over E: settings match — run the gated step
+    Q->>E: deliver, step-configured
+    Note over E: settings match — run the step
 ```
 
 When the step with settings is reached in a delivery which was **not** published
@@ -236,12 +276,12 @@ the settings need a message of their own:
 sequenceDiagram
     participant Q as QStash
     participant E as Endpoint
-    Q->>E: deliver (not gated)
+    Q->>E: deliver (ordinary)
     Note over E: reach the step — its settings differ<br/>from what QStash applied here
     E->>Q: publish a step config request
     E-->>Q: 200 (step finished)
     Note over Q: not recorded as a step,<br/>hidden from the step logs
-    Q->>E: deliver, gated
+    Q->>E: deliver, step-configured
     Note over E: settings match — run the step
 ```
 
@@ -276,12 +316,12 @@ request:
 sequenceDiagram
     participant Q as QStash
     participant E as Endpoint
-    Q->>E: deliver (steps + call result), not gated
+    Q->>E: deliver (steps + call result), ordinary
     Note over E: reach the next step — it has settings
     E->>Q: publish a step config request
     E-->>Q: 200 (step finished)
-    Q->>E: deliver, gated
-    Note over E: run the gated step
+    Q->>E: deliver, step-configured
+    Note over E: run the step
 ```
 
 ### `context.waitForEvent`
@@ -333,7 +373,7 @@ Again, a step with settings after the wait needs a step config request.
 
 ## Configuration normalization
 
-The gate decision compares the step's configuration against the effective
+That decision compares the step's configuration against the effective
 configuration echoed by the server. Both sides must be parsed into a canonical
 form; **never compare the header strings**. The known divergences, all live
 today:

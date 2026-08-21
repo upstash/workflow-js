@@ -192,9 +192,9 @@ export const submitStepResult = async ({
  * A step's settings must be on the request whose delivery executes the
  * step. The request delivered to the endpoint right now was published
  * before the step was known, so QStash applied the run's configuration
- * to it instead. Rather than executing the step in this ungated
+ * to it instead. Rather than executing the step in this
  * delivery, we publish this request with the settings: QStash delivers
- * it gated by the step-level flow control / retries, and that delivery
+ * it step-configured, and that delivery
  * executes the step.
  *
  * The request has the `stepConfig` call type: QStash doesn't treat it as
@@ -209,7 +209,7 @@ export const submitStepResult = async ({
  *
  * @param context workflow context
  * @param lazyStep lazy step whose settings are applied
- * @param targetStep id of the step which the gated delivery will execute
+ * @param targetStep id of the step the resulting delivery will execute
  * @param invokeCount current invoke count
  * @param telemetry optional telemetry information
  * @param dispatchDebug debug event dispatcher
@@ -243,7 +243,7 @@ export const publishStepConfigRequest = async ({
   await dispatchDebug("onInfo", {
     info:
       `Step "${lazyStep.stepName}" (${targetStep}) has step-level settings which the current` +
-      ` delivery was not gated by. Requesting a delivery with the settings applied.`,
+      ` delivery does not carry. Requesting a delivery which does.`,
   });
 
   const result = (await context.qstashClient.publishJSON({
@@ -260,7 +260,7 @@ export const publishStepConfigRequest = async ({
   if (result?.deduplicated) {
     // A step config request for this step was already published. Either
     // the delivery which published it failed and QStash is retrying it,
-    // in which case the original still produces the gated delivery and
+    // in which case the original still produces that delivery and
     // there is nothing to do here — or this SDK asked twice for the same
     // step, which stalls the run: nothing new was published, so no
     // further delivery follows. Worth a warning either way, since it is
@@ -273,7 +273,7 @@ export const publishStepConfigRequest = async ({
     });
   } else if (result?.messageId) {
     await dispatchDebug("onInfo", {
-      info: `Requested a gated delivery for step "${lazyStep.stepName}" with messageId: ${result.messageId}.`,
+      info: `Requested a delivery under the settings of step "${lazyStep.stepName}" with messageId: ${result.messageId}.`,
     });
   }
 };

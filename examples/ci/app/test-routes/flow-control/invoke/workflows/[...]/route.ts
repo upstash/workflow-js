@@ -7,15 +7,15 @@ import {
   ciHeaders,
   incrementSettings,
   incrementStep,
-  wasGated,
+  withinStepParallelism,
   WORKER_COUNT,
 } from "../../../shared";
 
 /**
- * the gated step comes after a `context.invoke` step. QStash publishes
- * the delivery which carries the invoked run's result, so it isn't gated
+ * the step which carries settings comes after a `context.invoke` step. QStash publishes
+ * the delivery which carries the invoked run's result, so it does not carry them. Reaching the step there, the SDK publishes ated
  * by the step settings: reaching `increment` there, the SDK publishes a
- * step config request and the step executes in the gated delivery that
+ * step config request and the step executes in the delivery that
  * produces.
  *
  * See `../../../shared.ts` for what the workers assert.
@@ -59,10 +59,10 @@ const coordinator = createWorkflow(async (context: WorkflowContext<unknown>) => 
     )
   );
 
-  const gated = wasGated(results.map(({ body }) => body));
-  expect(gated, true);
+  const withinLimit = withinStepParallelism(results.map(({ body }) => body));
+  expect(withinLimit, true);
 
-  await saveResult(context, `invoke-flow-control-${gated ? "ok" : "violated"}`);
+  await saveResult(context, `invoke-flow-control-${withinLimit ? "ok" : "violated"}`);
 });
 
 export const { POST, GET } = testServe(

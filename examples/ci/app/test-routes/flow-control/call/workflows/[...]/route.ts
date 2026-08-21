@@ -7,16 +7,16 @@ import {
   ciHeaders,
   incrementSettings,
   incrementStep,
-  wasGated,
+  withinStepParallelism,
   WORKER_COUNT,
 } from "../../../shared";
 
 /**
- * the gated step comes after a `context.call` step. The delivery which
+ * the step which carries settings comes after a `context.call` step. The delivery which
  * carries the call result back into the workflow is published before the
- * SDK knows about `increment`, so it isn't gated: reaching the step
+ * SDK knows about `increment`, so it does not carry them. Reaching the step there, the SDK publishes ated: reaching the step
  * there, the SDK publishes a step config request and the step executes
- * in the gated delivery that produces.
+ * in the delivery that request produces.
  *
  * See `../../../shared.ts` for what the workers assert.
  */
@@ -52,10 +52,10 @@ const coordinator = createWorkflow(async (context: WorkflowContext<unknown>) => 
     )
   );
 
-  const gated = wasGated(results.map(({ body }) => body));
-  expect(gated, true);
+  const withinLimit = withinStepParallelism(results.map(({ body }) => body));
+  expect(withinLimit, true);
 
-  await saveResult(context, `call-flow-control-${gated ? "ok" : "violated"}`);
+  await saveResult(context, `call-flow-control-${withinLimit ? "ok" : "violated"}`);
 });
 
 export const { POST, GET } = testServe(

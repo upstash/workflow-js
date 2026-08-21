@@ -406,7 +406,7 @@ export interface WaitEventOptions {
  * - otherwise, the SDK can only learn about the step once the workflow
  *   function has been replayed, which happens in a delivery that was
  *   published before the step was known. So instead of executing the
- *   step in that (ungated) delivery, a hidden request carrying the
+ *   step in that delivery, a hidden request carrying the
  *   settings is published and the step executes when QStash delivers it.
  *   This costs one extra message and one extra endpoint invocation per
  *   step which uses `withSettings`. QStash hides the request from the

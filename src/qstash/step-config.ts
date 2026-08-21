@@ -12,9 +12,8 @@ import type { Duration, StepSettings } from "../types";
  * The configuration QStash applied to the delivery in hand.
  *
  * Reported on every delivery through the `Upstash-Flow-Control-*`,
- * `Upstash-Retries` and `Upstash-Retry-Delay` headers. For an ungated
- * delivery this is the configuration the run was triggered with; for a
- * gated delivery it is the step-level configuration of the step that
+ * `Upstash-Retries` and `Upstash-Retry-Delay` headers. For an ordinary delivery this is the configuration the run was triggered with; for a
+ * step-configured delivery it is that step's own configuration, which
  * delivery is meant to execute.
  */
 export type EffectiveConfig = {

@@ -7,12 +7,12 @@ import {
   ciHeaders,
   incrementSettings,
   incrementStep,
-  wasGated,
+  withinStepParallelism,
   WORKER_COUNT,
 } from "../../../shared";
 
 /**
- * the gated step comes after a `context.run` step, so the delivery which
+ * the step which carries settings comes after a `context.run` step, so the delivery which
  * reaches it is the one carrying that step's result. The SDK is already
  * past a step when it learns about `increment`, so the settings ride on
  * the previous step's submission and no step config request is needed.
@@ -45,10 +45,10 @@ const coordinator = createWorkflow(async (context: WorkflowContext<unknown>) => 
     )
   );
 
-  const gated = wasGated(results.map(({ body }) => body));
-  expect(gated, true);
+  const withinLimit = withinStepParallelism(results.map(({ body }) => body));
+  expect(withinLimit, true);
 
-  await saveResult(context, `step-flow-control-${gated ? "ok" : "violated"}`);
+  await saveResult(context, `step-flow-control-${withinLimit ? "ok" : "violated"}`);
 });
 
 export const { POST, GET } = testServe(

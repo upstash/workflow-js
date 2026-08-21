@@ -63,7 +63,7 @@ describe("step config", () => {
 
   describe("round trip through the headers the SDK publishes", () => {
     // the SDK's own formatting must parse back to what was asked for,
-    // otherwise a step gated by the SDK would look mismatched to it
+    // otherwise the SDK would not recognize the settings it published
     const cases: FlowControl[] = [
       { key: "k", parallelism: 1 },
       { key: "k", rate: 10 },
