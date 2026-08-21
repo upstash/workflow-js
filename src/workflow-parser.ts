@@ -24,6 +24,7 @@ import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
 import { getSteps } from "./client/utils";
+import { getEffectiveConfig } from "./qstash/step-config";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
 import { DispatchDebug } from "./middleware/types";
@@ -416,6 +417,8 @@ export const handleFailure = async <TInitialPayload>({
 
     const userHeaders = recreateUserHeaders(request.headers as Headers);
     const retried = Number(request.headers.get(WORKFLOW_RETRIED_HEADER) ?? "0");
+    // of the failure callback delivery, which is the request in hand here
+    const effectiveConfig = getEffectiveConfig(request.headers as Headers);
 
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
@@ -433,12 +436,14 @@ export const handleFailure = async <TInitialPayload>({
       retried,
       workflowRunCreatedAt: workflowCreatedAt,
       middlewareManager: undefined,
+      effectiveConfig,
     });
 
     // attempt running routeFunction until the first step
     const authCheck = await DisabledWorkflowContext.tryAuthentication(
       routeFunction,
-      workflowContext
+      workflowContext,
+      effectiveConfig
     );
     if (authCheck.isErr()) {
       // got error while running until first step

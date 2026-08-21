@@ -7,6 +7,7 @@ import { nanoid } from "../utils";
 import { WorkflowAbort, WorkflowAuthError } from "../error";
 import type { RouteFunction } from "../types";
 import { DisabledWorkflowContext } from "./authorization";
+import type { EffectiveConfig } from "../qstash/step-config";
 import { flushPendingStep } from "../workflow-requests";
 
 describe("disabled workflow context", () => {
@@ -119,6 +120,49 @@ describe("disabled workflow context", () => {
       url: WORKFLOW_ENDPOINT,
       initialPayload: "my-payload",
       workflowRunCreatedAt: 0,
+    });
+
+    test("should give the delivery's configuration to the route function", async () => {
+      // the route function runs for real until it reaches a step, so what
+      // it reads here has to match what it will read on the real context
+      const effectiveConfig: EffectiveConfig = {
+        flowControl: { key: "payment-provider", parallelism: 3, rate: 0, period: 1 },
+        retries: 5,
+        retryDelay: "1000",
+        hasStepConfig: true,
+      };
+
+      let observed: unknown;
+      const endpoint: RouteFunction<string, unknown> = async (context) => {
+        observed = {
+          flowControl: context.flowControl,
+          retries: context.retries,
+          retryDelay: context.retryDelay,
+        };
+        await context.run("step", () => "result");
+      };
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await DisabledWorkflowContext.tryAuthentication(
+            endpoint,
+            disabledContext,
+            effectiveConfig
+          );
+          expect(result.isOk() && result.value).toBe("step-found");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: false,
+      });
+
+      expect(observed).toEqual({
+        flowControl: effectiveConfig.flowControl,
+        retries: 5,
+        retryDelay: "1000",
+      });
     });
 
     test("should return step-found on step", async () => {

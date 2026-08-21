@@ -195,6 +195,10 @@ export const serveBase = <
     const label = request.headers.get(WORKFLOW_LABEL_HEADER) ?? undefined;
     const workflowRunCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER)!;
 
+    // configuration QStash applied to this delivery, which the executor
+    // compares a step's own settings against
+    const effectiveConfig = getEffectiveConfig(request.headers as Headers);
+
     // create context
     const workflowContext = new WorkflowContext<TInitialPayload>({
       qstashClient: regionalClient,
@@ -204,7 +208,7 @@ export const serveBase = <
         : initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
-      effectiveConfig: getEffectiveConfig(request.headers as Headers),
+      effectiveConfig,
       url: workflowUrl,
       env,
       telemetry,
@@ -218,7 +222,8 @@ export const serveBase = <
     // attempt running routeFunction until the first step
     const authCheck = await DisabledWorkflowContext.tryAuthentication(
       routeFunction,
-      workflowContext
+      workflowContext,
+      effectiveConfig
     );
     if (authCheck.isErr()) {
       // got error while running until first step

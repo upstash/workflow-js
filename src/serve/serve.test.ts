@@ -1318,6 +1318,77 @@ describe("serve", () => {
     expect(stepRunCount).toBe(1);
   });
 
+  test("should submit a held step before honouring a cancel after it", async () => {
+    // context.cancel() after a step whose result is held is dropped the
+    // same way an error is: the held result has to reach QStash first, so
+    // the cancel happens on the next delivery, where the step is memoized.
+    const token = nanoid();
+    const workflowRunId = `wfr-${nanoid()}`;
+    let stepRunCount = 0;
+
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await context.run("step1", () => {
+          stepRunCount += 1;
+          return "step1-result";
+        });
+        await context.cancel();
+      },
+      {
+        qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+        receiver: undefined,
+        disableTelemetry: true,
+      }
+    );
+
+    const step1: Step = {
+      stepId: 1,
+      stepName: "step1",
+      stepType: "Run",
+      out: JSON.stringify("step1-result"),
+      concurrent: 1,
+    };
+
+    await driveWorkflow({
+      execute: async (initialPayload, steps) => {
+        const response = await endpoint(
+          getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps)
+        );
+        expect(response.status).toBe(200);
+      },
+      initialPayload: "initial-payload",
+      iterations: [
+        {
+          // the step is held, so the cancel loses to submitting it
+          stepsToAdd: [],
+          responseFields: { body: [{ messageId: "msg-id" }], status: 200 },
+          receivesRequest: {
+            method: "POST",
+            url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+            token,
+            body: [
+              expect.objectContaining({
+                body: JSON.stringify({ ...step1, out: JSON.stringify("step1-result") }),
+              }),
+            ],
+          },
+        },
+        {
+          // replaying it, nothing is held and the cancel goes through
+          stepsToAdd: [step1],
+          responseFields: { body: undefined, status: 200 },
+          receivesRequest: {
+            method: "DELETE",
+            url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs/${workflowRunId}?cancel=true`,
+            token,
+          },
+        },
+      ],
+    });
+
+    expect(stepRunCount).toBe(1);
+  });
+
   test("should forward client headers", async () => {
     const request = getRequest(WORKFLOW_ENDPOINT, "wfr-bar", "my-payload", []);
     let called = false;

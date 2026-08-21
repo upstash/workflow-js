@@ -780,6 +780,56 @@ describe("Workflow Parser", () => {
       },
     });
 
+    test("should give the failure function the delivery's configuration", async () => {
+      // the failure callback is its own delivery, so what the context
+      // reports is that delivery's configuration rather than nothing
+      const configuredRequest = new Request(WORKFLOW_ENDPOINT, {
+        headers: {
+          [WORKFLOW_FAILURE_HEADER]: "true",
+          authorization: authorization,
+          "Upstash-Flow-Control-Key": "failure-callbacks",
+          "Upstash-Flow-Control-Value": "parallelism=2,period=60",
+          "Upstash-Max-Retries": "1",
+          "Upstash-Retry-Delay": "500",
+        },
+      });
+
+      const routeFunction = async (context: WorkflowContext) => {
+        await context.sleep("sleeping", 1);
+      };
+
+      let observed: unknown;
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({ context }) => {
+        observed = {
+          flowControl: context.flowControl,
+          retries: context.retries,
+          retryDelay: context.retryDelay,
+        };
+        return;
+      };
+
+      const result = await handleFailure({
+        request: configuredRequest,
+        requestPayload: JSON.stringify({
+          status: 201,
+          body: btoa(JSON.stringify({ message: "failed" })),
+          url: WORKFLOW_ENDPOINT,
+        }),
+        qstashClient: client,
+        initialPayloadParser,
+        routeFunction,
+        failureFunction,
+        env: {},
+      });
+
+      expect(result.isOk()).toBeTrue();
+      expect(observed).toEqual({
+        flowControl: { key: "failure-callbacks", parallelism: 2, rate: 0, period: 60 },
+        retries: 1,
+        retryDelay: "500",
+      });
+    });
+
     test("should show failResponse with warning when payload doesn't have message field", async () => {
       const routeFunction = async (context: WorkflowContext) => {
         await context.sleep("sleeping", 1);
