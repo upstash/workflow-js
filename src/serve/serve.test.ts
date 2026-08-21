@@ -30,7 +30,6 @@ import {
 import { AUTH_FAIL_MESSAGE, processOptions } from "./options";
 
 import { z } from "zod";
-import { WorkflowNonRetryableError, WorkflowRetryAfterError } from "../error";
 import { WorkflowMiddleware } from "../middleware";
 
 const someWork = (input: string) => {
@@ -1387,6 +1386,75 @@ describe("serve", () => {
     });
 
     expect(stepRunCount).toBe(1);
+  });
+
+  test("should fail the delivery when the held step cannot be submitted", async () => {
+    // The step ran but QStash has no record of it. Failing the delivery is
+    // what gets it retried, and the retry runs the step again rather than
+    // losing it. Swallowing the failure instead would be worse than losing
+    // the result: the route function returned, so the run would be
+    // reported finished and deleted with the step never recorded.
+    const token = nanoid();
+    const workflowRunId = `wfr-${nanoid()}`;
+    let stepRunCount = 0;
+
+    const { handler: endpoint } = serve(
+      async (context) => {
+        await context.run("step1", () => {
+          stepRunCount += 1;
+          return "step1-result";
+        });
+      },
+      {
+        qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token }),
+        receiver: undefined,
+        disableTelemetry: true,
+      }
+    );
+
+    const submission = {
+      method: "POST",
+      url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+      token,
+      body: [
+        expect.objectContaining({
+          body: JSON.stringify({
+            stepId: 1,
+            stepName: "step1",
+            stepType: "Run",
+            out: JSON.stringify("step1-result"),
+            concurrent: 1,
+          }),
+        }),
+      ],
+    };
+
+    await driveWorkflow({
+      execute: async (initialPayload, steps) => {
+        const response = await endpoint(
+          getRequest(WORKFLOW_ENDPOINT, workflowRunId, initialPayload, steps)
+        );
+        expect(response.status).toBe(500);
+      },
+      initialPayload: "initial-payload",
+      iterations: [
+        // the step runs and its result cannot be published
+        {
+          stepsToAdd: [],
+          responseFields: { body: "publish failed", status: 500 },
+          receivesRequest: submission,
+        },
+        // QStash retries the delivery. No step was recorded, so the run is
+        // where it was and the step runs again
+        {
+          stepsToAdd: [],
+          responseFields: { body: "publish failed", status: 500 },
+          receivesRequest: submission,
+        },
+      ],
+    });
+
+    expect(stepRunCount).toBe(2);
   });
 
   test("should forward client headers", async () => {
