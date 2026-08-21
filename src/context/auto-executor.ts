@@ -16,13 +16,6 @@ import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 import { NO_CONCURRENCY } from "../constants";
 
 /**
- * What the executor is to do with a step whose step-level settings it has
- * just looked at: run it in the delivery in hand, or leave it to the
- * gated delivery a step config request produces.
- */
-type StepSettingsOutcome = "execute-step" | "step-config-requested";
-
-/**
  * What came of submitting the step being held, if one was.
  */
 export type PendingStepOutcome =
@@ -234,14 +227,43 @@ export class AutoExecutor {
       return parsedOut;
     }
 
-    const settingsOutcome = await this.applyStepSettings(lazyStep, this.stepCount);
-    if (settingsOutcome.isErr()) {
-      throw settingsOutcome.error;
-    }
-    if (settingsOutcome.value === "step-config-requested") {
-      // the step executes in the gated delivery that request produces,
-      // not here
+    // A step's settings have to be on the message whose delivery executes
+    // it, so before running it, compare what it asked for against the
+    // configuration QStash applied to the delivery in hand.
+    const mismatch = lazyStep.stepSettings
+      ? describeStepSettingsMismatch(lazyStep.stepSettings, this.effectiveConfig)
+      : undefined;
+
+    if (mismatch && !this.effectiveConfig.hasStepConfig) {
+      // This delivery was not published with step-level settings, so ask
+      // for one that is. The step runs in the gated delivery that
+      // request produces, not here.
+      await publishStepConfigRequest({
+        context: this.context,
+        lazyStep,
+        targetStep: this.stepCount,
+        invokeCount: this.invokeCount,
+        telemetry: this.telemetry,
+        dispatchDebug: this.dispatchDebug,
+      });
       throw new WorkflowAbort(lazyStep.stepName);
+    }
+
+    if (mismatch) {
+      // The settings this SDK published came back in a form it does not
+      // recognize, which is a bug in it. Run the step with the settings
+      // of the delivery rather than publish a second step config
+      // request: that would loop forever, and invisibly, since these
+      // requests are hidden from the step logs.
+      //
+      // `dispatchDebug` writes warnings to the console itself, on top of
+      // handing them to any user middleware.
+      await this.dispatchDebug("onWarning", {
+        warning:
+          `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
+          ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
+          ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
+      });
     }
 
     const resultStep = await executeStep({
@@ -277,71 +299,6 @@ export class AutoExecutor {
       dispatchDebug: this.dispatchDebug,
     });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
-  }
-
-  /**
-   * Decides what to do about the step-level settings of a step which is
-   * about to execute for the first time.
-   *
-   * The settings must be applied to the delivery which executes the step,
-   * so the step's settings are compared against the configuration QStash
-   * applied to the delivery in hand:
-   *
-   * - they agree: nothing to do, the step executes here.
-   * - they differ and this delivery was not published with step-level
-   *   settings: publish a step config request, so that the delivery it
-   *   produces is gated and executes the step.
-   * - they differ but this delivery *was* published with step-level
-   *   settings: the settings we published came back in a form we don't
-   *   recognize, which is a bug in this SDK. Execute the step with the
-   *   wrong settings and warn, rather than publish a second step config
-   *   request: that would loop forever, and invisibly, since these
-   *   requests are hidden from the step logs.
-   *
-   * @param lazyStep step which is about to execute
-   * @param stepId id the step will be submitted with
-   * @returns `execute-step` when the step is to run in this delivery, or
-   *   `step-config-requested` when it is to run in the gated delivery the
-   *   request produces instead
-   */
-  private async applyStepSettings(
-    lazyStep: BaseLazyStep,
-    stepId: number
-  ): Promise<Ok<StepSettingsOutcome, never> | Err<never, Error>> {
-    if (!lazyStep.stepSettings) {
-      return ok("execute-step");
-    }
-
-    const mismatch = describeStepSettingsMismatch(lazyStep.stepSettings, this.effectiveConfig);
-    if (!mismatch) {
-      return ok("execute-step");
-    }
-
-    try {
-      if (this.effectiveConfig.hasStepConfig) {
-        // `dispatchDebug` writes warnings to the console itself, on top of
-        // handing them to any user middleware
-        await this.dispatchDebug("onWarning", {
-          warning:
-            `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
-            ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
-            ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
-        });
-        return ok("execute-step");
-      }
-
-      await publishStepConfigRequest({
-        context: this.context,
-        lazyStep,
-        targetStep: stepId,
-        invokeCount: this.invokeCount,
-        telemetry: this.telemetry,
-        dispatchDebug: this.dispatchDebug,
-      });
-      return ok("step-config-requested");
-    } catch (error) {
-      return err(error as Error);
-    }
   }
 
   /**
