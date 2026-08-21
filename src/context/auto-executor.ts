@@ -437,6 +437,13 @@ export class AutoExecutor {
         // sleep/sleepUntil. It's only possible here:
         validateStep(parallelSteps[stepIndex], planStep);
         try {
+          // Unlike a single step, this result is submitted straight away
+          // rather than held for the next step's settings to ride on.
+          // Holding it would mean carrying on past the parallel group,
+          // and a delivery cannot tell whether it is the last of the
+          // group: its own result is unrecorded, and so is at least one
+          // sibling's. So the step after a parallel group is always
+          // reached in an ordinary delivery, and asks for its own.
           const parallelStep = parallelSteps[stepIndex];
           const resultStep = await executeStep({
             lazyStep: parallelStep,

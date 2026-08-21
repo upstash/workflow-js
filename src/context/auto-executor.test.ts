@@ -613,17 +613,17 @@ describe("auto-executor", () => {
      * `settings`, in the shape QStash reports it back: the control value
      * joined without spaces, and the guard marker present.
      */
-    const stepConfigured: EffectiveConfig = {
+    const stepConfiguredDelivery: EffectiveConfig = {
       flowControl: { key: "step-flow-key", parallelism: 2, rate: 10, period: 1 },
       retries: 5,
       retryDelay: "1000",
       hasStepConfig: true,
     };
 
-    const unstepConfigured: EffectiveConfig = { retries: 3, hasStepConfig: false };
+    const ordinaryDelivery: EffectiveConfig = { retries: 3, hasStepConfig: false };
 
     test("should publish a step config request when the delivery is ordinary", async () => {
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
 
       let stepExecuted = false;
       await mockQStashServer({
@@ -670,7 +670,7 @@ describe("auto-executor", () => {
     });
 
     test("should surface a failure to publish the step config request", async () => {
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
 
       let stepExecuted = false;
       await mockQStashServer({
@@ -701,7 +701,7 @@ describe("auto-executor", () => {
     });
 
     test("should execute the step when the delivery already has its settings", async () => {
-      const context = getContext([initialStep], stepConfigured);
+      const context = getContext([initialStep], stepConfiguredDelivery);
 
       let stepExecuted = false;
       await mockQStashServer({
@@ -814,7 +814,7 @@ describe("auto-executor", () => {
     });
 
     test("should surface a failure to submit the held step", async () => {
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
 
       await mockQStashServer({
         execute: async () => {
@@ -840,7 +840,7 @@ describe("auto-executor", () => {
     });
 
     test("should attach the next step's settings to the pending submission", async () => {
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
 
       await mockQStashServer({
         execute: async () => {
@@ -900,7 +900,7 @@ describe("auto-executor", () => {
       // abort rather than "nothing was held", or an invocation whose abort
       // the route function swallowed would carry on as if the step had
       // never run.
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
       const spySubmit = spyOn(context.qstashClient, "batch");
 
       await mockQStashServer({
@@ -941,7 +941,7 @@ describe("auto-executor", () => {
     });
 
     test("should attach nothing when a parallel group comes next", async () => {
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
       const spySubmit = spyOn(context.qstashClient, "batch");
 
       await mockQStashServer({
@@ -992,10 +992,52 @@ describe("auto-executor", () => {
       });
     });
 
+    test("should publish a step config request for a step after a parallel group", async () => {
+      // The delivery which completes a parallel group is produced by the
+      // last plan step's submission, and that submission cannot know what
+      // follows the group — so unlike a step after a single step, this one
+      // has to ask for a delivery of its own.
+      const context = getContext([initialStep, ...parallelSteps], ordinaryDelivery);
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          await Promise.all([
+            context.sleep("sleep for some time", 123),
+            context.sleepUntil("sleep until next day", 123_123),
+          ]);
+
+          const throws = context
+            .run("after-parallel", () => {
+              stepExecuted = true;
+              return "result";
+            })
+            .withSettings(settings);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: { messageId: "msgId" },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          body: { targetStep: 3, invokeCount: 7 },
+          headers: {
+            "upstash-workflow-calltype": "stepConfig",
+            "upstash-flow-control-key": "step-flow-key",
+          },
+        },
+      });
+
+      expect(stepExecuted).toBeFalse();
+    });
+
     test("should attach each parallel step's own settings to its plan step", async () => {
       // a plan step's delivery is what executes its target step, so the
       // settings ride on the plan step and no step config request is needed
-      const context = getContext([initialStep], unstepConfigured);
+      const context = getContext([initialStep], ordinaryDelivery);
 
       await mockQStashServer({
         execute: async () => {

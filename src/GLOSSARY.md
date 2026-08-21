@@ -166,6 +166,13 @@ Four outcomes, all ending in submit + abort:
 
 Rules worth keeping in mind:
 
+A step after a **parallel group** always needs a step config request, and cannot
+be helped by any of this: to attach settings to the submission which completes
+the group, that submission would have to know what follows it, which means
+carrying on past the group — and no delivery of a parallel step can tell whether
+it is the last, since its own result is unrecorded and so is at least one
+sibling's.
+
 - **Always attach the next step's settings if it has any**, rather than skipping
   when they look equal to the current delivery's effective configuration. The
   executor only knows the _current_ delivery's configuration, which inside a
