@@ -282,6 +282,42 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
 };
 
 /**
+ * Removes headers starting with `Upstash-Workflow-` from the headers
+ *
+ * @param headers incoming headers
+ * @returns headers with `Upstash-Workflow-` headers removed
+ */
+export const recreateUserHeaders = (headers: Headers): Headers => {
+  const filteredHeaders = new Headers();
+
+  const pairs = headers.entries() as unknown as [string, string][];
+  for (const [header, value] of pairs) {
+    const headerLowerCase = header.toLowerCase();
+
+    const isUserHeader =
+      (headerLowerCase !== "upstash-region" &&
+        !headerLowerCase.startsWith("upstash-workflow-") &&
+        // https://vercel.com/docs/edge-network/headers/request-headers#x-vercel-id
+        !headerLowerCase.startsWith("x-vercel-") &&
+        !headerLowerCase.startsWith("x-forwarded-") &&
+        // https://blog.cloudflare.com/preventing-request-loops-using-cdn-loop/
+        headerLowerCase !== "cf-connecting-ip" &&
+        headerLowerCase !== "cdn-loop" &&
+        headerLowerCase !== "cf-ew-via" &&
+        headerLowerCase !== "cf-ray" &&
+        // For Render https://render.com
+        headerLowerCase !== "render-proxy-ttl") ||
+      headerLowerCase === WORKFLOW_LABEL_HEADER.toLocaleLowerCase();
+
+    if (isUserHeader) {
+      filteredHeaders.append(header, value);
+    }
+  }
+
+  return filteredHeaders as Headers;
+};
+
+/**
  * Checks if the incoming request is a third party call result coming from QStash
  * by looking for the `Upstash-Workflow-Callback` header.
  *

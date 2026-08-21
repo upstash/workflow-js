@@ -24,12 +24,12 @@ import {
   handleThirdPartyCallResult,
   flushPendingStep,
   isThirdPartyCallResult,
+  recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
   triggerWorkflowDelete,
   verifyRequest,
 } from "../workflow-requests";
-import { recreateUserHeaders } from "../utils";
 import { getEffectiveConfig } from "../qstash/step-config";
 import { DisabledWorkflowContext } from "./authorization";
 import { getHandlersForRequest } from "./multi-region/handlers";

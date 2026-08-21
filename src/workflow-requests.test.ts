@@ -1,9 +1,10 @@
 import { afterAll, describe, expect, spyOn, test } from "bun:test";
-import { nanoid, recreateUserHeaders } from "./utils";
+import { nanoid } from "./utils";
 
 import {
   flushPendingStep,
   handleThirdPartyCallResult,
+  recreateUserHeaders,
   triggerFirstInvocation,
   triggerRouteFunction,
   triggerWorkflowDelete,
