@@ -187,9 +187,12 @@ export const triggerFirstInvocation = async <TInitialPayload>(
  */
 export const flushPendingStep = async (workflowContext: WorkflowContext): Promise<void> => {
   const { executor } = workflowContext as unknown as { executor: AutoExecutor };
-  const abort = await executor.submitPendingStep();
-  if (abort) {
-    throw abort;
+  const submitted = await executor.submitPendingStep();
+  if (submitted.isErr()) {
+    throw submitted.error;
+  }
+  if (submitted.value) {
+    throw submitted.value;
   }
 };
 

@@ -810,6 +810,31 @@ describe("auto-executor", () => {
       warnSpy.mockRestore();
     });
 
+    test("should surface a failure to submit the held step", async () => {
+      const context = getContext([initialStep], ungatedConfig);
+
+      await mockQStashServer({
+        execute: async () => {
+          await context.run("attemptCharge", () => {
+            return { input: context.requestPayload, success: false };
+          });
+
+          // the step ran but its result never reached QStash, so the
+          // failure has to surface rather than an abort saying it did
+          await expect(flushPendingStep(context)).rejects.toThrowError(QstashError);
+        },
+        responseFields: {
+          status: 500,
+          body: "submit failed",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+        },
+      });
+    });
+
     test("should attach the next step's settings to the pending submission", async () => {
       const context = getContext([initialStep], ungatedConfig);
 

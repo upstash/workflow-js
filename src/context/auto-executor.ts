@@ -149,11 +149,16 @@ export class AutoExecutor {
       // function never executes here, and after the microtasks of
       // `deferExecution`, so a `withSettings` chained synchronously on
       // the returned promise has already applied.
-      const abort = await this.submitPendingStep(
+      const submitted = await this.submitPendingStep(
         lazyStepList.length === 1 ? lazyStepList[0].stepSettings : undefined
       );
-      if (abort) {
-        throw abort;
+      if (submitted.isErr()) {
+        throw submitted.error;
+      }
+      if (submitted.value) {
+        // the held step is on its way to QStash, so this invocation ends
+        // here and the next step runs in the delivery it produces
+        throw submitted.value;
       }
 
       if (!this.promises.has(lazyStepList)) {
@@ -352,35 +357,41 @@ export class AutoExecutor {
    * exactly when two gated steps follow each other.
    *
    * @param nextStepSettings step-level settings of the next step
-   * @returns the abort to throw, or undefined if no step was held
+   * @returns the abort which ends this invocation, or undefined when no
+   *   step was held and there is nothing to end
    */
   public async submitPendingStep(
     nextStepSettings?: StepSettings
-  ): Promise<WorkflowAbort | undefined> {
+  ): Promise<Ok<WorkflowAbort | undefined, never> | Err<never, Error>> {
     if (!this.pendingStep) {
-      return undefined;
-    }
-    if (this.pendingStep.status === "submitting") {
-      return await this.pendingStep.submitted;
+      return ok(undefined);
     }
 
-    const { lazyStep, resultStep } = this.pendingStep;
-    const submitted = (async () => {
-      await submitStepResult({
-        context: this.context,
-        lazyStep,
-        resultStep,
-        invokeCount: this.invokeCount,
-        concurrency: NO_CONCURRENCY,
-        telemetry: this.telemetry,
-        dispatchDebug: this.dispatchDebug,
-        nextStepSettings,
-      });
-      return new WorkflowAbort(lazyStep.stepName, resultStep);
-    })();
-    this.pendingStep = { status: "submitting", submitted };
+    try {
+      if (this.pendingStep.status === "submitting") {
+        return ok(await this.pendingStep.submitted);
+      }
 
-    return await submitted;
+      const { lazyStep, resultStep } = this.pendingStep;
+      const submitted = (async () => {
+        await submitStepResult({
+          context: this.context,
+          lazyStep,
+          resultStep,
+          invokeCount: this.invokeCount,
+          concurrency: NO_CONCURRENCY,
+          telemetry: this.telemetry,
+          dispatchDebug: this.dispatchDebug,
+          nextStepSettings,
+        });
+        return new WorkflowAbort(lazyStep.stepName, resultStep);
+      })();
+      this.pendingStep = { status: "submitting", submitted };
+
+      return ok(await submitted);
+    } catch (error) {
+      return err(error as Error);
+    }
   }
 
   /**
