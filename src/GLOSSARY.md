@@ -147,6 +147,190 @@ Rules worth keeping in mind:
   tail, and it is why the CI helper waits for the expected call count rather than
   the first result it sees.
 
+## Flows
+
+What changed between the SDK and QStash, in one paragraph: **a step whose
+result the SDK produces itself** — `context.run`, `sleep`, `sleepUntil`,
+`notify` — no longer submits that result and stops. It holds the result, hands
+it to the route function and lets it carry on until the next step appears, then
+submits. The number of deliveries is the same; only the moment of submission
+moved. Every other step kind — `call`, `invoke`, `waitForEvent`,
+`waitForWebhook`, `createWebhook` — is unchanged, because its result comes from
+QStash rather than from the SDK, so there is nothing to hold.
+
+That change is what step-level settings ride on. A step's settings have to be on
+the message whose delivery executes it, and the SDK only learns a step exists
+when the route function reaches it — by which point the delivery it is running
+in was already published. Holding the previous step's result leaves one message
+still unsent at that moment, so the settings can travel on it. When there is no
+such message the SDK publishes a [step config request](#requests-and-deliveries)
+instead, which costs one extra delivery.
+
+**Only `context.run` takes settings.** It is the one method returning a
+`RunStepPromise`, which is what carries `withSettings`. Steps inside a parallel
+group take them too, and never need a step config request: each plan step is
+published knowing its target, so the settings go straight onto it.
+
+So a step config request is needed exactly when the step before was **not** one
+the SDK could hold — the run's first step, or a step after a `call`, `invoke`,
+`waitForEvent`, `waitForWebhook` or a parallel group.
+
+### `context.run`
+
+Before, the result was submitted the moment the step finished:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    Q->>E: deliver (steps so far)
+    Note over E: replay, reach a fresh run step
+    E->>E: run the step function
+    E->>Q: publish the result as a step
+    E-->>Q: 200 (step finished)
+    Q->>E: deliver (steps + this result)
+    Note over E: the next step runs here
+```
+
+Now it is held until the route function shows what comes next. Same deliveries,
+later submission:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    Q->>E: deliver (steps so far)
+    Note over E: replay, reach a fresh run step
+    E->>E: run the step function
+    Note over E: hold the result,<br/>carry on through the route function
+    Note over E: reach the next step, or the end
+    E->>Q: publish the held result as a step
+    E-->>Q: 200 (step finished)
+    Q->>E: deliver (steps + this result)
+    Note over E: the next step runs here
+```
+
+When that next step has settings, they travel on the same message. Nothing extra
+is published:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    Q->>E: deliver (steps so far)
+    E->>E: run the step function
+    Note over E: hold the result, carry on
+    Note over E: the next step has settings
+    E->>Q: publish the held result,<br/>carrying the next step's settings
+    E-->>Q: 200 (step finished)
+    Note over Q: apply those settings to this message
+    Q->>E: deliver, gated by them
+    Note over E: settings match — run the gated step
+```
+
+When the step with settings is reached in a delivery which was **not** published
+with them — the run's first step, or a step after one the SDK could not hold —
+the settings need a message of their own:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    Q->>E: deliver (not gated)
+    Note over E: reach the step — its settings differ<br/>from what QStash applied here
+    E->>Q: publish a step config request
+    E-->>Q: 200 (step finished)
+    Note over Q: not recorded as a step,<br/>hidden from the step logs
+    Q->>E: deliver, gated
+    Note over E: settings match — run the step
+```
+
+### `context.call`
+
+Unchanged. The third party's response is produced by QStash, so the SDK has
+nothing to hold and submits the call itself before stopping:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    participant T as Third party
+    Q->>E: deliver (steps so far)
+    Note over E: reach a fresh call step
+    E->>Q: publish the call (toCallback)
+    E-->>Q: 200 (step finished)
+    Q->>T: call it
+    T-->>Q: response
+    Q->>E: deliver the response (fromCallback)
+    E->>Q: republish it as a step
+    E-->>Q: 200
+    Q->>E: deliver (steps + call result)
+    Note over E: the next step runs here
+```
+
+That last delivery carries the call result, and was published before the SDK
+knew what came after it — so a step with settings there needs a step config
+request:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    Q->>E: deliver (steps + call result), not gated
+    Note over E: reach the next step — it has settings
+    E->>Q: publish a step config request
+    E-->>Q: 200 (step finished)
+    Q->>E: deliver, gated
+    Note over E: run the gated step
+```
+
+### `context.waitForEvent`
+
+Unchanged. The wait is registered with QStash, which holds the run until the
+event arrives or the timeout passes:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    Q->>E: deliver (steps so far)
+    Note over E: reach a fresh wait step
+    E->>Q: POST /v2/wait/:eventId
+    E-->>Q: 200 (step finished)
+    Note over Q: hold until notified,<br/>or until the timeout
+    Q->>E: deliver (steps + wait result)
+    Note over E: the next step runs here
+```
+
+As with `call`, the delivery carrying the wait result predates the step after
+it, so settings there need a step config request — the same shape as the
+diagram above.
+
+### `context.waitForWebhook`
+
+Two steps: `createWebhook` mints the url, then the wait holds the run. Neither
+result is one the SDK holds, so both submit and stop:
+
+```mermaid
+sequenceDiagram
+    participant Q as QStash
+    participant E as Endpoint
+    participant C as Caller
+    Q->>E: deliver (steps so far)
+    Note over E: reach createWebhook
+    E->>Q: publish the webhook url as a step
+    E-->>Q: 200 (step finished)
+    Q->>E: deliver (steps + webhook)
+    Note over E: reach the wait step
+    E->>Q: POST /v2/wait/:eventId
+    E-->>Q: 200 (step finished)
+    C->>Q: call the webhook url
+    Q->>E: deliver (steps + webhook payload)
+    Note over E: the next step runs here
+```
+
+Again, a step with settings after the wait needs a step config request.
+
 ## Configuration normalization
 
 The gate decision compares the step's configuration against the effective
