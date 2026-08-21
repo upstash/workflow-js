@@ -29,6 +29,7 @@ import {
   verifyRequest,
 } from "../workflow-requests";
 import { recreateUserHeaders } from "../utils";
+import { getEffectiveConfig } from "../qstash/step-config";
 import { DisabledWorkflowContext } from "./authorization";
 import { getHandlersForRequest } from "./multi-region/handlers";
 import {
@@ -125,16 +126,15 @@ export const serveBase = <
     });
 
     // parse steps
-    const { rawInitialPayload, steps, discoveryTargets, isLastDuplicate, workflowRunEnded } =
-      await parseRequest({
-        requestPayload,
-        isFirstInvocation,
-        unknownSdk,
-        workflowRunId,
-        requester: regionalClient.http,
-        messageId: request.headers.get("upstash-message-id")!,
-        dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
-      });
+    const { rawInitialPayload, steps, isLastDuplicate, workflowRunEnded } = await parseRequest({
+      requestPayload,
+      isFirstInvocation,
+      unknownSdk,
+      workflowRunId,
+      requester: regionalClient.http,
+      messageId: request.headers.get("upstash-message-id")!,
+      dispatchDebug: middlewareManager.dispatchDebug.bind(middlewareManager),
+    });
 
     if (workflowRunEnded) {
       return responseGenerator(
@@ -203,7 +203,7 @@ export const serveBase = <
         : initialPayloadParser(rawInitialPayload),
       headers: recreateUserHeaders(request.headers as Headers),
       steps,
-      discoveryTargets,
+      effectiveConfig: getEffectiveConfig(request.headers as Headers),
       url: workflowUrl,
       env,
       telemetry,
@@ -264,6 +264,7 @@ export const serveBase = <
               }
               return await routeFunction(workflowContext);
             },
+            workflowContext,
             onCleanup: async (result) => {
               await middlewareManager.dispatchLifecycle("runCompleted", {
                 result,

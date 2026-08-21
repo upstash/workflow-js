@@ -7,6 +7,7 @@ import { nanoid } from "../utils";
 import { WorkflowAbort, WorkflowAuthError } from "../error";
 import type { RouteFunction } from "../types";
 import { DisabledWorkflowContext } from "./authorization";
+import { flushPendingStep } from "../workflow-requests";
 
 describe("disabled workflow context", () => {
   const token = nanoid();
@@ -200,11 +201,12 @@ describe("disabled workflow context", () => {
 
       let called = false;
       await mockQStashServer({
-        execute: () => {
-          const throws = context.run("step", async () => {
+        execute: async () => {
+          const result = await context.run("step", async () => {
             return await Promise.resolve("result");
           });
-          expect(throws).rejects.toThrowError(WorkflowAbort);
+          expect(result).toBe("result");
+          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -255,11 +257,12 @@ describe("disabled workflow context", () => {
 
       let called = false;
       await mockQStashServer({
-        execute: () => {
-          const throws = context.run("step", () => {
+        execute: async () => {
+          const result = await context.run("step", () => {
             return Promise.resolve("result");
           });
-          expect(throws).rejects.toThrowError(WorkflowAbort);
+          expect(result).toBe("result");
+          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
           called = true;
         },
         responseFields: {
@@ -311,12 +314,12 @@ describe("disabled workflow context", () => {
 
       let called = false;
       await mockQStashServer({
-        execute: () => {
-          const throws = context.run("step", () => {
+        execute: async () => {
+          const result = await context.run("step", () => {
             return "result";
           });
-          expect(throws).rejects.toThrowError(WorkflowAbort);
-          called = true;
+          expect(result).toBe("result");
+          await expect(flushPendingStep(context)).rejects.toThrowError(WorkflowAbort);
           called = true;
         },
         responseFields: {

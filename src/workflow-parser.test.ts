@@ -305,7 +305,7 @@ describe("Workflow Parser", () => {
       expect(isLastDuplicate).toBeFalse();
     });
 
-    test("should collect discovery targets and keep them out of the steps", async () => {
+    test("should keep step config entries out of the steps", async () => {
       const payload = [
         {
           messageId: "msgId",
@@ -325,18 +325,11 @@ describe("Workflow Parser", () => {
           ),
           callType: "step",
         },
-        // the hidden redelivery published for step 2:
+        // the hidden step config request published for step 2
         {
           messageId: "msgId",
-          body: btoa(JSON.stringify({ discoveryTargetStep: 2 })),
-          callType: "discovery",
-        },
-        // an unparsable discovery entry is ignored rather than failing
-        // the whole request:
-        {
-          messageId: "msgId",
-          body: btoa("not json"),
-          callType: "discovery",
+          body: btoa(JSON.stringify({ targetStep: 2, invokeCount: 0 })),
+          callType: "stepConfig",
         },
       ];
 
@@ -345,7 +338,7 @@ describe("Workflow Parser", () => {
       });
 
       const requestPayload = (await getPayload(request)) ?? "";
-      const { steps, discoveryTargets, workflowRunEnded } = await parseRequest({
+      const { steps, workflowRunEnded } = await parseRequest({
         requestPayload,
         isFirstInvocation: false,
         unknownSdk: false,
@@ -356,11 +349,8 @@ describe("Workflow Parser", () => {
         throw new Error("failed test");
       }
 
-      // discovery entries are not steps
       expect(steps.length).toBe(2);
       expect(steps[1].stepId).toBe(1);
-
-      expect([...discoveryTargets]).toEqual([2]);
     });
   });
 

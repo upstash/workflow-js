@@ -116,7 +116,7 @@ export type Step<TResult = unknown, TBody = unknown> = {
 export type RawStep = {
   messageId: string;
   body: string; // body is a base64 encoded step or payload
-  callType: "step" | "toCallback" | "fromCallback" | "discovery";
+  callType: "step" | "toCallback" | "fromCallback" | "stepConfig";
 };
 
 export type SyncStepFunction<TResult> = () => TResult;
@@ -434,11 +434,6 @@ export type StepSettings = {
    * Delay between retries of the delivery which executes this step.
    */
   retryDelay?: string;
-  /**
-   * Maximum duration QStash will wait for the endpoint to respond
-   * while executing this step. in seconds or as a duration string.
-   */
-  timeout?: number | Duration;
 };
 
 /**

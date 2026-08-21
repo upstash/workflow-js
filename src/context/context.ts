@@ -31,6 +31,7 @@ import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 import { MiddlewareManager } from "../middleware/manager";
 import { QstashError } from "@upstash/qstash";
 import { validateFlowControl, validateLabel } from "../utils";
+import type { EffectiveConfig, NormalizedFlowControl } from "../qstash/step-config";
 
 /**
  * Upstash Workflow context
@@ -177,6 +178,50 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly retried: number;
 
+  /**
+   * Configuration QStash applied to the request being handled.
+   *
+   * This is the configuration of *this delivery*, not of the run: it is
+   * the configuration the run was triggered with, except inside the
+   * delivery which executes a step that has step-level settings, where
+   * it is that step's settings.
+   *
+   * @internal the parsed form; the individual fields below are public
+   */
+  public readonly effectiveConfig: EffectiveConfig;
+
+  /**
+   * Flow control QStash applied to the request being handled, if any.
+   *
+   * @see {@link effectiveConfig} for what "applied to the request" means
+   */
+  public get flowControl(): NormalizedFlowControl | undefined {
+    return this.effectiveConfig.flowControl;
+  }
+
+  /**
+   * Retry limit QStash applied to the request being handled, if it
+   * reported one.
+   *
+   * Not to be confused with {@link retried}, which is how many retries
+   * have already happened.
+   *
+   * @see {@link effectiveConfig} for what "applied to the request" means
+   */
+  public get retries(): number | undefined {
+    return this.effectiveConfig.retries;
+  }
+
+  /**
+   * Retry delay expression QStash applied to the request being handled,
+   * if any.
+   *
+   * @see {@link effectiveConfig} for what "applied to the request" means
+   */
+  public get retryDelay(): string | undefined {
+    return this.effectiveConfig.retryDelay;
+  }
+
   constructor({
     qstashClient,
     workflowRunId,
@@ -191,7 +236,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     label,
     retried,
     middlewareManager,
-    discoveryTargets,
+    effectiveConfig,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -207,12 +252,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
     retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
     /**
-     * ids of the steps which already have a step-level settings
-     * redelivery published for them, parsed from the steps of the run.
-     *
-     * @internal not part of the public API
+     * configuration QStash applied to the delivery being handled, read
+     * from its headers. Defaults to no flow control and no retries,
+     * which is what a context created outside a delivery observes.
      */
-    discoveryTargets?: Set<number>;
+    effectiveConfig?: EffectiveConfig;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -227,6 +271,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.labels =
       label === undefined ? [] : Array.isArray(label) ? label : label ? label.split(",") : [];
     this.retried = retried ?? 0;
+    this.effectiveConfig = effectiveConfig ?? { hasStepConfig: false };
 
     const middlewareManagerInstance =
       middlewareManager ?? new MiddlewareManager<TInitialPayload, unknown>([]);
@@ -238,8 +283,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
       middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
       middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
       telemetry,
-      invokeCount,
-      discoveryTargets
+      invokeCount
     );
   }
 

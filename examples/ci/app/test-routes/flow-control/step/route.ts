@@ -59,9 +59,14 @@ export const { POST, GET } = testServe(
       baseUrl: BASE_URL,
     }
   ), {
-    // init + discovery (requests the gated redelivery)
-    // + redelivery (executes increment) + final
-    expectedCallCount: 4,
+    // `init` has no settings, so it executes on the first delivery and
+    // the route function continues to `increment`, whose settings ride on
+    // `init`'s submission. No step config request is needed.
+    //
+    //   init, submitted with increment's settings  = 1
+    //   gated delivery, executes increment         = 1
+    //   final replay                               = 1
+    expectedCallCount: 3,
     expectedResult: "step-flow-control-ok",
     payload: undefined,
     triggerConfig: {

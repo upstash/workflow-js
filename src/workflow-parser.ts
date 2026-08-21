@@ -21,7 +21,7 @@ import type {
 } from "./types";
 import { WorkflowContext } from "./context";
 import { decodeBase64, getWorkflowRunId, recreateUserHeaders } from "./utils";
-import { deduplicateSteps, parseDiscoveryTargets, processRawSteps } from "./raw-steps";
+import { deduplicateSteps, processRawSteps } from "./raw-steps";
 import { getSteps } from "./client/utils";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
@@ -167,8 +167,7 @@ export const validateRequest = (
  * @param requester QStash client HTTP requester
  * @param messageId optional message id
  * @param dispatchDebug optional debug dispatcher
- * @returns raw initial payload, the steps and the ids of the steps which
- *   already have a step-level settings redelivery published
+ * @returns raw initial payload and the steps
  */
 export const parseRequest = async ({
   requestPayload,
@@ -190,14 +189,12 @@ export const parseRequest = async ({
   | {
       rawInitialPayload: string;
       steps: Step[];
-      discoveryTargets: Set<number>;
       isLastDuplicate: boolean;
       workflowRunEnded: false;
     }
   | {
       rawInitialPayload: undefined;
       steps: undefined;
-      discoveryTargets: undefined;
       isLastDuplicate: undefined;
       workflowRunEnded: true;
     }
@@ -207,7 +204,6 @@ export const parseRequest = async ({
     return {
       rawInitialPayload: requestPayload ?? "",
       steps: [],
-      discoveryTargets: new Set<number>(),
       isLastDuplicate: false,
       workflowRunEnded: false,
     };
@@ -229,7 +225,6 @@ export const parseRequest = async ({
         return {
           rawInitialPayload: undefined,
           steps: undefined,
-          discoveryTargets: undefined,
           isLastDuplicate: undefined,
           workflowRunEnded: true,
         };
@@ -246,7 +241,6 @@ export const parseRequest = async ({
     return {
       rawInitialPayload,
       steps: deduplicatedSteps,
-      discoveryTargets: parseDiscoveryTargets(rawSteps),
       isLastDuplicate,
       workflowRunEnded: false,
     };

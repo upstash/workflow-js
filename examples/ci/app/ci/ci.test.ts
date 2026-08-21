@@ -31,6 +31,17 @@ describe("workflow integration tests", () => {
     "flow-control/invoke/workflows/invokerParent",
   ]
 
+  // the settings the SDK publishes must come back in a form it
+  // recognizes, or every delivery looks mismatched. Single run: this
+  // checks normalization and the request count, not concurrency.
+  test(
+    "flow-control/normalization",
+    async () => {
+      await initiateTest({ route: "flow-control/normalization" })
+    },
+    TEST_TIMEOUT_DURATION
+  )
+
   flowControlRoutes.forEach(route => {
     test(
       `${route} (concurrent runs)`,

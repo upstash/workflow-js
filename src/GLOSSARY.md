@@ -23,16 +23,16 @@ published but only takes effect when it is delivered.
 
 ## Configuration
 
-| Term                                         | Meaning                                                                                                                                                                                                                                                                               |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Trigger configuration**                    | Flow control, retries, retry delay and failure callback supplied at trigger time. QStash re-applies it to every later message of the run (feature `WF_TriggerOnConfig`).                                                                                                              |
-| **Step-level configuration** (step settings) | Flow control / retries / retry delay attached to a single step with `context.run(...).withSettings(...)`.                                                                                                                                                                             |
-| **Effective configuration**                  | What QStash actually applied to the delivery in hand. Echoed back to the endpoint on every delivery as `Upstash-Flow-Control-Key`, `Upstash-Flow-Control-Value`, `Upstash-Retries` and `Upstash-Retry-Delay` (`pkg/deliver/deliver.go`, `AddUpstashHeaders`). Exposed on the context. |
-| **Gated delivery**                           | A delivery whose message carried step-level configuration, so QStash applied it: the flow-control slot is held for the duration of this delivery and retries come from the step.                                                                                                      |
-| **Ungated delivery**                         | A delivery running under the trigger configuration.                                                                                                                                                                                                                                   |
-| **Config mismatch**                          | The executor is about to execute a step whose step-level configuration differs from the effective configuration of the delivery it is running in.                                                                                                                                     |
-| **`WF_StepConfig`**                          | Publish-side feature flag telling QStash to keep the message's own configuration rather than overwriting it with the trigger configuration.                                                                                                                                           |
-| **Guard marker**                             | `Upstash-Workflow-Step-Config: true` on a delivery, meaning "this message was published with step-level configuration". See [Gate decision](#gate-decision).                                                                                                                          |
+| Term                                         | Meaning                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger configuration**                    | Flow control, retries, retry delay and failure callback supplied at trigger time. QStash re-applies it to every later message of the run (feature `WF_TriggerOnConfig`).                                                                                                                                                               |
+| **Step-level configuration** (step settings) | Flow control / retries / retry delay attached to a single step with `context.run(...).withSettings(...)`.                                                                                                                                                                                                                              |
+| **Effective configuration**                  | What QStash actually applied to the delivery in hand. Echoed back to the endpoint on every delivery as `Upstash-Flow-Control-Key`, `Upstash-Flow-Control-Value`, `Upstash-Max-Retries` and `Upstash-Retry-Delay` (`pkg/deliver/deliver.go`, `AddUpstashHeaders`). Exposed on the context as `flowControl`, `retries` and `retryDelay`. |
+| **Gated delivery**                           | A delivery whose message carried step-level configuration, so QStash applied it: the flow-control slot is held for the duration of this delivery and retries come from the step.                                                                                                                                                       |
+| **Ungated delivery**                         | A delivery running under the trigger configuration.                                                                                                                                                                                                                                                                                    |
+| **Config mismatch**                          | The executor is about to execute a step whose step-level configuration differs from the effective configuration of the delivery it is running in.                                                                                                                                                                                      |
+| **`WF_StepConfig`**                          | Publish-side feature flag telling QStash to keep the message's own configuration rather than overwriting it with the trigger configuration.                                                                                                                                                                                            |
+| **Guard marker**                             | `Upstash-Workflow-Step-Config: true` on a delivery, meaning "this message was published with step-level configuration". See [Gate decision](#gate-decision).                                                                                                                                                                           |
 
 ## Execution
 
@@ -58,8 +58,9 @@ configuration the SDK published did not come back in a form it recognises,
 almost certainly a normalization bug. Executing with the wrong configuration is
 deliberately preferred over publishing a second step-config request, which would
 loop forever and invisibly, since these requests are hidden from the step logs.
-The warning goes through both the middleware (`onWarning`) and `console.warn`,
-and prints both configurations verbatim so the mismatching field is identifiable.
+The warning is dispatched as `onWarning`, which reaches both any user
+middleware and the console, and prints both configurations verbatim so the
+mismatching field is identifiable.
 
 The guard marker is emitted by `getStepSettingsHeaders` as a forwarded header, so
 every producer of step-level configuration sets it in one place: step-config
@@ -131,9 +132,19 @@ today:
 - The server emits `period=%d` in seconds; the SDK sends duration strings such as
   `period=60s`.
 - The SDK accepts `rate` and `ratePerSecond` as aliases for the same field.
-- `Upstash-Retries` is omitted when the value is `0`, so an absent header must be
-  read as literally 0 retries — `modifyConfigurationForWorkflow` always sets a
-  value, so absent cannot mean "unset".
+- QStash defaults an unset flow-control period to one second (`parseFlowControl`)
+  and reports it back, so a flow control published with only a `parallelism`
+  comes back carrying `period=1`. Parallelism and rate default to 0 and are
+  omitted from the header when unset. Both sides take these same defaults before
+  comparing.
+- `Upstash-Retries` on a **delivery** does not mean what it means on a publish.
+  On a publish it sets the retry limit; on a delivery it reports how many retries
+  have already happened (`message.Retries` is a counter incremented in
+  `worker/context.go`), duplicating `Upstash-Retried`. The configured limit is
+  `message.MaxRetries`, reported separately as `Upstash-Max-Retries`. That header
+  is sent unconditionally, so an absent one means "this QStash version does not
+  report it" rather than "the limit is zero" — zero being a valid limit. Retries
+  are left uncompared in that case and the run's configuration applies.
 
 Compare **only the fields the step specifies**. The server's fallback is
 per-field for retries and retry delay but all-or-nothing for flow control
@@ -141,9 +152,14 @@ per-field for retries and retry delay but all-or-nothing for flow control
 legitimately inherits the run's flow control; comparing flow control there would
 mismatch on every delivery.
 
-`timeout` is deliberately not part of step-level configuration: `AddUpstashHeaders`
-does not echo it, so a mismatch in it could never be detected and the setting
-would silently never apply.
+`timeout` is deliberately not part of step-level configuration:
+`AddUpstashHeaders` does not echo it, so a mismatch in it could never be detected
+and the setting would silently never apply.
+
+Both of the divergences above were found by the guard marker firing during a live
+run, not by unit tests. That is the argument for keeping the live normalization
+matrix: a unit test can only check the SDK against its own assumptions, and every
+failure mode here is a disagreement with the server.
 
 ## Naming note
 

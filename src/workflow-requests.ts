@@ -9,6 +9,7 @@ import {
   WorkflowRetryAfterError,
 } from "./error";
 import type { WorkflowContext } from "./context";
+import type { AutoExecutor } from "./context/auto-executor";
 import {
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
@@ -173,6 +174,26 @@ export const triggerFirstInvocation = async <TInitialPayload>(
 };
 
 /**
+ * Submits the result of a step which executed but whose submission was
+ * held so that the route function could reveal what comes next.
+ *
+ * Throws `WorkflowAbort` after submitting. No-op when nothing is pending.
+ *
+ * Not part of the public API: reaches the protected executor of the
+ * context, which is why the cast is needed.
+ *
+ * @internal
+ * @param workflowContext workflow context
+ */
+export const flushPendingStep = async (workflowContext: WorkflowContext): Promise<void> => {
+  const { executor } = workflowContext as unknown as { executor: AutoExecutor };
+  const pendingFlush = executor.flushPendingSubmission();
+  if (pendingFlush) {
+    await pendingFlush;
+  }
+};
+
+/**
  * Triggers the route function and handles cleanup and cancellation.
  *
  * @param onStep function to execute the step
@@ -184,11 +205,13 @@ export const triggerRouteFunction = async <TResult = unknown>({
   onCleanup,
   onStep,
   onCancel,
+  workflowContext,
   middlewareManager,
 }: {
   onStep: () => Promise<TResult>;
   onCleanup: (result: TResult) => Promise<void>;
   onCancel: () => Promise<void>;
+  workflowContext: WorkflowContext;
   middlewareManager?: MiddlewareManager;
 }): Promise<
   | Ok<
@@ -206,13 +229,35 @@ export const triggerRouteFunction = async <TResult = unknown>({
     // `WorkflowCancelAbort`) to signal that the step has finished and control flow should abort.
     // This ensures that onCleanup is only called when no exception is thrown.
     const result = await onStep();
+
+    // The route function ended right after a step executed, so that step's
+    // result is still pending. Submit it now: this throws WorkflowAbort,
+    // marking the invocation as 'step finished' rather than 'workflow
+    // finished', and the run completes when the submission is delivered.
+    await flushPendingStep(workflowContext);
+
     await onCleanup(result);
     return ok("workflow-finished");
   } catch (error) {
-    const error_ = error as Error;
-    if (isInstanceOf(error, QstashError) && error.status === 400) {
+    let error_ = error as Error;
+
+    // The route function may have thrown (or cancelled the run) after a
+    // step executed but before its result was submitted. Submit the result
+    // first so the step is not executed a second time; the error or cancel
+    // happens again deterministically when the run continues and the
+    // function is replayed.
+    //
+    // No-op when nothing is pending. Otherwise throws WorkflowAbort (or the
+    // submission error), which replaces the original error below.
+    try {
+      await flushPendingStep(workflowContext);
+    } catch (flushError) {
+      error_ = flushError as Error;
+    }
+
+    if (isInstanceOf(error_, QstashError) && error_.status === 400) {
       await middlewareManager?.dispatchDebug("onWarning", {
-        warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error.message}`,
+        warning: `Tried to append to a cancelled workflow. Exiting without publishing. Error: ${error_.message}`,
       });
       return ok("workflow-was-finished");
     } else if (

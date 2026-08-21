@@ -2,6 +2,11 @@ import { FlowControl, QstashError } from "@upstash/qstash";
 import {
   DEFAULT_CONTENT_TYPE,
   DEFAULT_RETRIES,
+  FLOW_CONTROL_KEY_HEADER,
+  FLOW_CONTROL_VALUE_HEADER,
+  RETRIES_HEADER,
+  RETRY_DELAY_HEADER,
+  WORKFLOW_STEP_CONFIG_HEADER,
   WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
@@ -324,21 +329,24 @@ export const getStepSettingsHeaders = (stepSettings?: StepSettings): Record<stri
 
   if (stepSettings.flowControl) {
     const { flowControlKey, flowControlValue } = prepareFlowControl(stepSettings.flowControl);
-    headers["Upstash-Flow-Control-Key"] = flowControlKey;
-    headers["Upstash-Flow-Control-Value"] = flowControlValue;
+    headers[FLOW_CONTROL_KEY_HEADER] = flowControlKey;
+    headers[FLOW_CONTROL_VALUE_HEADER] = flowControlValue;
   }
   if (stepSettings.retries !== undefined) {
-    headers["Upstash-Retries"] = stepSettings.retries.toString();
+    headers[RETRIES_HEADER] = stepSettings.retries.toString();
   }
   if (stepSettings.retryDelay) {
-    headers["Upstash-Retry-Delay"] = stepSettings.retryDelay;
-  }
-  if (stepSettings.timeout) {
-    headers["Upstash-Timeout"] = stepSettings.timeout.toString();
+    headers[RETRY_DELAY_HEADER] = stepSettings.retryDelay;
   }
 
   if (Object.keys(headers).length > 0) {
     headers[WORKFLOW_FEATURE_HEADER] = `${WORKFLOW_FEATURE_SET},${WORKFLOW_STEP_CONFIG_FEATURE}`;
+    // Guard marker. Forwarded so that it comes back on the delivery of
+    // this message, telling the executor that the delivery was published
+    // with step-level settings. Emitted here so that every producer of
+    // step-level settings sets it: step config requests, submissions
+    // carrying the next step's settings, and parallel plan steps.
+    headers[`Upstash-Forward-${WORKFLOW_STEP_CONFIG_HEADER}`] = "true";
   }
 
   return headers;

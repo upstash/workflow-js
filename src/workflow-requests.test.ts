@@ -142,9 +142,22 @@ describe("Workflow Requests", () => {
     });
   });
 
+  // context for tests which don't add any steps: nothing is ever pending,
+  // so the flush in triggerRouteFunction is a no-op
+  const contextWithoutPendingStep = new WorkflowContext({
+    qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "mock-token" }),
+    workflowRunId: "wfr-no-pending-step",
+    initialPayload: undefined,
+    headers: new Headers({}) as Headers,
+    steps: [],
+    url: WORKFLOW_ENDPOINT,
+    workflowRunCreatedAt: 0,
+  });
+
   describe("triggerRouteFunction", () => {
     test("should get step-finished when WorkflowAbort is thrown", async () => {
       const result = await triggerRouteFunction({
+        workflowContext: contextWithoutPendingStep,
         onStep: () => {
           throw new WorkflowAbort("name");
         },
@@ -162,6 +175,7 @@ describe("Workflow Requests", () => {
 
     test("should get workflow-finished when no error is thrown", async () => {
       const result = await triggerRouteFunction({
+        workflowContext: contextWithoutPendingStep,
         onStep: async () => {
           await Promise.resolve();
         },
@@ -179,6 +193,7 @@ describe("Workflow Requests", () => {
 
     test("should get Err if onStep throws error", async () => {
       const result = await triggerRouteFunction({
+        workflowContext: contextWithoutPendingStep,
         onStep: () => {
           throw new Error("Something went wrong!");
         },
@@ -194,6 +209,7 @@ describe("Workflow Requests", () => {
 
     test("should get Err if onCleanup throws error", async () => {
       const result = await triggerRouteFunction({
+        workflowContext: contextWithoutPendingStep,
         onStep: async () => {
           await Promise.resolve();
         },
@@ -224,6 +240,7 @@ describe("Workflow Requests", () => {
 
     const finished = new FinishState();
     const result = await triggerRouteFunction({
+      workflowContext: context,
       onStep: async () => {
         await context.cancel();
         await context.run("shouldn't call", () => {
@@ -245,6 +262,7 @@ describe("Workflow Requests", () => {
 
   test("should fail workflow and return ok if WorkflowNonRetryableError is thrown", async () => {
     const result = await triggerRouteFunction({
+      workflowContext: contextWithoutPendingStep,
       onStep: async () => {
         throw new WorkflowNonRetryableError("This is a non-retryable error");
       },
@@ -262,6 +280,7 @@ describe("Workflow Requests", () => {
 
   test("should retry workflow and return ok if WorkflowRetryAfterError is thrown", async () => {
     const result = await triggerRouteFunction({
+      workflowContext: contextWithoutPendingStep,
       onStep: async () => {
         throw new WorkflowRetryAfterError("This is a retry-after error", 5);
       },
@@ -295,6 +314,7 @@ describe("Workflow Requests", () => {
 
     const finished = new FinishState();
     const result = await triggerRouteFunction({
+      workflowContext: context,
       onStep: async () => {
         await context.run("should call cancel", async () => {
           await context.cancel();
@@ -844,6 +864,7 @@ describe("Workflow Requests", () => {
         await workflowClient.cancel([workflowRunId]);
 
         const result = await triggerRouteFunction({
+          workflowContext: context,
           onStep: async () => {
             await context.sleep("sleeping", 10);
           },
@@ -894,6 +915,7 @@ describe("Workflow Requests", () => {
         await workflowClient.cancel([workflowRunId]);
 
         const result = await triggerRouteFunction({
+          workflowContext: context,
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
           },
@@ -950,6 +972,7 @@ describe("Workflow Requests", () => {
         const warnSpy = spyOn(console, "warn");
 
         const result = await triggerRouteFunction({
+          workflowContext: context,
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
           },

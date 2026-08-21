@@ -63,6 +63,22 @@ export abstract class BaseLazyStep<TResult = unknown> {
    */
   public stepSettings?: StepSettings;
 
+  /**
+   * whether this step's result can be submitted after the route function
+   * has moved on, instead of right away.
+   *
+   * Enabled for steps whose `getResultStep` produces the final `out` —
+   * which is not the same as "needs no server round trip":
+   * `LazyCreateWebhookStep` builds its result in `getBody` and returns
+   * `out: undefined` from `getResultStep`, so deferring it would hand
+   * `undefined` to the route function.
+   *
+   * Deferring lets the route function continue and reveal the next step,
+   * so that step's settings can ride on this step's submission instead
+   * of needing a step config request of their own.
+   */
+  public readonly supportsDeferredSubmission: boolean = false;
+
   constructor(context: WorkflowContext, stepName: string) {
     this.context = context;
     if (!stepName) {
@@ -193,6 +209,7 @@ export class LazyFunctionStep<TResult = unknown> extends BaseLazyStep<TResult> {
   private readonly stepFunction: StepFunction<TResult>;
   stepType: StepType = "Run";
   allowUndefinedOut = true;
+  public readonly supportsDeferredSubmission = true;
 
   constructor(context: WorkflowContext, stepName: string, stepFunction: StepFunction<TResult>) {
     super(context, stepName);
@@ -232,6 +249,7 @@ export class LazySleepStep extends BaseLazyStep {
   private readonly sleep: number | Duration;
   stepType: StepType = "SleepFor";
   allowUndefinedOut = true;
+  public readonly supportsDeferredSubmission = true;
 
   constructor(context: WorkflowContext, stepName: string, sleep: number | Duration) {
     super(context, stepName);
@@ -279,6 +297,7 @@ export class LazySleepUntilStep extends BaseLazyStep {
   private readonly sleepUntil: number;
   stepType: StepType = "SleepUntil";
   allowUndefinedOut = true;
+  public readonly supportsDeferredSubmission = true;
 
   constructor(context: WorkflowContext, stepName: string, sleepUntil: number) {
     super(context, stepName);

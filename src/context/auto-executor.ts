@@ -1,16 +1,26 @@
 import { attachStepNameToError, isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
+import type { StepFunction, ParallelCallState, Step, StepSettings, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
 import { QstashError } from "@upstash/qstash";
 import {
-  publishStepSettingsRedelivery,
+  executeStep,
+  publishStepConfigRequest,
   submitParallelSteps,
   submitSingleStep,
+  submitStepResult,
 } from "../qstash/submit-steps";
-import { getStepSettingsHeaders } from "../qstash/headers";
+import { describeStepSettingsMismatch } from "../qstash/step-config";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
 import { NO_CONCURRENCY } from "../constants";
+
+/**
+ * An executed step whose result is not submitted to QStash yet.
+ */
+type PendingStepSubmission = {
+  lazyStep: BaseLazyStep;
+  resultStep: Step;
+};
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -31,15 +41,23 @@ export class AutoExecutor {
   protected executingStep: string | false = false;
 
   /**
-   * ids of the steps which already have a step-level settings redelivery
-   * published (read off the hidden `discovery` entries of the run).
+   * an executed step whose result hasn't been submitted to QStash yet.
    *
-   * When the executor is about to run a step with step-level settings, it
-   * uses this to tell whether the current delivery was gated by those
-   * settings: if the step is in this set, the redelivery was already
-   * published and this delivery is it, so the step is executed.
+   * Set when a step which can produce its result in-process executes. The
+   * submission waits so that the route function can continue and reveal
+   * what comes next: if that is a single step with step-level settings,
+   * the settings ride on this submission and no step config request is
+   * needed, since the delivery of the submission is what executes it.
+   *
+   * Flushed when the next step is reached (see `addStep`) or when the
+   * route function ends (see `flushPendingStep` in `serve`).
    */
-  private readonly discoveryTargets: Set<number>;
+  private pendingSubmission?: PendingStepSubmission;
+  /**
+   * the ongoing flush of `pendingSubmission`. Always rejects with
+   * `WorkflowAbort` (or a submission error).
+   */
+  private pendingFlush?: Promise<never>;
 
   /**
    * @param context workflow context
@@ -48,8 +66,6 @@ export class AutoExecutor {
    * @param dispatchLifecycle lifecycle event dispatcher
    * @param telemetry optional telemetry information
    * @param invokeCount optional invoke count
-   * @param discoveryTargets ids of the steps which already have a
-   *   step-level settings redelivery published
    */
   constructor(
     context: WorkflowContext,
@@ -57,8 +73,7 @@ export class AutoExecutor {
     dispatchDebug: DispatchDebug,
     dispatchLifecycle: DispatchLifecycle,
     telemetry?: Telemetry,
-    invokeCount?: number,
-    discoveryTargets?: Set<number>
+    invokeCount?: number
   ) {
     this.context = context;
     this.steps = steps;
@@ -66,7 +81,6 @@ export class AutoExecutor {
     this.dispatchLifecycle = dispatchLifecycle;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
-    this.discoveryTargets = discoveryTargets ?? new Set<number>();
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -109,6 +123,26 @@ export class AutoExecutor {
     const index = this.indexInCurrentList++;
 
     const requestComplete = this.deferExecution().then(async () => {
+      // A step executed in this invocation and its result is still
+      // pending: this new step list is what comes next. Submit the
+      // pending result and abort. When what comes next is a single step
+      // with step-level settings, the settings ride on that submission,
+      // so the delivery it produces is gated and executes the step. A
+      // parallel group carries its settings on its own plan steps
+      // instead, so nothing is attached for it.
+      //
+      // This runs before `getExecutionPromise`, so the new step's
+      // function never executes here, and after the microtasks of
+      // `deferExecution`, so a `withSettings` chained synchronously on
+      // the returned promise has already applied.
+      const pendingFlush = this.flushPendingSubmission(
+        lazyStepList.length === 1 ? lazyStepList[0].stepSettings : undefined
+      );
+      if (pendingFlush) {
+        // always rejects with WorkflowAbort
+        await pendingFlush;
+      }
+
       if (!this.promises.has(lazyStepList)) {
         const promise = this.getExecutionPromise(lazyStepList);
         this.promises.set(lazyStepList, promise);
@@ -175,20 +209,32 @@ export class AutoExecutor {
       return parsedOut;
     }
 
-    if (this.needsSettingsRedelivery(lazyStep, this.stepCount)) {
-      // The step has step-level settings but the delivery we are running
-      // in was published before the step was known, so it isn't gated by
-      // them. Request a redelivery carrying the settings instead of
-      // executing the step here; the step runs in that delivery.
-      await publishStepSettingsRedelivery({
-        context: this.context,
-        lazyStep,
-        targetStep: this.stepCount,
-        invokeCount: this.invokeCount,
-        telemetry: this.telemetry,
-        dispatchDebug: this.dispatchDebug,
-      });
+    if (await this.gateStep(lazyStep, this.stepCount)) {
+      // a step config request was published; the step executes in the
+      // gated delivery it produces
       throw new WorkflowAbort(lazyStep.stepName);
+    }
+
+    if (lazyStep.supportsDeferredSubmission) {
+      // Execute the step but hold its result. Returning the result lets
+      // the route function continue and reveal what comes next, so that a
+      // next step's settings can ride on this submission instead of
+      // needing a step config request of their own.
+      const resultStep = await executeStep({
+        lazyStep,
+        stepId: this.stepCount,
+        concurrency: NO_CONCURRENCY,
+        dispatchLifecycle: this.dispatchLifecycle,
+      });
+      this.pendingSubmission = { lazyStep, resultStep };
+
+      // return the result after passing it through serialization, so that
+      // the route function observes the exact same value here and in the
+      // replays of the later invocations
+      return lazyStep.parseOut({
+        ...resultStep,
+        out: resultStep.out === undefined ? undefined : JSON.stringify(resultStep.out),
+      });
     }
 
     const resultStep = await submitSingleStep({
@@ -205,24 +251,107 @@ export class AutoExecutor {
   }
 
   /**
-   * Decides whether a step which is about to execute must first be
-   * redelivered with its step-level settings applied.
+   * Decides what to do about the step-level settings of a step which is
+   * about to execute for the first time.
    *
-   * True when the step has settings which translate to headers and no
-   * redelivery was published for it yet. False once the redelivery has
-   * been published, since the delivery we are running in is then the
-   * gated one which is meant to execute the step.
+   * The settings must be applied to the delivery which executes the step,
+   * so the step's settings are compared against the configuration QStash
+   * applied to the delivery in hand:
+   *
+   * - they agree: nothing to do, the step executes here.
+   * - they differ and this delivery was not published with step-level
+   *   settings: publish a step config request, so that the delivery it
+   *   produces is gated and executes the step.
+   * - they differ but this delivery *was* published with step-level
+   *   settings: the settings we published came back in a form we don't
+   *   recognize, which is a bug in this SDK. Execute the step with the
+   *   wrong settings and warn, rather than publish a second step config
+   *   request: that would loop forever, and invisibly, since these
+   *   requests are hidden from the step logs.
    *
    * @param lazyStep step which is about to execute
    * @param stepId id the step will be submitted with
+   * @returns whether a step config request was published, meaning the
+   *   caller should abort instead of executing the step
    */
-  private needsSettingsRedelivery(lazyStep: BaseLazyStep, stepId: number): boolean {
-    if (!lazyStep.stepSettings || this.discoveryTargets.has(stepId)) {
+  private async gateStep(lazyStep: BaseLazyStep, stepId: number): Promise<boolean> {
+    if (!lazyStep.stepSettings) {
       return false;
     }
-    // settings which produce no headers (`withSettings({})`) would make
-    // the redelivery a pointless extra hop
-    return Object.keys(getStepSettingsHeaders(lazyStep.stepSettings)).length > 0;
+
+    const mismatch = describeStepSettingsMismatch(
+      lazyStep.stepSettings,
+      this.context.effectiveConfig
+    );
+    if (!mismatch) {
+      return false;
+    }
+
+    if (this.context.effectiveConfig.hasStepConfig) {
+      // `dispatchDebug` writes warnings to the console itself, on top of
+      // handing them to any user middleware
+      await this.dispatchDebug("onWarning", {
+        warning:
+          `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
+          ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
+          ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
+      });
+      return false;
+    }
+
+    await publishStepConfigRequest({
+      context: this.context,
+      lazyStep,
+      targetStep: stepId,
+      invokeCount: this.invokeCount,
+      telemetry: this.telemetry,
+      dispatchDebug: this.dispatchDebug,
+    });
+    return true;
+  }
+
+  /**
+   * Submits the result of the pending (executed but not yet submitted)
+   * step to QStash, attaching the step-level settings of the next step
+   * when there are any.
+   *
+   * Returns a promise which always rejects: with `WorkflowAbort` once the
+   * submission succeeds, or with the submission error otherwise. Returns
+   * undefined when there is nothing pending.
+   *
+   * The next step's settings are attached whenever it has any, without
+   * checking them against the current delivery: the executor only knows
+   * the configuration of the delivery in hand, which inside a gated
+   * delivery is the *previous* step's, so such a check would be wrong
+   * exactly when two gated steps follow each other.
+   *
+   * @param nextStepSettings step-level settings of the next step
+   */
+  public flushPendingSubmission(nextStepSettings?: StepSettings): Promise<never> | undefined {
+    if (!this.pendingSubmission) {
+      // if a flush is already in progress, return it so that concurrent
+      // callers (parallel steps added together) all reject the same way
+      return this.pendingFlush;
+    }
+
+    const { lazyStep, resultStep } = this.pendingSubmission;
+    this.pendingSubmission = undefined;
+
+    this.pendingFlush = (async (): Promise<never> => {
+      await submitStepResult({
+        context: this.context,
+        lazyStep,
+        resultStep,
+        invokeCount: this.invokeCount,
+        concurrency: NO_CONCURRENCY,
+        telemetry: this.telemetry,
+        dispatchDebug: this.dispatchDebug,
+        nextStepSettings,
+      });
+      throw new WorkflowAbort(lazyStep.stepName, resultStep);
+    })();
+
+    return this.pendingFlush;
   }
 
   /**
