@@ -643,11 +643,14 @@ describe("auto-executor", () => {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
           token,
-          // the target step makes the request unique per step, so QStash
-          // doesn't deduplicate the requests of two different steps
+          // the target step keeps the requests of two different steps
+          // distinct under the content based deduplication below
           body: { targetStep: 1, invokeCount: 7 },
           headers: {
             "upstash-workflow-calltype": "stepConfig",
+            // a retry of the delivery which published this collapses
+            // into it rather than publishing a second request
+            "upstash-content-based-deduplication": "true",
             "upstash-workflow-runid": workflowRunId,
             "upstash-workflow-init": "false",
             "upstash-workflow-url": WORKFLOW_ENDPOINT,

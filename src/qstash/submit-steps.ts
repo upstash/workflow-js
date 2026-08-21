@@ -1,4 +1,4 @@
-import { NO_CONCURRENCY, WORKFLOW_STEP_CONFIG_CALL_TYPE } from "../constants";
+  import { NO_CONCURRENCY, WORKFLOW_STEP_CONFIG_CALL_TYPE } from "../constants";
 import { attachStepNameToError, WorkflowAbort } from "../error";
 import { Step, StepSettings, Telemetry } from "../types";
 import { WorkflowContext } from "../context";
@@ -253,11 +253,14 @@ export const submitSingleStep = async ({
  * executes the step.
  *
  * The request has the `stepConfig` call type: QStash doesn't treat it as
- * a step and hides it from the step logs. Its body carries the target
- * step id so that QStash's content based deduplication doesn't collapse
- * the requests of two different steps, while still collapsing a
- * duplicate publish for the same step (which is what happens when a
- * delivery is retried after publishing one).
+ * a step and hides it from the step logs.
+ *
+ * It is published with content based deduplication, and its body carries
+ * the target step id. Together those make a second publish for the same
+ * step collapse into the first — which is what happens when the delivery
+ * that published one is retried — while leaving the requests of two
+ * different steps distinct. The deduplication hash covers the workflow
+ * run id, so runs never collide with each other.
  *
  * @param context workflow context
  * @param lazyStep lazy step whose settings are applied
@@ -306,6 +309,7 @@ export const publishStepConfigRequest = async ({
     method: "POST",
     body: { targetStep, invokeCount },
     url: context.url,
+    contentBasedDeduplication: true,
   })) as { messageId?: string };
 
   if (result?.messageId) {

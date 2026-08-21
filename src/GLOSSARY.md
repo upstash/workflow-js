@@ -69,12 +69,23 @@ means the invariant _delivery carries step configuration ⟺ marker present_
 cannot be broken by an SDK which sets the configuration but forgets the marker,
 and every SDK gets it without doing anything.
 
-Server-side backstop: QStash rejects a `stepConfig` request when the run's last
-entry is also a `stepConfig`. Two of them with no `step` entry in between is
-always a bug — every legitimate path puts a step entry between them, QStash
-retrying a failed delivery appends nothing, and content deduplication collapses
-an identical re-publish. This guards against any client, including other SDKs and
-older versions, where an SDK-side rule cannot help.
+Server-side backstops, which hold whatever a client does:
+
+- QStash rejects a `stepConfig` request when the run's last entry is also a
+  `stepConfig`. Two of them with no `step` entry in between is always a bug:
+  every legitimate path puts a step entry between them.
+- A run may append at most `MaxEntriesPerCountableStep` messages per step it is
+  allowed to take (`exceedsWorkflowLimit`). The rule above only catches two
+  step-config requests _in a row_, so a client alternating them with some other
+  message would slip past it; the step count limit does not catch that either,
+  because only result steps are countable. This bounds the total instead, using
+  a counter the run already maintains. Without it the only ceiling is the
+  context size limit, which a loop of small messages reaches after millions of
+  iterations.
+- A step config request is published with content based deduplication, so the
+  delivery which published one re-publishing it after a retry collapses into the
+  original rather than appending a second entry. The deduplication hash covers
+  the run id, so runs never collide.
 
 ## Deferred submission
 
