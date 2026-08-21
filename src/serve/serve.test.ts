@@ -1393,7 +1393,9 @@ describe("serve", () => {
     // what gets it retried, and the retry runs the step again rather than
     // losing it. Swallowing the failure instead would be worse than losing
     // the result: the route function returned, so the run would be
-    // reported finished and deleted with the step never recorded.
+    // reported finished and deleted with the step never recorded. The mock
+    // asserts the method and url of every request it is given, so that
+    // delete showing up here would fail this test.
     const token = nanoid();
     const workflowRunId = `wfr-${nanoid()}`;
     let stepRunCount = 0;
