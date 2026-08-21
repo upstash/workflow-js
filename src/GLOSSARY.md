@@ -62,15 +62,12 @@ The warning is dispatched as `onWarning`, which reaches both any user
 middleware and the console, and prints both configurations verbatim so the
 mismatching field is identifiable.
 
-The guard marker is emitted by `getStepSettingsHeaders` as a forwarded header, so
-every producer of step-level configuration sets it in one place: step-config
-requests, deferred submissions carrying the next step's configuration, and
-parallel plan steps. This makes the invariant _delivery carries step
-configuration ⟺ marker present_ hold. No server change is needed for it:
-`Upstash-Workflow-*` is not in the server's `forbiddenHeaders` /
-`forbiddenHeaderPrefixes` (`pkg/publish/publisher.go`), and
-`modifyUserHeadersForWorkflow` only overwrites forwarded keys that appear in the
-_trigger's_ forward set, from which `upstash-`-prefixed keys are stripped.
+The guard marker is set by QStash, from the `WF_StepConfig` feature of the
+message being delivered (`AddUpstashHeaders`). Deriving it from what QStash
+actually did rather than having the SDK forward a header alongside the settings
+means the invariant _delivery carries step configuration ⟺ marker present_
+cannot be broken by an SDK which sets the configuration but forgets the marker,
+and every SDK gets it without doing anything.
 
 Server-side backstop: QStash rejects a `stepConfig` request when the run's last
 entry is also a `stepConfig`. Two of them with no `step` entry in between is

@@ -657,8 +657,6 @@ describe("auto-executor", () => {
             "upstash-flow-control-value": "parallelism=2, rate=10",
             "upstash-retries": "5",
             "upstash-retry-delay": "1000",
-            // guard marker, forwarded so it comes back on the delivery
-            "upstash-forward-upstash-workflow-step-config": "true",
           },
         },
       });
@@ -824,7 +822,6 @@ describe("auto-executor", () => {
                 "upstash-flow-control-value": "parallelism=2, rate=10",
                 "upstash-retries": "5",
                 "upstash-retry-delay": "1000",
-                "upstash-forward-upstash-workflow-step-config": "true",
               },
               body: JSON.stringify({ ...singleStep }),
             },
@@ -920,7 +917,6 @@ describe("auto-executor", () => {
                 "upstash-forward-upstash-workflow-invoke-count": "7",
                 "upstash-flow-control-key": "fc-key-1",
                 "upstash-flow-control-value": "parallelism=1",
-                "upstash-forward-upstash-workflow-step-config": "true",
               },
             },
             {
@@ -938,7 +934,6 @@ describe("auto-executor", () => {
                 "upstash-workflow-url": WORKFLOW_ENDPOINT,
                 "upstash-forward-upstash-workflow-invoke-count": "7",
                 "upstash-retries": "0",
-                "upstash-forward-upstash-workflow-step-config": "true",
               },
             },
           ],

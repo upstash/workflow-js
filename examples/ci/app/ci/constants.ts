@@ -122,6 +122,37 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   },
   {
     route: "retried",
+  },
+
+  /**
+   * STEP-LEVEL FLOW CONTROL
+   *
+   * `context.run(...).withSettings(...)`. Each route is triggered once,
+   * as a coordinator workflow which invokes its workers in parallel: the
+   * workers are the concurrency the step-level flow control has to gate.
+   * The routes differ in what a worker does before the gated step, which
+   * is what decides how the delivery reaching it was produced.
+   */
+  {
+    // checks that the settings the SDK publishes come back in a form it
+    // recognizes, and that a gated step costs exactly one extra request
+    route: "flow-control/normalization",
+  },
+  {
+    // the gated step is the first step of the run
+    route: "flow-control/first-step/workflows/coordinator",
+  },
+  {
+    // the gated step comes after a context.run step
+    route: "flow-control/step/workflows/coordinator",
+  },
+  {
+    // the gated step comes after a context.call step
+    route: "flow-control/call/workflows/coordinator",
+  },
+  {
+    // the gated step comes after a context.invoke step
+    route: "flow-control/invoke/workflows/coordinator",
   }
 
   /**

@@ -28,6 +28,12 @@ export const { POST, GET } = testServe(
       // parallelism only
       await context
         .run("parallelism-only", () => {
+          // QStash reports that this delivery carried the step's own
+          // settings. The SDK relies on this to bound a comparison it
+          // gets wrong, so it has to actually arrive.
+          // @ts-expect-error internal field, asserted here so a missing
+          // marker fails the suite rather than going unnoticed
+          expect(context.effectiveConfig.hasStepConfig, true)
           expect(context.flowControl?.key, "norm-parallelism")
           expect(context.flowControl?.parallelism, 2)
           expect(context.flowControl?.rate, 0)
@@ -102,6 +108,11 @@ export const { POST, GET } = testServe(
       await context
         .run("same-as-trigger", () => {
           expect(context.flowControl?.key, "ci-trigger-flow-control-normalization")
+          // still a gated delivery: the previous step attaches this
+          // step's settings whenever it has any, without checking them
+          // against the delivery in hand
+          // @ts-expect-error internal field, see above
+          expect(context.effectiveConfig.hasStepConfig, true)
           return "ok"
         })
         .withSettings({
@@ -109,19 +120,30 @@ export const { POST, GET } = testServe(
           retries: 0,
         })
 
+      // a step with no settings at all: nothing is attached to the
+      // previous step's submission, so this runs on an ordinary delivery
+      // and the marker must be absent. Without this the assertions above
+      // would also pass if QStash set the marker unconditionally.
+      await context.run("no-settings", () => {
+        // @ts-expect-error internal field, see above
+        expect(context.effectiveConfig.hasStepConfig, false)
+        expect(context.flowControl?.key, "ci-trigger-flow-control-normalization")
+        return "ok"
+      })
+
       await saveResult(context, "normalization-ok")
     }, {
       baseUrl: BASE_URL,
     }
   ), {
-    // 8 steps, but only the first needs a step config request: once a
-    // step executes, the next step's settings ride on its submission.
+    // 9 steps. Only the first needs a step config request: once a step
+    // executes, the next step's settings ride on its submission.
     //
     //   step config request for step 1 + its gated delivery  = 2
-    //   steps 2..8, each executing on the delivery carrying
-    //     the previous step's result                         = 7
+    //   steps 2..9, each executing on the delivery carrying
+    //     the previous step's result                         = 8
     //   final replay                                         = 1
-    expectedCallCount: 10,
+    expectedCallCount: 11,
     expectedResult: "normalization-ok",
     payload: payloadFor("normalization"),
     triggerConfig: {

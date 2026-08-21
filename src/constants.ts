@@ -22,11 +22,11 @@ export const WORKFLOW_STEP_CONFIG_CALL_TYPE = "stepConfig";
  * header which marks a delivery whose message was published with
  * step-level settings.
  *
- * Sent as a forwarded header alongside the settings themselves, so
- * QStash includes it in the delivery of that message. Its presence
- * forbids publishing another step config request: if the settings still
- * don't match what the step asked for, the step is executed with the
- * wrong settings (and a warning) instead of looping invisibly.
+ * Set by QStash from the message's own feature set, so it cannot
+ * disagree with what QStash actually did. Its presence forbids
+ * publishing another step config request: if the settings still don't
+ * match what the step asked for, the step is executed with the wrong
+ * settings (and a warning) instead of looping invisibly.
  */
 export const WORKFLOW_STEP_CONFIG_HEADER = "Upstash-Workflow-Step-Config";
 /**

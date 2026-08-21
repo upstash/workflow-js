@@ -6,7 +6,6 @@ import {
   FLOW_CONTROL_VALUE_HEADER,
   RETRIES_HEADER,
   RETRY_DELAY_HEADER,
-  WORKFLOW_STEP_CONFIG_HEADER,
   WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
@@ -340,13 +339,10 @@ export const getStepSettingsHeaders = (stepSettings?: StepSettings): Record<stri
   }
 
   if (Object.keys(headers).length > 0) {
+    // QStash keeps this message's own settings instead of overwriting
+    // them with the run's, and reports that back on the delivery as the
+    // guard marker (`WORKFLOW_STEP_CONFIG_HEADER`).
     headers[WORKFLOW_FEATURE_HEADER] = `${WORKFLOW_FEATURE_SET},${WORKFLOW_STEP_CONFIG_FEATURE}`;
-    // Guard marker. Forwarded so that it comes back on the delivery of
-    // this message, telling the executor that the delivery was published
-    // with step-level settings. Emitted here so that every producer of
-    // step-level settings sets it: step config requests, submissions
-    // carrying the next step's settings, and parallel plan steps.
-    headers[`Upstash-Forward-${WORKFLOW_STEP_CONFIG_HEADER}`] = "true";
   }
 
   return headers;
