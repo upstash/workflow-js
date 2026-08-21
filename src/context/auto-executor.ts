@@ -120,7 +120,7 @@ export class AutoExecutor {
     if (this.executingStep) {
       throw new WorkflowError(
         "A step can not be run inside another step." +
-          ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
+        ` Tried to run '${stepInfo.stepName}' inside '${this.executingStep}'`
       );
     }
 
@@ -234,36 +234,36 @@ export class AutoExecutor {
       ? describeStepSettingsMismatch(lazyStep.stepSettings, this.effectiveConfig)
       : undefined;
 
-    if (mismatch && !this.effectiveConfig.hasStepConfig) {
-      // This delivery was not published with step-level settings, so ask
-      // for one that is. The step runs in the gated delivery that
-      // request produces, not here.
-      await publishStepConfigRequest({
-        context: this.context,
-        lazyStep,
-        targetStep: this.stepCount,
-        invokeCount: this.invokeCount,
-        telemetry: this.telemetry,
-        dispatchDebug: this.dispatchDebug,
-      });
-      throw new WorkflowAbort(lazyStep.stepName);
-    }
-
     if (mismatch) {
-      // The settings this SDK published came back in a form it does not
-      // recognize, which is a bug in it. Run the step with the settings
-      // of the delivery rather than publish a second step config
-      // request: that would loop forever, and invisibly, since these
-      // requests are hidden from the step logs.
-      //
-      // `dispatchDebug` writes warnings to the console itself, on top of
-      // handing them to any user middleware.
-      await this.dispatchDebug("onWarning", {
-        warning:
-          `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
-          ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
-          ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
-      });
+      if (!this.effectiveConfig.hasStepConfig) {
+        // This delivery was not published with step-level settings, so ask
+        // for one that is. The step runs in the gated delivery that
+        // request produces, not here.
+        await publishStepConfigRequest({
+          context: this.context,
+          lazyStep,
+          targetStep: this.stepCount,
+          invokeCount: this.invokeCount,
+          telemetry: this.telemetry,
+          dispatchDebug: this.dispatchDebug,
+        });
+        throw new WorkflowAbort(lazyStep.stepName);
+      } else {
+        // The settings this SDK published came back in a form it does not
+        // recognize, which is a bug in it. Run the step with the settings
+        // of the delivery rather than publish a second step config
+        // request: that would loop forever, and invisibly, since these
+        // requests are hidden from the step logs.
+        //
+        // `dispatchDebug` writes warnings to the console itself, on top of
+        // handing them to any user middleware.
+        await this.dispatchDebug("onWarning", {
+          warning:
+            `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
+            ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
+            ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
+        });
+      }
     }
 
     const resultStep = await executeStep({
@@ -383,7 +383,7 @@ export class AutoExecutor {
       // user has added/removed a parallel step
       throw new WorkflowError(
         `Incompatible number of parallel steps when call state was '${parallelCallState}'.` +
-          ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
+        ` Expected ${parallelSteps.length}, got ${plannedParallelStepCount} from the request.`
       );
     }
 
@@ -422,7 +422,7 @@ export class AutoExecutor {
         if (!planStep || planStep.targetStep === undefined) {
           throw new WorkflowError(
             `There must be a last step and it should have targetStep larger than 0.` +
-              `Received: ${JSON.stringify(planStep)}`
+            `Received: ${JSON.stringify(planStep)}`
           );
         }
         const stepIndex = planStep.targetStep - initialStepCount;
@@ -634,14 +634,14 @@ const validateStep = (lazyStep: BaseLazyStep, stepFromRequest: Step): void => {
   if (lazyStep.stepName !== stepFromRequest.stepName) {
     throw new WorkflowError(
       `Incompatible step name. Expected '${lazyStep.stepName}',` +
-        ` got '${stepFromRequest.stepName}' from the request`
+      ` got '${stepFromRequest.stepName}' from the request`
     );
   }
   // check type name
   if (lazyStep.stepType !== stepFromRequest.stepType) {
     throw new WorkflowError(
       `Incompatible step type. Expected '${lazyStep.stepType}',` +
-        ` got '${stepFromRequest.stepType}' from the request`
+      ` got '${stepFromRequest.stepType}' from the request`
     );
   }
 };
@@ -669,10 +669,10 @@ const validateParallelSteps = (lazySteps: BaseLazyStep[], stepsFromRequest: Step
       const requestStepTypes = stepsFromRequest.map((step) => step.stepType);
       throw new WorkflowError(
         `Incompatible steps detected in parallel execution: ${error.message}` +
-          `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
-          `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +
-          `\n  > Step Names expected: ${JSON.stringify(lazyStepNames)}` +
-          `\n    Step Types expected: ${JSON.stringify(lazyStepTypes)}`
+        `\n  > Step Names from the request: ${JSON.stringify(requestStepNames)}` +
+        `\n    Step Types from the request: ${JSON.stringify(requestStepTypes)}` +
+        `\n  > Step Names expected: ${JSON.stringify(lazyStepNames)}` +
+        `\n    Step Types expected: ${JSON.stringify(lazyStepTypes)}`
       );
     }
     throw error;
