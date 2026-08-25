@@ -628,12 +628,14 @@ describe("auto-executor", () => {
       let stepExecuted = false;
       await mockQStashServer({
         execute: async () => {
-          const throws = context
-            .run("attemptCharge", () => {
+          const throws = context.run(
+            "attemptCharge",
+            () => {
               stepExecuted = true;
               return "result";
-            })
-            .withSettings(settings);
+            },
+            settings
+          );
           await expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
@@ -675,12 +677,14 @@ describe("auto-executor", () => {
       let stepExecuted = false;
       await mockQStashServer({
         execute: async () => {
-          const throws = context
-            .run("attemptCharge", () => {
+          const throws = context.run(
+            "attemptCharge",
+            () => {
               stepExecuted = true;
               return "result";
-            })
-            .withSettings(settings);
+            },
+            settings
+          );
           // no settings were applied and nothing was submitted, so the publish
           // error has to surface rather than an abort claiming otherwise
           await expect(throws).rejects.toThrowError(QstashError);
@@ -706,12 +710,14 @@ describe("auto-executor", () => {
       let stepExecuted = false;
       await mockQStashServer({
         execute: async () => {
-          const result = await context
-            .run("attemptCharge", () => {
+          const result = await context.run(
+            "attemptCharge",
+            () => {
               stepExecuted = true;
               return { input: context.requestPayload, success: false };
-            })
-            .withSettings(settings);
+            },
+            settings
+          );
           expect(result).toEqual({ input: initialPayload, success: false });
           const submitted = await flushPendingStep(context);
           expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
@@ -768,12 +774,14 @@ describe("auto-executor", () => {
       let stepExecuted = false;
       await mockQStashServer({
         execute: async () => {
-          await context
-            .run("attemptCharge", () => {
+          await context.run(
+            "attemptCharge",
+            () => {
               stepExecuted = true;
               return { input: context.requestPayload, success: false };
-            })
-            .withSettings(settings);
+            },
+            settings
+          );
           const submitted = await flushPendingStep(context);
           expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
         },
@@ -856,7 +864,7 @@ describe("auto-executor", () => {
           // no step config request is needed
           const throws = result.success
             ? context.run("unexpected-branch", () => "not-executed")
-            : context.run("second-step", () => "not-executed").withSettings(settings);
+            : context.run("second-step", () => "not-executed", settings);
           await expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
@@ -953,7 +961,7 @@ describe("auto-executor", () => {
           // parallel steps carry their settings on their own plan steps,
           // so nothing is attached to the pending submission
           const throws = Promise.all([
-            context.run("p1", () => "r1").withSettings(settings),
+            context.run("p1", () => "r1", settings),
             context.run("p2", () => "r2"),
           ]);
           await expect(throws).rejects.toThrowError(WorkflowAbort);
@@ -1007,12 +1015,14 @@ describe("auto-executor", () => {
             context.sleepUntil("sleep until next day", 123_123),
           ]);
 
-          const throws = context
-            .run("after-parallel", () => {
+          const throws = context.run(
+            "after-parallel",
+            () => {
               stepExecuted = true;
               return "result";
-            })
-            .withSettings(settings);
+            },
+            settings
+          );
           await expect(throws).rejects.toThrowError(WorkflowAbort);
         },
         responseFields: {
@@ -1043,10 +1053,10 @@ describe("auto-executor", () => {
         execute: async () => {
           expect(context.executor.getParallelCallState(2, 1)).toBe("first");
           const throws = Promise.all([
-            context
-              .run("parallel-step-1", () => "result-1")
-              .withSettings({ flowControl: { key: "fc-key-1", parallelism: 1 } }),
-            context.run("parallel-step-2", () => "result-2").withSettings({ retries: 0 }),
+            context.run("parallel-step-1", () => "result-1", {
+              flowControl: { key: "fc-key-1", parallelism: 1 },
+            }),
+            context.run("parallel-step-2", () => "result-2", { retries: 0 }),
           ]);
           await expect(throws).rejects.toThrowError(WorkflowAbort);
         },

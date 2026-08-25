@@ -7,22 +7,24 @@ import {
   ciHeaders,
   incrementSettings,
   incrementStep,
+  perRunKey,
   withinStepParallelism,
   WORKER_COUNT,
 } from "../../../shared";
 
 /**
- * the step which carries settings comes after a `context.invoke` step. QStash publishes
- * the delivery which carries the invoked run's result, so it does not carry them. Reaching the step there, the SDK publishes ated
- * by the step settings: reaching `increment` there, the SDK publishes a
- * step config request and the step executes in the delivery that
- * produces.
+ * the step which carries settings comes after a `context.invoke` step, so
+ * the delivery which reaches it is the one QStash publishes with the
+ * invoked run's result. That is an ordinary delivery — nothing about it
+ * was shaped by the step's settings — so reaching `increment` there, the
+ * SDK publishes a step config request and the step executes in the
+ * delivery that produces.
  *
  * See `../../../shared.ts` for what the workers assert.
  */
 
-const ACTIVE_COUNTER_KEY = "wf-step-flow-control-invoke-active-counter";
-const STEP_FLOW_CONTROL_KEY = "ci-step-flow-control-invoke";
+const ACTIVE_COUNTER = "wf-step-flow-control-invoke-active-counter";
+const FLOW_CONTROL = "ci-step-flow-control-invoke";
 
 const CHILD_RESULT = "child-result";
 
@@ -42,9 +44,11 @@ const worker = createWorkflow(async (context: WorkflowContext<number>) => {
   expect(isCanceled, false);
   expect(isFailed, false);
 
-  return await context
-    .run("increment", incrementStep(ACTIVE_COUNTER_KEY))
-    .withSettings(incrementSettings(STEP_FLOW_CONTROL_KEY));
+  return await context.run(
+    "increment",
+    incrementStep(perRunKey(context, ACTIVE_COUNTER)),
+    incrementSettings(perRunKey(context, FLOW_CONTROL))
+  );
 });
 
 const coordinator = createWorkflow(async (context: WorkflowContext<unknown>) => {

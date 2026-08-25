@@ -68,7 +68,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
    * step-level settings (flow control, retries etc.) which override the
    * settings the workflow run was triggered with, for this step only.
    */
-  public stepSettings?: StepSettings;
+  public readonly stepSettings?: StepSettings;
 
   /**
    * whether this step's result can be submitted after the route function
@@ -86,8 +86,9 @@ export abstract class BaseLazyStep<TResult = unknown> {
    */
   public readonly supportsDeferredSubmission: boolean = false;
 
-  constructor(context: WorkflowContext, stepName: string) {
+  constructor(context: WorkflowContext, stepName: string, stepSettings?: StepSettings) {
     this.context = context;
+    this.stepSettings = stepSettings;
     if (!stepName) {
       throw new WorkflowError(
         "A workflow step name cannot be undefined or an empty string. Please provide a name for your workflow step."
@@ -225,8 +226,13 @@ export class LazyFunctionStep<TResult = unknown> extends BaseLazyStep<TResult> {
   allowUndefinedOut = true;
   public readonly supportsDeferredSubmission = true;
 
-  constructor(context: WorkflowContext, stepName: string, stepFunction: StepFunction<TResult>) {
-    super(context, stepName);
+  constructor(
+    context: WorkflowContext,
+    stepName: string,
+    stepFunction: StepFunction<TResult>,
+    stepSettings?: StepSettings
+  ) {
+    super(context, stepName, stepSettings);
     this.stepFunction = stepFunction;
   }
 

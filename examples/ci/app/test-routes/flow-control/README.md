@@ -1,12 +1,12 @@
 # Step-Level Flow Control Tests
 
-These routes test step-level settings (`context.run(...).withSettings(...)`),
+These routes test step-level settings (the third argument of `context.run`),
 which override the flow control / retries the workflow run was triggered with,
 for a single step only.
 
 ## How the tests work
 
-Each route is triggered once, as a **coordinator** workflow which invokes
+Most routes are triggered once, as a **coordinator** workflow which invokes
 `WORKER_COUNT` **workers** in parallel. The workers are the concurrency that
 the step-level flow control has to hold back: each reaches an `increment` step
 carrying step-level flow control of `parallelism: 1`, while the run itself is
@@ -42,10 +42,17 @@ extra request is needed.
   ordinary delivery is the one carrying the call result.
 - **`invoke`**: the step with settings comes after a `context.invoke` step, so the
   ordinary delivery is the one QStash publishes with the invoked run's result.
+- **`parallel`**: the steps with settings are in a parallel group, which is the
+  other case needing no extra request — each carries its settings on its own
+  plan step, whose delivery executes it. One workflow rather than a coordinator
+  and workers: the four steps of the group are the concurrency. They form two
+  pairs, each pair sharing a flow control key of `parallelism: 1` and a counter
+  of its own, so the two keys have to hold their pairs back independently.
+- **`invoke-failure`**: not a concurrency test. The worker throws right after a
+  step with settings, while the SDK is still holding that step's result. The
+  coordinator asserts that the invoke reports the failure, and reads the
+  worker's log to see that the held result reached QStash before the error did.
 - **`normalization`**: not a concurrency test. A single run walks a range of
   settings shapes and asserts that each comes back from QStash in a form the
   SDK recognizes, and that the run costs exactly the expected number of
   requests — the count being what would catch a step republished in a loop.
-
-Steps running in parallel are the other case which needs no extra request: each
-carries its settings on its own plan step, whose delivery executes it.

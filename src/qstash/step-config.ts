@@ -98,7 +98,7 @@ export const durationToSeconds = (duration: number | Duration | string): number 
 };
 
 /**
- * Normalizes the flow control of a `withSettings` call.
+ * Normalizes the flow control of a step's settings.
  *
  * @param flowControl flow control as the user provided it
  */

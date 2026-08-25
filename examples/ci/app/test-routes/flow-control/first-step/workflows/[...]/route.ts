@@ -7,6 +7,7 @@ import {
   ciHeaders,
   incrementSettings,
   incrementStep,
+  perRunKey,
   withinStepParallelism,
   WORKER_COUNT,
 } from "../../../shared";
@@ -20,13 +21,15 @@ import {
  * See `../../../shared.ts` for what the workers assert.
  */
 
-const ACTIVE_COUNTER_KEY = "wf-step-flow-control-first-step-active-counter";
-const STEP_FLOW_CONTROL_KEY = "ci-step-flow-control-first-step";
+const ACTIVE_COUNTER = "wf-step-flow-control-first-step-active-counter";
+const FLOW_CONTROL = "ci-step-flow-control-first-step";
 
 const worker = createWorkflow(async (context: WorkflowContext<number>) => {
-  return await context
-    .run("increment", incrementStep(ACTIVE_COUNTER_KEY))
-    .withSettings(incrementSettings(STEP_FLOW_CONTROL_KEY));
+  return await context.run(
+    "increment",
+    incrementStep(perRunKey(context, ACTIVE_COUNTER)),
+    incrementSettings(perRunKey(context, FLOW_CONTROL))
+  );
 });
 
 const coordinator = createWorkflow(async (context: WorkflowContext<unknown>) => {

@@ -26,7 +26,7 @@ published but only takes effect when it is delivered.
 | Term                                         | Meaning                                                                                                                                                                                                                                                                                                                                |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Trigger configuration**                    | Flow control, retries, retry delay and failure callback supplied at trigger time. QStash re-applies it to every later message of the run (feature `WF_TriggerOnConfig`).                                                                                                                                                               |
-| **Step-level configuration** (step settings) | Flow control / retries / retry delay attached to a single step with `context.run(...).withSettings(...)`.                                                                                                                                                                                                                              |
+| **Step-level configuration** (step settings) | Flow control / retries / retry delay passed as the third argument of `context.run`.                                                                                                                                                                                                                                                    |
 | **Effective configuration**                  | What QStash actually applied to the delivery in hand. Echoed back to the endpoint on every delivery as `Upstash-Flow-Control-Key`, `Upstash-Flow-Control-Value`, `Upstash-Max-Retries` and `Upstash-Retry-Delay` (`pkg/deliver/deliver.go`, `AddUpstashHeaders`). Exposed on the context as `flowControl`, `retries` and `retryDelay`. |
 | **Step-configured delivery**                 | A delivery whose message carried step-level configuration, so QStash applied it: the flow-control slot is held for the duration of this delivery and retries come from the step.                                                                                                                                                       |
 | **Ordinary delivery**                        | A delivery running under the trigger configuration.                                                                                                                                                                                                                                                                                    |
@@ -185,9 +185,8 @@ sibling's.
   `allowUndefinedOut: false`. `LazyNotifyStep` extends `LazyFunctionStep` and so
   inherits deferral, which is correct but easy to change by accident.
 - **The flush runs inside the existing `deferExecution().then(...)` before
-  `getExecutionPromise`**, so that `withSettings` — chained synchronously on the
-  returned promise — has already applied, and so the next step's _function_ never
-  runs. Constructing a lazy step does not invoke it.
+  `getExecutionPromise`**, so the next step's _function_ never runs — only its
+  settings are read. Constructing a lazy step does not invoke it.
 - **Code after the last step runs one extra time**: once in the invocation that
   executed the step, once more in the final replay. This is the general property
   that non-step code re-runs on every delivery, but it is most visible at the
@@ -213,8 +212,7 @@ still unsent at that moment, so the settings can travel on it. When there is no
 such message the SDK publishes a [step config request](#requests-and-deliveries)
 instead, which costs one extra delivery.
 
-**Only `context.run` takes settings.** It is the one method returning a
-`RunStepPromise`, which is what carries `withSettings`. Steps inside a parallel
+**Only `context.run` takes settings**, as its third argument. Steps inside a parallel
 group take them too, and never need a step config request: each plan step is
 published knowing its target, so the settings go straight onto it.
 

@@ -386,15 +386,14 @@ export interface WaitEventOptions {
  * Step-level settings which override the workflow run settings
  * passed in `client.trigger` for the execution of a single step.
  *
- * Set by chaining `withSettings` on `context.run`:
+ * Passed as the third argument of `context.run`:
  *
  * ```ts
- * const result = await context
- *   .run("step", () => { ... })
- *   .withSettings({
- *     flowControl: { key: "custom-key", parallelism: 3 },
- *     retries: 5,
- *   });
+ * const result = await context.run(
+ *   "step",
+ *   () => { ... },
+ *   { flowControl: { key: "custom-key", parallelism: 3 }, retries: 5 }
+ * );
  * ```
  *
  * The settings must be applied to the request whose delivery executes
@@ -409,7 +408,7 @@ export interface WaitEventOptions {
  *   step in that delivery, a hidden request carrying the
  *   settings is published and the step executes when QStash delivers it.
  *   This costs one extra message and one extra endpoint invocation per
- *   step which uses `withSettings`. QStash hides the request from the
+ *   step which carries settings. QStash hides the request from the
  *   step logs.
  */
 export type StepSettings = {
@@ -434,21 +433,6 @@ export type StepSettings = {
    * Delay between retries of the delivery which executes this step.
    */
   retryDelay?: string;
-};
-
-/**
- * Promise returned by `context.run`, allowing step-level settings
- * to be attached with `withSettings`.
- *
- * `withSettings` must be chained synchronously on the `context.run`
- * call (before awaiting it).
- */
-export type RunStepPromise<TResult> = Promise<TResult> & {
-  /**
-   * Sets step-level settings (flow control, retries etc.), overriding
-   * the settings passed when triggering the workflow for this step only.
-   */
-  withSettings: (settings: StepSettings) => RunStepPromise<TResult>;
 };
 
 export type CallSettings = {

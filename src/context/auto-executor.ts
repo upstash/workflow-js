@@ -146,9 +146,7 @@ export class AutoExecutor {
       // instead, so nothing is attached for it.
       //
       // This runs before `getExecutionPromise`, so the new step's
-      // function never executes here, and after the microtasks of
-      // `deferExecution`, so a `withSettings` chained synchronously on
-      // the returned promise has already applied.
+      // function never executes here — only its settings are read.
       const submitted = await this.submitPendingStep(
         lazyStepList.length === 1 ? lazyStepList[0].stepSettings : undefined
       );

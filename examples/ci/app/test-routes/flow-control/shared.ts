@@ -29,6 +29,25 @@ const HOLD_DURATION_MS = 3000;
 const COUNTER_EXPIRY_SECS = 60;
 
 /**
+ * Scopes a key to the test run it belongs to.
+ *
+ * Flow control keys and counters have to be unique per run. A flow control
+ * key is server-side state: a run which left a message in flight holds the
+ * slot for the next run using the same key, so a fixed key makes re-runs
+ * and concurrent runs queue behind each other. A shared counter is worse —
+ * a second run incrementing it makes the first observe a value it never
+ * caused, and the test fails for a reason unrelated to the SDK.
+ *
+ * The CI random id is per test run and is forwarded to invoked runs, so
+ * every workflow taking part in one test agrees on the key.
+ *
+ * @param context context of the workflow being run
+ * @param name what the key is for
+ */
+export const perRunKey = (context: WorkflowContext<unknown>, name: string) =>
+  `${name}-${context.headers.get(CI_RANDOM_ID_HEADER) ?? "no-test-id"}`;
+
+/**
  * Forwards the CI headers to an invoked run, so its requests are counted
  * against the same test.
  *
