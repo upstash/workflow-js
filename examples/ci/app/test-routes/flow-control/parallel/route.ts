@@ -12,41 +12,44 @@ import { incrementSettings, incrementStep, perRunKey, STEP_PARALLELISM } from ".
  * ride on the plan steps rather than on a step config request. This
  * route is what proves they do.
  *
- * Four steps run in parallel, in two pairs. Each pair shares a flow
- * control key of `parallelism: 1` and a counter of its own, so a pair is
- * held back only by its own key. If the settings reached QStash, no step
- * observes more than one worker inside its pair — the run is triggered
- * with a permissive flow control which would otherwise let all four run
- * at once. If they did not, both steps of a pair overlap and the pair's
- * counter reaches two.
+ * Six steps run in parallel, in two groups of three. Each group shares a
+ * flow control key of `parallelism: 1` and a counter of its own, so a
+ * group is held back only by its own key. If the settings reached QStash,
+ * no step observes more than one worker inside its group — the run is
+ * triggered with a permissive flow control which would otherwise let all
+ * six run at once. If they did not, the steps of a group overlap and its
+ * counter climbs past one.
  *
- * Two pairs rather than one: a single key could pass by accident if the
+ * Two groups rather than one: a single key could pass by accident if the
  * steps happened to be serialized for some other reason, but two keys
- * have to hold their pairs back independently.
+ * have to hold their groups back independently.
  */
 
-const PAIRS = ["a", "b"] as const;
+const GROUPS = ["a", "b"] as const;
+const STEPS_PER_GROUP = 3;
 
-const counterOf = (pair: string) => `wf-step-flow-control-parallel-${pair}-active-counter`;
-const flowControlOf = (pair: string) => `ci-step-flow-control-parallel-${pair}`;
+const counterOf = (group: string) => `wf-step-flow-control-parallel-${group}-active-counter`;
+const flowControlOf = (group: string) => `ci-step-flow-control-parallel-${group}`;
+
+const stepIndices = Array.from({ length: STEPS_PER_GROUP }, (_, index) => index + 1);
 
 export const { POST, GET } = testServe(
   serve<unknown>(
     async (context) => {
       const observed = await Promise.all(
-        PAIRS.flatMap((pair) =>
-          [1, 2].map((index) =>
+        GROUPS.flatMap((group) =>
+          stepIndices.map((index) =>
             context.run(
-              `increment ${pair}${index}`,
-              incrementStep(perRunKey(context, counterOf(pair))),
-              incrementSettings(perRunKey(context, flowControlOf(pair)))
+              `increment ${group}${index}`,
+              incrementStep(perRunKey(context, counterOf(group))),
+              incrementSettings(perRunKey(context, flowControlOf(group)))
             )
           )
         )
       );
 
       const withinLimit =
-        observed.length === PAIRS.length * 2 &&
+        observed.length === GROUPS.length * STEPS_PER_GROUP &&
         observed.every((active) => active <= STEP_PARALLELISM);
       expect(withinLimit, true);
 
@@ -56,19 +59,19 @@ export const { POST, GET } = testServe(
   ),
   {
     // the settings ride on the plan steps, so no step config request is
-    // needed for any of the four:
+    // needed for any of the six:
     //
     //   the request which reaches the parallel group     = 1
-    //   one delivery per plan step                       = 4
+    //   one delivery per plan step                       = 6
     //   one delivery per result, the last of which
-    //     replays the run to the end                     = 4
-    expectedCallCount: 9,
+    //     replays the run to the end                     = 6
+    expectedCallCount: 13,
     expectedResult: "parallel-flow-control-ok",
     payload: undefined,
     triggerConfig: {
       retries: 0,
       // permissive trigger-level flow control: the step-level settings of
-      // the four steps must override it
+      // the six steps must override it
       flowControl: { key: "ci-trigger-flow-control-parallel", parallelism: 5 },
     },
   }

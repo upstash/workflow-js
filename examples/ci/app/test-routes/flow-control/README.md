@@ -45,9 +45,10 @@ extra request is needed.
 - **`parallel`**: the steps with settings are in a parallel group, which is the
   other case needing no extra request — each carries its settings on its own
   plan step, whose delivery executes it. One workflow rather than a coordinator
-  and workers: the four steps of the group are the concurrency. They form two
-  pairs, each pair sharing a flow control key of `parallelism: 1` and a counter
-  of its own, so the two keys have to hold their pairs back independently.
+  and workers: the six steps of the group are the concurrency. They form two
+  groups of three, each sharing a flow control key of `parallelism: 1` and a
+  counter of its own, so the two keys have to hold their groups back
+  independently.
 - **`invoke-failure`**: not a concurrency test. The worker throws right after a
   step with settings, while the SDK is still holding that step's result. The
   coordinator asserts that the invoke reports the failure, and reads the

@@ -85,7 +85,7 @@ export const incrementStep = (counterKey: string) => async () => {
 export const incrementSettings = (flowControlKey: string) => ({
   flowControl: { key: flowControlKey, parallelism: STEP_PARALLELISM },
   retries: 0,
-});
+} as const);
 
 /**
  * Whether every worker stayed within the step-level parallelism.
