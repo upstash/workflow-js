@@ -417,7 +417,8 @@ export const handleFailure = async <TInitialPayload>({
 
     const userHeaders = recreateUserHeaders(request.headers as Headers);
     const retried = Number(request.headers.get(WORKFLOW_RETRIED_HEADER) ?? "0");
-    // of the failure callback delivery, which is the request in hand here
+    // configuration QStash applied to the failure callback delivery,
+    // which is the request in hand here
     const effectiveConfig = getEffectiveConfig(request.headers as Headers);
 
     // create context

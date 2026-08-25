@@ -13,11 +13,12 @@ import {
 } from "../../../shared";
 
 /**
- * the step which carries settings comes after a `context.call` step. The delivery which
- * carries the call result back into the workflow is published before the
- * SDK knows about `increment`, so it does not carry them. Reaching the step there, the SDK publishes ated: reaching the step
- * there, the SDK publishes a step config request and the step executes
- * in the delivery that request produces.
+ * the step which carries settings comes after a `context.call` step, so
+ * the delivery which reaches it is the one carrying the call result back
+ * into the workflow. That delivery is published before the SDK knows
+ * about `increment`, so nothing about it was shaped by the step's
+ * settings — reaching the step there, the SDK publishes a step config
+ * request and the step executes in the delivery that request produces.
  *
  * See `../../../shared.ts` for what the workers assert.
  */
