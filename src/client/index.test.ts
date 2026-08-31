@@ -7,6 +7,7 @@ import {
   eventually,
 } from "../test-utils";
 import { Client } from ".";
+import type { WorkflowRunCancelFilters } from "./filter-types";
 import { Client as QStashClient } from "@upstash/qstash";
 import { getWorkflowRunId, nanoid } from "../utils";
 import { triggerFirstInvocation } from "../workflow-requests";
@@ -133,6 +134,104 @@ describe("workflow client", () => {
       });
     });
 
+    test("should cancel with multiple workflowUrls (exact match)", async () => {
+      const url1 = "https://a.workflow-endpoint.com";
+      const url2 = "https://b.workflow-endpoint.com";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({ filter: { workflowUrl: [url1, url2] } });
+          expect(result).toEqual({ cancelled: 4 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 4 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(url1)}&workflowUrl=${encodeURIComponent(url2)}&workflowUrlExactMatch=true&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multiple workflowUrlStartingWith (prefix match)", async () => {
+      const url1 = "https://a.workflow-endpoint.com/path";
+      const url2 = "https://b.workflow-endpoint.com/path";
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.cancel({
+            filter: { workflowUrlStartingWith: [url1, url2] },
+          });
+          expect(result).toEqual({ cancelled: 2 });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?workflowUrl=${encodeURIComponent(url1)}&workflowUrl=${encodeURIComponent(url2)}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multi-value callerIp and flowControlKey filters", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({
+            filter: {
+              callerIp: ["1.2.3.4", "5.6.7.8"],
+              flowControlKey: ["key-1", "key-2"],
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 3 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?callerIp=1.2.3.4&callerIp=5.6.7.8&flowControlKey=key-1&flowControlKey=key-2&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with multiple labels (OR semantics)", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { label: ["label-1", "label-2"] } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?label=label-1&label=label-2&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should cancel with host and path filters", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await client.cancel({ filter: { host: ["a.com", "b.com"], path: "/webhook" } });
+        },
+        responseFields: {
+          status: 200,
+          body: { cancelled: 2 },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs?host=a.com&host=b.com&path=%2Fwebhook&count=100`,
+          token,
+        },
+      });
+    });
+
     test("should cancel all", async () => {
       await mockQStashServer({
         execute: async () => {
@@ -166,6 +265,24 @@ describe("workflow client", () => {
       await mockQStashServer({
         execute: async () => {
           await expect(client.cancel("")).rejects.toThrow("Workflow run id cannot be empty");
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
+    test("should throw when a filter field is an empty array", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.cancel({ filter: { workflowUrl: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrl'"
+          );
+          await expect(client.cancel({ filter: { workflowUrlStartingWith: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrlStartingWith'"
+          );
+          await expect(client.cancel({ filter: { callerIp: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'callerIp'"
+          );
         },
         responseFields: { status: 200, body: {} },
         receivesRequest: false,
@@ -428,6 +545,49 @@ describe("workflow client", () => {
       token: process.env.QSTASH_TOKEN!,
     });
 
+    const liveBaseUrl = process.env.QSTASH_URL ?? "https://qstash.upstash.io";
+
+    /** 200 while the run is live, 404 once it has been cancelled. */
+    const isLive = async (workflowRunId: string) => {
+      const response = await fetch(`${liveBaseUrl}/v2/workflows/runs/${workflowRunId}`, {
+        headers: { Authorization: `Bearer ${process.env.QSTASH_TOKEN!}` },
+      });
+      return response.status === 200;
+    };
+
+    // Filter-based cancel is asynchronous server-side: QStash registers a "bulk
+    // action", reports how many runs *matched* the filter at registration time,
+    // and sweeps them in a background worker. So the `cancelled` count is a
+    // snapshot rather than a result, re-issuing the same filter dedups onto the
+    // in-flight action, and a run triggered moments ago may not be indexed yet.
+    // Assert on the runs themselves instead: re-issue the cancel until every
+    // targeted run is gone, then check the untargeted ones survived.
+    const cancelUntilGone = async (
+      request: WorkflowRunCancelFilters | { urlStartingWith: string },
+      { cancels, keeps = [] }: { cancels: string[]; keeps?: string[] },
+      timeoutMs = 25_000
+    ) => {
+      const deadline = Date.now() + timeoutMs;
+      for (;;) {
+        await liveClient.cancel(request);
+        const live = [];
+        for (const id of cancels) if (await isLive(id)) live.push(id);
+        if (live.length === 0) break;
+        if (Date.now() > deadline) {
+          throw new Error(`still live after cancelling with ${JSON.stringify(request)}: ${live}`);
+        }
+        await Bun.sleep(1000);
+      }
+      for (const id of keeps) {
+        expect(await isLive(id)).toBe(true);
+      }
+    };
+
+    /** Cancels leftovers by id — id-based cancel is synchronous and exact. */
+    const cleanup = async (...workflowRunIds: string[]) => {
+      for (const id of workflowRunIds) await liveClient.cancel(id).catch(() => {});
+    };
+
     test(
       "should cancel single workflow run id",
       async () => {
@@ -479,23 +639,24 @@ describe("workflow client", () => {
     test(
       "should cancel with workflowUrlStartingWith (prefix match)",
       async () => {
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}//first`,
-          delay: "2s",
-        });
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}//second`,
-          delay: "2s",
-        });
+        // unique per run so leftovers from an earlier failed run can't interfere
+        const prefix = `${MOCK_DESTINATION_HOST}/prefix-${nanoid()}/`;
+        // delay keeps the runs pending: without it prod can deliver (and finish)
+        // a run before the cancel lands
+        const first = await liveClient.trigger({ url: `${prefix}first`, delay: "1m" });
+        const second = await liveClient.trigger({ url: `${prefix}second`, delay: "1m" });
 
-        const cancel = await liveClient.cancel({
-          urlStartingWith: `${MOCK_DESTINATION_HOST}//`,
-        });
-
-        expect(cancel).toEqual({ cancelled: 2 });
+        try {
+          await cancelUntilGone(
+            { urlStartingWith: prefix },
+            { cancels: [first.workflowRunId, second.workflowRunId] }
+          );
+        } finally {
+          await cleanup(first.workflowRunId, second.workflowRunId);
+        }
       },
       {
-        timeout: 10000,
+        timeout: 60000,
       }
     );
 
@@ -504,59 +665,91 @@ describe("workflow client", () => {
       async () => {
         const label = `test-label-${nanoid()}`;
 
-        await liveClient.trigger({
+        // delay keeps the runs pending: without it prod can deliver (and finish)
+        // a run before the cancel-by-label lands
+        const one = await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
+          delay: "1m",
         });
-        await liveClient.trigger({
+        const two = await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/label-test`,
           label,
+          delay: "1m",
         });
         // different label, should not be cancelled
-        const { workflowRunId: id3 } = await liveClient.trigger({
+        const other = await liveClient.trigger({
           url: `${MOCK_DESTINATION_HOST}/label-test`,
           label: `other-label-${nanoid()}`,
+          delay: "1m",
         });
 
-        const cancel = await liveClient.cancel({ filter: { label } });
-        expect(cancel).toEqual({ cancelled: 2 });
-
-        // clean up the remaining workflow
-        await liveClient.cancel(id3);
+        try {
+          await cancelUntilGone(
+            { filter: { label } },
+            { cancels: [one.workflowRunId, two.workflowRunId], keeps: [other.workflowRunId] }
+          );
+        } finally {
+          await cleanup(one.workflowRunId, two.workflowRunId, other.workflowRunId);
+        }
       },
       {
-        timeout: 15000,
+        timeout: 60000,
       }
     );
 
     test(
       "should cancel with workflowUrl (exact match)",
       async () => {
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}/exact-match-test`,
-          delay: "1m",
-        });
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}/exact-match-test/sub-path`,
-          delay: "1m",
-        });
+        // unique per run so leftovers from an earlier failed run can't interfere
+        const base = `${MOCK_DESTINATION_HOST}/exact-match-${nanoid()}`;
+        const exact = await liveClient.trigger({ url: base, delay: "1m" });
+        const subPath = await liveClient.trigger({ url: `${base}/sub-path`, delay: "1m" });
 
-        // exact match should only cancel the exact URL
-        const cancel = await liveClient.cancel({
-          filter: {
-            workflowUrl: `${MOCK_DESTINATION_HOST}/exact-match-test`,
-          },
-        });
-        expect(cancel).toEqual({ cancelled: 1 });
+        try {
+          // exact match must leave the sub-path run alone
+          await cancelUntilGone(
+            { filter: { workflowUrl: base } },
+            { cancels: [exact.workflowRunId], keeps: [subPath.workflowRunId] }
+          );
 
-        // clean up the remaining workflow (prefix match)
-        const cleanup = await liveClient.cancel({
-          filter: { workflowUrlStartingWith: `${MOCK_DESTINATION_HOST}/exact-match-test` },
-        });
-        expect(cleanup).toEqual({ cancelled: 1 });
+          // prefix match then sweeps up the sub-path run
+          await cancelUntilGone(
+            { filter: { workflowUrlStartingWith: base } },
+            { cancels: [subPath.workflowRunId] }
+          );
+        } finally {
+          await cleanup(exact.workflowRunId, subPath.workflowRunId);
+        }
       },
       {
-        timeout: 15000,
+        timeout: 90000,
+      }
+    );
+
+    test(
+      "should cancel with multiple workflowUrls (exact match, OR semantics)",
+      async () => {
+        const urlA = `${MOCK_DESTINATION_HOST}/multi-exact-a-${nanoid()}`;
+        const urlB = `${MOCK_DESTINATION_HOST}/multi-exact-b-${nanoid()}`;
+        const urlC = `${MOCK_DESTINATION_HOST}/multi-exact-c-${nanoid()}`;
+
+        const a = await liveClient.trigger({ url: urlA, delay: "1m" });
+        const b = await liveClient.trigger({ url: urlB, delay: "1m" });
+        const c = await liveClient.trigger({ url: urlC, delay: "1m" });
+
+        try {
+          // Cancelling [urlA, urlB] with exact match cancels exactly those two, not urlC.
+          await cancelUntilGone(
+            { filter: { workflowUrl: [urlA, urlB] } },
+            { cancels: [a.workflowRunId, b.workflowRunId], keeps: [c.workflowRunId] }
+          );
+        } finally {
+          await cleanup(a.workflowRunId, b.workflowRunId, c.workflowRunId);
+        }
+      },
+      {
+        timeout: 60000,
       }
     );
 
@@ -564,30 +757,64 @@ describe("workflow client", () => {
       "should cancel with combined filters (label + workflowUrl)",
       async () => {
         const label = `combined-label-${nanoid()}`;
+        // unique per run so leftovers from an earlier failed run can't interfere
+        const url = `${MOCK_DESTINATION_HOST}/combined-${nanoid()}`;
 
-        await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}/combined-test`,
-          label,
-        });
+        const target = await liveClient.trigger({ url, label, delay: "1m" });
         // same URL, different label — should NOT be cancelled
-        const { workflowRunId: otherId } = await liveClient.trigger({
-          url: `${MOCK_DESTINATION_HOST}/combined-test`,
+        const other = await liveClient.trigger({
+          url,
           label: `other-${nanoid()}`,
+          delay: "1m",
         });
 
-        const cancel = await liveClient.cancel({
-          filter: {
-            workflowUrl: `${MOCK_DESTINATION_HOST}/combined-test`,
-            label,
-          },
-        });
-        expect(cancel).toEqual({ cancelled: 1 });
-
-        // clean up
-        await liveClient.cancel(otherId);
+        try {
+          await cancelUntilGone(
+            { filter: { workflowUrl: url, label } },
+            { cancels: [target.workflowRunId], keeps: [other.workflowRunId] }
+          );
+        } finally {
+          await cleanup(target.workflowRunId, other.workflowRunId);
+        }
       },
       {
-        timeout: 15000,
+        timeout: 60000,
+      }
+    );
+
+    test(
+      "should cancel by destination host and path",
+      async () => {
+        // The hosts are shared across runs (prod refuses trigger URLs whose host
+        // doesn't resolve, so they can't be made unique). The paths are unique,
+        // and the assertions below are per run id, so leftovers can't interfere.
+        const comPath = `/cancel-host-com-${nanoid()}`;
+        const orgPath = `/cancel-host-org-${nanoid()}`;
+
+        const com = await liveClient.trigger({
+          url: `https://example.com${comPath}`,
+          delay: "1m",
+        });
+        const org = await liveClient.trigger({
+          url: `https://example.org${orgPath}`,
+          delay: "1m",
+        });
+
+        try {
+          // host example.org must not touch the example.com run
+          await cancelUntilGone(
+            { filter: { host: "example.org" } },
+            { cancels: [org.workflowRunId], keeps: [com.workflowRunId] }
+          );
+
+          // the example.com run survived — cancel it via its unique path
+          await cancelUntilGone({ filter: { path: comPath } }, { cancels: [com.workflowRunId] });
+        } finally {
+          await cleanup(com.workflowRunId, org.workflowRunId);
+        }
+      },
+      {
+        timeout: 90000,
       }
     );
 
@@ -606,29 +833,41 @@ describe("workflow client", () => {
     test(
       "should trigger with multiple labels (comma-separated header)",
       async () => {
-        const labelOne = `multi-a-${nanoid()}`;
-        const labelTwo = `multi-b-${nanoid()}`;
+        // Two runs, each with its own label pair, so cancelling by one run's
+        // label can't consume the other run and mask a missing label.
+        const labels = { first: ["a1", "b1"], second: ["a2", "b2"] } as const;
+        const suffix = nanoid();
+        const withSuffix = (parts: readonly string[]) => parts.map((p) => `multi-${p}-${suffix}`);
 
-        const { workflowRunId } = await liveClient.trigger({
+        const first = await liveClient.trigger({
           url: "https://mock.httpstatus.io/200",
-          label: [labelOne, labelTwo],
+          label: withSuffix(labels.first),
+          delay: "1m",
+        });
+        const second = await liveClient.trigger({
+          url: "https://mock.httpstatus.io/200",
+          label: withSuffix(labels.second),
           delay: "1m",
         });
 
         try {
-          // each label individually should match the run
-          const cancelByFirst = await liveClient.cancel({ filter: { label: labelOne } });
-          expect(cancelByFirst).toEqual({ cancelled: 1 });
+          // the *second* label of the header must match its run on its own
+          await cancelUntilGone(
+            { filter: { label: withSuffix(labels.first)[1] } },
+            { cancels: [first.workflowRunId], keeps: [second.workflowRunId] }
+          );
 
-          // second cancel is a no-op since the run is already cancelled
-          const cancelBySecond = await liveClient.cancel({ filter: { label: labelTwo } });
-          expect(cancelBySecond).toEqual({ cancelled: 0 });
+          // ...and so must the first
+          await cancelUntilGone(
+            { filter: { label: withSuffix(labels.second)[0] } },
+            { cancels: [second.workflowRunId] }
+          );
         } finally {
           // safety net in case the assertions above didn't cancel
-          await liveClient.cancel(workflowRunId).catch(() => {});
+          await cleanup(first.workflowRunId, second.workflowRunId);
         }
       },
-      { timeout: 15000 }
+      { timeout: 90000 }
     );
   });
 
@@ -1232,6 +1471,91 @@ describe("workflow client", () => {
         }
       },
       { timeout: 20000 }
+    );
+
+    test(
+      "should filter logs by multiple workflowUrls (OR) - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        // unique urls so the filter only matches runs from this test
+        const urlA = `${MOCK_DESTINATION_HOST}/log-url-a-${nanoid()}`;
+        const urlB = `${MOCK_DESTINATION_HOST}/log-url-b-${nanoid()}`;
+        const urlC = `${MOCK_DESTINATION_HOST}/log-url-c-${nanoid()}`;
+
+        const { workflowRunId: runA } = await liveClient.trigger({ url: urlA, delay: "1m" });
+        const { workflowRunId: runB } = await liveClient.trigger({ url: urlB, delay: "1m" });
+        const { workflowRunId: runC } = await liveClient.trigger({ url: urlC, delay: "1m" });
+
+        try {
+          // filtering by [urlA, urlB] should return runA and runB but NOT runC.
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { workflowUrl: [urlA, urlB] } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(runA);
+              expect(ids).toContain(runB);
+              expect(ids).not.toContain(runC);
+            },
+            { timeout: 5000, interval: 250 }
+          );
+        } finally {
+          await liveClient.cancel([runA, runB, runC]).catch(() => {});
+        }
+      },
+      { timeout: 20000 }
+    );
+
+    test(
+      "should filter logs by destination host and path - live",
+      async () => {
+        const liveClient = new Client({
+          baseUrl: process.env.QSTASH_URL,
+          token: process.env.QSTASH_TOKEN!,
+        });
+
+        const comPath = `/log-host-com-${nanoid()}`;
+        const orgPath = `/log-host-org-${nanoid()}`;
+
+        const { workflowRunId: comRun } = await liveClient.trigger({
+          url: `https://example.com${comPath}`,
+          delay: "1m",
+        });
+        const { workflowRunId: orgRun } = await liveClient.trigger({
+          url: `https://example.org${orgPath}`,
+          delay: "1m",
+        });
+
+        try {
+          // host discriminates: example.org excludes the example.com run
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { host: "example.org" } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(orgRun);
+              expect(ids).not.toContain(comRun);
+            },
+            { timeout: 10000, interval: 500 }
+          );
+
+          // path discriminates: the unique example.com path excludes the example.org run
+          await eventually(
+            async () => {
+              const logs = await liveClient.logs({ filter: { path: comPath } });
+              const ids = logs.runs.map((r) => r.workflowRunId);
+              expect(ids).toContain(comRun);
+              expect(ids).not.toContain(orgRun);
+            },
+            { timeout: 10000, interval: 500 }
+          );
+        } finally {
+          await liveClient.cancel([comRun, orgRun]).catch(() => {});
+        }
+      },
+      { timeout: 25000 }
     );
 
     test.skip(

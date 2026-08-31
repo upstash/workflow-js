@@ -219,6 +219,16 @@ type StepLogGroup =
       type: "next";
     };
 
+/**
+ * State of the failure function (`failureUrl`/`failureFunction`) call of a
+ * failed workflow run.
+ */
+export type FailureFunctionState =
+  | "CALLBACK_INPROGRESS"
+  | "CALLBACK_SUCCESS"
+  | "CALLBACK_FAIL"
+  | "CALLBACK_CANCELED";
+
 type FailureFunctionLog = {
   /**
    * messageId of the message published for handling the failure
@@ -231,7 +241,7 @@ type FailureFunctionLog = {
   /**
    * State of the message published for failure
    */
-  state: "CALLBACK_INPROGRESS" | "CALLBACK_SUCCESS" | "CALLBACK_FAIL";
+  state: FailureFunctionState;
   /**
    * Headers received from the step which caused the workflow to fail
    */

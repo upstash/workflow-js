@@ -1,3 +1,4 @@
+import { startDevServer } from "@upstash/qstash";
 import { makeCancelRequest } from "../client/utils";
 import {
   SDK_TELEMETRY,
@@ -446,6 +447,7 @@ export const serve = <
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ): ReturnType<typeof serveBase<TInitialPayload, TRequest, TResponse, TResult>> => {
+  void startDevServer();
   return serveBase(
     routeFunction,
     {

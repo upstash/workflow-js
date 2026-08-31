@@ -217,7 +217,8 @@ const DEFAULT_BULK_COUNT = 100;
  * // => { all: true, count: 100 }
  * ```
  *
- * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided
+ * @throws {QstashError} If an empty `dlqIds` or `workflowRunIds` array is provided,
+ * or if any filter field is an empty array
  */
 export function buildBulkActionQueryParameters(
   request: WorkflowDLQActionFilters | WorkflowRunCancelFilters,
@@ -257,6 +258,17 @@ export function buildBulkActionQueryParameters(
     );
   }
 
+  // An empty array serializes to no query parameter at all, silently widening
+  // the scope of a destructive bulk action. Fail fast instead.
+  for (const [field, value] of Object.entries(filter)) {
+    if (Array.isArray(value) && value.length === 0) {
+      throw new QstashError(
+        `Empty array provided for filter field '${field}'. ` +
+          "If you intend to target all records, use { all: true } explicitly."
+      );
+    }
+  }
+
   // When translateWorkflowUrl is set (cancel filters), translate
   // workflowUrl/workflowUrlStartingWith into the server's query params:
   // - workflowUrl → workflowUrl + workflowUrlExactMatch=true (exact match)
@@ -271,11 +283,11 @@ export function buildBulkActionQueryParameters(
       );
     }
 
-    const urlParams: Record<string, string | boolean> = {};
+    const urlParams: Record<string, string | string[] | boolean> = {};
     if (workflowUrlStartingWith) {
-      urlParams.workflowUrl = workflowUrlStartingWith as string;
+      urlParams.workflowUrl = workflowUrlStartingWith as string | string[];
     } else if (workflowUrl) {
-      urlParams.workflowUrl = workflowUrl as string;
+      urlParams.workflowUrl = workflowUrl as string | string[];
       urlParams.workflowUrlExactMatch = true;
     }
 

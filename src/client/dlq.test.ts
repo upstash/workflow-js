@@ -120,6 +120,31 @@ describe("DLQ", () => {
       });
     });
 
+    test("should list DLQ messages with multi-value workflowUrl/callerIp/flowControlKey", async () => {
+      const urlA = `${MOCK_DESTINATION_HOST}/a`;
+      const urlB = `${MOCK_DESTINATION_HOST}/b`;
+      await mockQStashServer({
+        execute: async () => {
+          await client.dlq.list({
+            filter: {
+              workflowUrl: [urlA, urlB],
+              callerIp: ["1.2.3.4", "5.6.7.8"],
+              flowControlKey: ["key-1", "key-2"],
+            },
+          });
+        },
+        responseFields: {
+          status: 200,
+          body: { messages: [], cursor: undefined },
+        },
+        receivesRequest: {
+          method: "GET",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/dlq?workflowUrl=${encodeURIComponent(urlA)}&workflowUrl=${encodeURIComponent(urlB)}&callerIp=1.2.3.4&callerIp=5.6.7.8&flowControlKey=key-1&flowControlKey=key-2&source=workflow`,
+          token,
+        },
+      });
+    });
+
     test("should surface both label and labels from the response", async () => {
       const labelOne = "label-one";
       const labelTwo = "label-two";
@@ -312,6 +337,18 @@ describe("DLQ", () => {
       });
     });
 
+    test("should throw when a filter field is an empty array", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.resume({ filter: { workflowUrl: [] } })).rejects.toThrow(
+            "Empty array provided for filter field 'workflowUrl'"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+
     test("should resume DLQ messages with filters", async () => {
       const responses = [
         { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
@@ -354,6 +391,30 @@ describe("DLQ", () => {
         receivesRequest: {
           method: "POST",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?label=my-label&workflowUrl=${encodeURIComponent(`${MOCK_DESTINATION_HOST}/workflow`)}&count=100`,
+          token,
+        },
+      });
+    });
+
+    test("should resume DLQ messages with multiple failureFunctionStates (OR filter)", async () => {
+      const responses = [
+        { workflowRunId: `wfr-${nanoid()}`, workflowCreatedAt: "2023-01-01T00:00:00Z" },
+      ];
+
+      await mockQStashServer({
+        execute: async () => {
+          const result = await client.dlq.resume({
+            filter: { failureFunctionState: ["CALLBACK_FAIL", "CALLBACK_CANCELED"] },
+          });
+          expect(result).toEqual({ cursor: undefined, workflowRuns: responses });
+        },
+        responseFields: {
+          status: 200,
+          body: { cursor: "", workflowRuns: responses },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/resume?failureFunctionState=CALLBACK_FAIL&failureFunctionState=CALLBACK_CANCELED&count=100`,
           token,
         },
       });
@@ -742,6 +803,59 @@ describe("DLQ", () => {
       await mockQStashServer({
         execute: async () => {
           await expect(client.dlq.retryFailureFunction({ dlqId: "" })).rejects.toThrow(
+            "DLQ id cannot be empty"
+          );
+        },
+        responseFields: { status: 200, body: {} },
+        receivesRequest: false,
+      });
+    });
+  });
+
+  describe("cancelFailureFunction", () => {
+    test("should cancel the failure function of a DLQ message", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+
+      await mockQStashServer({
+        execute: async () => {
+          await client.dlq.cancelFailureFunction({ dlqId });
+        },
+        // a successful cancel answers with 302 and an empty body
+        responseFields: {
+          status: 302,
+          body: undefined,
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should throw when there is no failure function call to cancel", async () => {
+      const dlqId = `dlq-${nanoid()}`;
+
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.cancelFailureFunction({ dlqId })).rejects.toThrow();
+        },
+        responseFields: {
+          status: 400,
+          body: { error: "there is no in-progress failure callback to cancel" },
+        },
+        receivesRequest: {
+          method: "DELETE",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/${dlqId}`,
+          token,
+        },
+      });
+    });
+
+    test("should not send request when dlqId is an empty string", async () => {
+      await mockQStashServer({
+        execute: async () => {
+          await expect(client.dlq.cancelFailureFunction({ dlqId: "" })).rejects.toThrow(
             "DLQ id cannot be empty"
           );
         },

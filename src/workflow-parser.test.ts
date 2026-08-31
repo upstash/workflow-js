@@ -1035,7 +1035,8 @@ describe("schema validation in serve", () => {
     if (expectedError) {
       const { error, message } = (await response.json()) as { error: string; message: string };
       expect(error).toBe("ZodError");
-      expect(message).toContain(expectedError);
+      // zod v3: "Expected string, received number"; zod v4: "Invalid input: expected string, received number"
+      expect(message.toLowerCase()).toContain(expectedError.toLowerCase());
     } else {
       const { message, workflowRunId } = (await response.json()) as {
         message: string;
@@ -1055,7 +1056,7 @@ describe("schema validation in serve", () => {
   test("schema - valid payload", () => testServe({ schema }, validPayload, 400));
 
   test("schema - invalid payload", () =>
-    testServe({ schema }, invalidPayload, 500, "Expected string, received number"));
+    testServe({ schema }, invalidPayload, 500, "expected string, received number"));
 
   test("parser - valid payload", () =>
     testServe({ initialPayloadParser: parser }, validPayload, 400));

@@ -8,6 +8,7 @@ import type {
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 const telemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -32,6 +33,8 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
   > &
     ExclusiveValidationOptions<TInitialPayload>
 ) {
+  void startDevServer();
+
   const POST = (tanstackContext: { request: Request }) => {
     // Create a Next.js compatible handler that passes the route context
     const { handler } = serveBase<TInitialPayload, Request, Response, TResult>(

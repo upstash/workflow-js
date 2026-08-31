@@ -5,6 +5,7 @@ import { serveBase } from "../src/serve";
 import type { IncomingHttpHeaders } from "node:http";
 import { SDK_TELEMETRY } from "../src/constants";
 import { serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 function transformHeaders(headers: IncomingHttpHeaders): [string, string][] {
   const formattedHeaders = Object.entries(headers).map(([key, value]) => [
@@ -34,6 +35,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
 ) => {
+  void startDevServer();
+
   const handler = defineEventHandler(async (event) => {
     const method = event.node.req.method;
     if (method?.toUpperCase() !== "POST") {

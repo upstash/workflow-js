@@ -4,6 +4,7 @@ import type { InvokableWorkflow, WorkflowServeOptions, RouteFunction, Telemetry 
 import { serveBase } from "../src/serve";
 import { SDK_TELEMETRY } from "../src/constants";
 import { OmitOptionsInServeMany, serveManyBase } from "../src/serve/serve-many";
+import { startDevServer } from "@upstash/qstash";
 
 const telemetry: Telemetry = {
   sdk: SDK_TELEMETRY,
@@ -31,6 +32,8 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
 ): {
   POST: RequestHandler;
 } => {
+  void startDevServer();
+
   const handler: RequestHandler = async ({ request }) => {
     const { handler: serveHandler } = serveBase<TInitialPayload, Request, Response, TResult>(
       routeFunction,

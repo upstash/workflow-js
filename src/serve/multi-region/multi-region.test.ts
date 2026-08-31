@@ -3,7 +3,7 @@
  * Tests credential resolution and region handling.
  */
 
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Client, Receiver } from "@upstash/qstash";
 import {
   getRegionFromEnvironment,
@@ -12,6 +12,25 @@ import {
   readReceiverEnvironmentVariables,
 } from "./utils";
 import { getQStashHandlerOptions } from "./handlers";
+
+// Constructing handler options with QSTASH_DEV=true makes the QStash Client
+// fire a fire-and-forget dev-server spawn, which also latches a process-wide
+// singleton inside @upstash/qstash — a later startDevServer() in the same bun
+// process (dev-server-integration.test.ts) then no-ops on its own port.
+// NODE_ENV=production short-circuits the spawn while leaving dev-mode
+// credential resolution intact, keeping this file a pure unit test.
+const processEnvironment = process.env as Record<string, string | undefined>;
+let previousNodeEnvironment: string | undefined;
+
+beforeAll(() => {
+  previousNodeEnvironment = processEnvironment.NODE_ENV;
+  processEnvironment.NODE_ENV = "production";
+});
+
+afterAll(() => {
+  if (previousNodeEnvironment === undefined) delete processEnvironment.NODE_ENV;
+  else processEnvironment.NODE_ENV = previousNodeEnvironment;
+});
 
 // Helper to create a clean environment for each test
 const createEnvironment = (
@@ -595,6 +614,85 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       expect(result.defaultClient).toBeDefined();
       // Default client should be from US_EAST_1 since that's the default region
       expect(result.defaultClient.http).toBeDefined();
+    });
+  });
+
+  describe("Client Dev Mode (derived from environment)", () => {
+    // Pins the fix for the receiver-dev / client-prod split: a single
+    // QSTASH_DEV=true (e.g. a Cloudflare `.dev.vars` binding, where the QStash
+    // Client's own process.env lookup is blind) must put the *client* in dev
+    // mode too, matching the receiver. Asserted on the constructed serve Client.
+    const getServeClientHttp = (
+      environment: Record<string, string | undefined>,
+      qstashClientOption?: { devMode?: boolean }
+    ) => {
+      // Entering dev mode makes the Client fire a fire-and-forget dev-server
+      // spawn. NODE_ENV=production short-circuits the spawn while leaving
+      // credential resolution in dev mode, keeping this a pure unit test.
+      const processEnv = process.env as Record<string, string | undefined>;
+      const previousNodeEnv = processEnv.NODE_ENV;
+      processEnv.NODE_ENV = "production";
+      try {
+        const result = getQStashHandlerOptions({
+          environment,
+          qstashClientOption,
+          receiverConfig: "not-set",
+        });
+        return result.defaultClient.http as unknown as { baseUrl: string; devMode?: boolean };
+      } finally {
+        if (previousNodeEnv === undefined) delete processEnv.NODE_ENV;
+        else processEnv.NODE_ENV = previousNodeEnv;
+      }
+    };
+
+    test("should put the serve client in dev mode when QSTASH_DEV=true", () => {
+      const http = getServeClientHttp(createEnvironment({ QSTASH_DEV: "true" }));
+      expect(http.devMode).toBe(true);
+      expect(http.baseUrl).toContain("127.0.0.1");
+    });
+
+    test("should put the serve client in dev mode when QSTASH_DEV=1", () => {
+      const http = getServeClientHttp(createEnvironment({ QSTASH_DEV: "1" }));
+      expect(http.devMode).toBe(true);
+      expect(http.baseUrl).toContain("127.0.0.1");
+    });
+
+    test("should keep the serve client pointed at production without QSTASH_DEV", () => {
+      const http = getServeClientHttp(
+        createEnvironment({
+          QSTASH_URL: "https://qstash.upstash.io",
+          QSTASH_TOKEN: "test-token",
+        })
+      );
+      expect(http.devMode).toBe(false);
+      expect(http.baseUrl).toBe("https://qstash.upstash.io");
+    });
+
+    // devMode in the user's qstashClient config takes precedence over the
+    // env-derived value, in both directions — the env check is only a fallback.
+    test("explicit qstashClient devMode: true wins without QSTASH_DEV", () => {
+      const http = getServeClientHttp(
+        createEnvironment({
+          QSTASH_URL: "https://qstash.upstash.io",
+          QSTASH_TOKEN: "test-token",
+        }),
+        { devMode: true }
+      );
+      expect(http.devMode).toBe(true);
+      expect(http.baseUrl).toContain("127.0.0.1");
+    });
+
+    test("explicit qstashClient devMode: false wins over QSTASH_DEV=true", () => {
+      const http = getServeClientHttp(
+        createEnvironment({
+          QSTASH_DEV: "true",
+          QSTASH_URL: "https://qstash.upstash.io",
+          QSTASH_TOKEN: "test-token",
+        }),
+        { devMode: false }
+      );
+      expect(http.devMode).toBe(false);
+      expect(http.baseUrl).toBe("https://qstash.upstash.io");
     });
   });
 });
