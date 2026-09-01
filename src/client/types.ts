@@ -476,6 +476,26 @@ export type TriggerOptions = {
   };
 };
 
+export type TriggerResponse = {
+  /**
+   * id of the workflow run which was started
+   */
+  workflowRunId: string;
+  /**
+   * unix timestamp in milliseconds of when the workflow run was created.
+   *
+   * `0` when the run was deduplicated, since no new run was created.
+   */
+  workflowCreatedAt: number;
+  /**
+   * true when a workflow run with the same id already existed, meaning that
+   * a new run wasn't created.
+   *
+   * can only happen when a `workflowRunId` is passed to `trigger`.
+   */
+  deduplicated: boolean;
+};
+
 /** @deprecated Use `resume(dlqId)` or `resume([dlqId1, dlqId2])` instead of `resume({ dlqId })` */
 export type DLQResumeRestartOptions<TDLQId extends string | string[] = string | string[]> = {
   dlqId: TDLQId;
