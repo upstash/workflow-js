@@ -4,13 +4,13 @@ import {
   buildBulkActionQueryParameters,
   makeGetWaitersRequest,
   makeNotifyRequest,
+  makeTriggerRequest,
   toNonEmptyIdArray,
 } from "./utils";
 import { getWorkflowRunId, serializeLabel, validateFlowControl, validateLabel } from "../utils";
-import { triggerFirstInvocation } from "../workflow-requests";
-import { WorkflowContext } from "../context";
+import { getTriggerHeaders } from "../qstash/headers";
 import { DLQ } from "./dlq";
-import { TriggerOptions, WorkflowRunLogs } from "./types";
+import { TriggerOptions, TriggerResponse, WorkflowRunLogs } from "./types";
 import { SDK_TELEMETRY, WORKFLOW_LABEL_HEADER } from "../constants";
 import { WorkflowLogsListFilters, WorkflowRunCancelFilters } from "./filter-types";
 
@@ -199,10 +199,14 @@ export class Client {
    *
    * console.log(result)
    * // [
-   * //   { workflowRunId: "wfr_my-workflow" },
-   * //   { workflowRunId: "wfr_my-workflow-2" },
+   * //   { workflowRunId: "wfr_my-workflow", workflowCreatedAt: 1735689600000 },
+   * //   { workflowRunId: "wfr_my-workflow-2", workflowCreatedAt: 1735689600000 },
    * // ]
    * ```
+   *
+   * Runs are started with the batch trigger API, so a single request is sent
+   * to QStash no matter how many runs are passed. All workflow run ids in a
+   * batch must be unique.
    *
    * @param url URL of the workflow
    * @param body body to start the workflow with
@@ -220,65 +224,68 @@ export class Client {
    * @param delay Delay for the workflow run. This is used to delay the
    *   execution of the workflow run. The delay is in seconds or can be passed
    *   as a string with a time unit (e.g. "1h", "30m", "15s").
-   * @returns workflow run id or an array of workflow run ids
+   * @returns the started workflow run, or an array of them when an array is
+   *   passed. `deduplicated` is set when a run with the same id already
+   *   existed, in which case no new run was created.
    */
 
-  public async trigger(params: TriggerOptions): Promise<{ workflowRunId: string }>;
-  public async trigger(params: TriggerOptions[]): Promise<{ workflowRunId: string }[]>;
+  public async trigger(params: TriggerOptions): Promise<TriggerResponse>;
+  public async trigger(params: TriggerOptions[]): Promise<TriggerResponse[]>;
 
   public async trigger(
     params: TriggerOptions | TriggerOptions[]
-  ): Promise<{ workflowRunId: string } | { workflowRunId: string }[]> {
+  ): Promise<TriggerResponse | TriggerResponse[]> {
     const isBatchInput = Array.isArray(params);
     const options = isBatchInput ? params : [params];
 
-    const invocations = options.map((option) => {
+    const workflowRunIds: string[] = [];
+    const messages = options.map((option) => {
       validateLabel(option.label);
       validateFlowControl(option.flowControl);
 
-      const failureUrl = option.failureUrl ?? option.url;
-      const finalWorkflowRunId = getWorkflowRunId(option.workflowRunId);
+      const workflowRunId = getWorkflowRunId(option.workflowRunId);
+      workflowRunIds.push(workflowRunId);
 
-      const context = new WorkflowContext({
-        qstashClient: this.client,
-        headers: new Headers({
+      const headers = getTriggerHeaders({
+        workflowRunId,
+        workflowUrl: option.url,
+        userHeaders: new Headers({
           ...(option.headers ?? {}),
           ...(option.label ? { [WORKFLOW_LABEL_HEADER]: serializeLabel(option.label) } : {}),
         }) as Headers,
-        initialPayload: option.body,
-        steps: [],
-        url: option.url,
-        workflowRunId: finalWorkflowRunId,
-        telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
         label: option.label,
-        workflowRunCreatedAt: Date.now(), // pass a timestamp (server will override it)
-      });
-
-      return {
-        workflowContext: context,
         telemetry: option.disableTelemetry ? undefined : { sdk: SDK_TELEMETRY },
-        delay: option.delay,
-        notBefore: option.notBefore,
-        failureUrl,
         retries: option.retries,
         retryDelay: option.retryDelay,
         flowControl: option.flowControl,
+        delay: option.delay,
+        notBefore: option.notBefore,
+        failureUrl: option.failureUrl,
         redact: option.redact,
+      });
+
+      return {
+        destination: option.url,
+        body: typeof option.body === "string" ? option.body : JSON.stringify(option.body),
+        headers,
       };
     });
-    const result = await triggerFirstInvocation(invocations);
 
-    const workflowRunIds: string[] = invocations.map(
-      (invocation) => invocation.workflowContext.workflowRunId
-    );
+    const responses = await makeTriggerRequest(this.client.http, messages);
 
-    if (result.isOk()) {
-      return isBatchInput
-        ? workflowRunIds.map((id) => ({ workflowRunId: id }))
-        : { workflowRunId: workflowRunIds[0] };
-    } else {
-      throw result.error;
-    }
+    const results = workflowRunIds.map((workflowRunId, index) => {
+      const response = responses[index];
+      return {
+        // a deduplicated run isn't created, so the server returns an empty id
+        // for it. we fall back to the id we sent, which is the id of the run
+        // that already exists.
+        workflowRunId: response?.workflowRunId || workflowRunId,
+        workflowCreatedAt: response?.workflowCreatedAt ?? 0,
+        deduplicated: response?.deduplicated ?? false,
+      };
+    });
+
+    return isBatchInput ? results : results[0];
   }
 
   /**

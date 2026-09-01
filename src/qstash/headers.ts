@@ -8,6 +8,7 @@ import {
   WORKFLOW_ID_HEADER,
   WORKFLOW_INIT_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
+  WORKFLOW_LABEL_HEADER,
   WORKFLOW_PROTOCOL_VERSION,
   WORKFLOW_PROTOCOL_VERSION_HEADER,
   WORKFLOW_URL_HEADER,
@@ -15,6 +16,8 @@ import {
 import { BaseLazyStep, LazyCallStep } from "../context/steps";
 import { Step, Telemetry } from "../types";
 import { getTelemetryHeaders, HeadersResponse } from "../workflow-requests";
+import { TriggerOptions } from "../client/types";
+import { serializeLabel } from "../utils";
 
 export type WorkflowConfig = {
   retries?: number;
@@ -310,4 +313,140 @@ export const prepareFlowControl = (flowControl: FlowControl) => {
 export const getHeaders = (params: WorkflowHeaderParams) => {
   const workflowHeaders = new WorkflowHeaders(params);
   return workflowHeaders.getHeaders();
+};
+
+/**
+ * Serializes the `redact` option into the value of the `Upstash-Redact-Fields`
+ * header. Returns undefined when nothing is to be redacted.
+ *
+ * @param redact redact configuration
+ */
+const prepareRedactFields = (redact: TriggerOptions["redact"]) => {
+  if (!redact) {
+    return;
+  }
+
+  const fields: string[] = [];
+  if (redact.body) {
+    fields.push("body");
+  }
+  if (redact.header === true) {
+    fields.push("header");
+  } else if (Array.isArray(redact.header)) {
+    for (const header of redact.header) {
+      fields.push(`header[${header}]`);
+    }
+  }
+
+  return fields.length > 0 ? fields.join(",") : undefined;
+};
+
+export type TriggerHeaderParams = {
+  /**
+   * workflow run id of the run to be started. Always sent so that the id
+   * returned by `client.trigger` is known before the request is made.
+   */
+  workflowRunId: string;
+  /**
+   * URL of the workflow. Only used as the default failure callback.
+   */
+  workflowUrl: string;
+  /**
+   * headers of the user, which will be forwarded to the workflow endpoint
+   */
+  userHeaders?: Headers;
+} & Pick<
+  TriggerOptions,
+  | "retries"
+  | "retryDelay"
+  | "flowControl"
+  | "delay"
+  | "notBefore"
+  | "failureUrl"
+  | "redact"
+  | "label"
+> & { telemetry?: Telemetry };
+
+/**
+ * Builds the headers of a single message of a `/v2/batch/trigger` request.
+ *
+ * Unlike the publish API, the trigger API fills in the workflow protocol
+ * headers itself: the workflow url, the init & calltype flags, the feature
+ * set, the headers forwarded to the SDK and the whole failure callback
+ * wiring. So we only pass the headers which correspond to an option the
+ * caller can actually set.
+ *
+ * Headers which the server *appends to* rather than overwrites
+ * (`Upstash-Failure-Callback-Workflow-*` and the
+ * `Upstash-Failure-Callback-Forward-*` headers it derives from
+ * `Upstash-Forward-*`) must not be sent here, otherwise they end up with two
+ * values.
+ *
+ * @param params trigger header parameters
+ */
+export const getTriggerHeaders = ({
+  workflowRunId,
+  workflowUrl,
+  userHeaders,
+  label,
+  telemetry,
+  retries,
+  retryDelay,
+  flowControl,
+  delay,
+  notBefore,
+  failureUrl,
+  redact,
+}: TriggerHeaderParams): Headers => {
+  const headers = new Headers({
+    [WORKFLOW_ID_HEADER]: workflowRunId,
+    "content-type": userHeaders?.get("content-type") ?? DEFAULT_CONTENT_TYPE,
+    ...(telemetry ? getTelemetryHeaders(telemetry) : {}),
+  });
+
+  if (userHeaders) {
+    for (const [key, value] of userHeaders.entries()) {
+      headers.set(`Upstash-Forward-${key}`, value);
+    }
+  }
+
+  if (label) {
+    headers.set(WORKFLOW_LABEL_HEADER, serializeLabel(label));
+  }
+
+  // the failure callback defaults to the workflow url server side, but we set
+  // it explicitly so that the failure callback settings below always apply.
+  headers.set("Upstash-Failure-Callback", failureUrl ?? workflowUrl);
+
+  if (retries !== undefined && retries !== DEFAULT_RETRIES) {
+    headers.set("Upstash-Retries", retries.toString());
+    headers.set("Upstash-Failure-Callback-Retries", retries.toString());
+  }
+
+  if (retryDelay) {
+    headers.set("Upstash-Retry-Delay", retryDelay);
+    headers.set("Upstash-Failure-Callback-Retry-Delay", retryDelay);
+  }
+
+  if (flowControl) {
+    const { flowControlKey, flowControlValue } = prepareFlowControl(flowControl);
+
+    headers.set("Upstash-Flow-Control-Key", flowControlKey);
+    headers.set("Upstash-Flow-Control-Value", flowControlValue);
+    headers.set("Upstash-Failure-Callback-Flow-Control-Key", flowControlKey);
+    headers.set("Upstash-Failure-Callback-Flow-Control-Value", flowControlValue);
+  }
+
+  if (notBefore !== undefined) {
+    headers.set("Upstash-Not-Before", notBefore.toFixed(0));
+  } else if (delay !== undefined) {
+    headers.set("Upstash-Delay", typeof delay === "string" ? delay : `${delay.toFixed(0)}s`);
+  }
+
+  const redactFields = prepareRedactFields(redact);
+  if (redactFields) {
+    headers.set("Upstash-Redact-Fields", redactFields);
+  }
+
+  return headers;
 };

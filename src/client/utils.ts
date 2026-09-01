@@ -3,6 +3,7 @@ import { NotifyResponse, RawStep, Waiter } from "../types";
 import { isInstanceOf } from "../error";
 import { DispatchDebug } from "../middleware/types";
 import { WorkflowDLQActionFilters, WorkflowRunCancelFilters } from "./filter-types";
+import { TriggerResponse } from "./types";
 
 /**
  * Guards single-resource endpoints against an empty identifier.
@@ -36,6 +37,82 @@ export const toNonEmptyIdArray = (request: string | string[], label = "id"): str
   const ids = typeof request === "string" ? [request] : request;
   for (const id of ids) assertNonEmptyId(id, label);
   return ids;
+};
+
+/**
+ * A single message of a `/v2/batch/trigger` request.
+ */
+export type TriggerMessage = {
+  /**
+   * URL of the workflow to start
+   */
+  destination: string;
+  /**
+   * raw initial payload of the workflow run
+   */
+  body?: string;
+  /**
+   * headers configuring the workflow run
+   */
+  headers: Headers;
+};
+
+/**
+ * Merges the headers of a message with the global headers of the QStash
+ * client, mirroring what the QStash SDK does for the messages of a
+ * `client.batch()` call: the message headers win over the global ones, while
+ * the QStash telemetry headers are appended to whatever is already set.
+ *
+ * @param headers headers of the message
+ * @param requester QStash HTTP requester
+ */
+const withGlobalHeaders = (headers: Headers, requester: Client["http"]): Record<string, string> => {
+  if (!requester.headers) {
+    return Object.fromEntries(headers.entries());
+  }
+
+  const finalHeaders = new Headers(requester.headers);
+  for (const [key, value] of headers.entries()) {
+    finalHeaders.set(key, value);
+  }
+  for (const [key, value] of requester.telemetryHeaders?.entries() ?? []) {
+    if (value) {
+      finalHeaders.append(key, value);
+    }
+  }
+
+  return Object.fromEntries(finalHeaders.entries());
+};
+
+/**
+ * Starts one or more workflow runs with the batch trigger API.
+ *
+ * Unlike the publish API, the trigger API knows that it is starting a workflow
+ * run: it assigns the run id, wires up the failure callback and sets the
+ * workflow protocol headers itself. See `getTriggerHeaders`.
+ *
+ * @param requester QStash HTTP requester
+ * @param messages workflow runs to start
+ * @returns one response per message, in the order the messages were passed
+ */
+export const makeTriggerRequest = async (
+  requester: Client["http"],
+  messages: TriggerMessage[]
+): Promise<TriggerResponse[]> => {
+  const payload = messages.map(({ destination, body, headers }) => ({
+    destination,
+    body,
+    headers: withGlobalHeaders(headers, requester),
+  }));
+
+  const result = (await requester.request({
+    path: ["v2", "batch", "trigger"],
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })) as TriggerResponse[];
+
+  return result;
 };
 
 /**
