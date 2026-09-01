@@ -36,17 +36,16 @@ export const WORKFLOW_STEP_CONFIG_HEADER = "Upstash-Workflow-Step-Config";
 export const FLOW_CONTROL_KEY_HEADER = "Upstash-Flow-Control-Key";
 export const FLOW_CONTROL_VALUE_HEADER = "Upstash-Flow-Control-Value";
 /**
- * sets the retry limit of a message when publishing.
+ * the retry limit of a message: it sets the limit when publishing, and
+ * reports the limit QStash applied when read off a delivery.
  *
- * Note that on a *delivery* this header means something else — how many
- * retries have already happened — so the limit QStash applied is read
- * from `MAX_RETRIES_HEADER` instead.
+ * Not to be confused with `WORKFLOW_RETRIED_HEADER`, which is how many
+ * retries have already happened. QStash sets this one last and
+ * unconditionally on a delivery, so an absent header means the QStash
+ * version does not report the limit rather than "the limit is zero" —
+ * zero being a valid limit.
  */
 export const RETRIES_HEADER = "Upstash-Retries";
-/**
- * reports the retry limit QStash applied to the delivery in hand.
- */
-export const MAX_RETRIES_HEADER = "Upstash-Max-Retries";
 export const RETRY_DELAY_HEADER = "Upstash-Retry-Delay";
 /**
  * feature added to the feature set of a message which carries step-level

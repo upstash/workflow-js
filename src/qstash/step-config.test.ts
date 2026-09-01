@@ -104,7 +104,7 @@ describe("step config", () => {
         new Headers({
           "Upstash-Flow-Control-Key": "k",
           "Upstash-Flow-Control-Value": "parallelism=2,period=60",
-          "Upstash-Max-Retries": "5",
+          "Upstash-Retries": "5",
           "Upstash-Retry-Delay": "1000",
           "Upstash-Workflow-Step-Config": "true",
         }) as Headers

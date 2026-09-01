@@ -789,7 +789,7 @@ describe("Workflow Parser", () => {
           authorization: authorization,
           "Upstash-Flow-Control-Key": "failure-callbacks",
           "Upstash-Flow-Control-Value": "parallelism=2,period=60",
-          "Upstash-Max-Retries": "1",
+          "Upstash-Retries": "1",
           "Upstash-Retry-Delay": "500",
         },
       });

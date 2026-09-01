@@ -91,8 +91,9 @@ export const { POST, GET } = testServe(
         { flowControl: { key: key("norm-rate-alias"), ratePerSecond: 5 } }
       )
 
-      // retries: 0 is reported by omitting the header, so it must read
-      // back as 0 rather than as "unset"
+      // QStash reports the limit on Upstash-Retries unconditionally, so
+      // 0 must read back as 0 rather than as "unset" (an absent header
+      // means the QStash version does not report the limit at all)
       await context.run(
         "zero-retries",
         () => {

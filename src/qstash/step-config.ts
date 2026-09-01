@@ -2,7 +2,7 @@ import type { FlowControl } from "@upstash/qstash";
 import {
   FLOW_CONTROL_KEY_HEADER,
   FLOW_CONTROL_VALUE_HEADER,
-  MAX_RETRIES_HEADER,
+  RETRIES_HEADER,
   RETRY_DELAY_HEADER,
   WORKFLOW_STEP_CONFIG_HEADER,
 } from "../constants";
@@ -166,15 +166,17 @@ export const parseFlowControlHeaders = (
 /**
  * Reads the configuration QStash applied to a delivery from its headers.
  *
- * The retry limit is sent unconditionally, so an absent header means the
+ * The retry limit arrives on `Upstash-Retries`, which QStash sets last
+ * and unconditionally on a delivery, so an absent header means the
  * QStash version does not report it rather than "the limit is zero" —
  * zero being a valid limit. A step's retries are left uncompared in that
- * case, and the run's configuration applies to it.
+ * case, and the run's configuration applies to it. How many retries have
+ * already happened is a different header, `Upstash-Retried`.
  *
  * @param headers headers of the incoming request
  */
 export const getEffectiveConfig = (headers: Headers): EffectiveConfig => {
-  const retriesHeader = headers.get(MAX_RETRIES_HEADER);
+  const retriesHeader = headers.get(RETRIES_HEADER);
   return {
     flowControl: parseFlowControlHeaders(
       headers.get(FLOW_CONTROL_KEY_HEADER),
