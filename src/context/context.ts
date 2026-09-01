@@ -3,6 +3,7 @@ import type {
   CallSettings,
   LazyInvokeStepParams,
   NotifyStepResponse,
+  StepSettings,
   Telemetry,
   WaitEventOptions,
   WaitStepResponse,
@@ -29,6 +30,7 @@ import { getNewUrlFromWorkflowId } from "../serve/serve-many";
 import { MiddlewareManager } from "../middleware/manager";
 import { QstashError } from "@upstash/qstash";
 import { validateFlowControl, validateLabel } from "../utils";
+import type { EffectiveConfig, NormalizedFlowControl } from "../qstash/step-config";
 
 /**
  * Upstash Workflow context
@@ -175,6 +177,50 @@ export class WorkflowContext<TInitialPayload = unknown> {
    */
   public readonly retried: number;
 
+  /**
+   * Configuration QStash applied to the request being handled.
+   *
+   * This is the configuration of *this delivery*, not of the run: it is
+   * the configuration the run was triggered with, except inside the
+   * delivery which executes a step that has step-level settings, where
+   * it is that step's settings. The fields below expose it; the executor
+   * gets it directly rather than reaching through the context.
+   */
+  private readonly effectiveConfig: EffectiveConfig;
+
+  /**
+   * Flow control QStash applied to the request being handled, if any.
+   *
+   * This is the flow control of the request in hand, which is the one the
+   * run was triggered with except inside a step carrying its own.
+   */
+  public get flowControl(): NormalizedFlowControl | undefined {
+    return this.effectiveConfig.flowControl;
+  }
+
+  /**
+   * Retry limit QStash applied to the request being handled, if it
+   * reported one.
+   *
+   * Not to be confused with {@link retried}, which is how many retries
+   * have already happened.
+   *
+   * @see {@link flowControl} for what "the request being handled" means
+   */
+  public get retries(): number | undefined {
+    return this.effectiveConfig.retries;
+  }
+
+  /**
+   * Retry delay expression QStash applied to the request being handled,
+   * if any.
+   *
+   * @see {@link flowControl} for what "the request being handled" means
+   */
+  public get retryDelay(): string | undefined {
+    return this.effectiveConfig.retryDelay;
+  }
+
   constructor({
     qstashClient,
     workflowRunId,
@@ -189,6 +235,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     label,
     retried,
     middlewareManager,
+    effectiveConfig,
   }: {
     qstashClient: WorkflowClient;
     workflowRunId: string;
@@ -203,6 +250,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
     label?: string | string[];
     retried?: number;
     middlewareManager?: MiddlewareManager<TInitialPayload>;
+    /**
+     * configuration QStash applied to the delivery being handled, read
+     * from its headers. Defaults to no flow control and no retries,
+     * which is what a context created outside a delivery observes.
+     */
+    effectiveConfig?: EffectiveConfig;
   }) {
     this.qstashClient = qstashClient;
     this.workflowRunId = workflowRunId;
@@ -217,6 +270,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
     this.labels =
       label === undefined ? [] : Array.isArray(label) ? label : label ? label.split(",") : [];
     this.retried = retried ?? 0;
+    this.effectiveConfig = effectiveConfig ?? { hasStepConfig: false };
 
     const middlewareManagerInstance =
       middlewareManager ?? new MiddlewareManager<TInitialPayload, unknown>([]);
@@ -228,7 +282,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
       middlewareManagerInstance.dispatchDebug.bind(middlewareManagerInstance),
       middlewareManagerInstance.dispatchLifecycle.bind(middlewareManagerInstance),
       telemetry,
-      invokeCount
+      invokeCount,
+      this.effectiveConfig
     );
   }
 
@@ -255,17 +310,40 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ])
    * ```
    *
+   * Step-level settings can be passed as a third argument, overriding
+   * the settings the workflow run was triggered with for this step only:
+   *
+   * ```typescript
+   * const result = await context.run(
+   *   "step 1",
+   *   () => {
+   *     return "result"
+   *   },
+   *   {
+   *     flowControl: { key: "custom-key", parallelism: 3 },
+   *     retries: 5,
+   *   }
+   * )
+   * ```
+   *
    * @param stepName name of the step
    * @param stepFunction step function to be executed
+   * @param stepSettings step-level settings for this step
    * @returns result of the step function
    */
   public async run<TResult>(
     stepName: string,
-    stepFunction: StepFunction<TResult>
+    stepFunction: StepFunction<TResult>,
+    stepSettings?: StepSettings
   ): Promise<TResult> {
+    if (stepSettings) {
+      validateFlowControl(stepSettings.flowControl);
+    }
     const wrappedStepFunction = (() =>
       this.executor.wrapStep(stepName, stepFunction)) as StepFunction<TResult>;
-    return await this.addStep<TResult>(new LazyFunctionStep(this, stepName, wrappedStepFunction));
+    return await this.addStep<TResult>(
+      new LazyFunctionStep(this, stepName, wrappedStepFunction, stepSettings)
+    );
   }
 
   /**

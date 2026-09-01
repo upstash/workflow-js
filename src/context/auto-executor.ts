@@ -1,10 +1,35 @@
+import type { Err, Ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { attachStepNameToError, isInstanceOf, WorkflowAbort, WorkflowError } from "../error";
 import type { WorkflowContext } from "./context";
-import type { StepFunction, ParallelCallState, Step, Telemetry } from "../types";
+import type { StepFunction, ParallelCallState, Step, StepSettings, Telemetry } from "../types";
 import { type BaseLazyStep } from "./steps";
 import { QstashError } from "@upstash/qstash";
-import { submitParallelSteps, submitSingleStep } from "../qstash/submit-steps";
+import {
+  executeStep,
+  publishStepConfigRequest,
+  submitParallelSteps,
+  submitStepResult,
+} from "../qstash/submit-steps";
+import { describeStepSettingsMismatch, type EffectiveConfig } from "../qstash/step-config";
 import { DispatchDebug, DispatchLifecycle } from "../middleware/types";
+import { NO_CONCURRENCY } from "../constants";
+
+/**
+ * What came of submitting the step being held, if one was.
+ */
+export type PendingStepOutcome =
+  | { result: "submitted-step"; abort: WorkflowAbort }
+  | { result: "no-pending-step" };
+
+/**
+ * A step which executed but whose result QStash doesn't have yet: either
+ * still held, or already on its way. Never both, and never neither while
+ * a submission is outstanding.
+ */
+type PendingStep =
+  | { status: "held"; lazyStep: BaseLazyStep; resultStep: Step }
+  | { status: "submitting"; submitted: Promise<WorkflowAbort> };
 
 export class AutoExecutor {
   private context: WorkflowContext;
@@ -25,12 +50,34 @@ export class AutoExecutor {
   protected executingStep: string | false = false;
 
   /**
+   * an executed step whose result hasn't been submitted to QStash yet.
+   *
+   * Set when a step which can produce its result in-process executes. The
+   * submission waits so that the route function can continue and reveal
+   * what comes next: if that is a single step with step-level settings,
+   * the settings ride on this submission and no step config request is
+   * needed, since the delivery of the submission is what executes it.
+   *
+   * Flushed when the next step is reached (see `addStep`) or when the
+   * route function ends (see `flushPendingStep` in `serve`).
+   */
+  private pendingStep?: PendingStep;
+  /**
+   * configuration QStash applied to the delivery being handled. A step
+   * with step-level settings is settled by comparing its settings against
+   * this.
+   */
+  private readonly effectiveConfig: EffectiveConfig;
+
+  /**
    * @param context workflow context
    * @param steps list of steps
    * @param dispatchDebug debug event dispatcher
    * @param dispatchLifecycle lifecycle event dispatcher
    * @param telemetry optional telemetry information
    * @param invokeCount optional invoke count
+   * @param effectiveConfig configuration QStash applied to the delivery
+   *   being handled
    */
   constructor(
     context: WorkflowContext,
@@ -38,7 +85,8 @@ export class AutoExecutor {
     dispatchDebug: DispatchDebug,
     dispatchLifecycle: DispatchLifecycle,
     telemetry?: Telemetry,
-    invokeCount?: number
+    invokeCount?: number,
+    effectiveConfig?: EffectiveConfig
   ) {
     this.context = context;
     this.steps = steps;
@@ -46,6 +94,7 @@ export class AutoExecutor {
     this.dispatchLifecycle = dispatchLifecycle;
     this.telemetry = telemetry;
     this.invokeCount = invokeCount ?? 0;
+    this.effectiveConfig = effectiveConfig ?? { hasStepConfig: false };
 
     this.nonPlanStepCount = this.steps.filter((step) => !step.targetStep).length;
   }
@@ -88,6 +137,28 @@ export class AutoExecutor {
     const index = this.indexInCurrentList++;
 
     const requestComplete = this.deferExecution().then(async () => {
+      // A step executed in this invocation and its result is still
+      // pending: this new step list is what comes next. Submit the
+      // pending result and abort. When what comes next is a single step
+      // with step-level settings, the settings ride on that submission,
+      // so the delivery it produces is step-configured and executes the step. A
+      // parallel group carries its settings on its own plan steps
+      // instead, so nothing is attached for it.
+      //
+      // This runs before `getExecutionPromise`, so the new step's
+      // function never executes here — only its settings are read.
+      const submitted = await this.submitPendingStep(
+        lazyStepList.length === 1 ? lazyStepList[0].stepSettings : undefined
+      );
+      if (submitted.isErr()) {
+        throw submitted.error;
+      }
+      if (submitted.value.result === "submitted-step") {
+        // the held step is on its way to QStash, so this invocation ends
+        // here and the next step runs in the delivery it produces
+        throw submitted.value.abort;
+      }
+
       if (!this.promises.has(lazyStepList)) {
         const promise = this.getExecutionPromise(lazyStepList);
         this.promises.set(lazyStepList, promise);
@@ -154,17 +225,136 @@ export class AutoExecutor {
       return parsedOut;
     }
 
-    const resultStep = await submitSingleStep({
-      context: this.context,
+    // A step's settings have to be on the message whose delivery executes
+    // it, so before running it, compare what it asked for against the
+    // configuration QStash applied to the delivery in hand.
+    const mismatch = lazyStep.stepSettings
+      ? describeStepSettingsMismatch(lazyStep.stepSettings, this.effectiveConfig)
+      : undefined;
+
+    if (mismatch) {
+      if (!this.effectiveConfig.hasStepConfig) {
+        // This delivery was not published with step-level settings, so ask
+        // for one that is. The step runs in the step-configured delivery that
+        // request produces, not here.
+        await publishStepConfigRequest({
+          context: this.context,
+          lazyStep,
+          targetStep: this.stepCount,
+          invokeCount: this.invokeCount,
+          telemetry: this.telemetry,
+          dispatchDebug: this.dispatchDebug,
+        });
+        throw new WorkflowAbort(lazyStep.stepName);
+      } else {
+        // The settings this SDK published came back in a form it does not
+        // recognize, which is a bug in it. Run the step with the settings
+        // of the delivery rather than publish a second step config
+        // request: that would loop forever, and invisibly, since these
+        // requests are hidden from the step logs.
+        //
+        // `dispatchDebug` writes warnings to the console itself, on top of
+        // handing them to any user middleware.
+        await this.dispatchDebug("onWarning", {
+          warning:
+            `The step-level settings of step '${lazyStep.stepName}' were published but are not` +
+            ` recognized on the delivery which carries them (${mismatch}). Executing the step with` +
+            ` the settings of the delivery instead. This is a bug in @upstash/workflow, please report it.`,
+        });
+      }
+    }
+
+    const resultStep = await executeStep({
       lazyStep,
       stepId: this.stepCount,
-      invokeCount: this.invokeCount,
-      concurrency: 1,
-      telemetry: this.telemetry,
-      dispatchDebug: this.dispatchDebug,
+      concurrency: NO_CONCURRENCY,
       dispatchLifecycle: this.dispatchLifecycle,
     });
+
+    if (lazyStep.supportsDeferredSubmission) {
+      // Hold the result instead of submitting it. Returning it lets the
+      // route function continue and reveal what comes next, so that a
+      // next step's settings can ride on this submission instead of
+      // needing a step config request of their own.
+      this.pendingStep = { status: "held", lazyStep, resultStep };
+
+      // return the result after passing it through serialization, so that
+      // the route function observes the exact same value here and in the
+      // replays of the later invocations
+      return lazyStep.parseOut({
+        ...resultStep,
+        out: resultStep.out === undefined ? undefined : JSON.stringify(resultStep.out),
+      });
+    }
+
+    await submitStepResult({
+      context: this.context,
+      lazyStep,
+      resultStep,
+      invokeCount: this.invokeCount,
+      concurrency: NO_CONCURRENCY,
+      telemetry: this.telemetry,
+      dispatchDebug: this.dispatchDebug,
+    });
     throw new WorkflowAbort(lazyStep.stepName, resultStep);
+  }
+
+  /**
+   * Submits the result of the step being held, if there is one, and
+   * returns the abort the caller has to throw to end the invocation.
+   *
+   * Returns undefined when no step is being held, which is the caller's
+   * signal that there is nothing to end. Throws instead of returning
+   * when the submission itself fails, so that error reaches the caller
+   * rather than an abort claiming the step was submitted.
+   *
+   * Callers which arrive while a submission is already under way (the
+   * steps of a parallel group, added together) wait for that one and get
+   * the same abort, rather than submitting a second time.
+   *
+   * The next step's settings are attached whenever it has any, without
+   * checking them against the current delivery: the executor only knows
+   * the configuration of the delivery in hand, which inside a
+   * delivery is the *previous* step's, so such a check would be wrong
+   * exactly when two steps with settings follow each other.
+   *
+   * @param nextStepSettings step-level settings of the next step
+   * @returns `submitted-step` with the abort which ends this invocation,
+   *   or `no-pending-step` when nothing was held and there is nothing to
+   *   end
+   */
+  public async submitPendingStep(
+    nextStepSettings?: StepSettings
+  ): Promise<Ok<PendingStepOutcome, never> | Err<never, Error>> {
+    if (!this.pendingStep) {
+      return ok({ result: "no-pending-step" });
+    }
+
+    try {
+      if (this.pendingStep.status === "submitting") {
+        return ok({ result: "submitted-step", abort: await this.pendingStep.submitted });
+      }
+
+      const { lazyStep, resultStep } = this.pendingStep;
+      const submitted = (async () => {
+        await submitStepResult({
+          context: this.context,
+          lazyStep,
+          resultStep,
+          invokeCount: this.invokeCount,
+          concurrency: NO_CONCURRENCY,
+          telemetry: this.telemetry,
+          dispatchDebug: this.dispatchDebug,
+          nextStepSettings,
+        });
+        return new WorkflowAbort(lazyStep.stepName, resultStep);
+      })();
+      this.pendingStep = { status: "submitting", submitted };
+
+      return ok({ result: "submitted-step", abort: await submitted });
+    } catch (error) {
+      return err(error as Error);
+    }
   }
 
   /**
@@ -245,16 +435,28 @@ export class AutoExecutor {
         // sleep/sleepUntil. It's only possible here:
         validateStep(parallelSteps[stepIndex], planStep);
         try {
+          // Unlike a single step, this result is submitted straight away
+          // rather than held for the next step's settings to ride on.
+          // Holding it would mean carrying on past the parallel group,
+          // and a delivery cannot tell whether it is the last of the
+          // group: its own result is unrecorded, and so is at least one
+          // sibling's. So the step after a parallel group is always
+          // reached in an ordinary delivery, and asks for its own.
           const parallelStep = parallelSteps[stepIndex];
-          const resultStep = await submitSingleStep({
-            context: this.context,
+          const resultStep = await executeStep({
             lazyStep: parallelStep,
             stepId: planStep.targetStep,
+            concurrency: parallelSteps.length,
+            dispatchLifecycle: this.dispatchLifecycle,
+          });
+          await submitStepResult({
+            context: this.context,
+            lazyStep: parallelStep,
+            resultStep,
             invokeCount: this.invokeCount,
             concurrency: parallelSteps.length,
             telemetry: this.telemetry,
             dispatchDebug: this.dispatchDebug,
-            dispatchLifecycle: this.dispatchLifecycle,
           });
           throw new WorkflowAbort(parallelStep.stepName, resultStep);
         } catch (error) {

@@ -7,6 +7,52 @@ export const WORKFLOW_CREATED_AT_HEADER = "Upstash-Workflow-CreatedAt";
 export const WORKFLOW_FAILURE_HEADER = "Upstash-Workflow-Is-Failure";
 export const WORKFLOW_FAILURE_CALLBACK_HEADER = "Upstash-Workflow-Failure-Callback";
 export const WORKFLOW_FEATURE_HEADER = "Upstash-Feature-Set";
+export const WORKFLOW_FEATURE_SET = "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig";
+/**
+ * call type of the step config request: a hidden helper request which
+ * makes QStash call the workflow endpoint again with step-level settings
+ * applied. QStash doesn't treat it as a step and hides it from the step
+ * logs.
+ *
+ * The SDK publishes one when it is about to execute a step which has
+ * step-level settings in an ordinary delivery.
+ */
+export const WORKFLOW_STEP_CONFIG_CALL_TYPE = "stepConfig";
+/**
+ * header which marks a delivery whose message was published with
+ * step-level settings.
+ *
+ * Set by QStash from the message's own feature set, so it cannot
+ * disagree with what QStash actually did. Its presence forbids
+ * publishing another step config request: if the settings still don't
+ * match what the step asked for, the step is executed with the wrong
+ * settings (and a warning) instead of looping invisibly.
+ */
+export const WORKFLOW_STEP_CONFIG_HEADER = "Upstash-Workflow-Step-Config";
+/**
+ * headers through which QStash reports the configuration it applied to
+ * the delivery in hand (the "effective configuration").
+ */
+export const FLOW_CONTROL_KEY_HEADER = "Upstash-Flow-Control-Key";
+export const FLOW_CONTROL_VALUE_HEADER = "Upstash-Flow-Control-Value";
+/**
+ * the retry limit of a message: it sets the limit when publishing, and
+ * reports the limit QStash applied when read off a delivery.
+ *
+ * Not to be confused with `WORKFLOW_RETRIED_HEADER`, which is how many
+ * retries have already happened. QStash sets this one last and
+ * unconditionally on a delivery, so an absent header means the QStash
+ * version does not report the limit rather than "the limit is zero" —
+ * zero being a valid limit.
+ */
+export const RETRIES_HEADER = "Upstash-Retries";
+export const RETRY_DELAY_HEADER = "Upstash-Retry-Delay";
+/**
+ * feature added to the feature set of a message which carries step-level
+ * settings (flow control, retries etc.). Signals QStash to use the message's
+ * own settings instead of the settings the workflow run was triggered with.
+ */
+export const WORKFLOW_STEP_CONFIG_FEATURE = "WF_StepConfig";
 export const WORKFLOW_INVOKE_COUNT_HEADER = "Upstash-Workflow-Invoke-Count";
 export const WORKFLOW_RETRIED_HEADER = "Upstash-Retried";
 export const WORKFLOW_LABEL_HEADER = "Upstash-Label";

@@ -304,6 +304,54 @@ describe("Workflow Parser", () => {
       expect(steps[1].stepId).toBe(remainingStepId);
       expect(isLastDuplicate).toBeFalse();
     });
+
+    test("should keep step config entries out of the steps", async () => {
+      const payload = [
+        {
+          messageId: "msgId",
+          body: btoa("initial payload"),
+          callType: "step",
+        },
+        {
+          messageId: "msgId",
+          body: btoa(
+            JSON.stringify({
+              stepId: 1,
+              stepName: "first step",
+              stepType: "Run",
+              out: "result",
+              concurrent: 1,
+            })
+          ),
+          callType: "step",
+        },
+        // the hidden step config request published for step 2
+        {
+          messageId: "msgId",
+          body: btoa(JSON.stringify({ targetStep: 2, invokeCount: 0 })),
+          callType: "stepConfig",
+        },
+      ];
+
+      const request = new Request(WORKFLOW_ENDPOINT, {
+        body: JSON.stringify(payload),
+      });
+
+      const requestPayload = (await getPayload(request)) ?? "";
+      const { steps, workflowRunEnded } = await parseRequest({
+        requestPayload,
+        isFirstInvocation: false,
+        unknownSdk: false,
+        workflowRunId,
+        requester: qstashClient.http,
+      });
+      if (workflowRunEnded) {
+        throw new Error("failed test");
+      }
+
+      expect(steps.length).toBe(2);
+      expect(steps[1].stepId).toBe(1);
+    });
   });
 
   describe("parseRequest with duplicates", () => {
@@ -730,6 +778,56 @@ describe("Workflow Parser", () => {
         authorization: authorization,
         [WORKFLOW_LABEL_HEADER]: labelValue,
       },
+    });
+
+    test("should give the failure function the delivery's configuration", async () => {
+      // the failure callback is its own delivery, so what the context
+      // reports is that delivery's configuration rather than nothing
+      const configuredRequest = new Request(WORKFLOW_ENDPOINT, {
+        headers: {
+          [WORKFLOW_FAILURE_HEADER]: "true",
+          authorization: authorization,
+          "Upstash-Flow-Control-Key": "failure-callbacks",
+          "Upstash-Flow-Control-Value": "parallelism=2,period=60",
+          "Upstash-Retries": "1",
+          "Upstash-Retry-Delay": "500",
+        },
+      });
+
+      const routeFunction = async (context: WorkflowContext) => {
+        await context.sleep("sleeping", 1);
+      };
+
+      let observed: unknown;
+      const failureFunction: WorkflowServeOptions["failureFunction"] = async ({ context }) => {
+        observed = {
+          flowControl: context.flowControl,
+          retries: context.retries,
+          retryDelay: context.retryDelay,
+        };
+        return;
+      };
+
+      const result = await handleFailure({
+        request: configuredRequest,
+        requestPayload: JSON.stringify({
+          status: 201,
+          body: btoa(JSON.stringify({ message: "failed" })),
+          url: WORKFLOW_ENDPOINT,
+        }),
+        qstashClient: client,
+        initialPayloadParser,
+        routeFunction,
+        failureFunction,
+        env: {},
+      });
+
+      expect(result.isOk()).toBeTrue();
+      expect(observed).toEqual({
+        flowControl: { key: "failure-callbacks", parallelism: 2, rate: 0, period: 60 },
+        retries: 1,
+        retryDelay: "500",
+      });
     });
 
     test("should show failResponse with warning when payload doesn't have message field", async () => {
