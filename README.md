@@ -118,6 +118,15 @@ QSTASH_DEV=true
 
 See [Local Development](https://upstash.com/docs/workflow/howto/local-development/development-server) for details.
 
+## Docs
+
+See [the documentation](https://upstash.com/docs/workflow) for details.
+
+The npm package includes documentation in `node_modules/@upstash/workflow/docs/`
+and TypeScript source in `node_modules/@upstash/workflow/src/` for offline reference
+and coding agents. Start with `docs/getstarted.mdx`; the SDK entrypoint is
+in `src/src/index.ts` and platform adapters are in `src/platforms/`.
+
 ## Telemetry
 
 This sdk sends anonymous telemetry headers to help us improve your experience.
