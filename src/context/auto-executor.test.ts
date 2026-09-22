@@ -601,6 +601,87 @@ describe("auto-executor", () => {
     });
   });
 
+  describe("deferred result snapshots", () => {
+    test("should preserve the executed result through source and caller mutations", async () => {
+      const context = getContext([initialStep]);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        const source = { nested: { value: 1 } };
+        const snapshot = await context.run("snapshot", () => source);
+        source.nested.value = 2;
+        snapshot.nested.value = 3;
+
+        expect((await flushPendingStep(context)).isOk()).toBeTrue();
+        const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+        expect(recorded.out).toBe(JSON.stringify({ nested: { value: 1 } }));
+
+        const replay = getContext([initialStep, recorded]);
+        const restored = await replay.run<typeof source>("snapshot", () => {
+          throw new Error("A recorded step must not execute again");
+        });
+        const consumed = await replay.run("consume", () => restored.nested.value);
+        expect(consumed).toBe(1);
+      } finally {
+        batch.mockRestore();
+      }
+    });
+
+    test("should call the original toJSON only once before continuation", async () => {
+      const context = getContext([initialStep]);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        let serializations = 0;
+        const snapshot = await context.run<unknown>("snapshot", () => ({
+          toJSON: () => ({ value: ++serializations }),
+        }));
+        expect(snapshot).toEqual({ value: 1 });
+        expect((await flushPendingStep(context)).isOk()).toBeTrue();
+        const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+        expect(recorded.out).toBe(JSON.stringify({ value: 1 }));
+        expect(serializations).toBe(1);
+      } finally {
+        batch.mockRestore();
+      }
+    });
+
+    test.each(["plain", '{"value":1}', 42, null, undefined])(
+      "should preserve scalar output %j without double encoding",
+      async (value) => {
+        const context = getContext([initialStep]);
+        const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([
+          { messageId: "msg" },
+        ]);
+        try {
+          expect(await context.run("snapshot", () => value)).toEqual(value);
+          expect((await flushPendingStep(context)).isOk()).toBeTrue();
+          const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+          expect(recorded.out).toBe(JSON.stringify(value));
+          const replay = getContext([initialStep, recorded]);
+          expect(
+            await replay.run<typeof value>("snapshot", () => {
+              throw new Error("A recorded step must not execute again");
+            })
+          ).toEqual(value);
+        } finally {
+          batch.mockRestore();
+        }
+      }
+    );
+
+    test("should preserve an output whose toJSON returns undefined", async () => {
+      const context = getContext([initialStep]);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        expect(await context.run("snapshot", () => ({ toJSON: () => undefined }))).toBeUndefined();
+        expect((await flushPendingStep(context)).isOk()).toBeTrue();
+        const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+        expect(recorded).not.toHaveProperty("out");
+      } finally {
+        batch.mockRestore();
+      }
+    });
+  });
+
   describe("step-level settings", () => {
     const settings: StepSettings = {
       flowControl: { key: "step-flow-key", parallelism: 2, rate: 10 },

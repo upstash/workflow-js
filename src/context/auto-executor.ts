@@ -276,14 +276,24 @@ export class AutoExecutor {
       // route function continue and reveal what comes next, so that a
       // next step's settings can ride on this submission instead of
       // needing a step config request of their own.
-      this.pendingStep = { status: "held", lazyStep, resultStep };
+      // Capture the output before continuing the route. Neither mutations
+      // to the original value nor to the returned copy may change what is
+      // recorded for replay. Keep a detached value for getBody to serialize
+      // later, so the output is not double-encoded on submission.
+      const serializedOut = JSON.stringify(resultStep.out);
+      this.pendingStep = {
+        status: "held",
+        lazyStep,
+        resultStep: {
+          ...resultStep,
+          out: serializedOut === undefined ? undefined : JSON.parse(serializedOut),
+        },
+      };
 
-      // return the result after passing it through serialization, so that
-      // the route function observes the exact same value here and in the
-      // replays of the later invocations
+      // Parse a separate copy for the route function, as on replay.
       return lazyStep.parseOut({
         ...resultStep,
-        out: resultStep.out === undefined ? undefined : JSON.stringify(resultStep.out),
+        out: serializedOut,
       });
     }
 
