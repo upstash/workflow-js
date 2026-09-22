@@ -8,6 +8,7 @@ import {
 } from "../error";
 import { RouteFunction } from "../types";
 import { WorkflowContext } from "../context";
+import type { EffectiveConfig } from "../qstash/step-config";
 import { BaseLazyStep } from "../context/steps";
 import { Client } from "@upstash/qstash";
 
@@ -75,7 +76,8 @@ export class DisabledWorkflowContext<
    */
   public static async tryAuthentication<TInitialPayload = unknown>(
     routeFunction: RouteFunction<TInitialPayload>,
-    context: WorkflowContext<TInitialPayload>
+    context: WorkflowContext<TInitialPayload>,
+    effectiveConfig?: EffectiveConfig
   ): Promise<Ok<"step-found" | "run-ended", never> | Err<never, Error>> {
     const disabledContext = new DisabledWorkflowContext({
       qstashClient: new Client({
@@ -92,6 +94,9 @@ export class DisabledWorkflowContext<
       env: context.env,
       label: context.labels,
       retried: context.retried,
+      // the route function runs for real here until it reaches a step, so
+      // it observes the same configuration as it will on the real context
+      effectiveConfig,
     });
 
     try {

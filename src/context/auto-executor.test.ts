@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers */
 import { describe, expect, spyOn, test } from "bun:test";
 import { WorkflowContext } from "./context";
-import { Client } from "@upstash/qstash";
+import { Client, QstashError } from "@upstash/qstash";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer, WORKFLOW_ENDPOINT } from "../test-utils";
 import { nanoid } from "../utils";
 import { AutoExecutor } from "./auto-executor";
-import type { Step } from "../types";
-import { WorkflowAbort, WorkflowError } from "../error";
+import type { Step, StepSettings } from "../types";
+import type { EffectiveConfig } from "../qstash/step-config";
+import { flushPendingStep } from "../workflow-requests";
+import { WorkflowAbort, WorkflowError, WorkflowNonRetryableError } from "../error";
 
 class SpyAutoExecutor extends AutoExecutor {
   public declare getParallelCallState;
@@ -83,13 +85,14 @@ describe("auto-executor", () => {
     },
   ];
 
-  const getContext = (steps: Step[]) => {
+  const getContext = (steps: Step[], effectiveConfig?: EffectiveConfig) => {
     return new SpyWorkflowContext({
       qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false }),
       workflowRunId,
       initialPayload,
       headers: new Headers({}) as Headers,
       steps,
+      effectiveConfig,
       url: WORKFLOW_ENDPOINT,
       invokeCount: 7,
       workflowRunCreatedAt: 0,
@@ -104,11 +107,16 @@ describe("auto-executor", () => {
       const spyRunParallel = spyOn(context.executor, "runParallel");
 
       await mockQStashServer({
-        execute: () => {
-          const throws = context.run("attemptCharge", () => {
+        execute: async () => {
+          // the step executes and its result is returned, so the route
+          // function can continue and reveal what comes next. The
+          // submission happens on flush.
+          const result = await context.run("attemptCharge", () => {
             return { input: context.requestPayload, success: false };
           });
-          expect(throws).rejects.toThrowError(WorkflowAbort);
+          expect(result).toEqual({ input: initialPayload, success: false });
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
         },
         responseFields: {
           status: 200,
@@ -589,6 +597,701 @@ describe("auto-executor", () => {
               '    Step Types expected: ["SleepUntil","SleepUntil"]'
           )
         );
+      });
+    });
+  });
+
+  describe("deferred result snapshots", () => {
+    test("should preserve the executed result through source and caller mutations", async () => {
+      const context = getContext([initialStep]);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        const source = { nested: { value: 1 } };
+        const snapshot = await context.run("snapshot", () => source);
+        source.nested.value = 2;
+        snapshot.nested.value = 3;
+
+        expect((await flushPendingStep(context)).isOk()).toBeTrue();
+        const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+        expect(recorded.out).toBe(JSON.stringify({ nested: { value: 1 } }));
+
+        const replay = getContext([initialStep, recorded]);
+        const restored = await replay.run<typeof source>("snapshot", () => {
+          throw new Error("A recorded step must not execute again");
+        });
+        const consumed = await replay.run("consume", () => restored.nested.value);
+        expect(consumed).toBe(1);
+      } finally {
+        batch.mockRestore();
+      }
+    });
+
+    test("should call the original toJSON only once before continuation", async () => {
+      const context = getContext([initialStep]);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        let serializations = 0;
+        const snapshot = await context.run<unknown>("snapshot", () => ({
+          toJSON: () => ({ value: ++serializations }),
+        }));
+        expect(snapshot).toEqual({ value: 1 });
+        expect((await flushPendingStep(context)).isOk()).toBeTrue();
+        const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+        expect(recorded.out).toBe(JSON.stringify({ value: 1 }));
+        expect(serializations).toBe(1);
+      } finally {
+        batch.mockRestore();
+      }
+    });
+
+    test.each(["plain", '{"value":1}', 42, null, undefined])(
+      "should preserve scalar output %j without double encoding",
+      async (value) => {
+        const context = getContext([initialStep]);
+        const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([
+          { messageId: "msg" },
+        ]);
+        try {
+          expect(await context.run("snapshot", () => value)).toEqual(value);
+          expect((await flushPendingStep(context)).isOk()).toBeTrue();
+          const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+          expect(recorded.out).toBe(JSON.stringify(value));
+          const replay = getContext([initialStep, recorded]);
+          expect(
+            await replay.run<typeof value>("snapshot", () => {
+              throw new Error("A recorded step must not execute again");
+            })
+          ).toEqual(value);
+        } finally {
+          batch.mockRestore();
+        }
+      }
+    );
+
+    test("should preserve an output whose toJSON returns undefined", async () => {
+      const context = getContext([initialStep]);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        expect(await context.run("snapshot", () => ({ toJSON: () => undefined }))).toBeUndefined();
+        expect((await flushPendingStep(context)).isOk()).toBeTrue();
+        const recorded = JSON.parse(batch.mock.calls[0][0][0].body as string) as Step;
+        expect(recorded).not.toHaveProperty("out");
+      } finally {
+        batch.mockRestore();
+      }
+    });
+  });
+
+  describe("step-level settings", () => {
+    const settings: StepSettings = {
+      flowControl: { key: "step-flow-key", parallelism: 2, rate: 10 },
+      retries: 5,
+      retryDelay: "1000",
+    };
+
+    /**
+     * effective configuration of a delivery which was published with
+     * `settings`, in the shape QStash reports it back: the control value
+     * joined without spaces, and the guard marker present.
+     */
+    const stepConfiguredDelivery: EffectiveConfig = {
+      flowControl: { key: "step-flow-key", parallelism: 2, rate: 10, period: 1 },
+      retries: 5,
+      retryDelay: "1000",
+      hasStepConfig: true,
+    };
+
+    const ordinaryDelivery: EffectiveConfig = { retries: 3, hasStepConfig: false };
+
+    test.each(["", " \t ", " 1000 "])(
+      "should execute with the trigger's matching retry delay for %j",
+      async (retryDelay) => {
+        const context = getContext([initialStep], { ...ordinaryDelivery, retryDelay: "1000" });
+        const publish = spyOn(context.qstashClient, "publishJSON").mockResolvedValue({
+          messageId: "msg",
+        });
+        try {
+          expect(await context.run("work", () => "done", { retryDelay })).toBe("done");
+          expect(publish).not.toHaveBeenCalled();
+        } finally {
+          publish.mockRestore();
+        }
+      }
+    );
+
+    test("should normalize a retry delay on a step config request and preserve zero retries", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+      const publish = spyOn(context.qstashClient, "publishJSON").mockResolvedValue({
+        messageId: "msg",
+      });
+      try {
+        await expect(
+          context.run("work", () => "not executed", { retryDelay: " 0 ", retries: 0 })
+        ).rejects.toThrow(WorkflowAbort);
+        expect(publish.mock.calls[0][0].headers).toMatchObject({
+          "Upstash-Retry-Delay": "0",
+          "Upstash-Retries": "0",
+          "Upstash-Feature-Set": expect.stringContaining("WF_StepConfig"),
+        });
+      } finally {
+        publish.mockRestore();
+      }
+    });
+
+    test.each([" 1000 ", " \t "])(
+      "should normalize retry delay %j on a deferred submission",
+      async (retryDelay) => {
+        const context = getContext([initialStep], ordinaryDelivery);
+        const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([
+          { messageId: "msg" },
+        ]);
+        try {
+          await context.run("first", () => "done");
+          await expect(context.run("next", () => "not executed", { retryDelay })).rejects.toThrow(
+            WorkflowAbort
+          );
+          const headers = batch.mock.calls[0][0][0].headers as Record<string, string>;
+          expect(new Headers(headers).get("Upstash-Retry-Delay")).toBe(retryDelay.trim() || null);
+          expect(headers["Upstash-Feature-Set"].includes("WF_StepConfig")).toBe(
+            Boolean(retryDelay.trim())
+          );
+        } finally {
+          batch.mockRestore();
+        }
+      }
+    );
+
+    test("should normalize each parallel plan's retry delay", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        await expect(
+          Promise.all([
+            context.run("p1", () => "not executed", { retryDelay: " 1000 " }),
+            context.run("p2", () => "not executed", { retryDelay: "" }),
+          ])
+        ).rejects.toThrow(WorkflowAbort);
+        const headers = batch.mock.calls[0][0].map(
+          (request) => request.headers as Record<string, string>
+        );
+        expect(headers[0]["Upstash-Retry-Delay"]).toBe("1000");
+        expect(headers[1]["Upstash-Retry-Delay"]).toBeUndefined();
+        expect(headers[1]["Upstash-Feature-Set"]).not.toContain("WF_StepConfig");
+      } finally {
+        batch.mockRestore();
+      }
+    });
+
+    test.each([{ retryDelay: null }, { retryDelay: 0 }, { retries: "" }])(
+      "should reject invalid runtime settings %j before execution or publication",
+      async (settings) => {
+        const context = getContext([initialStep], ordinaryDelivery);
+        const publish = spyOn(context.qstashClient, "publishJSON").mockResolvedValue({
+          messageId: "msg",
+        });
+        let executed = false;
+        try {
+          await expect(
+            context.run(
+              "work",
+              () => {
+                executed = true;
+              },
+              settings as unknown as StepSettings
+            )
+          ).rejects.toThrow(WorkflowNonRetryableError);
+          expect(executed).toBeFalse();
+          expect(publish).not.toHaveBeenCalled();
+        } finally {
+          publish.mockRestore();
+        }
+      }
+    );
+
+    test("should publish a step config request when the delivery is ordinary", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          const throws = context.run(
+            "attemptCharge",
+            () => {
+              stepExecuted = true;
+              return "result";
+            },
+            settings
+          );
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: { messageId: "msgId" },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          // the target step keeps the requests of two different steps
+          // distinct under the content based deduplication below
+          body: { targetStep: 1, invokeCount: 7 },
+          headers: {
+            "upstash-workflow-calltype": "stepConfig",
+            // a retry of the delivery which published this collapses
+            // into it rather than publishing a second request
+            "upstash-content-based-deduplication": "true",
+            "upstash-workflow-runid": workflowRunId,
+            "upstash-workflow-init": "false",
+            "upstash-workflow-url": WORKFLOW_ENDPOINT,
+            "upstash-feature-set":
+              "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+            "upstash-flow-control-key": "step-flow-key",
+            "upstash-flow-control-value": "parallelism=2, rate=10",
+            "upstash-retries": "5",
+            "upstash-retry-delay": "1000",
+          },
+        },
+      });
+
+      // the step must not run in an ordinary delivery
+      expect(stepExecuted).toBeFalse();
+    });
+
+    test("should surface a failure to publish the step config request", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          const throws = context.run(
+            "attemptCharge",
+            () => {
+              stepExecuted = true;
+              return "result";
+            },
+            settings
+          );
+          // no settings were applied and nothing was submitted, so the publish
+          // error has to surface rather than an abort claiming otherwise
+          await expect(throws).rejects.toThrowError(QstashError);
+        },
+        responseFields: {
+          status: 500,
+          body: "publish failed",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          body: { targetStep: 1, invokeCount: 7 },
+        },
+      });
+
+      expect(stepExecuted).toBeFalse();
+    });
+
+    test("should execute the step when the delivery already has its settings", async () => {
+      const context = getContext([initialStep], stepConfiguredDelivery);
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          const result = await context.run(
+            "attemptCharge",
+            () => {
+              stepExecuted = true;
+              return { input: context.requestPayload, success: false };
+            },
+            settings
+          );
+          expect(result).toEqual({ input: initialPayload, success: false });
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                // the result submission carries no step settings: they
+                // belonged to the delivery which executed the step
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+              },
+              body: JSON.stringify({ ...singleStep }),
+            },
+          ],
+        },
+      });
+
+      expect(stepExecuted).toBeTrue();
+    });
+
+    test("should execute and warn on a mismatch the guard marker forbids retrying", async () => {
+      // the delivery says it carries step settings, but they are not the
+      // ones the step asked for: an SDK bug. Executing with the wrong
+      // settings is preferred over looping on step config requests.
+      const context = getContext([initialStep], {
+        flowControl: { key: "some-other-key", parallelism: 1, rate: 0, period: 1 },
+        retries: 5,
+        retryDelay: "1000",
+        hasStepConfig: true,
+      });
+
+      const warnings: string[] = [];
+      const warnSpy = spyOn(console, "warn").mockImplementation((warning: string) => {
+        warnings.push(warning);
+      });
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          await context.run(
+            "attemptCharge",
+            () => {
+              stepExecuted = true;
+              return { input: context.requestPayload, success: false };
+            },
+            settings
+          );
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrap().result).toBe("submitted-step");
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+              },
+              body: JSON.stringify({ ...singleStep }),
+            },
+          ],
+        },
+      });
+
+      expect(stepExecuted).toBeTrue();
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toInclude("attemptCharge");
+      expect(warnings[0]).toInclude("flow control");
+      expect(warnings[0]).toInclude("bug in @upstash/workflow");
+      warnSpy.mockRestore();
+    });
+
+    test("should surface a failure to submit the held step", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+
+      await mockQStashServer({
+        execute: async () => {
+          await context.run("attemptCharge", () => {
+            return { input: context.requestPayload, success: false };
+          });
+
+          // the step ran but its result never reached QStash, so the
+          // failure has to surface rather than an abort saying it did
+          const submitted = await flushPendingStep(context);
+          expect(submitted._unsafeUnwrapErr()).toBeInstanceOf(QstashError);
+        },
+        responseFields: {
+          status: 500,
+          body: "submit failed",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+        },
+      });
+    });
+
+    test("should attach the next step's settings to the pending submission", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+
+      await mockQStashServer({
+        execute: async () => {
+          // the first step has no settings, so it executes here and its
+          // result is returned, letting the route function branch on it
+          const result = await context.run("attemptCharge", () => {
+            return { input: context.requestPayload, success: false };
+          });
+          expect(result).toEqual({ input: initialPayload, success: false });
+
+          // reaching the next step flushes the pending submission with
+          // that step's settings attached, so its delivery carries them and
+          // no step config request is needed
+          const throws = result.success
+            ? context.run("unexpected-branch", () => "not-executed")
+            : context.run("second-step", () => "not-executed", settings);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+                "upstash-flow-control-key": "step-flow-key",
+                "upstash-flow-control-value": "parallelism=2, rate=10",
+                "upstash-retries": "5",
+                "upstash-retry-delay": "1000",
+              },
+              body: JSON.stringify({ ...singleStep }),
+            },
+          ],
+        },
+      });
+    });
+
+    test("should keep returning the same abort once a held step is submitted", async () => {
+      // Reaching a further step submits the held one and throws the abort
+      // from there, so the route function has already seen it by the time
+      // serve flushes again. That second flush has to report the same
+      // abort rather than "nothing was held", or an invocation whose abort
+      // the route function swallowed would carry on as if the step had
+      // never run.
+      const context = getContext([initialStep], ordinaryDelivery);
+      const spySubmit = spyOn(context.qstashClient, "batch");
+
+      await mockQStashServer({
+        execute: async () => {
+          await context.run("attemptCharge", () => "first-result");
+
+          let thrown: unknown;
+          try {
+            await context.run("second-step", () => "not-executed");
+          } catch (error) {
+            thrown = error;
+          }
+          expect(thrown).toBeInstanceOf(WorkflowAbort);
+
+          const submitted = (await flushPendingStep(context)) as never as {
+            value: { result: string; abort: WorkflowAbort };
+          };
+          expect(submitted.value.result).toBe("submitted-step");
+          expect(submitted.value.abort).toBe(thrown as WorkflowAbort);
+          // and it is not submitted a second time
+          expect(spySubmit).toHaveBeenCalledTimes(1);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            expect.objectContaining({
+              body: JSON.stringify({ ...singleStep, out: JSON.stringify("first-result") }),
+            }),
+          ],
+        },
+      });
+    });
+
+    test("should attach nothing when a parallel group comes next", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+      const spySubmit = spyOn(context.qstashClient, "batch");
+
+      await mockQStashServer({
+        execute: async () => {
+          await context.run("attemptCharge", () => {
+            return { input: context.requestPayload, success: false };
+          });
+
+          // parallel steps carry their settings on their own plan steps,
+          // so nothing is attached to the pending submission
+          const throws = Promise.all([
+            context.run("p1", () => "r1", settings),
+            context.run("p2", () => "r2"),
+          ]);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+
+          // both parallel steps reach the held result, but it is
+          // submitted once: the second waits for the first submission
+          // rather than starting another
+          expect(spySubmit).toHaveBeenCalledTimes(1);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set": "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+              },
+              body: JSON.stringify({ ...singleStep }),
+            },
+          ],
+        },
+      });
+    });
+
+    test("should publish a step config request for a step after a parallel group", async () => {
+      // The delivery which completes a parallel group is produced by the
+      // last plan step's submission, and that submission cannot know what
+      // follows the group — so unlike a step after a single step, this one
+      // has to ask for a delivery of its own.
+      const context = getContext([initialStep, ...parallelSteps], ordinaryDelivery);
+
+      let stepExecuted = false;
+      await mockQStashServer({
+        execute: async () => {
+          await Promise.all([
+            context.sleep("sleep for some time", 123),
+            context.sleepUntil("sleep until next day", 123_123),
+          ]);
+
+          const throws = context.run(
+            "after-parallel",
+            () => {
+              stepExecuted = true;
+              return "result";
+            },
+            settings
+          );
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: { messageId: "msgId" },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          body: { targetStep: 3, invokeCount: 7 },
+          headers: {
+            "upstash-workflow-calltype": "stepConfig",
+            "upstash-flow-control-key": "step-flow-key",
+          },
+        },
+      });
+
+      expect(stepExecuted).toBeFalse();
+    });
+
+    test("should attach each parallel step's own settings to its plan step", async () => {
+      // a plan step's delivery is what executes its target step, so the
+      // settings ride on the plan step and no step config request is needed
+      const context = getContext([initialStep], ordinaryDelivery);
+
+      await mockQStashServer({
+        execute: async () => {
+          expect(context.executor.getParallelCallState(2, 1)).toBe("first");
+          const throws = Promise.all([
+            context.run("parallel-step-1", () => "result-1", {
+              flowControl: { key: "fc-key-1", parallelism: 1 },
+            }),
+            context.run("parallel-step-2", () => "result-2", { retries: 0 }),
+          ]);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: "msgId",
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            {
+              body: '{"stepId":0,"stepName":"parallel-step-1","stepType":"Run","concurrent":2,"targetStep":1}',
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+                "upstash-flow-control-key": "fc-key-1",
+                "upstash-flow-control-value": "parallelism=1",
+              },
+            },
+            {
+              body: '{"stepId":0,"stepName":"parallel-step-2","stepType":"Run","concurrent":2,"targetStep":2}',
+              destination: WORKFLOW_ENDPOINT,
+              headers: {
+                "upstash-workflow-sdk-version": "1",
+                "content-type": "application/json",
+                "upstash-feature-set":
+                  "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig,WF_StepConfig",
+                "upstash-forward-upstash-workflow-sdk-version": "1",
+                "upstash-method": "POST",
+                "upstash-workflow-runid": workflowRunId,
+                "upstash-workflow-init": "false",
+                "upstash-workflow-url": WORKFLOW_ENDPOINT,
+                "upstash-forward-upstash-workflow-invoke-count": "7",
+                "upstash-retries": "0",
+              },
+            },
+          ],
+        },
       });
     });
   });

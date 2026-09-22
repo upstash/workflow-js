@@ -9,6 +9,7 @@ import {
   WorkflowRetryAfterError,
 } from "./error";
 import type { WorkflowContext } from "./context";
+import type { AutoExecutor } from "./context/auto-executor";
 import {
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
@@ -170,6 +171,25 @@ export const triggerFirstInvocation = async <TInitialPayload>(
     const error_ = error as Error;
     return err(error_);
   }
+};
+
+/**
+ * Submits the result of a step which executed but whose submission was
+ * held so that the route function could reveal what comes next.
+ *
+ * Not part of the public API: reaches the protected executor of the
+ * context, which is why the cast is needed.
+ *
+ * @internal
+ * @param workflowContext workflow context
+ * @returns `submitted-step` with the abort which ends this invocation,
+ *   or `no-pending-step` when nothing was held and there is nothing to end
+ */
+export const flushPendingStep = async (
+  workflowContext: WorkflowContext
+): ReturnType<AutoExecutor["submitPendingStep"]> => {
+  const { executor } = workflowContext as unknown as { executor: AutoExecutor };
+  return await executor.submitPendingStep();
 };
 
 /**
