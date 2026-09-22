@@ -8,7 +8,7 @@ import { AutoExecutor } from "./auto-executor";
 import type { Step, StepSettings } from "../types";
 import type { EffectiveConfig } from "../qstash/step-config";
 import { flushPendingStep } from "../workflow-requests";
-import { WorkflowAbort, WorkflowError } from "../error";
+import { WorkflowAbort, WorkflowError, WorkflowNonRetryableError } from "../error";
 
 class SpyAutoExecutor extends AutoExecutor {
   public declare getParallelCallState;
@@ -702,6 +702,111 @@ describe("auto-executor", () => {
     };
 
     const ordinaryDelivery: EffectiveConfig = { retries: 3, hasStepConfig: false };
+
+    test.each(["", " \t ", " 1000 "])(
+      "should execute with the trigger's matching retry delay for %j",
+      async (retryDelay) => {
+        const context = getContext([initialStep], { ...ordinaryDelivery, retryDelay: "1000" });
+        const publish = spyOn(context.qstashClient, "publishJSON").mockResolvedValue({
+          messageId: "msg",
+        });
+        try {
+          expect(await context.run("work", () => "done", { retryDelay })).toBe("done");
+          expect(publish).not.toHaveBeenCalled();
+        } finally {
+          publish.mockRestore();
+        }
+      }
+    );
+
+    test("should normalize a retry delay on a step config request and preserve zero retries", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+      const publish = spyOn(context.qstashClient, "publishJSON").mockResolvedValue({
+        messageId: "msg",
+      });
+      try {
+        await expect(
+          context.run("work", () => "not executed", { retryDelay: " 0 ", retries: 0 })
+        ).rejects.toThrow(WorkflowAbort);
+        expect(publish.mock.calls[0][0].headers).toMatchObject({
+          "Upstash-Retry-Delay": "0",
+          "Upstash-Retries": "0",
+          "Upstash-Feature-Set": expect.stringContaining("WF_StepConfig"),
+        });
+      } finally {
+        publish.mockRestore();
+      }
+    });
+
+    test.each([" 1000 ", " \t "])(
+      "should normalize retry delay %j on a deferred submission",
+      async (retryDelay) => {
+        const context = getContext([initialStep], ordinaryDelivery);
+        const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([
+          { messageId: "msg" },
+        ]);
+        try {
+          await context.run("first", () => "done");
+          await expect(context.run("next", () => "not executed", { retryDelay })).rejects.toThrow(
+            WorkflowAbort
+          );
+          const headers = batch.mock.calls[0][0][0].headers as Record<string, string>;
+          expect(new Headers(headers).get("Upstash-Retry-Delay")).toBe(retryDelay.trim() || null);
+          expect(headers["Upstash-Feature-Set"].includes("WF_StepConfig")).toBe(
+            Boolean(retryDelay.trim())
+          );
+        } finally {
+          batch.mockRestore();
+        }
+      }
+    );
+
+    test("should normalize each parallel plan's retry delay", async () => {
+      const context = getContext([initialStep], ordinaryDelivery);
+      const batch = spyOn(context.qstashClient, "batch").mockResolvedValue([{ messageId: "msg" }]);
+      try {
+        await expect(
+          Promise.all([
+            context.run("p1", () => "not executed", { retryDelay: " 1000 " }),
+            context.run("p2", () => "not executed", { retryDelay: "" }),
+          ])
+        ).rejects.toThrow(WorkflowAbort);
+        const headers = batch.mock.calls[0][0].map(
+          (request) => request.headers as Record<string, string>
+        );
+        expect(headers[0]["Upstash-Retry-Delay"]).toBe("1000");
+        expect(headers[1]["Upstash-Retry-Delay"]).toBeUndefined();
+        expect(headers[1]["Upstash-Feature-Set"]).not.toContain("WF_StepConfig");
+      } finally {
+        batch.mockRestore();
+      }
+    });
+
+    test.each([{ retryDelay: null }, { retryDelay: 0 }, { retries: "" }])(
+      "should reject invalid runtime settings %j before execution or publication",
+      async (settings) => {
+        const context = getContext([initialStep], ordinaryDelivery);
+        const publish = spyOn(context.qstashClient, "publishJSON").mockResolvedValue({
+          messageId: "msg",
+        });
+        let executed = false;
+        try {
+          await expect(
+            context.run(
+              "work",
+              () => {
+                executed = true;
+              },
+              settings as unknown as StepSettings
+            )
+          ).rejects.toThrow(WorkflowNonRetryableError);
+          expect(executed).toBeFalse();
+          expect(publish).not.toHaveBeenCalled();
+        } finally {
+          publish.mockRestore();
+        }
+      }
+    );
 
     test("should publish a step config request when the delivery is ordinary", async () => {
       const context = getContext([initialStep], ordinaryDelivery);

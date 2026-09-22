@@ -4,14 +4,47 @@ import {
   describeStepSettingsMismatch,
   durationToSeconds,
   getEffectiveConfig,
+  normalizeStepSettings,
   parseFlowControlHeaders,
 } from "./step-config";
 import type { EffectiveConfig } from "./step-config";
 import type { StepSettings } from "../types";
 import { prepareFlowControl } from "./headers";
 import type { FlowControl } from "@upstash/qstash";
+import { WorkflowNonRetryableError } from "../error";
 
 describe("step config", () => {
+  describe("normalizeStepSettings", () => {
+    test.each(["", " ", "\t\n"])("should omit empty retry delay %j", (retryDelay) => {
+      expect(normalizeStepSettings({ retryDelay })?.retryDelay).toBeUndefined();
+    });
+
+    test("should preserve zero settings and leave the caller's settings unchanged", () => {
+      const settings = { retries: 0, retryDelay: " 0 " };
+      expect(normalizeStepSettings(settings)).toEqual({ retries: 0, retryDelay: "0" });
+      expect(settings.retryDelay).toBe(" 0 ");
+      expect(normalizeStepSettings()).toBeUndefined();
+    });
+
+    test.each([null, 0, false, {}, []].map((retryDelay) => ({ retryDelay })))(
+      "should reject non-string retryDelay %j",
+      (settings) => {
+        expect(() => normalizeStepSettings(settings as unknown as StepSettings)).toThrow(
+          WorkflowNonRetryableError
+        );
+      }
+    );
+
+    test.each([null, "", "0", -1, 0.5, Number.NaN, Number.POSITIVE_INFINITY])(
+      "should reject invalid retries %j",
+      (retries) => {
+        expect(() => normalizeStepSettings({ retries } as unknown as StepSettings)).toThrow(
+          WorkflowNonRetryableError
+        );
+      }
+    );
+  });
+
   describe("durationToSeconds", () => {
     test("should convert duration strings", () => {
       expect(durationToSeconds("30s")).toBe(30);

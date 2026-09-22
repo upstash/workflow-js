@@ -7,6 +7,28 @@ import {
   WORKFLOW_STEP_CONFIG_HEADER,
 } from "../constants";
 import type { Duration, StepSettings } from "../types";
+import { WorkflowNonRetryableError } from "../error";
+
+/**
+ * Normalize settings once when a step is declared, so delivery comparisons
+ * and every publication path use the same values. HTTP headers trim leading
+ * and trailing whitespace; an empty retry delay means no override.
+ *
+ * @param settings settings supplied to context.run
+ */
+export const normalizeStepSettings = (settings?: StepSettings): StepSettings | undefined => {
+  if (settings === undefined) {
+    return undefined;
+  }
+  const { retries, retryDelay } = settings;
+  if (retryDelay !== undefined && typeof retryDelay !== "string") {
+    throw new WorkflowNonRetryableError("Invalid step retryDelay: must be a string.");
+  }
+  if (retries !== undefined && (!Number.isInteger(retries) || retries < 0)) {
+    throw new WorkflowNonRetryableError("Invalid step retries: must be a non-negative integer.");
+  }
+  return { ...settings, retryDelay: retryDelay?.trim() || undefined };
+};
 
 /**
  * The configuration QStash applied to the delivery in hand.

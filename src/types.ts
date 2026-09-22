@@ -431,6 +431,8 @@ export type StepSettings = {
   retries?: number;
   /**
    * Delay between retries of the delivery which executes this step.
+   * Leading and trailing whitespace is trimmed. An empty or whitespace-only
+   * string leaves the workflow run's retry delay unchanged.
    */
   retryDelay?: string;
 };

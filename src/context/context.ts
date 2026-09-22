@@ -31,6 +31,7 @@ import { MiddlewareManager } from "../middleware/manager";
 import { QstashError } from "@upstash/qstash";
 import { validateFlowControl, validateLabel } from "../utils";
 import type { EffectiveConfig, NormalizedFlowControl } from "../qstash/step-config";
+import { normalizeStepSettings } from "../qstash/step-config";
 
 /**
  * Upstash Workflow context
@@ -336,13 +337,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
     stepFunction: StepFunction<TResult>,
     stepSettings?: StepSettings
   ): Promise<TResult> {
+    const normalizedSettings = normalizeStepSettings(stepSettings);
     if (stepSettings) {
       validateFlowControl(stepSettings.flowControl);
     }
     const wrappedStepFunction = (() =>
       this.executor.wrapStep(stepName, stepFunction)) as StepFunction<TResult>;
     return await this.addStep<TResult>(
-      new LazyFunctionStep(this, stepName, wrappedStepFunction, stepSettings)
+      new LazyFunctionStep(this, stepName, wrappedStepFunction, normalizedSettings)
     );
   }
 
