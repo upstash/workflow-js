@@ -1,10 +1,8 @@
 import { MiddlewareCallbacks } from "./types";
-import { isMissingCredentialsError } from "../error";
 
 export const onErrorWithConsole: Required<
   MiddlewareCallbacks<unknown, unknown>
 >["onError"] = async ({ workflowRunId, error }) => {
-  if (isMissingCredentialsError(error) && error.alreadyLogged) return;
   console.error(`  [Upstash Workflow]: Error in workflow run ${workflowRunId}: ` + error);
 };
 
