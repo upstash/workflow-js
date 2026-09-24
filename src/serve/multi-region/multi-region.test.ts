@@ -664,7 +664,9 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
           QSTASH_TOKEN: "test-token",
         })
       );
-      expect(http.devMode).toBe(false);
+      // undefined, not false, so qstash-js can still suggest dev mode when
+      // credentials are missing.
+      expect(http.devMode).toBeUndefined();
       expect(http.baseUrl).toBe("https://qstash.upstash.io");
     });
 
