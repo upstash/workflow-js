@@ -631,7 +631,10 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       // credential resolution in dev mode, keeping this a pure unit test.
       const processEnv = process.env as Record<string, string | undefined>;
       const previousNodeEnv = processEnv.NODE_ENV;
+      const previousQStashDev = processEnv.QSTASH_DEV;
       processEnv.NODE_ENV = "production";
+      // Without QSTASH_DEV in `environment`, the Client reads process.env.
+      delete processEnv.QSTASH_DEV;
       try {
         const result = getQStashHandlerOptions({
           environment,
@@ -642,6 +645,7 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       } finally {
         if (previousNodeEnv === undefined) delete processEnv.NODE_ENV;
         else processEnv.NODE_ENV = previousNodeEnv;
+        if (previousQStashDev !== undefined) processEnv.QSTASH_DEV = previousQStashDev;
       }
     };
 
