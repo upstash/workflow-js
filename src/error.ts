@@ -2,15 +2,6 @@ import { QstashError } from "@upstash/qstash";
 import type { Duration, FailureFunctionPayload, Step } from "./types";
 
 /**
- * Recognize the QStash setup-error metadata without requiring a newer QStash
- * export. Older SDK errors retain their existing logging and stack behavior.
- */
-export const isMissingCredentialsError = (
-  error: unknown
-): error is Error & { code: "QSTASH_MISSING_CREDENTIALS"; alreadyLogged?: boolean } =>
-  error instanceof Error && "code" in error && error.code === "QSTASH_MISSING_CREDENTIALS";
-
-/**
  * Error raised during Workflow execution
  */
 export class WorkflowError extends QstashError {
@@ -110,7 +101,7 @@ export const formatWorkflowError = (error: unknown): FailureFunctionPayload => {
     ? {
         error: error.name,
         message: error.message,
-        ...(isMissingCredentialsError(error) ? {} : { stack: error.stack }),
+        stack: error.stack,
       }
     : {
         error: "Error",
