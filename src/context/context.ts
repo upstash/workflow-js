@@ -502,9 +502,10 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * Lookback, as the docs describe it, does not work (QStash server bug): a notify with
    * `workflowRunId` sent before the run reaches `waitForEvent` is acknowledged but never
-   * resumes the run. Use a per-run `eventId` and notify only after
-   * `client.getWaiters({ eventId })` returns a waiter. To accept an event that arrives
-   * earlier, store it where the workflow re-checks it in a step before waiting.
+   * resumes the run. Instead, store the event where the workflow re-checks it in a step
+   * before waiting, then notify with a per-run `eventId` and no `workflowRunId` once
+   * `client.getWaiters({ eventId })` returns a waiter. No waiter appears if the workflow
+   * already read the stored event, so do not hold a request open on that poll.
    *
    * @param stepName
    * @param eventId event id to notify. Only letters, digits, "-", "_" and "." are allowed.
