@@ -365,6 +365,9 @@ export type WorkflowRunLogs = {
   runs: WorkflowRunLog[];
 };
 
+/**
+ * @see node_modules/@upstash/workflow/docs/basics/client/trigger.mdx
+ */
 export type TriggerOptions = {
   /**
    * URL of the workflow to trigger
@@ -381,10 +384,13 @@ export type TriggerOptions = {
   /**
    * Workflow run id to use for the workflow run.
    * If not provided, a random workflow run id will be generated.
+   *
+   * "wfr_" is prepended (and doubled if you include it). Use the returned
+   * `workflowRunId` for notify, cancel and logs.
    */
   workflowRunId?: string;
   /**
-   * Number of retries to perform if the request fails.
+   * Number of times each failed step of the run is retried.
    *
    * @default 3
    */
@@ -424,6 +430,8 @@ export type TriggerOptions = {
   /**
    * Flow control to use for the workflow run.
    * If not provided, no flow control will be used.
+   *
+   * @see node_modules/@upstash/workflow/docs/features/flow-control.mdx
    */
   flowControl?: FlowControl;
   /**

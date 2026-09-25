@@ -31,6 +31,16 @@ const telemetry: Telemetry = {
     : `node@${process.version}`,
 };
 
+/**
+ * Code outside steps runs again on every request of the run. Anything it branches on or
+ * returns early on (Date.now(), database rows, random values) must give the same answer on
+ * every request, or later requests fail with "Incompatible step name" or "Failed to
+ * authenticate Workflow request". Read such values inside `context.run` and branch on its
+ * result.
+ *
+ * @see node_modules/@upstash/workflow/docs/basics/serve.mdx
+ * @see node_modules/@upstash/workflow/docs/quickstarts/nuxt.mdx
+ */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
   options?: WorkflowServeOptions<TInitialPayload, TResult>
@@ -65,6 +75,9 @@ export const serve = <TInitialPayload = unknown, TResult = unknown>(
   return { handler };
 };
 
+/**
+ * @see node_modules/@upstash/workflow/docs/features/invoke.mdx
+ */
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
 ): InvokableWorkflow<TInitialPayload, TResult> => {
@@ -76,6 +89,9 @@ export const createWorkflow = <TInitialPayload, TResult>(
   };
 };
 
+/**
+ * @see node_modules/@upstash/workflow/docs/features/invoke/serveMany.mdx
+ */
 export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
   options?: Parameters<typeof serveManyBase>[0]["options"]

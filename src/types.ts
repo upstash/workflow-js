@@ -177,6 +177,11 @@ export type QStashClientExtraConfig = Omit<
   "baseUrl" | "token"
 >;
 
+/**
+ * Options of `serve`.
+ *
+ * @see node_modules/@upstash/workflow/docs/basics/serve/advanced.mdx
+ */
 export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> = {
   /**
    * QStash client or client configuration
@@ -208,6 +213,7 @@ export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> =
    * @param failStatus error status
    * @param failResponse error message
    * @returns void
+   * @see node_modules/@upstash/workflow/docs/features/failure-callback.mdx
    */
   failureFunction?: (failureData: {
     context: WorkflowContextWithoutMethods<TInitialPayload>;
@@ -246,6 +252,8 @@ export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> =
   disableTelemetry?: boolean;
   /**
    * List of workflow middlewares to use
+   *
+   * @see node_modules/@upstash/workflow/docs/howto/middlewares.mdx
    */
   middlewares?: WorkflowMiddleware<TInitialPayload, TResult>[];
   /**
@@ -372,6 +380,9 @@ export type CallResponse<TResult = unknown> = {
  */
 export type Duration = `${bigint}${"s" | "m" | "h" | "d"}`;
 
+/**
+ * @see node_modules/@upstash/workflow/docs/steps/waitForEvent.mdx
+ */
 export interface WaitEventOptions {
   /**
    * Duration in seconds to wait for an event before timing out the workflow.
@@ -382,6 +393,9 @@ export interface WaitEventOptions {
   timeout?: number | Duration;
 }
 
+/**
+ * @see node_modules/@upstash/workflow/docs/steps/call.mdx
+ */
 export type CallSettings = {
   url: string;
   method?: HTTPMethods;
@@ -389,6 +403,12 @@ export type CallSettings = {
   headers?: Record<string, string>;
   retries?: number;
   retryDelay?: string;
+  /**
+   * Max time to wait for the endpoint to respond. Pass a duration string such as "10s".
+   * A number is sent without a unit and QStash rejects the step ("missing unit in
+   * duration"), which stops the run with only a "Tried to append to a cancelled workflow"
+   * warning.
+   */
   timeout?: Duration | number;
   flowControl?: FlowControl;
 };

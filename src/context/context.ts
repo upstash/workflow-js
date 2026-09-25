@@ -34,6 +34,15 @@ import { validateFlowControl, validateLabel } from "../utils";
  * Upstash Workflow context
  *
  * See the docs for fields and methods https://upstash.com/docs/qstash/workflows/basics/context
+ *
+ * Code outside steps runs again on every request of the run. Anything it branches on or
+ * returns early on (Date.now(), database rows, random values) must give the same answer on
+ * every request, or later requests fail with "Incompatible step name" or "Failed to
+ * authenticate Workflow request". Read such values inside `context.run` and branch on its
+ * result.
+ *
+ * @see node_modules/@upstash/workflow/docs/steps.mdx
+ * @see node_modules/@upstash/workflow/docs/basics/caveats.mdx
  */
 export class WorkflowContext<TInitialPayload = unknown> {
   protected readonly executor: AutoExecutor;
@@ -46,8 +55,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * ```ts
    * import { Client } from "@upstash/qstash"
+   * import { serve } from "@upstash/workflow/nextjs"
    *
-   * export const POST = serve(
+   * export const { POST } = serve(
    *   async (context) => {
    *     ...
    *   },
@@ -72,7 +82,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Can be overwritten by passing a `url` parameter in `serve`:
    *
    * ```ts
-   * export const POST = serve(
+   * export const { POST } = serve(
    *   async (context) => {
    *     ...
    *   },
@@ -90,7 +100,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * ```ts
    * // set requestPayload type to MyPayload:
-   * export const POST = serve<MyPayload>(
+   * export const { POST } = serve<MyPayload>(
    *   async (context) => {
    *     ...
    *   }
@@ -102,7 +112,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * the `initialPayloadParser` parameter:
    *
    * ```ts
-   * export const POST = serve<MyPayload>(
+   * export const { POST } = serve<MyPayload>(
    *   async (context) => {
    *     ...
    *   },
@@ -111,6 +121,13 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *   }
    * )
    * ```
+   *
+   * When a `context.call` response comes back, the route runs up to its first step with this
+   * set to the call-result envelope (and `workflowRunId` set to a random id) before the SDK
+   * recognizes the request. Code before the first step must not dereference, validate or
+   * return early on the payload; read it inside `context.run`.
+   *
+   * @see node_modules/@upstash/workflow/docs/basics/serve/advanced.mdx
    */
   public readonly requestPayload: TInitialPayload;
   /**
@@ -123,7 +140,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Can be set using the `env` option of serve:
    *
    * ```ts
-   * export const POST = serve<MyPayload>(
+   * export const { POST } = serve<MyPayload>(
    *   async (context) => {
    *     const key = context.env["API_KEY"];
    *   },
@@ -255,9 +272,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ])
    * ```
    *
+   * Do not wrap steps in try/catch or `.catch` without rethrowing `WorkflowAbort`: each step
+   * throws it to end the request. To stop retrying a failed step, throw
+   * `WorkflowNonRetryableError`.
+   *
    * @param stepName name of the step
    * @param stepFunction step function to be executed
    * @returns result of the step function
+   * @see node_modules/@upstash/workflow/docs/steps/run.mdx
    */
   public async run<TResult>(
     stepName: string,
@@ -276,8 +298,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * ```
    *
    * @param stepName
-   * @param duration sleep duration in seconds
+   * @param duration sleep duration in seconds, or a duration string such as "10m"
    * @returns undefined
+   * @see node_modules/@upstash/workflow/docs/steps/sleep.mdx
    */
   public async sleep(stepName: string, duration: number | Duration): Promise<void> {
     await this.addStep(new LazySleepStep(this, stepName, duration));
@@ -294,6 +317,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param datetime time to sleep until. Can be provided as a number (in unix seconds),
    *   as a Date object or a string (passed to `new Date(datetimeString)`)
    * @returns undefined
+   * @see node_modules/@upstash/workflow/docs/steps/sleepUntil.mdx
    */
   public async sleepUntil(stepName: string, datetime: Date | string | number): Promise<void> {
     let time: number;
@@ -326,6 +350,15 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * not a JSON which can be parsed, simply returns the response
    * body as it is.
    *
+   * The response comes back to this endpoint as a separate request. Before the SDK
+   * recognizes it, your route runs up to its first step with `requestPayload` set to the
+   * call-result envelope and a random `workflowRunId`. Code before the first step must not
+   * dereference, validate or return early on the payload, or look anything up by
+   * `workflowRunId`; do that inside `context.run`.
+   *
+   * Do not wrap steps in try/catch or `.catch` without rethrowing `WorkflowAbort`: each step
+   * throws it to end the request. A non-2xx response is returned, not thrown; check `status`.
+   *
    * @param stepName
    * @param url url to call
    * @param method call method. "GET" by default.
@@ -333,12 +366,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * @param headers call headers
    * @param retries number of call retries. 0 by default
    * @param retryDelay delay / time gap between retries.
-   * @param timeout max duration to wait for the endpoint to respond. in seconds.
+   * @param timeout max duration to wait for the endpoint to respond, as a duration string
+   *   such as "10s". See `CallSettings.timeout`.
    * @returns call result as {
    *     status: number;
    *     body: unknown;
    *     header: Record<string, string[]>
    *   }
+   * @see node_modules/@upstash/workflow/docs/steps/call.mdx
    */
   public async call<TResult = unknown>(
     stepName: string,
@@ -401,7 +436,7 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Pauses workflow execution until a specific event occurs or a timeout is reached.
    *
    *```ts
-   * const result = await workflow.waitForEvent("payment-confirmed", "payment.confirmed", {
+   * const result = await context.waitForEvent("payment-confirmed", "payment.confirmed", {
    *   timeout: "5m"
    * });
    *```
@@ -425,11 +460,14 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * Alternatively, you can use the `context.notify` method.
    *
    * @param stepName
-   * @param eventId - Unique identifier for the event to wait for
+   * @param eventId - Unique identifier for the event to wait for. Only letters, digits,
+   *   "-", "_" and "." are allowed. QStash rejects other characters, such as ":", which
+   *   stops the run with only a "Tried to append to a cancelled workflow" warning.
    * @param options - Configuration options.
    * @returns `{ timeout: boolean, eventData: TEventData }`.
    *   The `timeout` property specifies if the workflow has timed out. The `eventData`
    *   is the data passed when notifying this workflow of an event.
+   * @see node_modules/@upstash/workflow/docs/steps/waitForEvent.mdx
    */
   public async waitForEvent<TEventData = unknown>(
     stepName: string,
@@ -461,19 +499,20 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * a notifyResponse field which contains a list of `Waiter` objects, each corresponding
    * to a notified workflow run.
    *
-   * Optionally, you can pass a workflowRunId to enable lookback functionality:
-   *
-   * ```ts
-   * const { eventId, eventData, notifyResponse } = await context.notify(
-   *   "notify step", "event-id", "event-data", "wfr_123"
-   * );
-   * ```
+   * Lookback, as the docs describe it, does not work (QStash server bug): a notify with
+   * `workflowRunId` sent before the run reaches `waitForEvent` is acknowledged but never
+   * resumes the run. Use a per-run `eventId` and notify only after
+   * `client.getWaiters({ eventId })` returns a waiter. To accept an event that arrives
+   * earlier, store it where the workflow re-checks it in a step before waiting.
    *
    * @param stepName
-   * @param eventId event id to notify
+   * @param eventId event id to notify. Only letters, digits, "-", "_" and "." are allowed.
+   *   QStash rejects other characters, such as ":", which stops the run with only a
+   *   "Tried to append to a cancelled workflow" warning.
    * @param eventData event data to notify with
-   * @param workflowRunId optional workflow run id for lookback support
+   * @param workflowRunId optional workflow run id for lookback, which does not work (see above)
    * @returns notify response which has event id, event data and list of waiters which were notified
+   * @see node_modules/@upstash/workflow/docs/steps/notify.mdx
    */
   public async notify(
     stepName: string,
@@ -486,6 +525,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
     );
   }
 
+  /**
+   * Starts another workflow run and waits for its result.
+   *
+   * @see node_modules/@upstash/workflow/docs/steps/invoke.mdx
+   */
   public async invoke<TInitialPayload, TResult>(
     stepName: string,
     settings: LazyInvokeStepParams<TInitialPayload, TResult>
@@ -497,10 +541,16 @@ export class WorkflowContext<TInitialPayload = unknown> {
     );
   }
 
+  /**
+   * @see node_modules/@upstash/workflow/docs/steps/createWebhook.mdx
+   */
   public async createWebhook(stepName: string): Promise<Webhook> {
     return await this.addStep(new LazyCreateWebhookStep(this, stepName));
   }
 
+  /**
+   * @see node_modules/@upstash/workflow/docs/steps/waitForWebhook.mdx
+   */
   public async waitForWebhook(
     stepName: string,
     webhook: Webhook,
@@ -514,6 +564,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * Will throw WorkflowCancelAbort to stop workflow execution.
    * Shouldn't be inside try/catch.
+   *
+   * @see node_modules/@upstash/workflow/docs/steps/cancel.mdx
    */
   public async cancel() {
     // throw an abort which will make the workflow cancel
@@ -535,6 +587,11 @@ export class WorkflowContext<TInitialPayload = unknown> {
     }
   }
 
+  /**
+   * Calls OpenAI, Anthropic or Resend through QStash, like `context.call`.
+   *
+   * @see node_modules/@upstash/workflow/docs/steps/api.mdx
+   */
   public get api() {
     return new WorkflowApi({
       context: this,
