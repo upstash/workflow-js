@@ -129,6 +129,8 @@ export class Client {
    *   QStash rejects other characters, such as ":".
    * @param eventData data to provide to the workflow
    * @param workflowRunId optional workflow run id for lookback, which does not work (see above)
+   * @returns the notified waiters. With `workflowRunId`, QStash returns a single object
+   *   instead of an array, despite the type.
    * @see node_modules/@upstash/workflow/docs/basics/client/notify.mdx
    */
   public async notify({

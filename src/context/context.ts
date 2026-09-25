@@ -348,7 +348,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * tries to parse the result of the request as JSON. If it's
    * not a JSON which can be parsed, simply returns the response
-   * body as it is.
+   * body as it is. This applies to text/plain too: "42" comes back as the number 42,
+   * "3.10" as 3.1 and "null" as null. To keep text exact, use fetch inside `context.run`.
    *
    * The response comes back to this endpoint as a separate request. Before the SDK
    * recognizes it, your route runs up to its first step with `requestPayload` set to the
