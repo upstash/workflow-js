@@ -121,10 +121,12 @@ export class Client {
    *
    * Lookback, as the docs describe it, does not work (QStash server bug): a notify with
    * `workflowRunId` sent before the run reaches `waitForEvent` is acknowledged but never
-   * resumes the run. Instead, store the event where the workflow re-checks it in a step
-   * before waiting, then notify with a per-run `eventId` and no `workflowRunId` once
-   * `getWaiters({ eventId })` returns a waiter. No waiter appears if the workflow
-   * already read the stored event, so do not hold a request open on that poll.
+   * resumes the run. Instead, store the event, then notify with a per-run `eventId` and no
+   * `workflowRunId`. In the workflow, re-check the stored event in a step before waiting,
+   * and wait with a short `timeout`: on timeout, re-check in a step and wait again (put the
+   * loop index in the step names). An event that lands between the check and the wait is
+   * then picked up on the next check. Polling `getWaiters` before notifying also works, but
+   * a bounded poll gives up if the run is slow to reach the wait.
    *
    * @param eventId event id to notify. Only letters, digits, "-", "_" and "." are allowed;
    *   QStash rejects other characters, such as ":".
@@ -348,7 +350,7 @@ export class Client {
   }
 
   /**
-   * @see node_modules/@upstash/workflow/docs/basics/client/dlq/list.mdx
+   * @see node_modules/@upstash/workflow/docs/features/dlq.mdx
    */
   get dlq() {
     return new DLQ(this.client);

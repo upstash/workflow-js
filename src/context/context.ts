@@ -504,10 +504,12 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * Lookback, as the docs describe it, does not work (QStash server bug): a notify with
    * `workflowRunId` sent before the run reaches `waitForEvent` is acknowledged but never
-   * resumes the run. Instead, store the event where the workflow re-checks it in a step
-   * before waiting, then notify with a per-run `eventId` and no `workflowRunId` once
-   * `client.getWaiters({ eventId })` returns a waiter. No waiter appears if the workflow
-   * already read the stored event, so do not hold a request open on that poll.
+   * resumes the run. Instead, store the event, then notify with a per-run `eventId` and no
+   * `workflowRunId`. In the workflow, re-check the stored event in a step before waiting,
+   * and wait with a short `timeout`: on timeout, re-check in a step and wait again (put the
+   * loop index in the step names). An event that lands between the check and the wait is
+   * then picked up on the next check. Polling `getWaiters` before notifying also works, but
+   * a bounded poll gives up if the run is slow to reach the wait.
    *
    * @param stepName
    * @param eventId event id to notify. Only letters, digits, "-", "_" and "." are allowed.
@@ -515,7 +517,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *   "Tried to append to a cancelled workflow" warning.
    * @param eventData event data to notify with
    * @param workflowRunId optional workflow run id for lookback, which does not work (see above)
-   * @returns notify response which has event id, event data and list of waiters which were notified
+   * @returns notify response which has event id, event data and list of waiters which were
+   *   notified. With `workflowRunId`, QStash returns `notifyResponse` as a single object instead
+   *   of an array, despite the type.
    * @see node_modules/@upstash/workflow/docs/steps/notify.mdx
    */
   public async notify(
