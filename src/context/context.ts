@@ -315,7 +315,9 @@ export class WorkflowContext<TInitialPayload = unknown> {
    *
    * @param stepName
    * @param datetime time to sleep until. Can be provided as a number (in unix seconds),
-   *   as a Date object or a string (passed to `new Date(datetimeString)`)
+   *   as a Date object or a string (passed to `new Date(datetimeString)`).
+   *   A millisecond timestamp such as `Date.now()` is too far in the future, so QStash
+   *   rejects the step and the run fails. Pass `new Date(ms)` instead.
    * @returns undefined
    * @see node_modules/@upstash/workflow/docs/steps/sleepUntil.mdx
    */
