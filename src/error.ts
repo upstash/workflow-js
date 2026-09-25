@@ -64,6 +64,8 @@ export class WorkflowCancelAbort extends WorkflowAbort {
 
 /**
  * Raised when the workflow is failed due to a non-retryable error
+ *
+ * @see node_modules/@upstash/workflow/docs/features/retries/prevent-retries.mdx
  */
 export class WorkflowNonRetryableError extends WorkflowAbort {
   /**

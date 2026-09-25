@@ -363,9 +363,17 @@ export const serveBase = <
  * Creates an async method that handles incoming requests and runs the provided
  * route function as a workflow.
  *
+ * Code outside steps runs again on every request of the run. Anything it branches on or
+ * returns early on (Date.now(), database rows, random values) must give the same answer on
+ * every request, or later requests fail with "Incompatible step name" or "Failed to
+ * authenticate Workflow request". Read such values inside `context.run` and branch on its
+ * result.
+ *
  * @param routeFunction - A function that uses WorkflowContext as a parameter and runs a workflow.
  * @param options - Options including the client and initialPayloadParser.
  * @returns An async method that consumes incoming requests and runs the workflow.
+ * @see node_modules/@upstash/workflow/docs/basics/serve.mdx
+ * @see node_modules/@upstash/workflow/docs/quickstarts/platforms.mdx
  */
 export const serve = <
   TInitialPayload = unknown,
