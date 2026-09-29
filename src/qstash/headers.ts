@@ -31,6 +31,7 @@ export type WorkflowConfig = {
   workflowRunId: string;
   workflowUrl: string;
   useJSONContent?: boolean;
+  workflowCreatedAt: number;
 };
 
 /**
@@ -132,6 +133,7 @@ class WorkflowHeaders {
     this.headers.rawHeaders = {
       ...this.headers.rawHeaders,
       [WORKFLOW_INIT_HEADER]: this.initHeaderValue,
+      "Workflow-Created-At": String(this.workflowConfig.workflowCreatedAt),
       [WORKFLOW_ID_HEADER]: this.workflowConfig.workflowRunId,
       [WORKFLOW_URL_HEADER]: this.workflowConfig.workflowUrl,
       [WORKFLOW_FEATURE_HEADER]: WORKFLOW_FEATURE_SET,

@@ -545,12 +545,14 @@ describe("Workflow Requests", () => {
 
   describe("getHeaders", () => {
     const workflowRunId = nanoid();
+    const workflowCreatedAt = 1769433002013;
     test("should create headers without step passed", () => {
       const { headers } = getHeaders({
         initHeaderValue: "true",
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowCreatedAt,
           flowControl: {
             key: "initial-key",
             parallelism: 2,
@@ -560,6 +562,7 @@ describe("Workflow Requests", () => {
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
+        "Workflow-Created-At": String(workflowCreatedAt),
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -577,7 +580,7 @@ describe("Workflow Requests", () => {
       const mockContext = new WorkflowContext({
         qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
         workflowRunId: "test-run-id",
-        workflowRunCreatedAt: 0,
+        workflowRunCreatedAt: workflowCreatedAt,
         headers: new Headers() as Headers,
         steps: [],
         url: WORKFLOW_ENDPOINT,
@@ -590,6 +593,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowCreatedAt,
           flowControl: {
             key: "step-key",
             ratePerSecond: 3,
@@ -604,6 +608,7 @@ describe("Workflow Requests", () => {
 
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
+        "Workflow-Created-At": String(workflowCreatedAt),
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -627,7 +632,7 @@ describe("Workflow Requests", () => {
       const mockContext = new WorkflowContext({
         qstashClient: new Client({ baseUrl: MOCK_SERVER_URL, token: "myToken" }),
         workflowRunId,
-        workflowRunCreatedAt: 0,
+        workflowRunCreatedAt: workflowCreatedAt,
         headers: new Headers() as Headers,
         steps: [],
         url: WORKFLOW_ENDPOINT,
@@ -654,6 +659,7 @@ describe("Workflow Requests", () => {
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "false",
+        "Workflow-Created-At": String(workflowCreatedAt),
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "WF_NoDelete,InitialBody",
@@ -689,6 +695,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowCreatedAt,
           failureUrl,
           flowControl: {
             key: "failure-key",
@@ -701,6 +708,7 @@ describe("Workflow Requests", () => {
       });
       expect(headers).toEqual({
         [WORKFLOW_INIT_HEADER]: "true",
+        "Workflow-Created-At": String(workflowCreatedAt),
         [WORKFLOW_ID_HEADER]: workflowRunId,
         [WORKFLOW_URL_HEADER]: WORKFLOW_ENDPOINT,
         [WORKFLOW_FEATURE_HEADER]: "LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig",
@@ -735,7 +743,7 @@ describe("Workflow Requests", () => {
         steps: [],
         url: WORKFLOW_ENDPOINT,
         workflowRunId,
-        workflowRunCreatedAt: 0,
+        workflowRunCreatedAt: workflowCreatedAt,
       });
       const lazyStep = new LazyWaitForEventStep(
         context,
@@ -758,6 +766,7 @@ describe("Workflow Requests", () => {
       });
       expect(headers).toEqual({
         "Upstash-Workflow-Init": "false",
+        "Workflow-Created-At": String(workflowCreatedAt),
         "Upstash-Workflow-RunId": workflowRunId,
         "Upstash-Workflow-Url": WORKFLOW_ENDPOINT,
         [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
@@ -773,6 +782,7 @@ describe("Workflow Requests", () => {
         timeoutUrl: `${MOCK_DESTINATION_HOST}/api`,
         timeoutHeaders: {
           "Upstash-Workflow-Init": ["false"],
+          "Workflow-Created-At": [String(workflowCreatedAt)],
           "Upstash-Workflow-RunId": [workflowRunId],
           "Upstash-Workflow-Url": [WORKFLOW_ENDPOINT],
           [WORKFLOW_FEATURE_HEADER]: ["LazyFetch,InitialBody,WF_DetectTrigger,WF_TriggerOnConfig"],

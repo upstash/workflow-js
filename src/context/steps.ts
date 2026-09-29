@@ -195,6 +195,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
         workflowUrl: context.url,
         useJSONContent: false,
         telemetry,
+        workflowCreatedAt: context.workflowRunCreatedAt,
       },
       invokeCount,
       stepInfo: {
@@ -744,6 +745,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         workflowUrl: context.url,
         telemetry,
         useJSONContent: false,
+        workflowCreatedAt: context.workflowRunCreatedAt,
       },
       invokeCount,
     });
@@ -791,6 +793,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
         failureUrl: newUrl,
         flowControl,
         useJSONContent: workflow.useJSONContent ?? false,
+        workflowCreatedAt: Date.now(),
       },
       invokeCount: invokeCount + 1,
       userHeaders: new Headers(headers) as Headers,

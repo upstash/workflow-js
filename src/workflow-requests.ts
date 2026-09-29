@@ -14,6 +14,7 @@ import {
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
   TELEMETRY_HEADER_SDK,
+  WORKFLOW_CREATED_AT_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
@@ -87,6 +88,7 @@ export const triggerFirstInvocation = async <TInitialPayload>(
           telemetry: telemetry,
           flowControl,
           useJSONContent: useJSONContent ?? false,
+          workflowCreatedAt: workflowContext.workflowRunCreatedAt,
         },
         invokeCount: invokeCount ?? 0,
         userHeaders: workflowContext.headers,
@@ -432,6 +434,7 @@ export const handleThirdPartyCallResult = async ({
       const concurrentString = request.headers.get("Upstash-Workflow-Concurrent");
       const contentType = request.headers.get("Upstash-Workflow-ContentType");
       const invokeCount = request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER);
+      const workflowCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER);
 
       if (
         !(
@@ -464,6 +467,7 @@ export const handleThirdPartyCallResult = async ({
           workflowRunId,
           workflowUrl,
           telemetry,
+          workflowCreatedAt: Number(workflowCreatedAt),
         },
         invokeCount: Number(invokeCount),
       });
