@@ -3,7 +3,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { saveResult } from "app/ci/upstash/redis";
 import { expect, testServe } from "app/ci/utils";
-import { RUNNER_RESULT, TARGET_PAYLOAD, TARGET_RUN_ID, TARGET_STEP_NAMES } from "../constants";
+import { getTargetRunId, RUNNER_RESULT, TARGET_PAYLOAD, TARGET_STEP_NAMES } from "../constants";
 
 /**
  * Starts the target twice with the same workflow run id and the same data, one run
@@ -13,21 +13,14 @@ import { RUNNER_RESULT, TARGET_PAYLOAD, TARGET_RUN_ID, TARGET_STEP_NAMES } from 
 
 const workflowClient = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
 
-// the clocks of QStash and the deployment may differ by a little
-const CLOCK_SKEW_MS = 10_000
-
-const startTarget = async () => {
-  // a run left over from an earlier CI run would make the trigger fail, since the id is taken
-  await workflowClient.cancel(`wfr_${TARGET_RUN_ID}`).catch(() => {})
-
-  const startedAt = Date.now()
+const startTarget = async (targetRunId: string) => {
   const { workflowRunId } = await workflowClient.trigger({
     url: `${TEST_ROUTE_PREFIX}/same-run-id/workflows/target`,
-    workflowRunId: TARGET_RUN_ID,
+    workflowRunId: targetRunId,
     body: TARGET_PAYLOAD,
     retries: 0,
   })
-  return { workflowRunId, startedAt }
+  return workflowRunId
 }
 
 /**
@@ -65,18 +58,21 @@ const checkTargetRun = async (workflowRunId: string, createdAfter: number) => {
 export const { POST, GET } = testServe(
   serve(async (context) => {
 
-    const first = await context.run("start first run", startTarget)
+    const targetRunId = getTargetRunId(context.workflowRunId)
+
+    const first = await context.run("start first run", () => startTarget(targetRunId))
     await context.sleep("wait for first run", 20)
+    // the id is new to this test run, so every run of it is one this test started
     const firstCreatedAt = await context.run("check first run", () =>
-      checkTargetRun(first.workflowRunId, first.startedAt - CLOCK_SKEW_MS)
+      checkTargetRun(first, 0)
     )
 
     // same id, same data: before Upstash-Workflow-CreatedAt, this run was deduplicated
-    const second = await context.run("start second run", startTarget)
-    expect(second.workflowRunId, first.workflowRunId)
+    const second = await context.run("start second run", () => startTarget(targetRunId))
+    expect(second, first)
     await context.sleep("wait for second run", 20)
     await context.run("check second run", () =>
-      checkTargetRun(second.workflowRunId, firstCreatedAt)
+      checkTargetRun(second, firstCreatedAt)
     )
 
     await saveResult(context, RUNNER_RESULT)

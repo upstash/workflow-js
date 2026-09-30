@@ -7,17 +7,32 @@
  * against the first run and the second run never finishes.
  */
 
-// hardcoded on purpose: every run of the target (and of its invoked child) has the same id
-export const TARGET_RUN_ID = "same-run-id-target"
-export const CHILD_RUN_ID = "same-run-id-child"
+/**
+ * the run id of the target, the same for both of its runs. it is derived from the run id
+ * of the runner, which is the same in every request of the runner but differs between
+ * test runs, so a test run doesn't see the runs of an earlier one.
+ */
+export const getTargetRunId = (runnerRunId: string) =>
+  `same-run-id-target-${runnerRunId.replace(/^wfr_/, "")}`
+
+/**
+ * ids derived from the run id of the target, so that they are the same for both of its
+ * runs (same data) but differ between test runs.
+ */
+export const getTargetIds = (targetRunId: string) => {
+  const id = targetRunId.replace(/^wfr_/, "")
+  return {
+    childRunId: `${id}-child`,
+    eventId: `${id}-event`,
+    timeoutEventId: `${id}-timeout-event`,
+    nobodyWaitsEventId: `${id}-nobody-waits-event`,
+  }
+}
 
 export const TARGET_PAYLOAD = { input: "same-run-id-input" }
 export const CHILD_PAYLOAD = "same-run-id-child-input"
 export const CHILD_RESULT = `child received ${CHILD_PAYLOAD}`
 
-export const EVENT_ID = "same-run-id-event"
-export const TIMEOUT_EVENT_ID = "same-run-id-timeout-event"
-export const NOBODY_WAITS_EVENT_ID = "same-run-id-nobody-waits-event"
 export const EVENT_DATA = { event: "same-run-id-event-data" }
 export const WEBHOOK_BODY = { webhook: "same-run-id-webhook-body" }
 

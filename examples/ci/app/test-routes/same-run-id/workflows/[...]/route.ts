@@ -6,13 +6,10 @@ import {
   CALL_HEADER_VALUE,
   CHILD_PAYLOAD,
   CHILD_RESULT,
-  CHILD_RUN_ID,
   EVENT_DATA,
-  EVENT_ID,
-  NOBODY_WAITS_EVENT_ID,
+  getTargetIds,
   TARGET_LAST_STEP_RESULT,
   TARGET_PAYLOAD,
-  TIMEOUT_EVENT_ID,
   WEBHOOK_BODY,
 } from "../../constants";
 
@@ -35,6 +32,8 @@ const child = createWorkflow(async (context: WorkflowContext<string>) => {
 })
 
 const target = createWorkflow(async (context: WorkflowContext<typeof TARGET_PAYLOAD>) => {
+  const { childRunId, eventId, timeoutEventId, nobodyWaitsEventId } = getTargetIds(context.workflowRunId)
+
   const [one, two] = await Promise.all([
     context.run("parallel run one", () => "one"),
     context.run("parallel run two", () => "two"),
@@ -57,25 +56,25 @@ const target = createWorkflow(async (context: WorkflowContext<typeof TARGET_PAYL
 
   // the run step notifies the wait once QStash has registered it
   const [waitResponse] = await Promise.all([
-    context.waitForEvent("wait for event", EVENT_ID, { timeout: "30s" }),
+    context.waitForEvent("wait for event", eventId, { timeout: "30s" }),
     context.run("notify the waiting step", async () => {
       for (let i = 0; i < 20; i++) {
-        const notified = await workflowClient.notify({ eventId: EVENT_ID, eventData: EVENT_DATA })
+        const notified = await workflowClient.notify({ eventId, eventData: EVENT_DATA })
         if (notified.length > 0) {
           return notified.length
         }
         await new Promise(r => setTimeout(r, 1000))
       }
-      throw new WorkflowNonRetryableError(`nobody was waiting for ${EVENT_ID}`)
+      throw new WorkflowNonRetryableError(`nobody was waiting for ${eventId}`)
     }),
   ])
   expect(waitResponse.timeout, false)
   expect((waitResponse.eventData as typeof EVENT_DATA).event, EVENT_DATA.event)
 
-  const { timeout } = await context.waitForEvent("wait for event to time out", TIMEOUT_EVENT_ID, { timeout: 1 })
+  const { timeout } = await context.waitForEvent("wait for event to time out", timeoutEventId, { timeout: 1 })
   expect(timeout, true)
 
-  const { notifyResponse } = await context.notify("notify", NOBODY_WAITS_EVENT_ID, EVENT_DATA)
+  const { notifyResponse } = await context.notify("notify", nobodyWaitsEventId, EVENT_DATA)
   expect(notifyResponse.length, 0)
 
   const webhook = await context.createWebhook("create webhook")
@@ -97,7 +96,7 @@ const target = createWorkflow(async (context: WorkflowContext<typeof TARGET_PAYL
   const invokeResponse = await context.invoke("invoke", {
     workflow: child,
     body: CHILD_PAYLOAD,
-    workflowRunId: CHILD_RUN_ID,
+    workflowRunId: childRunId,
     retries: 0,
   })
   expect(invokeResponse.isFailed, false)
