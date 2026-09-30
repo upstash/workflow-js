@@ -82,7 +82,8 @@ export const triggerFirstInvocation = async <TInitialPayload>(
           workflowRunId: workflowContext.workflowRunId,
           workflowUrl: workflowContext.url,
           // the run doesn't exist yet, so the trigger time is sent when the creation time
-          // is not known. a retry of this request carries the same value and is deduplicated.
+          // is not known. serve and client.trigger set it on the context already, so a
+          // retry of this request carries the same value and is deduplicated.
           workflowRunCreatedAt: workflowContext.workflowRunCreatedAt || Date.now(),
           failureUrl,
           retries,

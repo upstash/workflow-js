@@ -60,8 +60,8 @@ describe("Upstash-Workflow-CreatedAt", () => {
       expect(headers[WORKFLOW_CREATED_AT_HEADER]).toBe(workflowRunCreatedAt.toString());
     });
 
-    test("should not add the header when the creation time is missing or 0", () => {
-      for (const createdAt of [undefined, 0, Number.NaN]) {
+    test("should not add the header when the creation time is not known", () => {
+      for (const createdAt of [0, Number.NaN]) {
         const { headers } = getHeaders({
           initHeaderValue: "false",
           workflowConfig: {
@@ -354,6 +354,84 @@ describe("Upstash-Workflow-CreatedAt", () => {
           ],
         },
       });
+    });
+
+    test("should give a first invocation the trigger time and send it with the trigger", async () => {
+      // a first invocation which doesn't come from QStash has no run yet. the route function
+      // (run until the first step for authorization) sees the same value that the trigger sends.
+      const triggerTime = 1_790_000_000_555;
+      const dateNow = spyOn(Date, "now").mockReturnValue(triggerTime);
+      let seenCreatedAt: number | undefined;
+      const { handler: firstInvocationHandler } = serve(
+        async (context) => {
+          seenCreatedAt = context.workflowRunCreatedAt;
+          await context.run("step", () => "result");
+        },
+        { qstashClient, receiver: undefined }
+      );
+
+      try {
+        await mockQStashServer({
+          execute: async () => {
+            const response = await firstInvocationHandler(
+              new Request(WORKFLOW_ENDPOINT, { method: "POST", body: "initial-payload" })
+            );
+            expect(response.status).toBe(200);
+          },
+          responseFields: { body: [{ messageId: "msgId" }], status: 200 },
+          receivesRequest: {
+            method: "POST",
+            url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+            token,
+            body: [
+              expect.objectContaining({
+                headers: expect.objectContaining({
+                  "upstash-workflow-createdat": triggerTime.toString(),
+                  "upstash-workflow-init": "true",
+                }),
+              }),
+            ],
+          },
+        });
+      } finally {
+        dateNow.mockRestore();
+      }
+      expect(seenCreatedAt).toBe(triggerTime);
+    });
+
+    test("should not make up a creation time for a request of an existing run", async () => {
+      // without the header (e.g. an older QStash), a value made up per request would differ
+      // between the retries of a step and break their deduplication, so nothing is sent.
+      let seenCreatedAt: number | undefined;
+      const { handler: noHeaderHandler } = serve(
+        async (context) => {
+          seenCreatedAt = context.workflowRunCreatedAt;
+          await context.run("step", () => "result");
+        },
+        { qstashClient, receiver: undefined }
+      );
+      const request = getRequest(WORKFLOW_ENDPOINT, `wfr_${nanoid()}`, "initial-payload", []);
+
+      await mockQStashServer({
+        execute: async () => {
+          const response = await noHeaderHandler(request);
+          expect(response.status).toBe(200);
+        },
+        responseFields: { body: [{ messageId: "msgId" }], status: 200 },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/batch`,
+          token,
+          body: [
+            expect.objectContaining({
+              headers: expect.not.objectContaining({
+                "upstash-workflow-createdat": expect.anything(),
+              }),
+            }),
+          ],
+        },
+      });
+      expect(seenCreatedAt).toBe(0);
     });
 
     test("should delete only the run it belongs to when the workflow finishes", async () => {

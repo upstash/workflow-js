@@ -32,9 +32,11 @@ export type WorkflowConfig = {
    * requests of a run are not deduplicated against the requests of a previous
    * run started with the same workflow run id and the same data.
    *
-   * not sent when undefined or 0.
+   * required so that no request of a run can leave it out by accident. 0 means
+   * the creation time is not known (the request didn't carry the header), in
+   * which case the header is not sent.
    */
-  workflowRunCreatedAt?: number;
+  workflowRunCreatedAt: number;
   useJSONContent?: boolean;
 };
 

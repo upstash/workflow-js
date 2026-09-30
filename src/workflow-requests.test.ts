@@ -551,6 +551,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           flowControl: {
             key: "initial-key",
             parallelism: 2,
@@ -590,6 +591,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           flowControl: {
             key: "step-key",
             ratePerSecond: 3,
@@ -689,6 +691,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           failureUrl,
           flowControl: {
             key: "failure-key",
