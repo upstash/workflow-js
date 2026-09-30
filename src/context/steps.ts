@@ -156,6 +156,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
       workflowConfig: {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
+        workflowRunCreatedAt: context.workflowRunCreatedAt,
         useJSONContent: false,
         telemetry,
       },
@@ -696,6 +697,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       workflowConfig: {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
+        workflowRunCreatedAt: context.workflowRunCreatedAt,
         telemetry,
         useJSONContent: false,
       },
@@ -739,6 +741,9 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       workflowConfig: {
         workflowRunId: getWorkflowRunId(workflowRunId),
         workflowUrl: newUrl,
+        // the invoked run doesn't exist yet, so the creation time of the invoker run is sent.
+        // it separates the invocations made by different runs of the invoker.
+        workflowRunCreatedAt: context.workflowRunCreatedAt,
         retries,
         retryDelay,
         telemetry,

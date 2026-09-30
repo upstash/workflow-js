@@ -46,6 +46,7 @@ export const submitParallelSteps = async ({
         workflowConfig: {
           workflowRunId: context.workflowRunId,
           workflowUrl: context.url,
+          workflowRunCreatedAt: context.workflowRunCreatedAt,
           telemetry,
         },
         invokeCount,

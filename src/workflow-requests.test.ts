@@ -131,6 +131,7 @@ describe("Workflow Requests", () => {
               "upstash-method": "POST",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-sdk-version": "1",
