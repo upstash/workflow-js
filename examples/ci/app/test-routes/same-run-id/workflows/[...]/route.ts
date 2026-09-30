@@ -35,12 +35,14 @@ const child = createWorkflow(async (context: WorkflowContext<string>) => {
 })
 
 const target = createWorkflow(async (context: WorkflowContext<typeof TARGET_PAYLOAD>) => {
-  expect(context.requestPayload.input, TARGET_PAYLOAD.input)
-
   const [one, two] = await Promise.all([
     context.run("parallel run one", () => "one"),
     context.run("parallel run two", () => "two"),
   ])
+
+  // checked after the first step: the request delivering a context.call result runs the
+  // route function until the first step to authorize it, and that request has no payload
+  expect(context.requestPayload.input, TARGET_PAYLOAD.input)
 
   await context.sleep("sleep", 1)
   await context.sleepUntil("sleep until", Date.now() / 1000 + 1)
