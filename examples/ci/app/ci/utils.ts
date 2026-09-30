@@ -65,9 +65,12 @@ export const getTestConfig = async (route: string) => {
 export const initiateTest = async (params: Pick<TestConfig, RouteConfigs>) => {
   const randomTestId = nanoid()
   const { route, timeout } = params
-  // a test with a longer timeout waits for its results during the extra time
+  // a test with a longer timeout waits for its results during the extra time. each retry
+  // also waits for a redis call, so a retry is counted as 1.5 intervals. otherwise the
+  // retries outlast the test timeout, and a missing result shows up as a vitest timeout
+  // instead of "no results found".
   const resultRetryCount = timeout
-    ? RETRY_COUNT + Math.floor((timeout - TEST_TIMEOUT_DURATION) / RETRY_INTERVAL_DURATION)
+    ? RETRY_COUNT + Math.floor((timeout - TEST_TIMEOUT_DURATION) / (RETRY_INTERVAL_DURATION * 1.5))
     : undefined
   const { headers, payload, expectedCallCount, expectedResult, triggerConfig, shouldWorkflowStart = true } = await getTestConfig(route)
 
