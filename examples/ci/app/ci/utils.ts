@@ -1,5 +1,5 @@
 import { RouteConfigs, TriggerConfig, type TestConfig } from "./types"
-import { CHECK_WF_AFTER_INIT_DURATION, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "./constants"
+import { CHECK_WF_AFTER_INIT_DURATION, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, RETRY_COUNT, RETRY_INTERVAL_DURATION, TEST_ROUTE_PREFIX, TEST_TIMEOUT_DURATION } from "./constants"
 import { serve } from "@upstash/workflow/nextjs"
 import * as redis from "./upstash/redis"
 import * as qstash from "./upstash/qstash"
@@ -62,9 +62,13 @@ export const getTestConfig = async (route: string) => {
   return testConfig
 }
 
-export const initiateTest = async (params: Pick<TestConfig, "route">) => {
+export const initiateTest = async (params: Pick<TestConfig, RouteConfigs>) => {
   const randomTestId = nanoid()
-  const { route } = params
+  const { route, timeout } = params
+  // a test with a longer timeout waits for its results during the extra time
+  const resultRetryCount = timeout
+    ? RETRY_COUNT + Math.floor((timeout - TEST_TIMEOUT_DURATION) / RETRY_INTERVAL_DURATION)
+    : undefined
   const { headers, payload, expectedCallCount, expectedResult, triggerConfig, shouldWorkflowStart = true } = await getTestConfig(route)
 
   const { workflowRunId } = await qstash.startWorkflow({ route, headers, payload, triggerConfig }, randomTestId)
@@ -73,7 +77,7 @@ export const initiateTest = async (params: Pick<TestConfig, "route">) => {
   await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
   try {
-    await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
+    await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult, resultRetryCount)
   } catch (error) {
     console.error("Test Failed. no results found.")
     throw error
