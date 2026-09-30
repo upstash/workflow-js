@@ -2,7 +2,12 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { Client } from "@upstash/qstash";
 
 import { WorkflowContext } from "./context";
-import { LazyCallStep, LazyFunctionStep, LazyWaitForEventStep } from "./context/steps";
+import {
+  LazyCallStep,
+  LazyFunctionStep,
+  LazyInvokeStep,
+  LazyWaitForEventStep,
+} from "./context/steps";
 import { WORKFLOW_CREATED_AT_HEADER, WORKFLOW_ID_HEADER } from "./constants";
 import { getHeaders } from "./qstash/headers";
 import { submitParallelSteps } from "./qstash/submit-steps";
@@ -102,6 +107,33 @@ describe("Upstash-Workflow-CreatedAt", () => {
       expect(body.timeoutHeaders[WORKFLOW_CREATED_AT_HEADER]).toEqual([
         workflowRunCreatedAt.toString(),
       ]);
+      // QStash reads the timeout headers without canonicalizing the keys
+      expect(body.timeoutHeaders["Upstash-Workflow-Createdat"]).toEqual([
+        workflowRunCreatedAt.toString(),
+      ]);
+    });
+
+    test("should send the creation time with the invoker headers of context.invoke", async () => {
+      const context = getContext(workflowRunCreatedAt);
+      const lazyStep = new LazyInvokeStep(context, "invoke", {
+        workflow: { workflowId: "invoked", useJSONContent: false } as never,
+        body: "invoke-body",
+        workflowRunId: "invoked-run-id",
+      });
+      const step = await lazyStep.getResultStep(1, 1);
+      const { headers } = lazyStep.getHeaders({ context, step, invokeCount: 0 });
+      const body = JSON.parse(lazyStep.getBody({ context, step, headers, invokeCount: 0 })) as {
+        headers: Record<string, string[]>;
+        workflowRunCreatedAt: number;
+      };
+
+      // the invoked run is triggered with the creation time of the invoker run
+      expect(headers[WORKFLOW_CREATED_AT_HEADER]).toBe(workflowRunCreatedAt.toString());
+      expect(body.workflowRunCreatedAt).toBe(workflowRunCreatedAt);
+      // QStash sends the invoke result to the invoker with these headers, and reads them
+      // without canonicalizing the keys, so the canonical key must be there too. Without
+      // it, the invoke result of a run is deduplicated against the one of a previous run.
+      expect(body.headers["Upstash-Workflow-Createdat"]).toEqual([workflowRunCreatedAt.toString()]);
     });
 
     test("should send the creation time with context.call", async () => {
