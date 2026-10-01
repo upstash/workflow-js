@@ -131,6 +131,7 @@ describe("Workflow Requests", () => {
               "upstash-method": "POST",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-sdk-version": "1",
@@ -550,6 +551,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           flowControl: {
             key: "initial-key",
             parallelism: 2,
@@ -589,6 +591,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           flowControl: {
             key: "step-key",
             ratePerSecond: 3,
@@ -688,6 +691,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           failureUrl,
           flowControl: {
             key: "failure-key",

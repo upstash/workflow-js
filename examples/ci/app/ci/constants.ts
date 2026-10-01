@@ -122,6 +122,12 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   },
   {
     route: "retried",
+  },
+  {
+    // starts a workflow using every kind of step twice with the same run id and
+    // the same data, and checks that both runs finish. takes two full runs.
+    route: "same-run-id/runner",
+    timeout: 180_000,
   }
 
   /**

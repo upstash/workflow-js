@@ -13,6 +13,7 @@ import {
   TELEMETRY_HEADER_FRAMEWORK,
   TELEMETRY_HEADER_RUNTIME,
   TELEMETRY_HEADER_SDK,
+  WORKFLOW_CREATED_AT_HEADER,
   WORKFLOW_ID_HEADER,
   WORKFLOW_INVOKE_COUNT_HEADER,
   WORKFLOW_LABEL_HEADER,
@@ -80,6 +81,10 @@ export const triggerFirstInvocation = async <TInitialPayload>(
         workflowConfig: {
           workflowRunId: workflowContext.workflowRunId,
           workflowUrl: workflowContext.url,
+          // the run doesn't exist yet, so the trigger time is sent when the creation time
+          // is not known. serve and client.trigger set it on the context already, so a
+          // retry of this request carries the same value and is deduplicated.
+          workflowRunCreatedAt: workflowContext.workflowRunCreatedAt || Date.now(),
           failureUrl,
           retries,
           retryDelay,
@@ -255,6 +260,11 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     method: "DELETE",
     parseResponseAsJson: false,
     body: JSON.stringify(result),
+    // with the creation time, QStash deletes the run only if it is the same run.
+    // a late delete of a previous run can't delete a new run with the same id.
+    headers: workflowContext.workflowRunCreatedAt
+      ? { [WORKFLOW_CREATED_AT_HEADER]: workflowContext.workflowRunCreatedAt.toString() }
+      : undefined,
   });
   await dispatchDebug?.("onInfo", {
     info: `Workflow run ${workflowContext.workflowRunId} deleted from QStash successfully.`,
@@ -412,6 +422,7 @@ export const handleThirdPartyCallResult = async ({
       const concurrentString = request.headers.get("Upstash-Workflow-Concurrent");
       const contentType = request.headers.get("Upstash-Workflow-ContentType");
       const invokeCount = request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER);
+      const workflowRunCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER);
 
       if (
         !(
@@ -443,6 +454,7 @@ export const handleThirdPartyCallResult = async ({
         workflowConfig: {
           workflowRunId,
           workflowUrl,
+          workflowRunCreatedAt: Number(workflowRunCreatedAt ?? "0"),
           telemetry,
         },
         invokeCount: Number(invokeCount),

@@ -41,12 +41,19 @@ export type TestConfig<TPayload = unknown> = {
    * run trigger config
    */
   triggerConfig?: TriggerConfig
+  /**
+   * duration of the test in milliseconds, for tests which take longer than
+   * the others. the results are waited for during the extra time.
+   *
+   * @default TEST_TIMEOUT_DURATION
+   */
+  timeout?: number
 }
 
 /**
  * configs derived from the test endpoints instead of the constants file
  */
-export type RouteConfigs = "route"
+export type RouteConfigs = "route" | "timeout"
 
 export type RedisResult = {
   /**
