@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 import { GET_HEADER, GET_HEADER_VALUE } from "../constants";
 import { z } from "zod";
@@ -23,6 +23,7 @@ const getHeader = {
 export const { POST, GET } = testServe(
   serve(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
       expect(context.headers.get(testHeader)!, headerValue)
 
       const { body: getResult, header: getHeaders, status: getStatus } = await context.call<string>("get call", {

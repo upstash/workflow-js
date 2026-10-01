@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect, nanoid } from "app/ci/utils";
+import { testServe, expect, nanoid, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { saveResult, checkRedisForResults } from "app/ci/upstash/redis"
 import { NOTIFIER_CALL_COUNT_OVERRIDE, NOTIFIER_RESULT, NOTIFIER_WORKFLOW_ROUTE, NotifierWorkflowConfig, OBJECT_EVENT_DATA, NOTIFIER_SECRET, TEXT_EVENT_DATA, SDK_EVENT_DATA } from "../constants";
 
@@ -11,6 +11,7 @@ const payload = "my-payload"
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
       const input = context.requestPayload;
 
       // TODO: can't check payload here because

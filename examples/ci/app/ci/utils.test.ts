@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { expect as utilsExpect, ANY_STRING } from "./utils"
+import { expect as utilsExpect, ANY_STRING, expectWorkflowRunCreatedAt } from "./utils"
 
 test("expect - basic equality", () => {
   expect(() => utilsExpect("same", "same")).not.toThrow()
@@ -55,4 +55,14 @@ test("expect - non-string types", () => {
   const obj2 = { a: 1 }
   expect(() => utilsExpect(obj1, obj1)).not.toThrow() // Same reference
   expect(() => utilsExpect(obj1, obj2)).toThrow() // Different references
+})
+
+test("expectWorkflowRunCreatedAt", () => {
+  expect(() => expectWorkflowRunCreatedAt({ workflowRunCreatedAt: 1790000000123 })).not.toThrow()
+
+  for (const workflowRunCreatedAt of [0, -1, Number.NaN, undefined, "1790000000123"]) {
+    expect(() =>
+      expectWorkflowRunCreatedAt({ workflowRunCreatedAt } as unknown as { workflowRunCreatedAt: number })
+    ).toThrow("context.workflowRunCreatedAt should be a positive number.")
+  }
 })

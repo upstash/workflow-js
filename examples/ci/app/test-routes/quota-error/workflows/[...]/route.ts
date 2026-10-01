@@ -2,7 +2,7 @@ import { Client, StepError, WorkflowContext, WorkflowNonRetryableError } from "@
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants";
 import { fail, saveResult } from "app/ci/upstash/redis";
-import { expect, testServe } from "app/ci/utils";
+import { expect, testServe, expectWorkflowRunCreatedAt } from "app/ci/utils";
 
 const testHeader = "test-header-quota-error"
 const headerValue = "quota-error-header-value"
@@ -21,6 +21,7 @@ const workflowClient = new Client({
  * Should fail with 412 quota error wrapped in WorkflowNonRetryableError
  */
 const singleCallWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   await context.call("huge retry call", {
     url: "https://mock.httpstatus.io/200",
     method: "GET",
@@ -33,6 +34,7 @@ const singleCallWorkflow = createWorkflow(async (context: WorkflowContext<string
  * Should fail with 412 quota error wrapped in WorkflowNonRetryableError
  */
 const parallelCallWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   await Promise.all([
     context.call("normal call", {
       url: "https://mock.httpstatus.io/200",
@@ -52,6 +54,7 @@ const parallelCallWorkflow = createWorkflow(async (context: WorkflowContext<stri
  * then checks their logs to verify they failed with the right error
  */
 const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   expect(context.headers.get(testHeader)!, headerValue)
 
   // Trigger both sub-workflows using context.call with workflow param

@@ -112,3 +112,18 @@ export const expect = <TObject extends ExpectType = ExpectType>(
     throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected "${expected}"`)
   }
 }
+
+/**
+ * checks that the context carries the creation time of the workflow run.
+ *
+ * the SDK sends it with every request of a run in the Upstash-Workflow-CreatedAt
+ * header, and QStash uses it to tell apart runs started with the same workflow
+ * run id. called at the top of the route functions, before the first step, so
+ * that it is checked in every invocation of the workflow endpoint.
+ */
+export const expectWorkflowRunCreatedAt = (context: { workflowRunCreatedAt: number }) => {
+  const createdAt: unknown = context.workflowRunCreatedAt
+  if (typeof createdAt !== "number" || !Number.isFinite(createdAt) || createdAt <= 0) {
+    throw new Error(`context.workflowRunCreatedAt should be a positive number. Received "${createdAt}"`)
+  }
+}
