@@ -119,6 +119,7 @@ export class DLQ {
    *    - `workflowCreatedAt`: Filter items by workflow creation time.
    *    - `failureFunctionState`: Filter items by failure callback state.
    *    - `label`: Filter items by label.
+   * @see node_modules/@upstash/workflow/docs/basics/client/dlq/list.mdx
    */
   async list(parameters?: { cursor?: string; count?: number; filter?: WorkflowDLQListFilters }) {
     const { cursor, count, filter } = parameters || {};
@@ -161,6 +162,7 @@ export class DLQ {
    *   cursor = result.cursor;
    * } while (cursor);
    * ```
+   * @see node_modules/@upstash/workflow/docs/basics/client/dlq/resume.mdx
    */
   async resume(
     request: string | string[] | WorkflowDLQActionFilters,
@@ -243,6 +245,7 @@ export class DLQ {
    *   cursor = result.cursor;
    * } while (cursor);
    * ```
+   * @see node_modules/@upstash/workflow/docs/basics/client/dlq/restart.mdx
    */
   async restart(
     request: string | string[] | WorkflowDLQActionFilters,
@@ -306,6 +309,7 @@ export class DLQ {
    *
    * @param dlqId - The ID of the DLQ message to retry
    * @returns response with workflow run information
+   * @see node_modules/@upstash/workflow/docs/basics/client/dlq/callback.mdx
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
     assertNonEmptyId(dlqId, "DLQ id");
@@ -360,6 +364,7 @@ export class DLQ {
    *   cursor = result.cursor;
    * } while (cursor);
    * ```
+   * @see node_modules/@upstash/workflow/docs/basics/client/dlq/delete.mdx
    */
   async delete(request: string | string[] | WorkflowDLQActionFilters) {
     if (typeof request === "string" || Array.isArray(request)) {

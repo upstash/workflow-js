@@ -21,9 +21,17 @@ const telemetry: Telemetry = {
  *
  * This wrapper allows you to access both the workflow context and TanStack route context
  *
+ * Code outside steps runs again on every request of the run. Anything it branches on or
+ * returns early on (Date.now(), database rows, random values) must give the same answer on
+ * every request, or later requests fail with "Incompatible step name" or "Failed to
+ * authenticate Workflow request". Read such values inside `context.run` and branch on its
+ * result.
+ *
  * @param routeFunction workflow function that receives both workflow context and TanStack route context
  * @param options workflow options (same as Next.js serve options)
  * @returns handler object with POST method compatible with TanStack Start
+ * @see node_modules/@upstash/workflow/docs/basics/serve.mdx
+ * @see node_modules/@upstash/workflow/docs/quickstarts/tanstack-start.mdx
  */
 export function serve<TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
@@ -49,6 +57,9 @@ export function serve<TInitialPayload = unknown, TResult = unknown>(
   return { POST };
 }
 
+/**
+ * @see node_modules/@upstash/workflow/docs/features/invoke.mdx
+ */
 export const createWorkflow = <TInitialPayload, TResult>(
   ...params: Parameters<typeof serve<TInitialPayload, TResult>>
 ): InvokableWorkflow<TInitialPayload, TResult> => {
@@ -66,6 +77,7 @@ export const createWorkflow = <TInitialPayload, TResult>(
  * @param workflows object containing workflow definitions
  * @param options serve options
  * @returns handler object with POST method
+ * @see node_modules/@upstash/workflow/docs/features/invoke/serveMany.mdx
  */
 export const serveMany = (
   workflows: Parameters<typeof serveManyBase>[0]["workflows"],
