@@ -21,7 +21,7 @@ export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async 
     )
 
     // exit loop if succesfully notified
-    if (notifyResponse) {
+    if (notifyResponse.length > 0) {
       notifiedWithText = true
       break
     }
@@ -45,7 +45,7 @@ export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async 
     )
 
     // exit loop if succesfully notified
-    if (notifyResponse) {
+    if (notifyResponse.length > 0) {
       notifiedWithObject = true
       break
     }
