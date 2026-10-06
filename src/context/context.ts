@@ -458,8 +458,8 @@ export class WorkflowContext<TInitialPayload = unknown> {
    * will receive the given event data and resume execution.
    *
    * The response includes the same eventId and eventData. Additionally, there is
-   * a notifyResponse field which contains a list of `Waiter` objects, each corresponding
-   * to a notified workflow run.
+   * a notifyResponse field which contains a list of `NotifyResponse` objects, each corresponding
+   * to a notified workflow run. The notified `Waiter` is under `notifyResponse[i].waiter`.
    *
    * Optionally, you can pass a workflowRunId to enable lookback functionality:
    *
