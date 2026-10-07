@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { 
   WEBHOOK_TEST_METHOD, 
   WEBHOOK_TEST_BODY, 
@@ -17,6 +17,7 @@ const getResult = "webhook test completed successfully"
 export const { POST, GET } = testServe(
   serve<typeof payload>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
       const input = context.requestPayload;
 
       expect(context.headers.get(header)!, headerValue)

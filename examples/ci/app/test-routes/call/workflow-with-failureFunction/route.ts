@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { fail, saveResult } from "app/ci/upstash/redis"
 import { FAILING_HEADER, FAILING_HEADER_VALUE, PATCH_RESULT } from "../constants";
 import { WorkflowContext } from "@upstash/workflow";
@@ -14,6 +14,7 @@ const thirdPartyEndpoint = `${TEST_ROUTE_PREFIX}/call/third-party`
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
 
       const { body: patchResult, status, header } = await context.call<number>("get call", {
         url: thirdPartyEndpoint,

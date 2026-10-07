@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect, ANY_STRING } from "app/ci/utils";
+import { testServe, expect, ANY_STRING, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { FailureFunctionPayload, WorkflowContext } from "@upstash/workflow";
 import { saveResult } from "app/ci/upstash/redis";
 
@@ -59,6 +59,7 @@ const makeCall = async (
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
 
       expect(context.headers.get(header)!, headerValue)
 
