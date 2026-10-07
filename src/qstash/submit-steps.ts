@@ -50,6 +50,7 @@ export const submitParallelSteps = async ({
         workflowConfig: {
           workflowRunId: context.workflowRunId,
           workflowUrl: context.url,
+          workflowRunCreatedAt: context.workflowRunCreatedAt,
           telemetry,
         },
         invokeCount,
@@ -205,7 +206,8 @@ export const submitStepResult = async ({
  * step collapse into the first — which is what happens when the delivery
  * that published one is retried — while leaving the requests of two
  * different steps distinct. The deduplication hash covers the workflow
- * run id, so runs never collide with each other.
+ * run id and its creation time (`Upstash-Workflow-CreatedAt`), so two runs
+ * never collide with each other, even when they share a run id.
  *
  * @param context workflow context
  * @param lazyStep lazy step whose settings are applied
@@ -233,6 +235,7 @@ export const publishStepConfigRequest = async ({
     initHeaderValue: "false",
     workflowConfig: {
       workflowRunId: context.workflowRunId,
+      workflowRunCreatedAt: context.workflowRunCreatedAt,
       workflowUrl: context.url,
       telemetry,
     },

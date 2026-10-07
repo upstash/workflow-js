@@ -132,6 +132,7 @@ describe("Workflow Requests", () => {
               "upstash-method": "POST",
               "upstash-telemetry-runtime": expect.stringMatching(/bun@/),
               "upstash-telemetry-sdk": expect.stringMatching(/upstash-qstash-js@/),
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": workflowRunId,
               "upstash-workflow-sdk-version": "1",
@@ -551,6 +552,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           flowControl: {
             key: "initial-key",
             parallelism: 2,
@@ -590,6 +592,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           flowControl: {
             key: "step-key",
             ratePerSecond: 3,
@@ -689,6 +692,7 @@ describe("Workflow Requests", () => {
         workflowConfig: {
           workflowRunId,
           workflowUrl: WORKFLOW_ENDPOINT,
+          workflowRunCreatedAt: 0,
           failureUrl,
           flowControl: {
             key: "failure-key",
@@ -991,21 +995,24 @@ describe("Workflow Requests", () => {
     );
 
     test(
-      "should omit the error if the workflow is created with the same id",
+      "should omit the error if the same trigger is retried",
       async () => {
         const workflowRunId = `wfr-${nanoid()}`;
-        const context = new WorkflowContext({
-          qstashClient,
-          workflowRunId: workflowRunId,
-          workflowRunCreatedAt: 0,
-          initialPayload: undefined,
-          headers: new Headers({}) as Headers,
-          steps: [],
-          url: WORKFLOW_ENDPOINT,
-        });
+        // a retry sends the same request, so it carries the same trigger time
+        const triggerTime = Date.now();
+        const getContext = () =>
+          new WorkflowContext({
+            qstashClient,
+            workflowRunId: workflowRunId,
+            workflowRunCreatedAt: triggerTime,
+            initialPayload: undefined,
+            headers: new Headers({}) as Headers,
+            steps: [],
+            url: WORKFLOW_ENDPOINT,
+          });
 
         const resultOne = await triggerFirstInvocation({
-          workflowContext: context,
+          workflowContext: getContext(),
           useJSONContent: false,
         });
         expect(resultOne.isOk()).toBeTrue();
@@ -1014,17 +1021,8 @@ describe("Workflow Requests", () => {
 
         const warnSpy = spyOn(console, "warn");
 
-        const noRetryContext = new WorkflowContext({
-          qstashClient,
-          workflowRunId: workflowRunId,
-          workflowRunCreatedAt: 0,
-          initialPayload: undefined,
-          headers: new Headers({}) as Headers,
-          steps: [],
-          url: WORKFLOW_ENDPOINT,
-        });
         const resultTwo = await triggerFirstInvocation({
-          workflowContext: noRetryContext,
+          workflowContext: getContext(),
           useJSONContent: false,
           middlewareManager: new MiddlewareManager(),
         });
@@ -1039,11 +1037,47 @@ describe("Workflow Requests", () => {
         );
         expect(duplicateWarning).toBeDefined();
 
-        const deleteResult = await triggerWorkflowDelete(context, undefined);
-        expect(deleteResult).toEqual(undefined);
+        // the contexts hold the trigger time, not the creation time of the run, and
+        // QStash ignores a delete whose creation time doesn't match, so cancel by id
+        await workflowClient.cancel([workflowRunId]);
+      },
+      {
+        timeout: 10000,
+      }
+    );
 
-        const deleteResultSecond = await triggerWorkflowDelete(noRetryContext, undefined);
-        expect(deleteResultSecond).toEqual(undefined);
+    test(
+      "should return an error if a new trigger uses the id of a run in progress",
+      async () => {
+        const workflowRunId = `wfr-${nanoid()}`;
+        const getContext = (triggerTime: number) =>
+          new WorkflowContext({
+            qstashClient,
+            workflowRunId: workflowRunId,
+            workflowRunCreatedAt: triggerTime,
+            initialPayload: undefined,
+            headers: new Headers({}) as Headers,
+            steps: [],
+            url: WORKFLOW_ENDPOINT,
+          });
+
+        const resultOne = await triggerFirstInvocation({
+          workflowContext: getContext(Date.now()),
+          useJSONContent: false,
+        });
+        expect(resultOne.isOk()).toBeTrue();
+
+        // a different trigger time makes it a new trigger, not a retry: it isn't
+        // deduplicated, and QStash rejects it because the run id is taken
+        const resultTwo = await triggerFirstInvocation({
+          workflowContext: getContext(Date.now() + 1),
+          useJSONContent: false,
+        });
+        expect(resultTwo.isErr()).toBeTrue();
+        // @ts-expect-error error will exist because of isErr
+        expect(resultTwo.error.message).toContain("a workflow already exists");
+
+        await workflowClient.cancel([workflowRunId]);
       },
       {
         timeout: 10000,

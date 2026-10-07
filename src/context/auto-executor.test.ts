@@ -85,7 +85,11 @@ describe("auto-executor", () => {
     },
   ];
 
-  const getContext = (steps: Step[], effectiveConfig?: EffectiveConfig) => {
+  const getContext = (
+    steps: Step[],
+    effectiveConfig?: EffectiveConfig,
+    workflowRunCreatedAt = 0
+  ) => {
     return new SpyWorkflowContext({
       qstashClient: new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token, enableTelemetry: false }),
       workflowRunId,
@@ -95,7 +99,7 @@ describe("auto-executor", () => {
       effectiveConfig,
       url: WORKFLOW_ENDPOINT,
       invokeCount: 7,
-      workflowRunCreatedAt: 0,
+      workflowRunCreatedAt,
     });
   };
 
@@ -855,6 +859,38 @@ describe("auto-executor", () => {
 
       // the step must not run in an ordinary delivery
       expect(stepExecuted).toBeFalse();
+    });
+
+    test("should send the run's creation time on a step config request", async () => {
+      // QStash includes Upstash-Workflow-CreatedAt in the deduplication key.
+      // Without it, the content based deduplication of a step config request
+      // would collapse it into the request of an earlier run started with the
+      // same run id, and the new run would stall.
+      const workflowRunCreatedAt = 1_759_000_000_000;
+      const context = getContext([initialStep], ordinaryDelivery, workflowRunCreatedAt);
+
+      await mockQStashServer({
+        execute: async () => {
+          const throws = context.run("attemptCharge", () => "result", settings);
+          await expect(throws).rejects.toThrowError(WorkflowAbort);
+        },
+        responseFields: {
+          status: 200,
+          body: { messageId: "msgId" },
+        },
+        receivesRequest: {
+          method: "POST",
+          url: `${MOCK_QSTASH_SERVER_URL}/v2/publish/${WORKFLOW_ENDPOINT}`,
+          token,
+          body: { targetStep: 1, invokeCount: 7 },
+          headers: {
+            "upstash-workflow-calltype": "stepConfig",
+            "upstash-content-based-deduplication": "true",
+            "upstash-workflow-runid": workflowRunId,
+            "upstash-workflow-createdat": String(workflowRunCreatedAt),
+          },
+        },
+      });
     });
 
     test("should surface a failure to publish the step config request", async () => {

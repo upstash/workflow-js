@@ -193,6 +193,7 @@ export abstract class BaseLazyStep<TResult = unknown> {
       workflowConfig: {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
+        workflowRunCreatedAt: context.workflowRunCreatedAt,
         useJSONContent: false,
         telemetry,
       },
@@ -610,6 +611,10 @@ export abstract class LazyWaitEventStep<TResult> extends BaseLazyStep<TResult> {
 
       // note: using WORKFLOW_ID_HEADER doesn't work, because Runid -> RunId:
       "Upstash-Workflow-Runid": [context.workflowRunId],
+      // same for WORKFLOW_CREATED_AT_HEADER, because Createdat -> CreatedAt:
+      ...(context.workflowRunCreatedAt
+        ? { "Upstash-Workflow-Createdat": [context.workflowRunCreatedAt.toString()] }
+        : {}),
       [WORKFLOW_INIT_HEADER]: ["false"],
       [WORKFLOW_URL_HEADER]: [context.url],
       "Upstash-Workflow-CallType": ["step"],
@@ -742,6 +747,7 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       workflowConfig: {
         workflowRunId: context.workflowRunId,
         workflowUrl: context.url,
+        workflowRunCreatedAt: context.workflowRunCreatedAt,
         telemetry,
         useJSONContent: false,
       },
@@ -753,6 +759,13 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
     });
 
     invokerHeaders["Upstash-Workflow-Runid"] = context.workflowRunId;
+    // QStash reads these headers as they are, without canonicalizing the keys, so the
+    // creation time is only found under its canonical key (Createdat, not CreatedAt).
+    // Without it, the invoke result of a run is deduplicated against the invoke result
+    // of a previous run with the same id, and the run never continues.
+    if (context.workflowRunCreatedAt) {
+      invokerHeaders["Upstash-Workflow-Createdat"] = context.workflowRunCreatedAt.toString();
+    }
 
     const request: InvokeWorkflowRequest = {
       body: stringifyBody(this.params.body),
@@ -785,6 +798,9 @@ export class LazyInvokeStep<TResult = unknown, TBody = unknown> extends BaseLazy
       workflowConfig: {
         workflowRunId: getWorkflowRunId(workflowRunId),
         workflowUrl: newUrl,
+        // the invoked run doesn't exist yet, so the creation time of the invoker run is sent.
+        // it separates the invocations made by different runs of the invoker.
+        workflowRunCreatedAt: context.workflowRunCreatedAt,
         retries,
         retryDelay,
         telemetry,

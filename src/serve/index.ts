@@ -194,7 +194,15 @@ export const serveBase = <
     const invokeCount = Number(request.headers.get(WORKFLOW_INVOKE_COUNT_HEADER) ?? "0");
     const retried = Number(request.headers.get(WORKFLOW_RETRIED_HEADER) ?? "0");
     const label = request.headers.get(WORKFLOW_LABEL_HEADER) ?? undefined;
-    const workflowRunCreatedAt = request.headers.get(WORKFLOW_CREATED_AT_HEADER)!;
+    const workflowRunCreatedAtHeader = request.headers.get(WORKFLOW_CREATED_AT_HEADER);
+    // QStash sends the creation time of the run with every request of a run. A first
+    // invocation which doesn't come from QStash has no run yet, so it gets the trigger
+    // time, which triggerFirstInvocation sends as the creation time of the new run.
+    const workflowRunCreatedAt = workflowRunCreatedAtHeader
+      ? Number(workflowRunCreatedAtHeader)
+      : isFirstInvocation
+        ? Date.now()
+        : 0;
 
     // configuration QStash applied to this delivery, which the executor
     // compares a step's own settings against
@@ -216,7 +224,7 @@ export const serveBase = <
       invokeCount,
       label,
       retried,
-      workflowRunCreatedAt: Number(workflowRunCreatedAt),
+      workflowRunCreatedAt,
       middlewareManager,
     });
 

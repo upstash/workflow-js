@@ -6,6 +6,7 @@ import {
   FLOW_CONTROL_VALUE_HEADER,
   RETRIES_HEADER,
   RETRY_DELAY_HEADER,
+  WORKFLOW_CREATED_AT_HEADER,
   WORKFLOW_FAILURE_CALLBACK_HEADER,
   WORKFLOW_FAILURE_HEADER,
   WORKFLOW_FEATURE_HEADER,
@@ -30,6 +31,18 @@ export type WorkflowConfig = {
   telemetry?: Telemetry;
   workflowRunId: string;
   workflowUrl: string;
+  /**
+   * creation time of the workflow run, sent in the `Upstash-Workflow-CreatedAt` header.
+   *
+   * QStash includes it in the deduplication of workflow requests, so that the
+   * requests of a run are not deduplicated against the requests of a previous
+   * run started with the same workflow run id and the same data.
+   *
+   * required so that no request of a run can leave it out by accident. 0 means
+   * the creation time is not known (the request didn't carry the header), in
+   * which case the header is not sent.
+   */
+  workflowRunCreatedAt: number;
   useJSONContent?: boolean;
 };
 
@@ -138,6 +151,11 @@ class WorkflowHeaders {
       [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
       ...(this.workflowConfig.telemetry ? getTelemetryHeaders(this.workflowConfig.telemetry) : {}),
     };
+
+    if (this.workflowConfig.workflowRunCreatedAt) {
+      this.headers.rawHeaders[WORKFLOW_CREATED_AT_HEADER] =
+        this.workflowConfig.workflowRunCreatedAt.toString();
+    }
 
     if (this.stepInfo?.lazyStep.stepType !== "Call") {
       this.headers.rawHeaders[`Upstash-Forward-${WORKFLOW_PROTOCOL_VERSION_HEADER}`] =

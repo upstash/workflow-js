@@ -9,7 +9,7 @@ describe("workflow integration tests", () => {
       async () => {
         await initiateTest(testConfig)
       },
-      TEST_TIMEOUT_DURATION
+      testConfig.timeout ?? TEST_TIMEOUT_DURATION
     )
   });
 })
