@@ -253,6 +253,8 @@ export const publishStepConfigRequest = async ({
     headers: {
       ...headers,
       "Upstash-Workflow-CallType": WORKFLOW_STEP_CONFIG_CALL_TYPE,
+      "Upstash-Forward-Upstash-Workflow-StepId": targetStep.toString(),
+      "Upstash-Forward-Upstash-Workflow-StepName": lazyStep.stepName,
     },
     method: "POST",
     body: { targetStep, invokeCount },

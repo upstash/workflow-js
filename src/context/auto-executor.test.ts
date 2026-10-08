@@ -841,6 +841,8 @@ describe("auto-executor", () => {
           body: { targetStep: 1, invokeCount: 7 },
           headers: {
             "upstash-workflow-calltype": "stepConfig",
+            "upstash-forward-upstash-workflow-stepid": "1",
+            "upstash-forward-upstash-workflow-stepname": "attemptCharge",
             // a retry of the delivery which published this collapses
             // into it rather than publishing a second request
             "upstash-content-based-deduplication": "true",
@@ -1258,6 +1260,8 @@ describe("auto-executor", () => {
           body: { targetStep: 3, invokeCount: 7 },
           headers: {
             "upstash-workflow-calltype": "stepConfig",
+            "upstash-forward-upstash-workflow-stepid": "3",
+            "upstash-forward-upstash-workflow-stepname": "after-parallel",
             "upstash-flow-control-key": "step-flow-key",
           },
         },
