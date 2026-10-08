@@ -13,6 +13,7 @@ import {
   WORKFLOW_URL_HEADER,
 } from "../constants";
 import { upstash } from "@upstash/qstash";
+import { flushPendingStep } from "../workflow-requests";
 
 describe("context tests", () => {
   test("should set label in context and headers", () => {
@@ -192,12 +193,20 @@ describe("context tests", () => {
     });
 
     await mockQStashServer({
-      execute: () => {
-        const throws = () =>
-          context.run("my-step", () => {
-            return "my-result";
-          });
-        expect(throws).toThrowError("Aborting workflow after executing step 'my-step'.");
+      execute: async () => {
+        // the step executes and returns its result; the submission (and
+        // the abort) happen when the pending result is flushed
+        const result = await context.run("my-step", () => {
+          return "my-result";
+        });
+        expect(result).toBe("my-result");
+        const submitted = (await flushPendingStep(context))._unsafeUnwrap();
+        if (submitted.result !== "submitted-step") {
+          throw new Error(`expected the held step to be submitted, got '${submitted.result}'`);
+        }
+        expect(submitted.abort.message).toInclude(
+          "Aborting workflow after executing step 'my-step'."
+        );
       },
       responseFields: {
         status: 200,

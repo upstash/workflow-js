@@ -40,9 +40,12 @@ describe("redis", () => {
       )
     })
 
+    // the call count never matches, so checkRedisForResults would poll for
+    // its full retry budget before reporting the mismatch. One attempt is
+    // enough to reach the assertion it is being tested for.
     test("should throw on mismatching call count", async () => {
       await expect(
-        redis.checkRedisForResults(route, randomId, 123, result)
+        redis.checkRedisForResults(route, randomId, 123, result, 1)
       ).rejects.toThrow(
         `Unexpected value.\n\tReceived "2"\n\tExpected "123"`
       )
@@ -71,7 +74,7 @@ describe("redis", () => {
       await redis.saveResultsWithoutContext(route, randomId, result, override)
 
       await expect(
-        redis.checkRedisForResults(route, randomId, 3, result)
+        redis.checkRedisForResults(route, randomId, 3, result, 1)
       ).rejects.toThrow(
         `Unexpected value.\n\tReceived "-3"\n\tExpected "3"`
       )
