@@ -42,7 +42,7 @@ import { validateFlowControl, validateLabel } from "../utils";
  * result.
  *
  * @see node_modules/@upstash/workflow/docs/steps.mdx
- * @see node_modules/@upstash/workflow/docs/basics/caveats.mdx
+ * @see node_modules/@upstash/workflow/docs/basics/best-practices/business-logic-in-steps.mdx
  */
 export class WorkflowContext<TInitialPayload = unknown> {
   protected readonly executor: AutoExecutor;
