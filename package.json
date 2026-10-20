@@ -6,7 +6,13 @@
   "module": "./index.mjs",
   "types": "./index.d.ts",
   "files": [
-    "./*"
+    "./*",
+    "!src/**/*.test.*",
+    "!src/**/*.test-d.*",
+    "!src/**/*.spec.*",
+    "!src/**/test-utils.*",
+    "!src/**/__tests__/**",
+    "!src/**/__snapshots__/**"
   ],
   "exports": {
     ".": {
@@ -63,12 +69,13 @@
     }
   },
   "scripts": {
-    "build": "tsup && cp README.md ./dist/ && cp package.json ./dist/ && cp LICENSE ./dist/",
+    "build": "tsup && mkdir -p dist/src && cp -R src platforms dist/src/ && cp README.md ./dist/ && cp package.json ./dist/ && cp LICENSE ./dist/",
     "test": "bun test src",
     "fmt": "prettier --write .",
     "lint": "tsc && eslint \"{src,platforms}/**/*.{js,ts,tsx}\"  --quiet --fix",
     "check-exports": "bun run build && cd dist && attw -P",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepack": "giget gh:upstash/docs/workflow docs --force-clean 1>&2"
   },
   "repository": {
     "type": "git",
@@ -98,6 +105,7 @@
     "eslint": "^9.11.1",
     "eslint-plugin-unicorn": "^55.0.0",
     "express": "^5.1.0",
+    "giget": "3.3.1",
     "globals": "^15.10.0",
     "h3": "^1.12.0",
     "hono": "^4.6.20",
@@ -112,7 +120,8 @@
     "@upstash/qstash": "^2.11.3"
   },
   "directories": {
-    "example": "examples"
+    "example": "examples",
+    "doc": "./docs"
   },
   "peerDependencies": {
     "zod": "^3.25.0 || ^4.0.0"

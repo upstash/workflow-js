@@ -10,9 +10,17 @@ import { startDevServer } from "@upstash/qstash";
  *
  * See for options https://upstash.com/docs/qstash/workflows/basics/serve
  *
+ * Code outside steps runs again on every request of the run. Anything it branches on or
+ * returns early on (Date.now(), database rows, random values) must give the same answer on
+ * every request, or later requests fail with "Incompatible step name" or "Failed to
+ * authenticate Workflow request". Read such values inside `context.run` and branch on its
+ * result.
+ *
  * @param routeFunction workflow function
  * @param options workflow options
  * @returns
+ * @see node_modules/@upstash/workflow/docs/basics/serve.mdx
+ * @see node_modules/@upstash/workflow/docs/quickstarts/solidjs.mdx
  */
 export const serve = <TInitialPayload = unknown, TResult = unknown>(
   routeFunction: RouteFunction<TInitialPayload, TResult>,
