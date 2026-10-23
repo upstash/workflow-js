@@ -840,12 +840,12 @@ describe("workflow client", () => {
         const withSuffix = (parts: readonly string[]) => parts.map((p) => `multi-${p}-${suffix}`);
 
         const first = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: withSuffix(labels.first),
           delay: "1m",
         });
         const second = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: withSuffix(labels.second),
           delay: "1m",
         });
@@ -1392,7 +1392,7 @@ describe("workflow client", () => {
         const labelTwo = `log-label-b-${nanoid()}`;
 
         const { workflowRunId } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: [labelOne, labelTwo],
           delay: "1m",
         });
@@ -1436,17 +1436,17 @@ describe("workflow client", () => {
         // run 2: [labelTwo, labelThree]
         // run 3 (control): [labelThree]
         const { workflowRunId: runOneTwo } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: [labelOne, labelTwo],
           delay: "1m",
         });
         const { workflowRunId: runTwoThree } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: [labelTwo, labelThree],
           delay: "1m",
         });
         const { workflowRunId: runThree } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: labelThree,
           delay: "1m",
         });
