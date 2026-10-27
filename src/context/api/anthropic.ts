@@ -30,6 +30,11 @@ type ChatCompletion = {
 };
 
 export class AnthropicAPI extends BaseWorkflowApi {
+  /**
+   * Runs as a `context.call` step, so the `context.call` caveats apply.
+   *
+   * @see node_modules/@upstash/workflow/docs/integrations/anthropic.mdx
+   */
   public async call<TResult = ChatCompletion, TBody = CreateChatCompletion>(
     stepName: string,
     settings: ApiCallSettings<
