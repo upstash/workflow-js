@@ -18,15 +18,13 @@ import { Client } from "@upstash/qstash";
  *
  * Consider an endpoint like this:
  * ```ts
- * export const POST = serve({
- *   routeFunction: context => {
- *     if (context.headers.get("authentication") !== "Bearer secretPassword") {
- *       console.error("Authentication failed.");
- *       return;
- *     }
- *
- *     // ...
+ * export const { POST } = serve(async (context) => {
+ *   if (context.headers.get("authentication") !== "Bearer secretPassword") {
+ *     console.error("Authentication failed.");
+ *     return;
  *   }
+ *
+ *   // ...
  * })
  * ```
  *
