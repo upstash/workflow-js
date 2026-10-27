@@ -2,6 +2,7 @@ import { afterAll, describe, expect, spyOn, test } from "bun:test";
 import { nanoid } from "./utils";
 
 import {
+  flushPendingStep,
   handleThirdPartyCallResult,
   recreateUserHeaders,
   triggerFirstInvocation,
@@ -851,6 +852,11 @@ describe("Workflow Requests", () => {
         const result = await triggerRouteFunction({
           onStep: async () => {
             await context.sleep("sleeping", 10);
+            // the route function ends right after a step, so the held
+            // result is submitted here, as `serve` does
+            const submitted = await flushPendingStep(context);
+            if (submitted.isErr()) throw submitted.error;
+            if (submitted.value.result === "submitted-step") throw submitted.value.abort;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
@@ -901,6 +907,9 @@ describe("Workflow Requests", () => {
         const result = await triggerRouteFunction({
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
+            const submitted = await flushPendingStep(context);
+            if (submitted.isErr()) throw submitted.error;
+            if (submitted.value.result === "submitted-step") throw submitted.value.abort;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
@@ -957,6 +966,9 @@ describe("Workflow Requests", () => {
         const result = await triggerRouteFunction({
           onStep: async () => {
             await Promise.all([context.sleep("sleeping", 10), context.sleep("sleeping", 10)]);
+            const submitted = await flushPendingStep(context);
+            if (submitted.isErr()) throw submitted.error;
+            if (submitted.value.result === "submitted-step") throw submitted.value.abort;
           },
           onCleanup: async () => {
             throw new Error("shouldn't come here.");
