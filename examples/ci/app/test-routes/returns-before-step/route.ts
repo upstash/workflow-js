@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER } from "app/ci/constants";
-import { expect, testServe } from "app/ci/utils";
+import { expect, testServe, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { redis, saveResult, fail } from "app/ci/upstash/redis"
 import { WorkflowContext } from "@upstash/workflow";
 
@@ -9,6 +9,7 @@ const secret = "super-secret-key"
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
 
       const randomId = context.headers.get(CI_RANDOM_ID_HEADER)
       if (!randomId) {

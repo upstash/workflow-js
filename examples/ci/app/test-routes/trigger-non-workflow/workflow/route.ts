@@ -2,7 +2,7 @@ import { serve } from "@upstash/workflow/nextjs";
 import { Client, StepError } from "@upstash/workflow";
 import { BASE_URL } from "app/ci/constants";
 import { saveResult } from "app/ci/upstash/redis";
-import { expect, testServe } from "app/ci/utils";
+import { expect, testServe, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { NON_WORKFLOW_ROUTE_RESPONSE } from "../constants";
 
 const header = `test-header-foo`
@@ -12,6 +12,7 @@ const workflowClient = new Client({ baseUrl: process.env.QSTASH_URL, token: proc
 
 export const { POST, GET } = testServe(
   serve(async (context) => {
+    expectWorkflowRunCreatedAt(context)
 
     const { workflowRunId } = await context.run("trigger non-workflow", async () =>
       workflowClient.trigger({

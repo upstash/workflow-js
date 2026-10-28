@@ -2,7 +2,7 @@ import { WorkflowContext } from "@upstash/workflow";
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { fail, saveResult } from "app/ci/upstash/redis";
-import { expect, nanoid, testServe } from "app/ci/utils";
+import { expect, nanoid, testServe, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { z } from "zod";
 
 const testHeader = `test-header-foo`
@@ -23,6 +23,7 @@ const invokeLabel = "invoke-label"
 const workflowRunIdHeader = "workflow-run-id-header"
 
 const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
+  expectWorkflowRunCreatedAt(context)
   expect(context.headers.get(testHeader), headerValue)
 
   const workflowRunId = await context.run("step 1", async () => {
@@ -88,6 +89,7 @@ const workflowOne = createWorkflow(async (context: WorkflowContext<number>) => {
 })
 
 const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   expect(context.requestPayload, invokePayload)
   expect(context.headers.get(invokeHeader) as string, invokeHeaderValue)
   expect(context.workflowRunId, `wfr_${context.headers.get(workflowRunIdHeader)}`)
@@ -134,6 +136,7 @@ const workflowTwo = createWorkflow(async (context: WorkflowContext<string>) => {
 })
 
 const workflowThree = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   try {
     expect(context.requestPayload, invokePayload)
   } catch {
@@ -143,6 +146,7 @@ const workflowThree = createWorkflow(async (context: WorkflowContext<string>) =>
 })
 
 const workflowFour = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   await context.run("mock", () => {})
 })
 
@@ -157,6 +161,7 @@ const notifiedEventId = "notifiedEvent"
  * calls waitForEvent and checks invokeCount
  */
 const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
+  expectWorkflowRunCreatedAt(context)
   const { timeout } = await context.waitForEvent("timeoutEvent", "timeoutEvent", { timeout: 1 })
   expect(timeout, true)
 
@@ -178,6 +183,7 @@ const branchOne = createWorkflow(async (context: WorkflowContext<number>) => {
  * notifies branhcOne, calls context.call and checks invokeCount
  */
 const branchTwo = createWorkflow(async (context: WorkflowContext<number>) => {
+  expectWorkflowRunCreatedAt(context)
 
   const { status } = await context.call("call", {
     url: thirdPartyEndpoint,

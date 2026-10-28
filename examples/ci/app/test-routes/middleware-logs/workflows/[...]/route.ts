@@ -3,7 +3,7 @@ import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { WorkflowMiddleware, WorkflowNonRetryableError } from "@upstash/workflow";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { redis, saveResult } from "app/ci/upstash/redis";
-import { ANY_STRING, expect, testServe } from "app/ci/utils";
+import { ANY_STRING, expect, testServe, expectWorkflowRunCreatedAt } from "app/ci/utils";
 
 const testHeader = `test-header-middleware`
 const headerValue = `header-middleware-value`
@@ -130,6 +130,7 @@ const redisLoggingMiddleware = new WorkflowMiddleware<unknown, unknown>({
  * Tests context.run and context.sleep steps
  */
 const runAndSleepWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   const result1 = await context.run("run step", async () => {
     return "run-result"
   })
@@ -151,6 +152,7 @@ const runAndSleepWorkflow = createWorkflow(async (context: WorkflowContext<strin
 const calledEndpoint = `${TEST_ROUTE_PREFIX}/middleware-logs/called-endpoint`
 
 const callWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   const { status, body } = await context.call<{ message: string }>("call step", {
     url: calledEndpoint,
     method: "GET",
@@ -170,6 +172,7 @@ const callWorkflow = createWorkflow(async (context: WorkflowContext<string>) => 
  * Tests context.waitForEvent with timeout
  */
 const waitForEventTimeoutWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   const { eventData, timeout } = await context.waitForEvent(
     "wait for event",
     `random-event-never-triggered-${Date.now()}`,
@@ -191,6 +194,7 @@ const waitForEventTimeoutWorkflow = createWorkflow(async (context: WorkflowConte
  * Main workflow that invokes other workflows and checks logs
  */
 const mainWorkflow = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   expect(context.requestPayload, payload)
   expect(context.headers.get(testHeader), headerValue)
 

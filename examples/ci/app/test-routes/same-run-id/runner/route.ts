@@ -2,7 +2,7 @@ import { Client, WorkflowNonRetryableError } from "@upstash/workflow";
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
 import { saveResult } from "app/ci/upstash/redis";
-import { expect, testServe } from "app/ci/utils";
+import { expect, expectWorkflowRunCreatedAt, testServe } from "app/ci/utils";
 import { getTargetRunId, RUNNER_RESULT, TARGET_PAYLOAD, TARGET_STEP_NAMES } from "../constants";
 
 /**
@@ -57,6 +57,7 @@ const checkTargetRun = async (workflowRunId: string, createdAfter: number) => {
 
 export const { POST, GET } = testServe(
   serve(async (context) => {
+    expectWorkflowRunCreatedAt(context)
 
     const targetRunId = getTargetRunId(context.workflowRunId)
 

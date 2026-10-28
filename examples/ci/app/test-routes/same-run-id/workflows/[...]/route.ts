@@ -1,7 +1,7 @@
 import { Client, WorkflowContext, WorkflowNonRetryableError } from "@upstash/workflow";
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { BASE_URL, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { expect } from "app/ci/utils";
+import { expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import {
   CALL_HEADER_VALUE,
   CHILD_PAYLOAD,
@@ -26,12 +26,14 @@ import {
 const workflowClient = new Client({ baseUrl: process.env.QSTASH_URL, token: process.env.QSTASH_TOKEN! })
 
 const child = createWorkflow(async (context: WorkflowContext<string>) => {
+  expectWorkflowRunCreatedAt(context)
   const result = await context.run("child step", () => `child received ${context.requestPayload}`)
   await context.sleep("child sleep", 1)
   return result
 })
 
 const target = createWorkflow(async (context: WorkflowContext<typeof TARGET_PAYLOAD>) => {
+  expectWorkflowRunCreatedAt(context)
   const { childRunId, eventId, timeoutEventId, nobodyWaitsEventId } = getTargetIds(context.workflowRunId)
 
   const [one, two] = await Promise.all([

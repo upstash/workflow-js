@@ -1,7 +1,7 @@
 
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { saveResult, fail } from "app/ci/upstash/redis";
 import { 
   QSTASH_TRIGGER_HEADER, 
@@ -29,6 +29,7 @@ const workflowClient = new Client({
 })
 
 const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof payload>) => {
+  expectWorkflowRunCreatedAt(context)
   const input = context.requestPayload;
 
   expect(context.headers.get(header)!, headerValue)
@@ -184,6 +185,7 @@ const mainWorkflow = createWorkflow(async (context: WorkflowContext<typeof paylo
 })
 
 const webhookWorkflow = createWorkflow(async (context: WorkflowContext<{ webhookUrl: string }>) => {
+  expectWorkflowRunCreatedAt(context)
   const { webhookUrl } = context.requestPayload;
 
   // Verify that we received the webhook URL
