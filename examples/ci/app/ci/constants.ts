@@ -123,6 +123,47 @@ export const TEST_ROUTES: Pick<TestConfig, RouteConfigs>[] = [
   {
     route: "retried",
   },
+
+  /**
+   * STEP-LEVEL FLOW CONTROL
+   *
+   * `context.run(..., ...)`. Each route is triggered once,
+   * as a coordinator workflow which invokes its workers in parallel: the
+   * workers are the concurrency the step-level flow control has to hold back.
+   * The routes differ in what a worker does before the step with settings, which
+   * is what decides how the delivery reaching it was produced.
+   */
+  {
+    // checks that the settings the SDK publishes come back in a form it
+    // recognizes, and that a step with settings costs exactly one extra request
+    route: "flow-control/normalization",
+  },
+  {
+    // the step with settings is the first step of the run
+    route: "flow-control/first-step/workflows/coordinator",
+  },
+  {
+    // the step with settings comes after a context.run step
+    route: "flow-control/step/workflows/coordinator",
+  },
+  {
+    // the step with settings comes after a context.call step
+    route: "flow-control/call/workflows/coordinator",
+  },
+  {
+    // the step with settings comes after a context.invoke step
+    route: "flow-control/invoke/workflows/coordinator",
+  },
+  {
+    // the steps with settings are in a parallel group, in two groups of three
+    // which each share a flow control key
+    route: "flow-control/parallel",
+  },
+  {
+    // the workflow throws right after a step with settings, while its
+    // result is still held
+    route: "flow-control/invoke-failure/workflows/coordinator",
+  },
   {
     // starts a workflow using every kind of step twice with the same run id and
     // the same data, and checks that both runs finish. takes two full runs.
