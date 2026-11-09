@@ -1,5 +1,5 @@
 import { RouteConfigs, TriggerConfig, type TestConfig } from "./types"
-import { CHECK_WF_AFTER_INIT_DURATION, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, TEST_ROUTE_PREFIX } from "./constants"
+import { CHECK_WF_AFTER_INIT_DURATION, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER, RETRY_COUNT, RETRY_INTERVAL_DURATION, TEST_ROUTE_PREFIX, TEST_TIMEOUT_DURATION } from "./constants"
 import { serve } from "@upstash/workflow/nextjs"
 import * as redis from "./upstash/redis"
 import * as qstash from "./upstash/qstash"
@@ -62,9 +62,16 @@ export const getTestConfig = async (route: string) => {
   return testConfig
 }
 
-export const initiateTest = async (params: Pick<TestConfig, "route">) => {
+export const initiateTest = async (params: Pick<TestConfig, RouteConfigs>) => {
   const randomTestId = nanoid()
-  const { route } = params
+  const { route, timeout } = params
+  // a test with a longer timeout waits for its results during the extra time. each retry
+  // also waits for a redis call, so a retry is counted as 1.5 intervals. otherwise the
+  // retries outlast the test timeout, and a missing result shows up as a vitest timeout
+  // instead of "no results found".
+  const resultRetryCount = timeout
+    ? RETRY_COUNT + Math.floor((timeout - TEST_TIMEOUT_DURATION) / (RETRY_INTERVAL_DURATION * 1.5))
+    : undefined
   const { headers, payload, expectedCallCount, expectedResult, triggerConfig, shouldWorkflowStart = true } = await getTestConfig(route)
 
   const { workflowRunId } = await qstash.startWorkflow({ route, headers, payload, triggerConfig }, randomTestId)
@@ -73,7 +80,7 @@ export const initiateTest = async (params: Pick<TestConfig, "route">) => {
   await new Promise(r => setTimeout(r, CHECK_WF_AFTER_INIT_DURATION));
 
   try {
-    await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult)
+    await redis.checkRedisForResults(route, randomTestId, expectedCallCount, expectedResult, resultRetryCount)
   } catch (error) {
     console.error("Test Failed. no results found.")
     throw error
@@ -103,5 +110,20 @@ export const expect = <TObject extends ExpectType = ExpectType>(
 
   if (received !== expected) {
     throw new Error(`Unexpected value.\n\tReceived "${received}"\n\tExpected "${expected}"`)
+  }
+}
+
+/**
+ * checks that the context carries the creation time of the workflow run.
+ *
+ * the SDK sends it with every request of a run in the Upstash-Workflow-CreatedAt
+ * header, and QStash uses it to tell apart runs started with the same workflow
+ * run id. called at the top of the route functions, before the first step, so
+ * that it is checked in every invocation of the workflow endpoint.
+ */
+export const expectWorkflowRunCreatedAt = (context: { workflowRunCreatedAt: number }) => {
+  const createdAt: unknown = context.workflowRunCreatedAt
+  if (typeof createdAt !== "number" || !Number.isFinite(createdAt) || createdAt <= 0) {
+    throw new Error(`context.workflowRunCreatedAt should be a positive number. Received "${createdAt}"`)
   }
 }

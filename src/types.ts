@@ -116,7 +116,7 @@ export type Step<TResult = unknown, TBody = unknown> = {
 export type RawStep = {
   messageId: string;
   body: string; // body is a base64 encoded step or payload
-  callType: "step" | "toCallback" | "fromCallback";
+  callType: "step" | "toCallback" | "fromCallback" | "stepConfig";
 };
 
 export type SyncStepFunction<TResult> = () => TResult;
@@ -177,6 +177,11 @@ export type QStashClientExtraConfig = Omit<
   "baseUrl" | "token"
 >;
 
+/**
+ * Options of `serve`.
+ *
+ * @see node_modules/@upstash/workflow/docs/basics/serve/advanced.mdx
+ */
 export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> = {
   /**
    * QStash client or client configuration
@@ -208,6 +213,7 @@ export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> =
    * @param failStatus error status
    * @param failResponse error message
    * @returns void
+   * @see node_modules/@upstash/workflow/docs/features/failure-callback.mdx
    */
   failureFunction?: (failureData: {
     context: WorkflowContextWithoutMethods<TInitialPayload>;
@@ -246,6 +252,8 @@ export type WorkflowServeOptions<TInitialPayload = unknown, TResult = unknown> =
   disableTelemetry?: boolean;
   /**
    * List of workflow middlewares to use
+   *
+   * @see node_modules/@upstash/workflow/docs/howto/middlewares.mdx
    */
   middlewares?: WorkflowMiddleware<TInitialPayload, TResult>[];
   /**
@@ -372,6 +380,9 @@ export type CallResponse<TResult = unknown> = {
  */
 export type Duration = `${bigint}${"s" | "m" | "h" | "d"}`;
 
+/**
+ * @see node_modules/@upstash/workflow/docs/steps/waitForEvent.mdx
+ */
 export interface WaitEventOptions {
   /**
    * Duration in seconds to wait for an event before timing out the workflow.
@@ -382,6 +393,64 @@ export interface WaitEventOptions {
   timeout?: number | Duration;
 }
 
+/**
+ * Step-level settings which override the workflow run settings
+ * passed in `client.trigger` for the execution of a single step.
+ *
+ * Passed as the third argument of `context.run`:
+ *
+ * ```ts
+ * const result = await context.run(
+ *   "step",
+ *   () => { ... },
+ *   { flowControl: { key: "custom-key", parallelism: 3 }, retries: 5 }
+ * );
+ * ```
+ *
+ * The settings must be applied to the request whose delivery executes
+ * the step:
+ *
+ * - a step running in parallel with others carries its settings on its
+ *   own plan step, whose delivery is what executes the step. No extra
+ *   request is made.
+ * - otherwise, the SDK can only learn about the step once the workflow
+ *   function has been replayed, which happens in a delivery that was
+ *   published before the step was known. So instead of executing the
+ *   step in that delivery, a hidden request carrying the
+ *   settings is published and the step executes when QStash delivers it.
+ *   This costs one extra message and one extra endpoint invocation per
+ *   step which carries settings. QStash hides the request from the
+ *   step logs.
+ */
+export type StepSettings = {
+  /**
+   * Settings for controlling the number of active requests
+   * and number of requests per second with the same key
+   * while executing this step.
+   *
+   * Overrides the flow control settings passed when triggering
+   * the workflow for this step only.
+   */
+  flowControl?: FlowControl;
+  /**
+   * Number of times QStash will retry the delivery which executes
+   * this step.
+   *
+   * Overrides the retries passed when triggering the workflow for
+   * this step only.
+   */
+  retries?: number;
+  /**
+   * Delay between retries of the delivery which executes this step.
+   * Leading and trailing whitespace is trimmed. An empty or whitespace-only
+   * string leaves the workflow run's retry delay unchanged.
+   */
+  retryDelay?: string;
+};
+
+/**
+ * @see node_modules/@upstash/workflow/docs/steps/call.mdx
+ */
 export type CallSettings = {
   url: string;
   method?: HTTPMethods;
@@ -389,6 +458,12 @@ export type CallSettings = {
   headers?: Record<string, string>;
   retries?: number;
   retryDelay?: string;
+  /**
+   * Max time to wait for the endpoint to respond. Pass a duration string such as "10s".
+   * A number is sent without a unit and QStash rejects the step ("missing unit in
+   * duration"), which stops the run with only a "Tried to append to a cancelled workflow"
+   * warning.
+   */
   timeout?: Duration | number;
   flowControl?: FlowControl;
 };

@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 
 const header = `test-header-foo`
@@ -10,6 +10,7 @@ const payload = "my-payload"
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
 
       const input = context.requestPayload;
 

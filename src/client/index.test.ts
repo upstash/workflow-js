@@ -840,12 +840,12 @@ describe("workflow client", () => {
         const withSuffix = (parts: readonly string[]) => parts.map((p) => `multi-${p}-${suffix}`);
 
         const first = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: withSuffix(labels.first),
           delay: "1m",
         });
         const second = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: withSuffix(labels.second),
           delay: "1m",
         });
@@ -969,6 +969,7 @@ describe("workflow client", () => {
               "upstash-method": "POST",
               "upstash-retries": "15",
               "upstash-retry-delay": "1000",
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
               "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
@@ -1051,6 +1052,7 @@ describe("workflow client", () => {
               "upstash-method": "POST",
               "upstash-retries": "15",
               "upstash-retry-delay": "1000",
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
               "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
@@ -1084,6 +1086,7 @@ describe("workflow client", () => {
               "upstash-method": "POST",
               "upstash-retries": "15",
               "upstash-retry-delay": "2000",
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId2}`,
               "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
@@ -1153,6 +1156,7 @@ describe("workflow client", () => {
               "upstash-method": "POST",
               "upstash-retries": "15",
               "upstash-retry-delay": "1000",
+              "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
               "upstash-workflow-init": "true",
               "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
               "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,
@@ -1392,7 +1396,7 @@ describe("workflow client", () => {
         const labelTwo = `log-label-b-${nanoid()}`;
 
         const { workflowRunId } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: [labelOne, labelTwo],
           delay: "1m",
         });
@@ -1436,17 +1440,17 @@ describe("workflow client", () => {
         // run 2: [labelTwo, labelThree]
         // run 3 (control): [labelThree]
         const { workflowRunId: runOneTwo } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: [labelOne, labelTwo],
           delay: "1m",
         });
         const { workflowRunId: runTwoThree } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: [labelTwo, labelThree],
           delay: "1m",
         });
         const { workflowRunId: runThree } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/200",
+          url: "https://httpbin.org/status/200",
           label: labelThree,
           delay: "1m",
         });
@@ -1853,6 +1857,7 @@ describe("workflow client", () => {
               headers: {
                 "upstash-forward-upstash-workflow-sdk-version": "1",
                 "upstash-method": "POST",
+                "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
                 "upstash-workflow-init": "true",
                 "upstash-workflow-runid": `wfr_${myWorkflowRunId}`,
                 "upstash-workflow-url": `${MOCK_DESTINATION_HOST}/api`,

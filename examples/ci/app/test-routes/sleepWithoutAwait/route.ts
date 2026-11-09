@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 
 type Invoice = {
@@ -31,6 +31,7 @@ const attemptCharge = (counter: number) => {
 export const { POST, GET } = testServe(
   serve<Invoice>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
       const invoice = context.requestPayload;
 
       expect(typeof invoice, typeof payload);

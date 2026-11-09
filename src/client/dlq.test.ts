@@ -1149,8 +1149,8 @@ describe("DLQ", () => {
       "should resume all DLQ messages",
       async () => {
         // trigger workflows that will fail and end up in DLQ
-        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
-        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+        await liveClient.trigger({ url: "https://httpbin.org/status/500", retries: 0 });
+        await liveClient.trigger({ url: "https://httpbin.org/status/500", retries: 0 });
 
         // wait for messages to land in DLQ
         await eventually(
@@ -1170,8 +1170,8 @@ describe("DLQ", () => {
     test.skip(
       "should restart all DLQ messages",
       async () => {
-        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
-        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+        await liveClient.trigger({ url: "https://httpbin.org/status/500", retries: 0 });
+        await liveClient.trigger({ url: "https://httpbin.org/status/500", retries: 0 });
 
         await eventually(
           async () => {
@@ -1190,8 +1190,8 @@ describe("DLQ", () => {
     test.skip(
       "should delete all DLQ messages",
       async () => {
-        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
-        await liveClient.trigger({ url: "https://mock.httpstatus.io/500", retries: 0 });
+        await liveClient.trigger({ url: "https://httpbin.org/status/500", retries: 0 });
+        await liveClient.trigger({ url: "https://httpbin.org/status/500", retries: 0 });
 
         await eventually(
           async () => {
@@ -1216,17 +1216,17 @@ describe("DLQ", () => {
 
         // run 1: [labelOne, labelTwo], run 2: [labelTwo, labelThree], run 3: [labelThree]
         const { workflowRunId: runOneTwo } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/500",
+          url: "https://httpbin.org/status/500",
           label: [labelOne, labelTwo],
           retries: 0,
         });
         const { workflowRunId: runTwoThree } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/500",
+          url: "https://httpbin.org/status/500",
           label: [labelTwo, labelThree],
           retries: 0,
         });
         const { workflowRunId: runThree } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/500",
+          url: "https://httpbin.org/status/500",
           label: labelThree,
           retries: 0,
         });
@@ -1276,7 +1276,7 @@ describe("DLQ", () => {
         const labelTwo = `dlq-labels-2-${nanoid()}`;
 
         const { workflowRunId } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/500",
+          url: "https://httpbin.org/status/500",
           label: [labelOne, labelTwo],
           retries: 0,
         });
@@ -1311,8 +1311,8 @@ describe("DLQ", () => {
         // trigger a workflow with a failureUrl that also returns 500
         // so the failure callback itself fails and lands in DLQ
         const { workflowRunId } = await liveClient.trigger({
-          url: "https://mock.httpstatus.io/500",
-          failureUrl: "https://mock.httpstatus.io/500",
+          url: "https://httpbin.org/status/500",
+          failureUrl: "https://httpbin.org/status/500",
           retries: 0,
         });
 

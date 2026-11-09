@@ -1,6 +1,6 @@
 import { serve } from "@upstash/workflow/nextjs";
 import { BASE_URL, WORKFLOW_LABEL_HEADER } from "app/ci/constants";
-import { testServe, expect } from "app/ci/utils";
+import { testServe, expect, expectWorkflowRunCreatedAt } from "app/ci/utils";
 import { saveResult } from "app/ci/upstash/redis"
 import { WorkflowContext } from "@upstash/workflow";
 
@@ -15,6 +15,7 @@ const label = "my-label"
 export const { POST, GET } = testServe(
   serve<string>(
     async (context) => {
+      expectWorkflowRunCreatedAt(context)
       const input = context.requestPayload;
 
       expect(typeof input, typeof payload);

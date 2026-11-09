@@ -1,6 +1,9 @@
 import { WorkflowError } from "../error";
 import { MiddlewareCallbacks, MiddlewareInitCallbacks, MiddlewareParameters } from "./types";
 
+/**
+ * @see node_modules/@upstash/workflow/docs/howto/middlewares.mdx
+ */
 export class WorkflowMiddleware<TInitialPayload = unknown, TResult = unknown> {
   public readonly name: string;
   private initCallbacks?: MiddlewareInitCallbacks<TInitialPayload, TResult>;

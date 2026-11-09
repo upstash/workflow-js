@@ -1,11 +1,13 @@
 import { serve } from '@upstash/workflow/nextjs'
 import { saveResultsWithoutContext } from 'app/ci/upstash/redis'
 import { NOTIFIER_CALL_COUNT_OVERRIDE, NOTIFIER_RESULT, NOTIFIER_WORKFLOW_ROUTE, NotifierWorkflowConfig, OBJECT_EVENT_DATA, TEXT_EVENT_DATA } from '../constants'
+import { expectWorkflowRunCreatedAt } from "app/ci/utils";
 
 const RETRY_COUNT = 3
 const SLEEP_FOR_SEC = 1
 
 export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async (context) => {
+  expectWorkflowRunCreatedAt(context)
 
   let notifiedWithText = false
   for (let i=1; i<=RETRY_COUNT; i+=1) {
@@ -21,7 +23,7 @@ export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async 
     )
 
     // exit loop if succesfully notified
-    if (notifyResponse) {
+    if (notifyResponse.length > 0) {
       notifiedWithText = true
       break
     }
@@ -45,7 +47,7 @@ export const { POST } = serve<Omit<NotifierWorkflowConfig, "sdkEventId">>(async 
     )
 
     // exit loop if succesfully notified
-    if (notifyResponse) {
+    if (notifyResponse.length > 0) {
       notifiedWithObject = true
       break
     }

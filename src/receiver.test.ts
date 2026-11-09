@@ -216,6 +216,7 @@ describe("receiver", () => {
                 "upstash-telemetry-sdk": expect.stringMatching(
                   /@upstash\/workflow@.*upstash-qstash-js@/
                 ),
+                "upstash-workflow-createdat": expect.stringMatching(/^\d+$/),
                 "upstash-workflow-init": "true",
                 "upstash-workflow-runid": expect.any(String),
                 "upstash-workflow-sdk-version": "1",

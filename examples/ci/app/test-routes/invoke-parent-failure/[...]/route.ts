@@ -3,7 +3,7 @@ import { Client, WorkflowContext, WorkflowNonRetryableError } from "@upstash/wor
 import { createWorkflow, serveMany } from "@upstash/workflow/nextjs";
 import { BASE_URL, CI_RANDOM_ID_HEADER, CI_ROUTE_HEADER } from "app/ci/constants";
 import { saveResult } from "app/ci/upstash/redis";
-import { testServe } from "app/ci/utils";
+import { testServe, expectWorkflowRunCreatedAt } from "app/ci/utils";
 
 const client = new Client({
   baseUrl: process.env.QSTASH_URL!,
@@ -14,6 +14,7 @@ const FAILING_STEP_NAME = "failing step"
 const INVOKE_CHILD_STEP_NAME = "invoke child"
 
 const workflow = createWorkflow(async (context: WorkflowContext) => {
+  expectWorkflowRunCreatedAt(context)
   const workflowRunId = await context.run("step 1", async () => {
     console.log("workflow says hi")
     return `workflow-run-id-${(Math.random() * 1000).toFixed(0)}`
@@ -58,6 +59,7 @@ const workflow = createWorkflow(async (context: WorkflowContext) => {
 })
 
 const testWorkflow = createWorkflow(async (context: WorkflowContext) => {
+  expectWorkflowRunCreatedAt(context)
   await Promise.all([
     context.invoke(INVOKE_CHILD_STEP_NAME, {
       workflow: childWorkflow,
@@ -77,6 +79,7 @@ const testWorkflow = createWorkflow(async (context: WorkflowContext) => {
 })
 
 const childWorkflow = createWorkflow(async (context: WorkflowContext) => {
+  expectWorkflowRunCreatedAt(context)
   await context.sleep("sleep 3s", 3)
   await context.run("child step", async () => {
     console.log("child workflow step")

@@ -24,6 +24,8 @@ type ClientConfig = ConstructorParameters<typeof QStashClient>[0];
  * import { Client } from "@upstash/workflow";
  * const client = new Client({ token: "<QSTASH_TOKEN>" })
  * ```
+ *
+ * @see node_modules/@upstash/workflow/docs/basics/client.mdx
  */
 export class Client {
   private client: QStashClient;
@@ -53,6 +55,8 @@ export class Client {
    * ```ts
    * const result = await client.cancel({ all: true, count: 50 });
    * ```
+   *
+   * @see node_modules/@upstash/workflow/docs/basics/client/cancel.mdx
    */
   public async cancel(
     request: string | string[] | WorkflowRunCancelFilters
@@ -115,19 +119,14 @@ export class Client {
    * });
    * ```
    *
-   * Optionally, you can pass a workflowRunId to enable lookback functionality:
-   *
-   * ```ts
-   * await client.notify({
-   *   eventId: "my-event-id",
-   *   eventData: "my-data",
-   *   workflowRunId: "wfr_123" // enables lookback
-   * });
-   * ```
-   *
-   * @param eventId event id to notify
+   * @param eventId event id to notify. Only letters, digits, "-", "_" and "." are allowed;
+   *   QStash rejects other characters, such as ":".
    * @param eventData data to provide to the workflow
-   * @param workflowRunId optional workflow run id for lookback support
+   * @param workflowRunId optional workflow run id for lookback: the event is kept for the run
+   *   even if it has not reached `waitForEvent` yet
+   * @returns the notified waiters. With `workflowRunId`, QStash returns a single object
+   *   instead of an array, despite the type.
+   * @see node_modules/@upstash/workflow/docs/basics/client/notify.mdx
    */
   public async notify({
     eventId,
@@ -154,6 +153,7 @@ export class Client {
    * ```
    *
    * @param eventId event id to check
+   * @see node_modules/@upstash/workflow/docs/basics/client/waiters.mdx
    */
   public async getWaiters({ eventId }: { eventId: string }): Promise<Required<Waiter>[]> {
     return await makeGetWaitersRequest(this.client.http, eventId);
@@ -169,7 +169,7 @@ export class Client {
    *   body: "hello there!",         // Optional body
    *   headers: { ... },             // Optional headers
    *   workflowRunId: "my-workflow", // Optional workflow run ID
-   *   retries: 3                    // Optional retries for the initial request
+   *   retries: 3,                   // Optional retries for each step
    *   retryDelay: "1000"            // Optional retry delay for the delay between retries
    * });
    *
@@ -184,7 +184,7 @@ export class Client {
    *   body: "hello there!",         // Optional body
    *   headers: { ... },             // Optional headers
    *   workflowRunId: "my-workflow", // Optional workflow run ID
-   *   retries: 3                    // Optional retries for the initial request
+   *   retries: 3,                   // Optional retries for each step
    *   retryDelay: "1000"            // Optional retry delay for the delay between retries
    * },
    *   {
@@ -192,7 +192,7 @@ export class Client {
    *   body: "hello world!",           // Optional body
    *   headers: { ... },               // Optional headers
    *   workflowRunId: "my-workflow-2", // Optional workflow run ID
-   *   retries: 5                      // Optional retries for the initial request
+   *   retries: 5,                     // Optional retries for each step
    *   retryDelay: "1000"              // Optional retry delay for the delay between retries
    * },
    * ]);
@@ -211,9 +211,10 @@ export class Client {
    *   you should pass different workflow run ids for different runs.
    *   The final workflowRunId will be `wfr_${workflowRunId}`, in
    *   other words: the workflow run id you pass will be prefixed
-   *   with `wfr_`.
-   * @param retries retry to use in the initial request. in the rest of
-   *   the workflow, `retries` option of the `serve` will be used.
+   *   with `wfr_` (twice if it already starts with `wfr_`). Use the
+   *   returned workflowRunId for notify, cancel and logs.
+   * @param retries number of times each failed step of the run is
+   *   retried. 3 by default.
    * @param retryDelay delay between retries.
    * @param flowControl Settings for controlling the number of active requests
    *   and number of requests per second with the same key.
@@ -221,6 +222,7 @@ export class Client {
    *   execution of the workflow run. The delay is in seconds or can be passed
    *   as a string with a time unit (e.g. "1h", "30m", "15s").
    * @returns workflow run id or an array of workflow run ids
+   * @see node_modules/@upstash/workflow/docs/basics/client/trigger.mdx
    */
 
   public async trigger(params: TriggerOptions): Promise<{ workflowRunId: string }>;
@@ -307,6 +309,8 @@ export class Client {
    *
    * const { runs: nextRuns, cursor: nextCursor } = await client.logs({ cursor, count: 2 });
    * ```
+   *
+   * @see node_modules/@upstash/workflow/docs/basics/client/logs.mdx
    */
   public async logs(params?: {
     cursor?: string;
@@ -337,6 +341,9 @@ export class Client {
     });
   }
 
+  /**
+   * @see node_modules/@upstash/workflow/docs/features/dlq.mdx
+   */
   get dlq() {
     return new DLQ(this.client);
   }

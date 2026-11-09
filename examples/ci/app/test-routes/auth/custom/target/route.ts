@@ -5,6 +5,9 @@ import { nanoid } from "app/ci/utils";
 
 
 export const { POST } = serve(async (context) => {
+  // no expectWorkflowRunCreatedAt here: this endpoint only receives the forged requests
+  // of auth/custom/workflow to check that they are rejected, one of them being a fake
+  // failure callback without the creation time of a run.
   if (context.headers.get("authorization") !== nanoid()) {
     return;
   };

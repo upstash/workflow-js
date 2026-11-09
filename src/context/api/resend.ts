@@ -26,6 +26,11 @@ type SendBatchEmailResponse = {
 };
 
 export class ResendAPI extends BaseWorkflowApi {
+  /**
+   * Runs as a `context.call` step, so the `context.call` caveats apply.
+   *
+   * @see node_modules/@upstash/workflow/docs/integrations/resend.mdx
+   */
   public async call<
     TBatch extends boolean = false,
     TResult = TBatch extends true ? SendBatchEmailResponse : SendEmailResponse,
