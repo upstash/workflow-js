@@ -1,33 +1,36 @@
 {
   "name": "workflow-js",
   "owner": {
-    "name": "Upstash"
+    "name": "Upstash",
+    "url": "https://upstash.com"
   },
-  "description": "Upstash Workflow agent skill",
+  "description": "The Upstash Workflow agent skill for Claude Code",
   "plugins": [
     {
       "name": "workflow-js",
       "displayName": "Upstash Workflow",
-      "description": "Upstash Workflow agent skill for Claude Code",
+      "description": "Guidance for using the Upstash Workflow SDK to define, trigger, and manage durable serverless workflows. Use when creating workflow endpoints, running steps with context, or interacting with the Upstash Workflow client.",
       "source": "./",
       "strict": false,
+      "version": "0.1.1",
       "author": {
         "name": "Upstash",
-        "url": "https://github.com/upstash"
+        "url": "https://upstash.com"
       },
-      "homepage": "https://docs.upstash.com/workflow",
+      "homepage": "https://upstash.com/workflow",
       "repository": "https://github.com/upstash/workflow-js",
       "license": "MIT",
       "keywords": [
         "upstash",
         "workflow",
         "serverless",
-        "typescript"
+        "typescript",
+        "durable",
+        "qstash",
+        "coding-agents"
       ],
       "category": "development",
-      "skills": [
-        "./skills"
-      ]
+      "skills": ["./skills"]
     }
   ]
 }

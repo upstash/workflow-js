@@ -1,28 +1,35 @@
 {
   "name": "workflow-js",
-  "description": "Upstash Workflow agent skill",
+  "version": "0.1.1",
+  "description": "Guidance for using the Upstash Workflow SDK to define, trigger, and manage durable serverless workflows.",
   "author": {
     "name": "Upstash",
-    "url": "https://github.com/upstash"
+    "url": "https://upstash.com"
   },
-  "homepage": "https://docs.upstash.com/workflow",
+  "homepage": "https://upstash.com/workflow",
   "repository": "https://github.com/upstash/workflow-js",
   "license": "MIT",
-  "keywords": [
-    "upstash",
-    "workflow",
-    "serverless",
-    "typescript"
-  ],
-  "skills": [
-    "./skills"
-  ],
+  "keywords": ["upstash", "workflow", "serverless", "typescript", "durable", "qstash"],
+  "skills": ["./skills"],
   "interface": {
     "displayName": "Upstash Workflow",
-    "shortDescription": "Upstash Workflow agent skill",
-    "longDescription": "Agent skill for the Upstash Workflow SDK, installed from the skill already in this repository.",
+    "shortDescription": "Build durable serverless workflows with the Upstash Workflow SDK",
+    "longDescription": "Upstash Workflow lets you write durable, multi-step serverless functions with delivery guarantees, automatic retries, sleeps, and event waits — without managing infrastructure.\n\nThis plugin teaches coding agents how to use the @upstash/workflow SDK: define workflow endpoints with serve, run steps through context (run, sleep, call, waitForEvent, notify, invoke), and manage runs with the Workflow client (trigger, cancel, notify, inspect). Use it when creating workflow endpoints, orchestrating multi-step jobs, adding reliability or flow control, or integrating wait/notify and webhook patterns.\n\nGuidance comes from the skill already in this repository at skills/SKILL.md and its linked docs — one source of truth, not a copy.",
     "developerName": "Upstash",
     "category": "Developer Tools",
-    "websiteURL": "https://docs.upstash.com/workflow"
+    "capabilities": [
+      "Workflow endpoint authoring",
+      "Step and context APIs",
+      "Client trigger and run management"
+    ],
+    "websiteURL": "https://upstash.com/workflow",
+    "defaultPrompt": [
+      "Create a durable Upstash Workflow endpoint with multiple context.run steps",
+      "Trigger a workflow run and wait for an external event before continuing",
+      "Add retries, flow control, and a failure callback to my workflow"
+    ],
+    "brandColor": "#00C98D",
+    "composerIcon": "./assets/logo.svg",
+    "logo": "./assets/logo.svg"
   }
 }
