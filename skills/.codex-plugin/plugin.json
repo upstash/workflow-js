@@ -1,0 +1,28 @@
+{
+  "name": "workflow-js",
+  "description": "Upstash Workflow agent skill",
+  "author": {
+    "name": "Upstash",
+    "url": "https://github.com/upstash"
+  },
+  "homepage": "https://docs.upstash.com/workflow",
+  "repository": "https://github.com/upstash/workflow-js",
+  "license": "MIT",
+  "keywords": [
+    "upstash",
+    "workflow",
+    "serverless",
+    "typescript"
+  ],
+  "skills": [
+    "./"
+  ],
+  "interface": {
+    "displayName": "Upstash Workflow",
+    "shortDescription": "Upstash Workflow agent skill",
+    "longDescription": "Agent skill for the Upstash Workflow SDK, installed from the skill already in this repository.",
+    "developerName": "Upstash",
+    "category": "Developer Tools",
+    "websiteURL": "https://docs.upstash.com/workflow"
+  }
+}

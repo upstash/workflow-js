@@ -1,0 +1,33 @@
+{
+  "name": "workflow-js",
+  "owner": {
+    "name": "Upstash"
+  },
+  "description": "Upstash Workflow agent skill",
+  "plugins": [
+    {
+      "name": "workflow-js",
+      "displayName": "Upstash Workflow",
+      "description": "Upstash Workflow agent skill for Claude Code",
+      "source": "./skills",
+      "strict": false,
+      "author": {
+        "name": "Upstash",
+        "url": "https://github.com/upstash"
+      },
+      "homepage": "https://docs.upstash.com/workflow",
+      "repository": "https://github.com/upstash/workflow-js",
+      "license": "MIT",
+      "keywords": [
+        "upstash",
+        "workflow",
+        "serverless",
+        "typescript"
+      ],
+      "category": "development",
+      "skills": [
+        "./"
+      ]
+    }
+  ]
+}
