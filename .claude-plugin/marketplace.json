@@ -4,7 +4,7 @@
     "name": "Upstash",
     "url": "https://upstash.com"
   },
-  "description": "The Upstash Workflow agent skill for Claude Code",
+  "description": "The Upstash Workflow agent skill",
   "plugins": [
     {
       "name": "workflow-js",
