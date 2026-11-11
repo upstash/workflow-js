@@ -721,6 +721,46 @@ describe("Multi-Region Integration Tests", () => {
     });
   });
 
+  describe("Regional Receivers", () => {
+    test("should return an error for a region which is not configured", async () => {
+      setupEnvironment({
+        QSTASH_REGION: "US_EAST_1",
+        US_EAST_1_QSTASH_URL: MOCK_QSTASH_SERVER_URL,
+        US_EAST_1_QSTASH_TOKEN: "us-token",
+        US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+        US_EAST_1_QSTASH_NEXT_SIGNING_KEY: "us-next-key",
+      });
+
+      let stepRan = false;
+      const routeFunction = async (context: WorkflowContext<{ message: string }>) => {
+        await context.run("step1", () => {
+          stepRan = true;
+        });
+      };
+
+      // receiver is not passed, so it comes from the env variables
+      const { handler } = serve(routeFunction);
+
+      const request = getRequest(
+        WORKFLOW_ENDPOINT,
+        "wfr_other_region_123",
+        { message: "test" },
+        [],
+        {
+          "upstash-region": "EU-CENTRAL-1",
+          "upstash-message-id": "msg_123",
+        }
+      );
+
+      const response = await handler(request);
+      expect(response.status).toBe(500);
+      expect(stepRan).toBeFalse();
+
+      const body = (await response.json()) as { message: string };
+      expect(body.message).toContain("EU_CENTRAL_1_QSTASH_TOKEN");
+    });
+  });
+
   describe("Force Single-Region Mode", () => {
     test("should use single-region mode when client instance is provided", async () => {
       setupEnvironment({
