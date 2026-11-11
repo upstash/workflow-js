@@ -180,6 +180,31 @@ describe("context tests", () => {
     );
   });
 
+  test("should raise when there are nested steps (after an await)", () => {
+    const context = new WorkflowContext({
+      qstashClient,
+      initialPayload: "my-payload",
+      steps: [],
+      url: WORKFLOW_ENDPOINT,
+      headers: new Headers() as Headers,
+      workflowRunId: "wfr-id",
+      workflowRunCreatedAt: 0,
+    });
+
+    const throws = async () => {
+      await context.run("outer step", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        await context.run("inner step", () => {
+          return "result";
+        });
+      });
+    };
+    expect(throws).toThrow(
+      new WorkflowError(
+        "A step can not be run inside another step. Tried to run 'inner step' inside 'outer step'"
+      )
+    );
+  });
   test("should not raise when there are no nested steps", async () => {
     const context = new WorkflowContext({
       qstashClient,
