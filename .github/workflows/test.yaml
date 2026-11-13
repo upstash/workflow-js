@@ -664,8 +664,6 @@ jobs:
       - name: Publish ci version
         run: npm publish --provenance --tag=ci --verbose
         working-directory: ./dist
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # npm can take several minutes to serve a new version after publish, so wait
       # up to 15 minutes. --prefer-online skips npm's local metadata cache, which
