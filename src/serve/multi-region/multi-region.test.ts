@@ -3,7 +3,7 @@
  * Tests credential resolution and region handling.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { Client, Receiver } from "@upstash/qstash";
 import {
   getRegionFromEnvironment,
@@ -11,7 +11,8 @@ import {
   readClientEnvironmentVariables,
   readReceiverEnvironmentVariables,
 } from "./utils";
-import { getQStashHandlerOptions } from "./handlers";
+import { getHandlersForRequest, getQStashHandlerOptions } from "./handlers";
+import { WorkflowError } from "../../error";
 
 // Constructing handler options with QSTASH_DEV=true makes the QStash Client
 // fire a fire-and-forget dev-server spawn, which also latches a process-wide
@@ -442,6 +443,37 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       expect(result.defaultReceiver).toBeUndefined();
     });
 
+    test("should warn if only one of the signing keys is set", () => {
+      const warn = spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const single = getQStashHandlerOptions({
+          environment: createEnvironment({
+            QSTASH_TOKEN: "test-token",
+            QSTASH_CURRENT_SIGNING_KEY: "current-key",
+          }),
+          receiverConfig: "not-set",
+        });
+        expect(single.defaultReceiver).toBeUndefined();
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0][0]).toContain("QSTASH_NEXT_SIGNING_KEY");
+
+        const regional = getQStashHandlerOptions({
+          environment: createEnvironment({
+            QSTASH_REGION: "US_EAST_1",
+            US_EAST_1_QSTASH_URL: "https://us-qstash.upstash.io",
+            US_EAST_1_QSTASH_TOKEN: "us-token",
+            US_EAST_1_QSTASH_NEXT_SIGNING_KEY: "us-next-key",
+          }),
+          receiverConfig: "not-set",
+        });
+        expect(regional.defaultReceiver).toBeUndefined();
+        expect(warn).toHaveBeenCalledTimes(2);
+        expect(warn.mock.calls[1][0]).toContain("US_EAST_1_QSTASH_CURRENT_SIGNING_KEY");
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
     test("should create dev-mode receiver when QSTASH_DEV=true and signing keys are missing", () => {
       const environment = createEnvironment({
         QSTASH_DEV: "true",
@@ -694,5 +726,146 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       expect(http.devMode).toBe(false);
       expect(http.baseUrl).toBe("https://qstash.upstash.io");
     });
+  });
+});
+
+describe("getHandlersForRequest - regional receivers", () => {
+  const body = "body";
+  const encoder = new TextEncoder();
+
+  /**
+   * creates a signature for the body with the given signing key
+   */
+  const sign = async (key: string) => {
+    const bodyHash = Buffer.from(await crypto.subtle.digest("SHA-256", encoder.encode(body)))
+      .toString("base64url")
+      .replaceAll("=", "");
+    const unsigned = [
+      { alg: "HS256", typ: "JWT" },
+      { iss: "Upstash", sub: "", exp: 9_999_999_999, nbf: 0, body: bodyHash },
+    ]
+      .map((part) => Buffer.from(JSON.stringify(part)).toString("base64url"))
+      .join(".");
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(key),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(unsigned));
+    return `${unsigned}.${Buffer.from(signature).toString("base64url")}`;
+  };
+
+  const US = {
+    US_EAST_1_QSTASH_URL: "https://us-qstash.upstash.io",
+    US_EAST_1_QSTASH_TOKEN: "us-token",
+  };
+  const US_KEYS = {
+    US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+    US_EAST_1_QSTASH_NEXT_SIGNING_KEY: "us-next-key",
+  };
+  const EU = {
+    EU_CENTRAL_1_QSTASH_URL: "https://eu-qstash.upstash.io",
+    EU_CENTRAL_1_QSTASH_TOKEN: "eu-token",
+  };
+  const EU_KEYS = {
+    EU_CENTRAL_1_QSTASH_CURRENT_SIGNING_KEY: "eu-current-key",
+    EU_CENTRAL_1_QSTASH_NEXT_SIGNING_KEY: "eu-next-key",
+  };
+  const DEFAULT = { QSTASH_TOKEN: "default-token" };
+  const DEFAULT_KEYS = {
+    QSTASH_CURRENT_SIGNING_KEY: "default-current-key",
+    QSTASH_NEXT_SIGNING_KEY: "default-next-key",
+  };
+
+  /**
+   * returns the token and the receiver used for each region. default region is US.
+   */
+  const getHandlers = (
+    environment: Record<string, string>,
+    receiverConfig: "not-set" | "set-to-undefined" = "not-set"
+  ) => {
+    const { qstashHandlers } = getQStashHandlerOptions({
+      environment: createEnvironment({ QSTASH_REGION: "US_EAST_1", ...environment }),
+      receiverConfig,
+    });
+    const get = (regionHeader: string) => {
+      const { client, receiver } = getHandlersForRequest(qstashHandlers, regionHeader, false);
+      const { authorization } = client.http as unknown as { authorization: string };
+      return { token: authorization.replace("Bearer ", ""), receiver };
+    };
+    return { us: get("us-east-1"), eu: get("eu-central-1") };
+  };
+
+  test("should use token and signing keys of each region", async () => {
+    const { us, eu } = getHandlers({ ...US, ...US_KEYS, ...EU, ...EU_KEYS });
+
+    expect(us.token).toBe("us-token");
+    expect(eu.token).toBe("eu-token");
+
+    const usSignature = await sign("us-current-key");
+    const euSignature = await sign("eu-current-key");
+    expect(await us.receiver!.verify({ body, signature: usSignature })).toBeTrue();
+    expect(us.receiver!.verify({ body, signature: euSignature })).rejects.toThrow();
+    expect(await eu.receiver!.verify({ body, signature: euSignature })).toBeTrue();
+    expect(eu.receiver!.verify({ body, signature: usSignature })).rejects.toThrow();
+  });
+
+  test("should throw for a region which is not configured", () => {
+    const { qstashHandlers } = getQStashHandlerOptions({
+      environment: createEnvironment({ QSTASH_REGION: "US_EAST_1", ...US, ...US_KEYS }),
+      receiverConfig: "not-set",
+    });
+
+    expect(getHandlersForRequest(qstashHandlers, "us-east-1", false).receiver).toBeInstanceOf(
+      Receiver
+    );
+    expect(() => getHandlersForRequest(qstashHandlers, "eu-central-1", false)).toThrow(
+      WorkflowError
+    );
+  });
+
+  test("should not use env variables without region prefix", () => {
+    const { us, eu } = getHandlers({ ...US, ...EU, ...DEFAULT, ...DEFAULT_KEYS });
+
+    expect(us.token).toBe("us-token");
+    expect(eu.token).toBe("eu-token");
+    expect(us.receiver).toBeUndefined();
+    expect(eu.receiver).toBeUndefined();
+  });
+
+  test("should throw if only some of the regions have signing keys", () => {
+    expect(() => getHandlers({ ...US, ...US_KEYS, ...EU })).toThrow(WorkflowError);
+    expect(() => getHandlers({ ...US, ...EU, ...EU_KEYS })).toThrow(WorkflowError);
+    expect(() =>
+      getHandlers({
+        ...US,
+        ...US_KEYS,
+        ...EU,
+        EU_CENTRAL_1_QSTASH_CURRENT_SIGNING_KEY: "eu-current-key",
+      })
+    ).toThrow(WorkflowError);
+
+    // signing keys in env aren't used if receiver is set to undefined
+    expect(() => getHandlers({ ...US, ...US_KEYS, ...EU }, "set-to-undefined")).not.toThrow();
+  });
+
+  test("should throw if the default region is not configured", () => {
+    expect(() => getHandlers({ ...EU, ...EU_KEYS })).toThrow(WorkflowError);
+    // env variables without region prefix aren't used in multi-region mode
+    expect(() => getHandlers({ ...DEFAULT, ...DEFAULT_KEYS })).toThrow(WorkflowError);
+  });
+
+  test("should return no receiver when no signing keys are set", () => {
+    const { us, eu } = getHandlers({ ...US, ...EU });
+    expect(us.receiver).toBeUndefined();
+    expect(eu.receiver).toBeUndefined();
+  });
+
+  test("should return no receiver when receiver is set to undefined", () => {
+    const { us, eu } = getHandlers({ ...US, ...US_KEYS, ...EU, ...EU_KEYS }, "set-to-undefined");
+    expect(us.receiver).toBeUndefined();
+    expect(eu.receiver).toBeUndefined();
   });
 });
