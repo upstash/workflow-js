@@ -23,19 +23,34 @@ export const assertNonEmptyId = (id: string, label = "id"): void => {
   }
 };
 
+const DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
+// eslint-disable-next-line no-control-regex
+const WHITESPACE_OR_CONTROL = /[\s\u0000-\u001F\u007F]/g;
+// eslint-disable-next-line no-control-regex
+const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
+
 /**
- * Returns `id` as a single URL path segment.
+ * Checks that `id` can be used as a single URL path segment and returns it
+ * unchanged.
  *
- * Ids are placed in the request path, so characters such as `/`, `?` and `#`
- * have to be percent-encoded to keep the id in its own segment. `.` and `..`
- * are rejected because URL parsing resolves them even when encoded.
+ * Ids are sent as they are, so an id has to stay in its own segment by
+ * itself: `/`, `\`, `?`, `#`, control characters and surrounding whitespace
+ * are not accepted, and neither are `.` and `..`.
  */
 export const toPathSegment = (id: string, label = "id"): string => {
   assertNonEmptyId(id, label);
-  if (id === "." || id === "..") {
+  if (typeof id !== "string") {
+    throw new QstashError(`${label} must be a string`);
+  }
+  if (DOT_SEGMENT.test(id.replaceAll(WHITESPACE_OR_CONTROL, ""))) {
     throw new QstashError(`${label} cannot be "." or ".."`);
   }
-  return encodeURIComponent(id);
+  if (NOT_ALLOWED_IN_SEGMENT.test(id) || id !== id.trim()) {
+    throw new QstashError(
+      `${label} cannot contain "/", "\\", "?", "#" or control characters, or start or end with whitespace`
+    );
+  }
+  return id;
 };
 
 /**

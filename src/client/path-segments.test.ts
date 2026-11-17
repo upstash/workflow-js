@@ -7,63 +7,74 @@ describe("ids in request paths", () => {
   const token = "test-token";
   const client = new Client({ baseUrl: MOCK_QSTASH_SERVER_URL, token });
 
-  test("toPathSegment keeps plain ids unchanged", () => {
-    expect(toPathSegment("wfr_abc-123.x~y")).toBe("wfr_abc-123.x~y");
+  test("toPathSegment keeps ordinary ids unchanged", () => {
+    for (const id of [
+      "wfr_abc-123.x~y",
+      "user:1@example.com+a=b",
+      "order:123",
+      "a,b;c&d$e",
+      "100%",
+      "a b",
+    ]) {
+      expect(toPathSegment(id)).toBe(id);
+    }
   });
 
-  test("toPathSegment encodes separators", () => {
-    expect(toPathSegment("a/b")).toBe("a%2Fb");
-    expect(toPathSegment("../keys")).toBe("..%2Fkeys");
-    expect(toPathSegment("id?x=1#y")).toBe("id%3Fx%3D1%23y");
-    expect(toPathSegment("%2e%2e")).toBe("%252e%252e");
+  test("toPathSegment rejects ids that do not stay in one segment", () => {
+    for (const id of [
+      "a/b",
+      String.raw`a\b`,
+      "a?b",
+      "a#b",
+      "a\tb",
+      "a\nb",
+      " a",
+      "a ",
+      "../keys",
+    ]) {
+      expect(() => toPathSegment(id, "Event id")).toThrow("Event id cannot contain");
+    }
   });
 
-  test("toPathSegment rejects empty and dot ids", () => {
+  test("toPathSegment rejects empty, non-string and dot ids", () => {
     expect(() => toPathSegment("", "Event id")).toThrow("Event id cannot be empty");
-    expect(() => toPathSegment(".", "Event id")).toThrow('Event id cannot be "." or ".."');
-    expect(() => toPathSegment("..", "Event id")).toThrow('Event id cannot be "." or ".."');
+    expect(() => toPathSegment(["a"] as unknown as string, "Event id")).toThrow(
+      "Event id must be a string"
+    );
+    for (const id of [".", "..", "%2e", "%2E%2e", ".%2e", ".\t.", ".. ", " ..", "..\n"]) {
+      expect(() => toPathSegment(id, "Event id")).toThrow('Event id cannot be "." or ".."');
+    }
   });
 
-  test("getWaiters keeps the event id in its own segment", async () => {
+  test("an id with other characters is sent as it is", async () => {
     await mockQStashServer({
       execute: async () => {
-        await client.getWaiters({ eventId: "../keys" });
+        await client.getWaiters({ eventId: "order:123@a+b" });
       },
       responseFields: { status: 200, body: [] },
       receivesRequest: {
         method: "GET",
-        url: `${MOCK_QSTASH_SERVER_URL}/v2/waiters/..%2Fkeys`,
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/waiters/order:123@a+b`,
         token,
       },
     });
   });
 
-  test("notify keeps the event id in its own segment", async () => {
+  test("does not send a request for an id with a path separator", async () => {
     await mockQStashServer({
       execute: async () => {
-        await client.notify({ eventId: "a/../../batch", eventData: "data" });
+        await expect(client.getWaiters({ eventId: "../keys" })).rejects.toThrow(
+          "Event id cannot contain"
+        );
+        await expect(
+          client.notify({ eventId: "a/../../batch", eventData: "data" })
+        ).rejects.toThrow("Event id cannot contain");
+        await expect(client.dlq.cancelFailureFunction({ dlqId: "../../keys" })).rejects.toThrow(
+          "DLQ id cannot contain"
+        );
       },
       responseFields: { status: 200, body: [] },
-      receivesRequest: {
-        method: "POST",
-        url: `${MOCK_QSTASH_SERVER_URL}/v2/notify/a%2F..%2F..%2Fbatch`,
-        token,
-        body: "data",
-      },
-    });
-  });
-
-  test("dlq callback keeps the dlq id in its own segment", async () => {
-    await mockQStashServer({
-      execute: async () => {
-        await client.dlq.cancelFailureFunction({ dlqId: "../../keys" });
-      },
-      responseFields: { status: 200, body: {} },
-      receivesRequest: {
-        method: "DELETE",
-        url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/dlq/callback/..%2F..%2Fkeys`,
-        token,
-      },
+      receivesRequest: false,
     });
   });
 
