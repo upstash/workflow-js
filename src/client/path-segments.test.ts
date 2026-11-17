@@ -2,6 +2,13 @@ import { describe, test, expect } from "bun:test";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
 import { Client } from ".";
 import { toPathSegment } from "./utils";
+import { getWorkflowRunId } from "../utils";
+import { validateRequest } from "../workflow-parser";
+import {
+  WORKFLOW_ID_HEADER,
+  WORKFLOW_PROTOCOL_VERSION,
+  WORKFLOW_PROTOCOL_VERSION_HEADER,
+} from "../constants";
 
 describe("ids in request paths", () => {
   const token = "test-token";
@@ -88,5 +95,24 @@ describe("ids in request paths", () => {
       responseFields: { status: 200, body: [] },
       receivesRequest: false,
     });
+  });
+
+  test("a custom run id has to be a single segment", () => {
+    expect(getWorkflowRunId("order:123")).toBe("wfr_order:123");
+    expect(() => getWorkflowRunId("user/123")).toThrow("Workflow run id cannot contain");
+    expect(() => getWorkflowRunId("..")).toThrow('Workflow run id cannot be "." or ".."');
+  });
+
+  test("a request with a run id that is not a single segment is not processed", () => {
+    for (const runId of ["..", "../../messages", "wfr_x?a=b", String.raw`wfr_x\y`]) {
+      const request = new Request("https://example.com/api/workflow", {
+        method: "POST",
+        headers: {
+          [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+          [WORKFLOW_ID_HEADER]: runId,
+        },
+      });
+      expect(() => validateRequest(request)).toThrow("Workflow run id cannot");
+    }
   });
 });
