@@ -24,6 +24,21 @@ export const assertNonEmptyId = (id: string, label = "id"): void => {
 };
 
 /**
+ * Returns `id` as a single URL path segment.
+ *
+ * Ids are placed in the request path, so characters such as `/`, `?` and `#`
+ * have to be percent-encoded to keep the id in its own segment. `.` and `..`
+ * are rejected because URL parsing resolves them even when encoded.
+ */
+export const toPathSegment = (id: string, label = "id"): string => {
+  assertNonEmptyId(id, label);
+  if (id === "." || id === "..") {
+    throw new QstashError(`${label} cannot be "." or ".."`);
+  }
+  return encodeURIComponent(id);
+};
+
+/**
  * Normalizes a single id or array of ids into an array, asserting that every
  * id in it is non-empty.
  *
@@ -52,12 +67,11 @@ export const makeNotifyRequest = async (
   eventData?: unknown,
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
-  assertNonEmptyId(eventId, "Event id");
-  if (workflowRunId !== undefined) assertNonEmptyId(workflowRunId, "Workflow run id");
+  const eventSegment = toPathSegment(eventId, "Event id");
   const path =
     workflowRunId === undefined
-      ? ["v2", "notify", eventId]
-      : ["v2", "notify", workflowRunId, eventId];
+      ? ["v2", "notify", eventSegment]
+      : ["v2", "notify", toPathSegment(workflowRunId, "Workflow run id"), eventSegment];
 
   const result = (await requester.request({
     path,
@@ -78,9 +92,8 @@ export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string
 ): Promise<Required<Waiter>[]> => {
-  assertNonEmptyId(eventId, "Event id");
   const result = (await requester.request({
-    path: ["v2", "waiters", eventId],
+    path: ["v2", "waiters", toPathSegment(eventId, "Event id")],
     method: "GET",
   })) as Required<Waiter>[];
   return result;
@@ -95,7 +108,8 @@ export const makeGetWaitersRequest = async (
  */
 export const makeCancelRequest = async (requester: Client["http"], workflowRunId: string) => {
   (await requester.request({
-    path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
+    path: ["v2", "workflows", "runs", toPathSegment(workflowRunId, "Workflow run id")],
+    query: { cancel: true },
     method: "DELETE",
     parseResponseAsJson: false,
   })) as undefined;
@@ -122,7 +136,7 @@ export const getSteps = async (
 > => {
   try {
     const steps = (await requester.request({
-      path: ["v2", "workflows", "runs", workflowRunId],
+      path: ["v2", "workflows", "runs", toPathSegment(workflowRunId, "Workflow run id")],
       parseResponseAsJson: true,
     })) as RawStep[];
 

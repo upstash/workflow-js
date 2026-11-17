@@ -30,7 +30,7 @@ import type {
 } from "./types";
 import { StepTypes } from "./types";
 import { PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
-import { getSteps } from "./client/utils";
+import { getSteps, toPathSegment } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
 import { DispatchDebug } from "./middleware/types";
@@ -276,7 +276,13 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
       (cancel ? " with cancel=true." : "."),
   });
   await workflowContext.qstashClient.http.request({
-    path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
+    path: [
+      "v2",
+      "workflows",
+      "runs",
+      toPathSegment(workflowContext.workflowRunId, "Workflow run id"),
+    ],
+    query: { cancel },
     method: "DELETE",
     parseResponseAsJson: false,
     body: JSON.stringify(result),
