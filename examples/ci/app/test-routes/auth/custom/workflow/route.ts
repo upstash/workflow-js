@@ -33,13 +33,13 @@ const makeCall = async (
       status: 200,
       header: "",
       body: "",
-      url: "",
+      url: thirdPartyEndpoint,
       sourceHeader: {
         [CI_ROUTE_HEADER]: [route],
         [CI_RANDOM_ID_HEADER]: [randomId]
       },
       sourceBody: "",
-      workflowRunId: "",
+      workflowRunId: "wfr_forged-run",
       sourceMessageId: "",
     }),
     method,
