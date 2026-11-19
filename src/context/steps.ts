@@ -14,7 +14,7 @@ import type {
   WaitRequest,
   WaitStepResponse,
 } from "../types";
-import { makeNotifyRequest } from "../client/utils";
+import { makeNotifyRequest, toPathSegment } from "../client/utils";
 import type { Duration } from "../types";
 import { WorkflowError } from "../error";
 import {
@@ -640,7 +640,7 @@ export abstract class LazyWaitEventStep<TResult> extends BaseLazyStep<TResult> {
 
   async submitStep({ context, body, headers }: SubmitStepParams) {
     const result = (await context.qstashClient.http.request({
-      path: ["v2", "wait", this.eventId],
+      path: ["v2", "wait", toPathSegment(this.eventId, "Event id")],
       body: body,
       headers,
       method: "POST",
@@ -872,7 +872,7 @@ export class LazyCreateWebhookStep extends BaseLazyStep<Webhook> {
     return JSON.stringify({
       ...step,
       out: JSON.stringify({
-        webhookUrl: `${qstashUrl}/v2/workflows/hooks/${userId}/${workflowRunId}/${eventId}`,
+        webhookUrl: `${qstashUrl}/v2/workflows/hooks/${userId}/${toPathSegment(workflowRunId, "Workflow run id")}/${eventId}`,
         eventId,
       }),
     });

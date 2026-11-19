@@ -1,9 +1,13 @@
 import { Client as QStashClient, QstashError } from "@upstash/qstash";
 import type { FlowControl } from "@upstash/qstash";
 import { isInstanceOf } from "../error";
-import type { DLQResumeRestartOptions, DLQResumeRestartResponse, FailureFunctionState } from "./types";
+import type {
+  DLQResumeRestartOptions,
+  DLQResumeRestartResponse,
+  FailureFunctionState,
+} from "./types";
 import {
-  assertNonEmptyId,
+  toPathSegment,
   buildBulkActionQueryParameters,
   normalizeCursor,
   toNonEmptyIdArray,
@@ -312,9 +316,8 @@ export class DLQ {
    * @see node_modules/@upstash/workflow/docs/basics/client/dlq/callback.mdx
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
-    assertNonEmptyId(dlqId, "DLQ id");
     const response = await this.client.http.request<DLQResumeRestartResponse>({
-      path: ["v2", "workflows", "dlq", "callback", dlqId],
+      path: ["v2", "workflows", "dlq", "callback", toPathSegment(dlqId, "DLQ id")],
       method: "POST",
     });
 
@@ -330,10 +333,9 @@ export class DLQ {
    * @param dlqId - The ID of the DLQ message whose failure function call will be canceled
    */
   async cancelFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
-    assertNonEmptyId(dlqId, "DLQ id");
     try {
       await this.client.http.request({
-        path: ["v2", "workflows", "dlq", "callback", dlqId],
+        path: ["v2", "workflows", "dlq", "callback", toPathSegment(dlqId, "DLQ id")],
         method: "DELETE",
         parseResponseAsJson: false,
       });
