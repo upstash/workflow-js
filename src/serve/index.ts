@@ -114,8 +114,7 @@ export const serveBase = <
     const regionHeader = request.headers.get("upstash-region");
     const { client: regionalClient, receiver: regionalReceiver } = getHandlersForRequest(
       internal.qstashHandlers,
-      regionHeader,
-      isFirstInvocation
+      regionHeader
     );
 
     // get payload as raw string

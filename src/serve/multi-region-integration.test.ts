@@ -721,6 +721,64 @@ describe("Multi-Region Integration Tests", () => {
     });
   });
 
+  describe("Regional Receivers", () => {
+    const sendRequestFromEU = async (environment: Record<string, string>) => {
+      setupEnvironment({
+        QSTASH_REGION: "US_EAST_1",
+        US_EAST_1_QSTASH_URL: MOCK_QSTASH_SERVER_URL,
+        US_EAST_1_QSTASH_TOKEN: "us-token",
+        ...environment,
+      });
+
+      let stepRan = false;
+      const routeFunction = async (context: WorkflowContext<{ message: string }>) => {
+        await context.run("step1", () => {
+          stepRan = true;
+        });
+      };
+
+      // receiver is not passed, so it comes from the env variables
+      const { handler } = serve(routeFunction);
+
+      const request = getRequest(
+        WORKFLOW_ENDPOINT,
+        "wfr_other_region_123",
+        { message: "test" },
+        [],
+        {
+          "upstash-region": "EU-CENTRAL-1",
+          "upstash-message-id": "msg_123",
+          "upstash-signature": "signature",
+        }
+      );
+
+      const response = await handler(request);
+      const body = (await response.json()) as { message: string };
+      return { status: response.status, message: body.message, stepRan };
+    };
+
+    test("should reject requests of a region without signing keys if the other has them", async () => {
+      const { status, message, stepRan } = await sendRequestFromEU({
+        US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+        US_EAST_1_QSTASH_NEXT_SIGNING_KEY: "us-next-key",
+      });
+
+      expect(status).toBe(500);
+      expect(stepRan).toBeFalse();
+      expect(message).toContain("Requests from EU_CENTRAL_1 are rejected.");
+    });
+
+    test("should return an error for a region without a token", async () => {
+      const { status, message, stepRan } = await sendRequestFromEU({});
+
+      expect(status).toBe(500);
+      expect(stepRan).toBeFalse();
+      expect(message).toContain(
+        "Received a request for region EU_CENTRAL_1, but QSTASH_TOKEN is not set."
+      );
+    });
+  });
+
   describe("Force Single-Region Mode", () => {
     test("should use single-region mode when client instance is provided", async () => {
       setupEnvironment({
