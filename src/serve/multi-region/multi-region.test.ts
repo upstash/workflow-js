@@ -826,13 +826,77 @@ describe("getHandlersForRequest - regional receivers", () => {
     );
   });
 
-  test("should not use env variables without region prefix", () => {
-    const { us, eu } = getHandlers({ ...US, ...EU, ...DEFAULT, ...DEFAULT_KEYS });
+  test("should prefer env variables with region prefix", async () => {
+    const { us, eu } = getHandlers({
+      ...US,
+      ...US_KEYS,
+      ...EU,
+      ...EU_KEYS,
+      ...DEFAULT,
+      ...DEFAULT_KEYS,
+    });
 
     expect(us.token).toBe("us-token");
     expect(eu.token).toBe("eu-token");
-    expect(us.receiver).toBeUndefined();
-    expect(eu.receiver).toBeUndefined();
+
+    const defaultSignature = await sign("default-current-key");
+    expect(await us.receiver!.verify({ body, signature: await sign("us-current-key") })).toBeTrue();
+    expect(us.receiver!.verify({ body, signature: defaultSignature })).rejects.toThrow();
+    expect(await eu.receiver!.verify({ body, signature: await sign("eu-current-key") })).toBeTrue();
+    expect(eu.receiver!.verify({ body, signature: defaultSignature })).rejects.toThrow();
+  });
+
+  test("should fall back to signing keys without region prefix", async () => {
+    // tokens have the region prefix, signing keys don't
+    const { us, eu } = getHandlers({ ...US, ...EU, ...DEFAULT_KEYS });
+
+    expect(us.token).toBe("us-token");
+    expect(eu.token).toBe("eu-token");
+
+    const defaultSignature = await sign("default-current-key");
+    expect(await us.receiver!.verify({ body, signature: defaultSignature })).toBeTrue();
+    expect(await eu.receiver!.verify({ body, signature: defaultSignature })).toBeTrue();
+    expect(us.receiver!.verify({ body, signature: await sign("forged-key") })).rejects.toThrow();
+    expect(eu.receiver!.verify({ body, signature: await sign("forged-key") })).rejects.toThrow();
+  });
+
+  test("should fall back to token and signing keys without region prefix", async () => {
+    // only the env variables without region prefix are set
+    const { us, eu } = getHandlers({ ...DEFAULT, ...DEFAULT_KEYS });
+
+    expect(us.token).toBe("default-token");
+    expect(eu.token).toBe("default-token");
+
+    const defaultSignature = await sign("default-current-key");
+    expect(await us.receiver!.verify({ body, signature: defaultSignature })).toBeTrue();
+    expect(await eu.receiver!.verify({ body, signature: defaultSignature })).toBeTrue();
+  });
+
+  test("should fall back per region", async () => {
+    // US has its own token and signing keys, EU uses the ones without region prefix
+    const { us, eu } = getHandlers({ ...US, ...US_KEYS, ...DEFAULT, ...DEFAULT_KEYS });
+
+    expect(us.token).toBe("us-token");
+    expect(eu.token).toBe("default-token");
+
+    const usSignature = await sign("us-current-key");
+    const defaultSignature = await sign("default-current-key");
+    expect(await us.receiver!.verify({ body, signature: usSignature })).toBeTrue();
+    expect(us.receiver!.verify({ body, signature: defaultSignature })).rejects.toThrow();
+    expect(await eu.receiver!.verify({ body, signature: defaultSignature })).toBeTrue();
+    expect(eu.receiver!.verify({ body, signature: usSignature })).rejects.toThrow();
+  });
+
+  test("should fall back if only one of the region env variables is set", () => {
+    const { us } = getHandlers({
+      US_EAST_1_QSTASH_TOKEN: "us-token",
+      US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+      ...DEFAULT,
+      ...DEFAULT_KEYS,
+    });
+
+    expect(us.token).toBe("default-token");
+    expect(us.receiver).toBeInstanceOf(Receiver);
   });
 
   test("should throw if only some of the regions have signing keys", () => {
@@ -847,14 +911,16 @@ describe("getHandlersForRequest - regional receivers", () => {
       })
     ).toThrow(WorkflowError);
 
+    // EU has a handler through the token without region prefix, but no signing keys
+    expect(() => getHandlers({ ...US, ...US_KEYS, ...DEFAULT })).toThrow(WorkflowError);
+
     // signing keys in env aren't used if receiver is set to undefined
     expect(() => getHandlers({ ...US, ...US_KEYS, ...EU }, "set-to-undefined")).not.toThrow();
   });
 
   test("should throw if the default region is not configured", () => {
     expect(() => getHandlers({ ...EU, ...EU_KEYS })).toThrow(WorkflowError);
-    // env variables without region prefix aren't used in multi-region mode
-    expect(() => getHandlers({ ...DEFAULT, ...DEFAULT_KEYS })).toThrow(WorkflowError);
+    expect(() => getHandlers({ ...DEFAULT_KEYS })).toThrow(WorkflowError);
   });
 
   test("should return no receiver when no signing keys are set", () => {

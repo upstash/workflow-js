@@ -1,5 +1,6 @@
 import { Client, Receiver } from "@upstash/qstash";
 import {
+  DEFAULT_QSTASH_URL,
   getRegionFromEnvironment,
   normalizeRegionHeader,
   QStashHandlers,
@@ -44,11 +45,34 @@ export const getHandlersForRequest = (
 
   if (!handler) {
     throw new WorkflowError(
-      `Received a request for region ${targetRegion}, but ${targetRegion}_QSTASH_URL and ${targetRegion}_QSTASH_TOKEN are not set.`
+      `Received a request for region ${targetRegion}, but there is no QStash token for it. Set ${targetRegion}_QSTASH_URL and ${targetRegion}_QSTASH_TOKEN, or QSTASH_TOKEN.`
     );
   }
 
   return handler;
+};
+
+/**
+ * Reads the QStash url and token of a region.
+ *
+ * Uses the env variables with the region prefix if both are set. Otherwise,
+ * falls back to the ones without prefix.
+ */
+const getRegionCredentials = (
+  environment: Record<string, string | undefined>,
+  region: QStashRegion
+): { baseUrl: string; token: string } | undefined => {
+  const regional = readClientEnvironmentVariables(environment, region);
+  if (regional.QSTASH_URL && regional.QSTASH_TOKEN) {
+    return { baseUrl: regional.QSTASH_URL, token: regional.QSTASH_TOKEN };
+  }
+
+  const fallback = readClientEnvironmentVariables(environment);
+  if (fallback.QSTASH_TOKEN) {
+    return { baseUrl: fallback.QSTASH_URL ?? DEFAULT_QSTASH_URL, token: fallback.QSTASH_TOKEN };
+  }
+
+  return undefined;
 };
 
 /**
@@ -57,15 +81,15 @@ export const getHandlersForRequest = (
 const createRegionalHandler = (
   environment: Record<string, string | undefined>,
   receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set",
-  region?: QStashRegion,
+  region: QStashRegion,
   clientOptions?: QStashClientExtraConfig
 ): RegionalHandler => {
-  const clientEnv = readClientEnvironmentVariables(environment, region);
+  const credentials = getRegionCredentials(environment, region);
 
   const client = new Client({
     ...clientOptions,
-    baseUrl: clientEnv.QSTASH_URL!,
-    token: clientEnv.QSTASH_TOKEN!,
+    baseUrl: credentials?.baseUrl,
+    token: credentials?.token,
     // Mirror the receiver's dev-mode decision so a single QSTASH_DEV=true points
     // the client at the local dev server too. Without this the QStash Client
     // re-derives dev mode from its own process.env, which is blind to the
@@ -130,9 +154,8 @@ const getQStashHandlers = ({
     const isDevMode = isQStashDevModeEnabled(environment);
 
     for (const region of regions) {
-      // a region is only used if its own env variables are set
-      const { QSTASH_URL, QSTASH_TOKEN } = readClientEnvironmentVariables(environment, region);
-      if (!isDevMode && !(QSTASH_URL && QSTASH_TOKEN)) {
+      // a region is only used if there is a token for it
+      if (!isDevMode && !getRegionCredentials(environment, region)) {
         continue;
       }
 
@@ -151,14 +174,14 @@ const getQStashHandlers = ({
     const { defaultRegion } = multiRegion;
     if (!handlers[defaultRegion]) {
       throw new WorkflowError(
-        `QSTASH_REGION is ${defaultRegion}, but ${defaultRegion}_QSTASH_URL and ${defaultRegion}_QSTASH_TOKEN are not set.`
+        `QSTASH_REGION is ${defaultRegion}, but there is no QStash token for it. Set ${defaultRegion}_QSTASH_URL and ${defaultRegion}_QSTASH_TOKEN, or QSTASH_TOKEN.`
       );
     }
 
     const receivers = Object.values(handlers).map((handler) => handler.receiver);
     if (receivers.some(Boolean) && !receivers.every(Boolean)) {
       throw new WorkflowError(
-        "QStash signing keys are set for one region but not for the other. Set <REGION>_QSTASH_CURRENT_SIGNING_KEY and <REGION>_QSTASH_NEXT_SIGNING_KEY for every region you use."
+        "QStash signing keys are set for one region but not for the other. Set <REGION>_QSTASH_CURRENT_SIGNING_KEY and <REGION>_QSTASH_NEXT_SIGNING_KEY for every region you use, or QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY."
       );
     }
 
@@ -202,22 +225,28 @@ const getReceiver = (
       return new Receiver({ devMode: true });
     }
 
-    const receiverEnv = readReceiverEnvironmentVariables(environment, region);
-    if (
-      Boolean(receiverEnv.QSTASH_CURRENT_SIGNING_KEY) !==
-      Boolean(receiverEnv.QSTASH_NEXT_SIGNING_KEY)
-    ) {
-      const prefix = region ? `${region}_` : "";
-      console.warn(
-        `[Upstash Workflow] Only one of ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY is set. Both are needed to create a receiver.`
-      );
+    // use the signing keys with the region prefix if both are set. Otherwise,
+    // fall back to the ones without prefix.
+    const prefixes = region ? [region, undefined] : [undefined];
+    for (const prefix of prefixes) {
+      const { QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY } =
+        readReceiverEnvironmentVariables(environment, prefix);
+
+      if (QSTASH_CURRENT_SIGNING_KEY && QSTASH_NEXT_SIGNING_KEY) {
+        return new Receiver({
+          currentSigningKey: QSTASH_CURRENT_SIGNING_KEY,
+          nextSigningKey: QSTASH_NEXT_SIGNING_KEY,
+        });
+      }
+
+      if (QSTASH_CURRENT_SIGNING_KEY || QSTASH_NEXT_SIGNING_KEY) {
+        const name = prefix ? `${prefix}_` : "";
+        console.warn(
+          `[Upstash Workflow] Only one of ${name}QSTASH_CURRENT_SIGNING_KEY and ${name}QSTASH_NEXT_SIGNING_KEY is set. Both are needed to create a receiver.`
+        );
+      }
     }
-    return receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
-      ? new Receiver({
-          currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
-          nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
-        })
-      : undefined;
+    return undefined;
   } else {
     return receiverConfig;
   }
