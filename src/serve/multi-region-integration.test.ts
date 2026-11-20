@@ -722,13 +722,12 @@ describe("Multi-Region Integration Tests", () => {
   });
 
   describe("Regional Receivers", () => {
-    test("should return an error for a region which is not configured", async () => {
+    const sendRequestFromEU = async (environment: Record<string, string>) => {
       setupEnvironment({
         QSTASH_REGION: "US_EAST_1",
         US_EAST_1_QSTASH_URL: MOCK_QSTASH_SERVER_URL,
         US_EAST_1_QSTASH_TOKEN: "us-token",
-        US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
-        US_EAST_1_QSTASH_NEXT_SIGNING_KEY: "us-next-key",
+        ...environment,
       });
 
       let stepRan = false;
@@ -749,15 +748,34 @@ describe("Multi-Region Integration Tests", () => {
         {
           "upstash-region": "EU-CENTRAL-1",
           "upstash-message-id": "msg_123",
+          "upstash-signature": "signature",
         }
       );
 
       const response = await handler(request);
-      expect(response.status).toBe(500);
-      expect(stepRan).toBeFalse();
-
       const body = (await response.json()) as { message: string };
-      expect(body.message).toContain("EU_CENTRAL_1_QSTASH_TOKEN");
+      return { status: response.status, message: body.message, stepRan };
+    };
+
+    test("should reject requests of a region without signing keys if the other has them", async () => {
+      const { status, message, stepRan } = await sendRequestFromEU({
+        US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+        US_EAST_1_QSTASH_NEXT_SIGNING_KEY: "us-next-key",
+      });
+
+      expect(status).toBe(500);
+      expect(stepRan).toBeFalse();
+      expect(message).toContain("QStash signing keys are not set for region EU_CENTRAL_1");
+    });
+
+    test("should return an error for a region without a token", async () => {
+      const { status, message, stepRan } = await sendRequestFromEU({});
+
+      expect(status).toBe(500);
+      expect(stepRan).toBeFalse();
+      expect(message).toContain(
+        "Received a request for region EU_CENTRAL_1, but QSTASH_TOKEN is not set."
+      );
     });
   });
 

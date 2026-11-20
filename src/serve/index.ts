@@ -33,7 +33,7 @@ import {
 } from "../workflow-requests";
 import { getEffectiveConfig } from "../qstash/step-config";
 import { DisabledWorkflowContext } from "./authorization";
-import { getHandlersForRequest } from "./multi-region/handlers";
+import { getClientForRequest, getHandlersForRequest } from "./multi-region/handlers";
 import {
   AUTH_FAIL_MESSAGE,
   createResponseData,
@@ -112,15 +112,18 @@ export const serveBase = <
 
     // Get the appropriate handlers based on region
     const regionHeader = request.headers.get("upstash-region");
-    const { client: regionalClient, receiver: regionalReceiver } = getHandlersForRequest(
-      internal.qstashHandlers,
-      regionHeader,
-      isFirstInvocation
-    );
+    const regionalHandler = getHandlersForRequest(internal.qstashHandlers, regionHeader);
 
     // get payload as raw string
     const requestPayload = (await getPayload(request)) ?? "";
-    await verifyRequest(requestPayload, request.headers.get("upstash-signature"), regionalReceiver);
+    await verifyRequest(
+      requestPayload,
+      request.headers.get("upstash-signature"),
+      regionalHandler.receiver
+    );
+
+    // client is needed only after the request is verified
+    const regionalClient = getClientForRequest(regionalHandler);
 
     middlewareManager.assignWorkflowRunId(workflowRunId);
     await middlewareManager.dispatchDebug("onInfo", {
