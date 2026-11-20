@@ -20,13 +20,9 @@ import {
   getRegionFromEnvironment,
   normalizeRegionHeader,
   readBundle,
+  RegionalHandler,
 } from "./utils";
-import {
-  checkRequestIsAllowed,
-  getClientForRequest,
-  getHandlersForRequest,
-  getQStashHandlerOptions,
-} from "./handlers";
+import { getClientForRequest, getHandlersForRequest, getQStashHandlerOptions } from "./handlers";
 import { WorkflowError } from "../../error";
 import { verifyRequest } from "../../workflow-requests";
 import { QStashClientExtraConfig, WorkflowClient, WorkflowReceiver } from "../../types";
@@ -133,11 +129,26 @@ const getRequestOutcome = async (
     qstashClientOption: options.qstashClient,
     receiverConfig: options.receiver ?? "not-set",
   });
-  const handler = getHandlersForRequest(qstashHandlers, regionHeader);
+  // getHandlersForRequest throws if the requests of the region are rejected
+  let handler: RegionalHandler;
+  let rejected = false;
+  try {
+    handler = getHandlersForRequest(qstashHandlers, regionHeader);
+  } catch (error) {
+    expect(error).toBeInstanceOf(WorkflowError);
+    expect((error as Error).message).toContain("Request is rejected");
+    rejected = true;
+    handler =
+      qstashHandlers.mode === "single-region"
+        ? qstashHandlers.handlers
+        : qstashHandlers.handlers[
+            normalizeRegionHeader(regionHeader ?? undefined) ?? qstashHandlers.defaultRegion
+          ];
+  }
 
   const accepts = async (key: string) => {
+    if (rejected) return false;
     try {
-      checkRequestIsAllowed(handler);
       await verifyRequest(body, await sign(key), handler.receiver);
       return true;
     } catch {
@@ -168,7 +179,7 @@ const getRequestOutcome = async (
 
   return {
     verification:
-      handler.receiver || handler.rejectsRequests
+      handler.receiver || rejected
         ? accepted.length > 0
           ? accepted.join(",")
           : "rejects all"

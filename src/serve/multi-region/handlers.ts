@@ -27,17 +27,31 @@ type ReceiverConfig = WorkflowReceiver | "set-to-undefined" | "not-set";
  *
  * If QSTASH_REGION is set, region is read from the UPSTASH-REGION header.
  * Requests without a valid header use the region in QSTASH_REGION.
+ *
+ * Throws if the requests of the region must be rejected: a signing key is set
+ * somewhere, but there are no signing keys for the region.
  */
 export const getHandlersForRequest = (
   qstashHandlers: QStashHandlers,
   regionHeader: string | null
 ): RegionalHandler => {
-  if (qstashHandlers.mode === "single-region") {
-    return qstashHandlers.handlers;
+  const region =
+    qstashHandlers.mode === "multi-region"
+      ? normalizeRegionHeader(regionHeader ?? undefined)
+      : undefined;
+  const handler =
+    qstashHandlers.mode === "multi-region" && region
+      ? qstashHandlers.handlers[region]
+      : getDefaultHandler(qstashHandlers);
+
+  if (handler.rejectsRequests) {
+    const { bundle } = handler;
+    throw new WorkflowError(
+      `Request is rejected. QStash signing keys are not set for ${bundle.region ? `region ${bundle.region}` : "this endpoint"}.`
+    );
   }
 
-  const region = normalizeRegionHeader(regionHeader ?? undefined);
-  return region ? qstashHandlers.handlers[region] : getDefaultHandler(qstashHandlers);
+  return handler;
 };
 
 /**
@@ -47,18 +61,6 @@ const getDefaultHandler = (qstashHandlers: QStashHandlers): RegionalHandler =>
   qstashHandlers.mode === "single-region"
     ? qstashHandlers.handlers
     : qstashHandlers.handlers[qstashHandlers.defaultRegion];
-
-/**
- * Throws if the requests of the handler must be rejected: a signing key is set
- * somewhere, but there are no signing keys for the region of the handler.
- */
-export const checkRequestIsAllowed = ({ rejectsRequests, bundle }: RegionalHandler) => {
-  if (rejectsRequests) {
-    throw new WorkflowError(
-      `Request is rejected. QStash signing keys are not set for ${bundle.region ? `region ${bundle.region}` : "this endpoint"}.`
-    );
-  }
-};
 
 /**
  * Get the client of a handler. Throws if there is no QStash token for its region.
