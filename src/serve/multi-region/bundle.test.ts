@@ -485,6 +485,15 @@ describe("with QSTASH_REGION", () => {
     expect(empty.us).toMatchObject({ verification: "none", token: "" });
   });
 
+  test("should not use the token without prefix for the default region if it has its own env variables", async () => {
+    const outcomes = await getOutcomes({ ...REGION, ...US_KEYS, ...PLAIN });
+    expect(outcomes.us).toEqual({
+      error: "Received a request for region US_EAST_1, but US_EAST_1_QSTASH_TOKEN is not set.",
+    });
+    // EU uses the env variables without prefix, which have no signing keys
+    expect(outcomes.eu).toEqual(REJECTED);
+  });
+
   test("should use the default url if the region has a token but no url", async () => {
     const outcomes = await getOutcomes({
       ...REGION,

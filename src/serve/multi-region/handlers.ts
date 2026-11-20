@@ -160,9 +160,10 @@ const getQStashHandlers = ({
       return { ...handler, error };
     }
 
-    // The default region can be used without a token, like when QSTASH_REGION
-    // is not set. Calls to QStash fail in that case.
-    if (!bundle.credentials.token && region !== defaultRegion) {
+    // The default region can be used without a token if it has no env variable
+    // with its prefix, like when QSTASH_REGION is not set. Calls to QStash fail
+    // in that case. If it has some, a token without prefix must not be used.
+    if (!bundle.credentials.token && (region !== defaultRegion || bundle.usesRegionPrefix)) {
       return {
         ...handler,
         error: `Received a request for region ${region}, but ${prefix}QSTASH_TOKEN is not set.`,
