@@ -36,9 +36,17 @@ export const getHandlersForRequest = (
     return qstashHandlers.handlers;
   }
 
-  const region = normalizeRegionHeader(regionHeader ?? undefined) ?? qstashHandlers.defaultRegion;
-  return qstashHandlers.handlers[region];
+  const region = normalizeRegionHeader(regionHeader ?? undefined);
+  return region ? qstashHandlers.handlers[region] : getDefaultHandler(qstashHandlers);
 };
+
+/**
+ * Handler of the region in QSTASH_REGION, or the only handler if it's not set
+ */
+const getDefaultHandler = (qstashHandlers: QStashHandlers): RegionalHandler =>
+  qstashHandlers.mode === "single-region"
+    ? qstashHandlers.handlers
+    : qstashHandlers.handlers[qstashHandlers.defaultRegion];
 
 /**
  * Get the client of a handler. Throws if there is no QStash token for its region.
@@ -224,7 +232,7 @@ export const getQStashHandlerOptions = (
   defaultClient: WorkflowClient;
 } => {
   const qstashHandlers = getQStashHandlers(...params);
-  const { client, receiver } = getHandlersForRequest(qstashHandlers, null);
+  const { client, receiver } = getDefaultHandler(qstashHandlers);
 
   return {
     qstashHandlers,
