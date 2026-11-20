@@ -22,7 +22,7 @@ import {
   readBundle,
   RegionalHandler,
 } from "./utils";
-import { getClientForRequest, getHandlersForRequest, getQStashHandlerOptions } from "./handlers";
+import { getHandlersForRequest, getQStashHandlerOptions } from "./handlers";
 import { WorkflowError } from "../../error";
 import { verifyRequest } from "../../workflow-requests";
 import { QStashClientExtraConfig, WorkflowClient, WorkflowReceiver } from "../../types";
@@ -115,9 +115,10 @@ type Options = {
 
 /**
  * What serve does with a request which has the given region header:
- * - verification: what happens to a request signed with each key. "none" if
+ * - error: set if the request fails before it's verified
+ * - verification: keys which the request can be signed with. "none" if
  *   requests aren't verified at all.
- * - token/url: credentials of the client, or the error thrown if there is no client
+ * - token/url: credentials of the client
  */
 const getRequestOutcome = async (
   environment: Record<string, string>,
@@ -129,64 +130,43 @@ const getRequestOutcome = async (
     qstashClientOption: options.qstashClient,
     receiverConfig: options.receiver ?? "not-set",
   });
-  // getHandlersForRequest throws if the requests of the region are rejected
+  // getHandlersForRequest throws if the requests of the region can't be handled
   let handler: RegionalHandler;
-  let rejected = false;
   try {
     handler = getHandlersForRequest(qstashHandlers, regionHeader);
   } catch (error) {
     expect(error).toBeInstanceOf(WorkflowError);
-    expect((error as Error).message).toContain("Request is rejected");
-    rejected = true;
-    handler =
-      qstashHandlers.mode === "single-region"
-        ? qstashHandlers.handlers
-        : qstashHandlers.handlers[
-            normalizeRegionHeader(regionHeader ?? undefined) ?? qstashHandlers.defaultRegion
-          ];
+    return { error: (error as Error).message };
   }
 
-  const accepts = async (key: string) => {
-    if (rejected) return false;
-    try {
-      await verifyRequest(body, await sign(key), handler.receiver);
-      return true;
-    } catch {
-      return false;
-    }
-  };
   const accepted: string[] = [];
   for (const key of ["us-current-key", "eu-current-key", "plain-current-key", "forged-key"]) {
-    if (await accepts(key)) accepted.push(key);
+    try {
+      await verifyRequest(body, await sign(key), handler.receiver);
+      accepted.push(key);
+    } catch {
+      // not accepted
+    }
   }
 
-  let client: { token?: string; url?: string; devMode?: boolean; error?: string };
-  try {
-    const http = getClientForRequest(handler).http as unknown as {
-      authorization: string;
-      baseUrl: string;
-      devMode: boolean;
-    };
-    client = {
-      token: http.authorization.replace("Bearer ", ""),
-      url: http.baseUrl,
-      devMode: http.devMode,
-    };
-  } catch (error) {
-    expect(error).toBeInstanceOf(WorkflowError);
-    client = { error: (error as Error).message };
-  }
-
+  const http = handler.client.http as unknown as {
+    authorization: string;
+    baseUrl: string;
+    devMode: boolean;
+  };
   return {
-    verification:
-      handler.receiver || rejected
-        ? accepted.length > 0
-          ? accepted.join(",")
-          : "rejects all"
-        : "none",
-    ...client,
+    verification: handler.receiver
+      ? accepted.length > 0
+        ? accepted.join(",")
+        : "rejects all"
+      : "none",
+    token: http.authorization.replace("Bearer ", ""),
+    url: http.baseUrl,
+    devMode: http.devMode,
   };
 };
+
+const REJECTED = { error: expect.stringContaining("is rejected. A QStash signing key is set") };
 
 const getOutcomes = async (environment: Record<string, string>, options?: Options) => ({
   us: await getRequestOutcome(environment, "us-east-1", options),
@@ -327,7 +307,7 @@ describe("without QSTASH_REGION", () => {
       { ...PLAIN, QSTASH_NEXT_SIGNING_KEY: "plain-next-key" },
       null
     );
-    expect(outcome.verification).toBe("rejects all");
+    expect(outcome).toEqual(REJECTED);
     expect(warnings()).toHaveLength(1);
     expect(warnings()[0]).toContain(
       "Requests will be rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
@@ -341,7 +321,7 @@ describe("without QSTASH_REGION", () => {
       { ...US, ...US_KEYS, QSTASH_REGION: "us-west-2" },
     ]) {
       const outcome = await getRequestOutcome(environment, "us-east-1");
-      expect(outcome.verification).toBe("rejects all");
+      expect(outcome).toEqual(REJECTED);
     }
   });
 
@@ -416,8 +396,8 @@ describe("with QSTASH_REGION", () => {
 
   test("should reject requests if token has the region prefix but signing keys don't", async () => {
     const outcomes = await getOutcomes({ ...REGION, ...US, ...EU, ...PLAIN_KEYS });
-    expect(outcomes.us).toMatchObject({ verification: "rejects all", token: "us-token" });
-    expect(outcomes.eu).toMatchObject({ verification: "rejects all", token: "eu-token" });
+    expect(outcomes.us).toEqual(REJECTED);
+    expect(outcomes.eu).toEqual(REJECTED);
 
     expect(warnings()).toHaveLength(2);
     expect(warnings()[0]).toContain(
@@ -429,24 +409,25 @@ describe("with QSTASH_REGION", () => {
   test("should reject requests of a region without signing keys if the other has them", async () => {
     const us = await getOutcomes({ ...REGION, ...US, ...US_KEYS, ...EU });
     expect(us.us.verification).toBe("us-current-key");
-    expect(us.eu.verification).toBe("rejects all");
+    expect(us.eu).toEqual(REJECTED);
 
     const eu = await getOutcomes({ ...REGION, ...US, ...EU, ...EU_KEYS });
-    expect(eu.us.verification).toBe("rejects all");
+    expect(eu.us).toEqual(REJECTED);
     expect(eu.eu.verification).toBe("eu-current-key");
 
     // EU uses the env variables without prefix, which have no signing keys
     const plain = await getOutcomes({ ...REGION, ...US, ...US_KEYS, ...PLAIN });
     expect(plain.us.verification).toBe("us-current-key");
-    expect(plain.eu).toMatchObject({ verification: "rejects all", token: "plain-token" });
+    expect(plain.eu).toEqual(REJECTED);
   });
 
   test("should reject requests if signing keys are set for a region without a token", async () => {
     const outcomes = await getOutcomes({ ...REGION, ...US, ...EU_KEYS });
-    expect(outcomes.us).toMatchObject({ verification: "rejects all", token: "us-token" });
-    // EU requests are verified, but can't be handled without a token
-    expect(outcomes.eu.verification).toBe("eu-current-key");
-    expect(outcomes.eu.error).toContain("EU_CENTRAL_1_QSTASH_TOKEN is not set");
+    expect(outcomes.us).toEqual(REJECTED);
+    expect(outcomes.eu).toEqual({
+      error:
+        "Received a request for region EU_CENTRAL_1, but EU_CENTRAL_1_QSTASH_TOKEN is not set.",
+    });
   });
 
   test("should reject requests if only one signing key is set", async () => {
@@ -456,12 +437,12 @@ describe("with QSTASH_REGION", () => {
       ...EU,
       US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
     });
-    expect(outcomes.us.verification).toBe("rejects all");
-    expect(outcomes.eu.verification).toBe("rejects all");
+    expect(outcomes.us).toEqual(REJECTED);
+    expect(outcomes.eu).toEqual(REJECTED);
 
     const plain = await getOutcomes({ ...REGION, ...PLAIN, QSTASH_NEXT_SIGNING_KEY: "key" });
-    expect(plain.us.verification).toBe("rejects all");
-    expect(plain.eu.verification).toBe("rejects all");
+    expect(plain.us).toEqual(REJECTED);
+    expect(plain.eu).toEqual(REJECTED);
     // both regions use the same env variables, warned once
     expect(warnings().at(-1)).toContain(
       "Requests from US_EAST_1 and EU_CENTRAL_1 will be rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
@@ -476,29 +457,28 @@ describe("with QSTASH_REGION", () => {
     expect(warnings()).toHaveLength(0);
   });
 
-  test("should fail requests of a region without a token, after verifying them", async () => {
-    const outcomes = await getOutcomes({ ...REGION, ...US, ...US_KEYS });
-    expect(outcomes.us).toMatchObject({ verification: "us-current-key", token: "us-token" });
-    // EU has no env variable at all. US signing keys make verification required
+  test("should fail requests of a region without a token", async () => {
+    const outcomes = await getOutcomes({ ...REGION, ...US });
+    expect(outcomes.us).toMatchObject({ verification: "none", token: "us-token" });
     expect(outcomes.eu).toEqual({
-      verification: "rejects all",
       error: "Received a request for region EU_CENTRAL_1, but QSTASH_TOKEN is not set.",
     });
 
-    const withoutKeys = await getOutcomes({ ...REGION, ...US });
-    expect(withoutKeys.eu.verification).toBe("none");
-    expect(withoutKeys.eu.error).toContain("QSTASH_TOKEN is not set");
+    // EU has no env variable at all. US signing keys make verification required
+    const withKeys = await getOutcomes({ ...REGION, ...US, ...US_KEYS });
+    expect(withKeys.us).toMatchObject({ verification: "us-current-key", token: "us-token" });
+    expect(withKeys.eu).toEqual(REJECTED);
   });
 
   test("should create a client without a token for the default region", async () => {
-    const outcomes = await getOutcomes({ ...REGION, ...EU, ...EU_KEYS });
+    const outcomes = await getOutcomes({ ...REGION, ...EU });
     expect(outcomes.us).toEqual({
-      verification: "rejects all",
+      verification: "none",
       token: "",
       url: DEFAULT_QSTASH_URL,
       devMode: false,
     });
-    expect(outcomes.eu).toMatchObject({ verification: "eu-current-key", token: "eu-token" });
+    expect(outcomes.eu).toMatchObject({ verification: "none", token: "eu-token" });
 
     // doesn't throw without any credentials
     const empty = await getOutcomes({ ...REGION });
@@ -597,8 +577,8 @@ describe("qstashClient option", () => {
 
     // signing keys with region prefix aren't used, but still make verification required
     const prefixed = await getOutcomes({ ...REGION, ...US_KEYS, ...EU_KEYS }, { qstashClient });
-    expect(prefixed.us).toMatchObject({ verification: "rejects all", token: "custom-token" });
-    expect(prefixed.eu).toMatchObject({ verification: "rejects all", token: "custom-token" });
+    expect(prefixed.us).toEqual(REJECTED);
+    expect(prefixed.eu).toEqual(REJECTED);
   });
 
   test("should pass client config to the client of each region", () => {

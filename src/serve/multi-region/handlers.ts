@@ -28,8 +28,7 @@ type ReceiverConfig = WorkflowReceiver | "set-to-undefined" | "not-set";
  * If QSTASH_REGION is set, region is read from the UPSTASH-REGION header.
  * Requests without a valid header use the region in QSTASH_REGION.
  *
- * Throws if the requests of the region must be rejected: a signing key is set
- * somewhere, but there are no signing keys for the region.
+ * Throws if the requests of the region can't be handled. See getHandlerError.
  */
 export const getHandlersForRequest = (
   qstashHandlers: QStashHandlers,
@@ -44,11 +43,8 @@ export const getHandlersForRequest = (
       ? qstashHandlers.handlers[region]
       : getDefaultHandler(qstashHandlers);
 
-  if (handler.rejectsRequests) {
-    const { bundle } = handler;
-    throw new WorkflowError(
-      `Request is rejected. QStash signing keys are not set for ${bundle.region ? `region ${bundle.region}` : "this endpoint"}.`
-    );
+  if (handler.error) {
+    throw new WorkflowError(handler.error);
   }
 
   return handler;
@@ -61,24 +57,6 @@ const getDefaultHandler = (qstashHandlers: QStashHandlers): RegionalHandler =>
   qstashHandlers.mode === "single-region"
     ? qstashHandlers.handlers
     : qstashHandlers.handlers[qstashHandlers.defaultRegion];
-
-/**
- * Get the client of a handler. Throws if there is no QStash token for its region.
- *
- * Should be called after the request is verified.
- */
-export const getClientForRequest = ({
-  client,
-  bundle,
-  missingToken,
-}: RegionalHandler): WorkflowClient => {
-  if (missingToken) {
-    throw new WorkflowError(
-      `Received a request for region ${bundle.region}, but ${getBundlePrefix(bundle)}QSTASH_TOKEN is not set.`
-    );
-  }
-  return client;
-};
 
 /**
  * Dev mode is used if it's set in the qstashClient option. Otherwise, if
@@ -171,6 +149,30 @@ const warnAboutBundles = (bundles: CredentialBundle[]) => {
   }
 };
 
+/**
+ * Why the requests of a region can't be handled, if they can't:
+ * - a signing key is set somewhere, but there are no signing keys for the
+ *   region. Requests are never accepted without verification in that case.
+ * - there is no QStash token for the region. The default region can be used
+ *   without a token, like when QSTASH_REGION is not set. Calls to QStash fail
+ *   in that case.
+ */
+const getHandlerError = (
+  bundle: CredentialBundle,
+  readsReceiverFromEnvironment: boolean,
+  isDefaultRegion: boolean
+): string | undefined => {
+  const prefix = getBundlePrefix(bundle);
+
+  if (readsReceiverFromEnvironment && bundle.verification === "reject") {
+    return `Request${bundle.region ? ` from ${bundle.region}` : ""} is rejected. A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not both set.`;
+  }
+  if (!bundle.credentials.token && !isDefaultRegion) {
+    return `Received a request for region ${bundle.region}, but ${prefix}QSTASH_TOKEN is not set.`;
+  }
+  return undefined;
+};
+
 const getQStashHandlers = ({
   environment,
   qstashClientOption,
@@ -191,11 +193,9 @@ const getQStashHandlers = ({
       bundle,
       client: getClient(bundle, qstashClientOption, devMode),
       receiver: getReceiver(bundle, receiverConfig, devMode),
-      // if a signing key is set anywhere, requests are never accepted without verification
-      rejectsRequests: receiverConfig === "not-set" && !devMode && bundle.verification === "reject",
-      // the default region can be used without a token, like when QSTASH_REGION is not set.
-      // Calls to QStash fail in that case.
-      missingToken: !bundle.credentials.token && !devMode && region !== defaultRegion,
+      error: devMode
+        ? undefined
+        : getHandlerError(bundle, receiverConfig === "not-set", region === defaultRegion),
     };
   };
 

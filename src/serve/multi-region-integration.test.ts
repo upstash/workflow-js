@@ -765,7 +765,7 @@ describe("Multi-Region Integration Tests", () => {
 
       expect(status).toBe(500);
       expect(stepRan).toBeFalse();
-      expect(message).toContain("QStash signing keys are not set for region EU_CENTRAL_1");
+      expect(message).toContain("Request from EU_CENTRAL_1 is rejected.");
     });
 
     test("should return an error for a region without a token", async () => {
