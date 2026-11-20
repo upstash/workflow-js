@@ -33,7 +33,11 @@ import {
 } from "../workflow-requests";
 import { getEffectiveConfig } from "../qstash/step-config";
 import { DisabledWorkflowContext } from "./authorization";
-import { getClientForRequest, getHandlersForRequest } from "./multi-region/handlers";
+import {
+  checkRequestIsAllowed,
+  getClientForRequest,
+  getHandlersForRequest,
+} from "./multi-region/handlers";
 import {
   AUTH_FAIL_MESSAGE,
   createResponseData,
@@ -113,6 +117,8 @@ export const serveBase = <
     // Get the appropriate handlers based on region
     const regionHeader = request.headers.get("upstash-region");
     const regionalHandler = getHandlersForRequest(internal.qstashHandlers, regionHeader);
+
+    checkRequestIsAllowed(regionalHandler);
 
     // get payload as raw string
     const requestPayload = (await getPayload(request)) ?? "";

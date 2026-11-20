@@ -49,6 +49,18 @@ const getDefaultHandler = (qstashHandlers: QStashHandlers): RegionalHandler =>
     : qstashHandlers.handlers[qstashHandlers.defaultRegion];
 
 /**
+ * Throws if the requests of the handler must be rejected: a signing key is set
+ * somewhere, but there are no signing keys for the region of the handler.
+ */
+export const checkRequestIsAllowed = ({ rejectsRequests, bundle }: RegionalHandler) => {
+  if (rejectsRequests) {
+    throw new WorkflowError(
+      `Request is rejected. QStash signing keys are not set for ${bundle.region ? `region ${bundle.region}` : "this endpoint"}.`
+    );
+  }
+};
+
+/**
  * Get the client of a handler. Throws if there is no QStash token for its region.
  *
  * Should be called after the request is verified.
@@ -104,17 +116,6 @@ const getClient = (
   });
 };
 
-/**
- * Receiver which rejects all requests
- */
-const getRejectingReceiver = (bundle: CredentialBundle): WorkflowReceiver => ({
-  verify: () => {
-    throw new Error(
-      `QStash signing keys are not set for ${bundle.region ? `region ${bundle.region}` : "this endpoint"}.`
-    );
-  },
-});
-
 const getReceiver = (
   bundle: CredentialBundle,
   receiverConfig: ReceiverConfig,
@@ -131,21 +132,13 @@ const getReceiver = (
     return new Receiver({ devMode });
   }
 
-  switch (bundle.verification) {
-    case "verify": {
-      return new Receiver({
+  return bundle.verification === "verify"
+    ? new Receiver({
         currentSigningKey: bundle.credentials.currentSigningKey,
         nextSigningKey: bundle.credentials.nextSigningKey,
         devMode,
-      });
-    }
-    case "reject": {
-      return getRejectingReceiver(bundle);
-    }
-    case "none": {
-      return undefined;
-    }
-  }
+      })
+    : undefined;
 };
 
 /**
@@ -196,6 +189,8 @@ const getQStashHandlers = ({
       bundle,
       client: getClient(bundle, qstashClientOption, devMode),
       receiver: getReceiver(bundle, receiverConfig, devMode),
+      // if a signing key is set anywhere, requests are never accepted without verification
+      rejectsRequests: receiverConfig === "not-set" && !devMode && bundle.verification === "reject",
       // the default region can be used without a token, like when QSTASH_REGION is not set.
       // Calls to QStash fail in that case.
       missingToken: !bundle.credentials.token && !devMode && region !== defaultRegion,

@@ -57,6 +57,10 @@ export type RegionalHandler = {
   receiver?: WorkflowReceiver;
   bundle: CredentialBundle;
   /**
+   * Whether all requests are rejected because signing keys are missing
+   */
+  rejectsRequests: boolean;
+  /**
    * Whether the client is created without a token. Requests of such a handler
    * fail after they are verified.
    */

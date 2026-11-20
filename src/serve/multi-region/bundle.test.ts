@@ -21,7 +21,12 @@ import {
   normalizeRegionHeader,
   readBundle,
 } from "./utils";
-import { getClientForRequest, getHandlersForRequest, getQStashHandlerOptions } from "./handlers";
+import {
+  checkRequestIsAllowed,
+  getClientForRequest,
+  getHandlersForRequest,
+  getQStashHandlerOptions,
+} from "./handlers";
 import { WorkflowError } from "../../error";
 import { verifyRequest } from "../../workflow-requests";
 import { QStashClientExtraConfig, WorkflowClient, WorkflowReceiver } from "../../types";
@@ -132,6 +137,7 @@ const getRequestOutcome = async (
 
   const accepts = async (key: string) => {
     try {
+      checkRequestIsAllowed(handler);
       await verifyRequest(body, await sign(key), handler.receiver);
       return true;
     } catch {
@@ -161,11 +167,12 @@ const getRequestOutcome = async (
   }
 
   return {
-    verification: handler.receiver
-      ? accepted.length > 0
-        ? accepted.join(",")
-        : "rejects all"
-      : "none",
+    verification:
+      handler.receiver || handler.rejectsRequests
+        ? accepted.length > 0
+          ? accepted.join(",")
+          : "rejects all"
+        : "none",
     ...client,
   };
 };
