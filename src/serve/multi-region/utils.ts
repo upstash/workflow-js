@@ -12,9 +12,9 @@ const VARIABLES = ["QSTASH_URL", "QSTASH_TOKEN", ...SIGNING_KEY_VARIABLES] as co
 /**
  * QStash env variables of a region.
  *
- * All values come from the same set of env variables: the ones with the region
- * prefix (like US_EAST_1_QSTASH_TOKEN) or the ones without (like QSTASH_TOKEN).
- * They are never mixed.
+ * All credentials come from the same set of env variables: the ones with the
+ * region prefix (like US_EAST_1_QSTASH_TOKEN) or the ones without (like
+ * QSTASH_TOKEN). They are never mixed.
  */
 export type CredentialBundle = {
   /**
@@ -22,33 +22,32 @@ export type CredentialBundle = {
    */
   region?: QStashRegion;
   /**
-   * Prefix of the env variables the bundle is read from, like "US_EAST_1_".
-   * Empty if the env variables without region prefix are used.
-   */
-  prefix: string;
-  /**
-   * Whether the bundle is read from the env variables with the region prefix
+   * Whether the credentials are read from the env variables with the region prefix
    */
   usesRegionPrefix: boolean;
-
-  url?: string;
-  token?: string;
-  currentSigningKey?: string;
-  nextSigningKey?: string;
-
-  hasToken: boolean;
+  credentials: {
+    url?: string;
+    token?: string;
+    currentSigningKey?: string;
+    nextSigningKey?: string;
+  };
   /**
-   * Whether both signing keys are set
+   * What to do with the requests of the region:
+   * - "verify": both signing keys are set, requests are verified with them
+   * - "reject": signing keys are missing, but a signing key env variable is set
+   *   somewhere (with or without region prefix). Requests are never accepted
+   *   without verification in that case, so all are rejected.
+   * - "none": no signing key env variable is set at all. Requests aren't verified.
    */
-  hasSigningKeys: boolean;
-  /**
-   * Whether any signing key env variable is set, with or without region prefix.
-   *
-   * If true, requests must be verified. Requests of a bundle without signing
-   * keys are rejected.
-   */
-  verificationRequired: boolean;
+  verification: "verify" | "reject" | "none";
 };
+
+/**
+ * Prefix of the env variables the bundle is read from, like "US_EAST_1_".
+ * Empty if the env variables without region prefix are used.
+ */
+export const getBundlePrefix = ({ region, usesRegionPrefix }: CredentialBundle) =>
+  usesRegionPrefix ? `${region}_` : "";
 
 /**
  * Regional handler containing client and optional receiver
@@ -116,29 +115,29 @@ export const readBundle = (
     region && VARIABLES.some((variable) => environment[`${region}_${variable}`])
   );
   const prefixRegion = usesRegionPrefix ? region : undefined;
-  const prefix = prefixRegion ? `${prefixRegion}_` : "";
 
   const { QSTASH_URL, QSTASH_TOKEN } = readClientEnvironmentVariables(environment, prefixRegion);
   const { QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY } = readReceiverEnvironmentVariables(
     environment,
     prefixRegion
   );
-  // empty values count as not set
-  const token = QSTASH_TOKEN || undefined;
-  const currentSigningKey = QSTASH_CURRENT_SIGNING_KEY || undefined;
-  const nextSigningKey = QSTASH_NEXT_SIGNING_KEY || undefined;
 
   return {
     region,
-    prefix,
     usesRegionPrefix,
-    url: QSTASH_URL || undefined,
-    token,
-    currentSigningKey,
-    nextSigningKey,
-    hasToken: Boolean(token),
-    hasSigningKeys: Boolean(currentSigningKey && nextSigningKey),
-    verificationRequired: isAnySigningKeySet(environment),
+    // empty values count as not set
+    credentials: {
+      url: QSTASH_URL || undefined,
+      token: QSTASH_TOKEN || undefined,
+      currentSigningKey: QSTASH_CURRENT_SIGNING_KEY || undefined,
+      nextSigningKey: QSTASH_NEXT_SIGNING_KEY || undefined,
+    },
+    verification:
+      QSTASH_CURRENT_SIGNING_KEY && QSTASH_NEXT_SIGNING_KEY
+        ? "verify"
+        : isAnySigningKeySet(environment)
+          ? "reject"
+          : "none",
   };
 };
 

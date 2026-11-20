@@ -16,6 +16,7 @@ import {
 import { Client, Receiver } from "@upstash/qstash";
 import {
   DEFAULT_QSTASH_URL,
+  getBundlePrefix,
   getRegionFromEnvironment,
   normalizeRegionHeader,
   readBundle,
@@ -209,41 +210,39 @@ describe("readBundle", () => {
   test("should read env variables without prefix if there is no region", () => {
     expect(readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS })).toEqual({
       region: undefined,
-      prefix: "",
       usesRegionPrefix: false,
-      url: undefined,
-      token: "plain-token",
-      currentSigningKey: "plain-current-key",
-      nextSigningKey: "plain-next-key",
-      hasToken: true,
-      hasSigningKeys: true,
-      verificationRequired: true,
+      credentials: {
+        url: undefined,
+        token: "plain-token",
+        currentSigningKey: "plain-current-key",
+        nextSigningKey: "plain-next-key",
+      },
+      verification: "verify",
     });
   });
 
   test("should read env variables with region prefix if any of them is set", () => {
-    expect(readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS }, "US_EAST_1")).toEqual({
+    const bundle = readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS }, "US_EAST_1");
+    expect(bundle).toEqual({
       region: "US_EAST_1",
-      prefix: "US_EAST_1_",
       usesRegionPrefix: true,
-      url: "https://us-qstash.upstash.io",
-      token: "us-token",
-      currentSigningKey: "us-current-key",
-      nextSigningKey: "us-next-key",
-      hasToken: true,
-      hasSigningKeys: true,
-      verificationRequired: true,
+      credentials: {
+        url: "https://us-qstash.upstash.io",
+        token: "us-token",
+        currentSigningKey: "us-current-key",
+        nextSigningKey: "us-next-key",
+      },
+      verification: "verify",
     });
+    expect(getBundlePrefix(bundle)).toBe("US_EAST_1_");
   });
 
   test("should not mix env variables with and without region prefix", () => {
     // a single env variable with the prefix is enough to ignore the ones without
     for (const variable of Object.keys({ ...US, ...US_KEYS })) {
       const bundle = readBundle({ ...PLAIN, ...PLAIN_KEYS, [variable]: "value" }, "US_EAST_1");
-      expect(bundle.prefix).toBe("US_EAST_1_");
-      expect(
-        [bundle.url, bundle.token, bundle.currentSigningKey, bundle.nextSigningKey].filter(Boolean)
-      ).toEqual(["value"]);
+      expect(bundle.usesRegionPrefix).toBeTrue();
+      expect(Object.values(bundle.credentials).filter(Boolean)).toEqual(["value"]);
     }
   });
 
@@ -251,39 +250,28 @@ describe("readBundle", () => {
     const bundle = readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS }, "EU_CENTRAL_1");
     expect(bundle).toMatchObject({
       region: "EU_CENTRAL_1",
-      prefix: "",
       usesRegionPrefix: false,
-      token: "plain-token",
-      currentSigningKey: "plain-current-key",
+      credentials: { token: "plain-token", currentSigningKey: "plain-current-key" },
     });
+    expect(getBundlePrefix(bundle)).toBe("");
 
     // empty values don't count
     const empty = readBundle({ ...PLAIN, EU_CENTRAL_1_QSTASH_TOKEN: "" }, "EU_CENTRAL_1");
-    expect(empty.prefix).toBe("");
-    expect(empty.token).toBe("plain-token");
+    expect(empty.usesRegionPrefix).toBeFalse();
+    expect(empty.credentials.token).toBe("plain-token");
   });
 
-  test("should set flags", () => {
-    expect(readBundle({})).toMatchObject({
-      hasToken: false,
-      hasSigningKeys: false,
-      verificationRequired: false,
-    });
+  test("should set verification", () => {
+    expect(readBundle({}).verification).toBe("none");
+    expect(readBundle({ ...PLAIN }).verification).toBe("none");
+    expect(readBundle({ ...PLAIN_KEYS }).verification).toBe("verify");
+
     // one signing key isn't enough
-    expect(readBundle({ QSTASH_CURRENT_SIGNING_KEY: "key" })).toMatchObject({
-      hasSigningKeys: false,
-      verificationRequired: true,
-    });
-    // verification is required if a signing key is set anywhere
-    expect(readBundle({ ...US, ...EU_KEYS }, "US_EAST_1")).toMatchObject({
-      hasToken: true,
-      hasSigningKeys: false,
-      verificationRequired: true,
-    });
-    expect(readBundle({ ...US_KEYS })).toMatchObject({
-      hasSigningKeys: false,
-      verificationRequired: true,
-    });
+    expect(readBundle({ QSTASH_CURRENT_SIGNING_KEY: "key" }).verification).toBe("reject");
+    // rejected if a signing key is set anywhere else
+    expect(readBundle({ ...US, ...EU_KEYS }, "US_EAST_1").verification).toBe("reject");
+    expect(readBundle({ ...US, ...PLAIN_KEYS }, "US_EAST_1").verification).toBe("reject");
+    expect(readBundle({ ...US_KEYS }).verification).toBe("reject");
   });
 });
 

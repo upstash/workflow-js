@@ -2,6 +2,7 @@ import { Client, Receiver } from "@upstash/qstash";
 import {
   CredentialBundle,
   DEFAULT_QSTASH_URL,
+  getBundlePrefix,
   getRegionFromEnvironment,
   normalizeRegionHeader,
   QStashHandlers,
@@ -51,7 +52,7 @@ export const getClientForRequest = ({
 }: RegionalHandler): WorkflowClient => {
   if (missingToken) {
     throw new WorkflowError(
-      `Received a request for region ${bundle.region}, but ${bundle.prefix}QSTASH_TOKEN is not set.`
+      `Received a request for region ${bundle.region}, but ${getBundlePrefix(bundle)}QSTASH_TOKEN is not set.`
     );
   }
   return client;
@@ -89,8 +90,8 @@ const getClient = (
 
   return new Client({
     ...qstashClientOption,
-    baseUrl: bundle.url ?? DEFAULT_QSTASH_URL,
-    token: bundle.token,
+    baseUrl: bundle.credentials.url ?? DEFAULT_QSTASH_URL,
+    token: bundle.credentials.token,
     devMode,
   });
 };
@@ -122,16 +123,21 @@ const getReceiver = (
     return new Receiver({ devMode });
   }
 
-  if (bundle.hasSigningKeys) {
-    return new Receiver({
-      currentSigningKey: bundle.currentSigningKey,
-      nextSigningKey: bundle.nextSigningKey,
-      devMode,
-    });
+  switch (bundle.verification) {
+    case "verify": {
+      return new Receiver({
+        currentSigningKey: bundle.credentials.currentSigningKey,
+        nextSigningKey: bundle.credentials.nextSigningKey,
+        devMode,
+      });
+    }
+    case "reject": {
+      return getRejectingReceiver(bundle);
+    }
+    case "none": {
+      return undefined;
+    }
   }
-
-  // if a signing key is set anywhere, requests are never accepted without verification
-  return bundle.verificationRequired ? getRejectingReceiver(bundle) : undefined;
 };
 
 /**
@@ -140,24 +146,19 @@ const getReceiver = (
 const warnAboutBundles = (bundles: CredentialBundle[]) => {
   const warnings = new Set<string>();
 
-  for (const {
-    prefix,
-    usesRegionPrefix,
-    url,
-    hasToken,
-    hasSigningKeys,
-    verificationRequired,
-  } of bundles) {
-    if (verificationRequired && !hasSigningKeys) {
+  for (const bundle of bundles) {
+    const prefix = getBundlePrefix(bundle);
+
+    if (bundle.verification === "reject") {
       const regions = bundles
-        .filter((bundle) => bundle.prefix === prefix && bundle.region)
-        .map((bundle) => bundle.region);
+        .filter((other) => other.region && getBundlePrefix(other) === prefix)
+        .map((other) => other.region);
       warnings.add(
         `Requests${regions.length > 0 ? ` from ${regions.join(" and ")}` : ""} will be rejected. ` +
           `A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not both set.`
       );
     }
-    if (usesRegionPrefix && hasToken && !url) {
+    if (bundle.usesRegionPrefix && bundle.credentials.token && !bundle.credentials.url) {
       warnings.add(`${prefix}QSTASH_URL is not set. Using ${DEFAULT_QSTASH_URL}.`);
     }
   }
@@ -189,7 +190,7 @@ const getQStashHandlers = ({
       receiver: getReceiver(bundle, receiverConfig, devMode),
       // the default region can be used without a token, like when QSTASH_REGION is not set.
       // Calls to QStash fail in that case.
-      missingToken: !bundle.hasToken && !devMode && region !== defaultRegion,
+      missingToken: !bundle.credentials.token && !devMode && region !== defaultRegion,
     };
   };
 
