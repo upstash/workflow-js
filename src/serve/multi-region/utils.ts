@@ -4,8 +4,6 @@ const VALID_REGIONS = ["EU_CENTRAL_1", "US_EAST_1"] as const;
 
 export type QStashRegion = (typeof VALID_REGIONS)[number];
 
-export const QSTASH_REGIONS: readonly QStashRegion[] = VALID_REGIONS;
-
 export const DEFAULT_QSTASH_URL = "https://qstash.upstash.io";
 
 const SIGNING_KEY_VARIABLES = ["QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY"] as const;
@@ -53,27 +51,32 @@ export type CredentialBundle = {
 };
 
 /**
- * Client and receiver of a region
+ * Regional handler containing client and optional receiver
  */
 export type RegionalHandler = {
+  client: WorkflowClient;
+  receiver?: WorkflowReceiver;
   bundle: CredentialBundle;
   /**
-   * undefined if there is no token for the region
+   * Whether the client is created without a token. Requests of such a handler
+   * fail after they are verified.
    */
-  client?: WorkflowClient;
-  receiver?: WorkflowReceiver;
+  missingToken: boolean;
 };
 
-export type QStashHandlers = {
-  /**
-   * Region set with QSTASH_REGION. undefined if it's not set.
-   */
-  defaultRegion?: QStashRegion;
-  /**
-   * One handler per region. A single handler if QSTASH_REGION is not set.
-   */
-  handlers: RegionalHandler[];
-};
+/**
+ * QStash handlers for single or multi-region mode
+ */
+export type QStashHandlers =
+  | {
+      mode: "single-region";
+      handlers: RegionalHandler;
+    }
+  | {
+      mode: "multi-region";
+      handlers: Record<QStashRegion, RegionalHandler>;
+      defaultRegion: QStashRegion;
+    };
 
 export const getRegionFromEnvironment = (
   environment: Record<string, string | undefined>
@@ -112,18 +115,24 @@ export const readBundle = (
   const usesRegionPrefix = Boolean(
     region && VARIABLES.some((variable) => environment[`${region}_${variable}`])
   );
-  const prefix = usesRegionPrefix ? `${region}_` : "";
-  const get = (variable: (typeof VARIABLES)[number]) => environment[prefix + variable] || undefined;
+  const prefixRegion = usesRegionPrefix ? region : undefined;
+  const prefix = prefixRegion ? `${prefixRegion}_` : "";
 
-  const token = get("QSTASH_TOKEN");
-  const currentSigningKey = get("QSTASH_CURRENT_SIGNING_KEY");
-  const nextSigningKey = get("QSTASH_NEXT_SIGNING_KEY");
+  const { QSTASH_URL, QSTASH_TOKEN } = readClientEnvironmentVariables(environment, prefixRegion);
+  const { QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY } = readReceiverEnvironmentVariables(
+    environment,
+    prefixRegion
+  );
+  // empty values count as not set
+  const token = QSTASH_TOKEN || undefined;
+  const currentSigningKey = QSTASH_CURRENT_SIGNING_KEY || undefined;
+  const nextSigningKey = QSTASH_NEXT_SIGNING_KEY || undefined;
 
   return {
     region,
     prefix,
     usesRegionPrefix,
-    url: get("QSTASH_URL"),
+    url: QSTASH_URL || undefined,
     token,
     currentSigningKey,
     nextSigningKey,
@@ -132,6 +141,35 @@ export const readBundle = (
     verificationRequired: isAnySigningKeySet(environment),
   };
 };
+
+function readEnvironmentVariables<T extends readonly string[]>(
+  environmentVariables: T,
+  environment: Record<string, string | undefined>,
+  region?: QStashRegion
+): Record<T[number], string | undefined> {
+  const result: Record<string, string | undefined> = {};
+
+  for (const variable of environmentVariables) {
+    const key = region ? `${region}_${variable}` : variable;
+    result[variable] = environment[key];
+  }
+
+  return result as Record<T[number], string | undefined>;
+}
+
+export function readClientEnvironmentVariables(
+  environment: Record<string, string | undefined>,
+  region?: QStashRegion
+) {
+  return readEnvironmentVariables(["QSTASH_URL", "QSTASH_TOKEN"] as const, environment, region);
+}
+
+export function readReceiverEnvironmentVariables(
+  environment: Record<string, string | undefined>,
+  region?: QStashRegion
+) {
+  return readEnvironmentVariables(SIGNING_KEY_VARIABLES, environment, region);
+}
 
 const normalizeRegion = (region: string | undefined): QStashRegion | undefined => {
   const normalized = region?.replaceAll("-", "_").toUpperCase();

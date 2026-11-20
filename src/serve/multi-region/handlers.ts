@@ -4,7 +4,6 @@ import {
   DEFAULT_QSTASH_URL,
   getRegionFromEnvironment,
   normalizeRegionHeader,
-  QSTASH_REGIONS,
   QStashHandlers,
   QStashRegion,
   readBundle,
@@ -32,12 +31,12 @@ export const getHandlersForRequest = (
   qstashHandlers: QStashHandlers,
   regionHeader: string | null
 ): RegionalHandler => {
-  const { defaultRegion, handlers } = qstashHandlers;
-  const region = defaultRegion
-    ? (normalizeRegionHeader(regionHeader ?? undefined) ?? defaultRegion)
-    : undefined;
+  if (qstashHandlers.mode === "single-region") {
+    return qstashHandlers.handlers;
+  }
 
-  return handlers.find((handler) => handler.bundle.region === region)!;
+  const region = normalizeRegionHeader(regionHeader ?? undefined) ?? qstashHandlers.defaultRegion;
+  return qstashHandlers.handlers[region];
 };
 
 /**
@@ -45,8 +44,12 @@ export const getHandlersForRequest = (
  *
  * Should be called after the request is verified.
  */
-export const getClientForRequest = ({ client, bundle }: RegionalHandler): WorkflowClient => {
-  if (!client) {
+export const getClientForRequest = ({
+  client,
+  bundle,
+  missingToken,
+}: RegionalHandler): WorkflowClient => {
+  if (missingToken) {
     throw new WorkflowError(
       `Received a request for region ${bundle.region}, but ${bundle.prefix}QSTASH_TOKEN is not set.`
     );
@@ -74,21 +77,14 @@ const isDevMode = (
 const getClient = (
   bundle: CredentialBundle,
   qstashClientOption: QStashClientOption,
-  devMode: boolean,
-  isDefaultRegion: boolean
-): WorkflowClient | undefined => {
+  devMode: boolean
+): WorkflowClient => {
   if (qstashClientOption && "http" in qstashClientOption) {
     return qstashClientOption;
   }
 
   if (devMode) {
     return new Client({ ...qstashClientOption, devMode });
-  }
-
-  // only the default region gets a client without a token. Requests of the
-  // other regions fail with an error instead.
-  if (!bundle.hasToken && !isDefaultRegion) {
-    return undefined;
   }
 
   return new Client({
@@ -180,24 +176,43 @@ const getQStashHandlers = ({
   qstashClientOption?: QStashClientOption;
   receiverConfig: ReceiverConfig;
 }): QStashHandlers => {
-  const defaultRegion = getRegionFromEnvironment(environment);
+  const hasClientInstance = Boolean(qstashClientOption && "http" in qstashClientOption);
+  // regions aren't used if a client is passed in options
+  const defaultRegion = hasClientInstance ? undefined : getRegionFromEnvironment(environment);
   const devMode = isDevMode(environment, qstashClientOption);
 
-  const regions: (QStashRegion | undefined)[] = defaultRegion ? [...QSTASH_REGIONS] : [undefined];
-  const handlers = regions.map((region) => {
+  const createHandler = (region?: QStashRegion): RegionalHandler => {
     const bundle = readBundle(environment, region);
     return {
       bundle,
-      client: getClient(bundle, qstashClientOption, devMode, region === defaultRegion),
+      client: getClient(bundle, qstashClientOption, devMode),
       receiver: getReceiver(bundle, receiverConfig, devMode),
+      // the default region can be used without a token, like when QSTASH_REGION is not set.
+      // Calls to QStash fail in that case.
+      missingToken: !bundle.hasToken && !devMode && region !== defaultRegion,
     };
-  });
+  };
+
+  const qstashHandlers: QStashHandlers = defaultRegion
+    ? {
+        mode: "multi-region",
+        defaultRegion,
+        handlers: {
+          US_EAST_1: createHandler("US_EAST_1"),
+          EU_CENTRAL_1: createHandler("EU_CENTRAL_1"),
+        },
+      }
+    : { mode: "single-region", handlers: createHandler() };
 
   if (receiverConfig === "not-set" && !devMode) {
+    const handlers =
+      qstashHandlers.mode === "multi-region"
+        ? Object.values(qstashHandlers.handlers)
+        : [qstashHandlers.handlers];
     warnAboutBundles(handlers.map((handler) => handler.bundle));
   }
 
-  return { defaultRegion, handlers };
+  return qstashHandlers;
 };
 
 export const getQStashHandlerOptions = (
@@ -213,7 +228,6 @@ export const getQStashHandlerOptions = (
   return {
     qstashHandlers,
     defaultReceiver: receiver,
-    // the default region always has a client
-    defaultClient: client!,
+    defaultClient: client,
   };
 };
