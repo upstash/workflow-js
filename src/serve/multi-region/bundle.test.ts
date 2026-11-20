@@ -166,7 +166,7 @@ const getRequestOutcome = async (
   };
 };
 
-const REJECTED = { error: expect.stringContaining("is rejected. A QStash signing key is set") };
+const REJECTED = { error: expect.stringContaining("are rejected. A QStash signing key is set") };
 
 const getOutcomes = async (environment: Record<string, string>, options?: Options) => ({
   us: await getRequestOutcome(environment, "us-east-1", options),
@@ -310,7 +310,7 @@ describe("without QSTASH_REGION", () => {
     expect(outcome).toEqual(REJECTED);
     expect(warnings()).toHaveLength(1);
     expect(warnings()[0]).toContain(
-      "Requests will be rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
+      "Requests are rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
     );
   });
 
@@ -401,9 +401,9 @@ describe("with QSTASH_REGION", () => {
 
     expect(warnings()).toHaveLength(2);
     expect(warnings()[0]).toContain(
-      "Requests from US_EAST_1 will be rejected. A QStash signing key is set, but US_EAST_1_QSTASH_CURRENT_SIGNING_KEY and US_EAST_1_QSTASH_NEXT_SIGNING_KEY are not both set."
+      "Requests from US_EAST_1 are rejected. A QStash signing key is set, but US_EAST_1_QSTASH_CURRENT_SIGNING_KEY and US_EAST_1_QSTASH_NEXT_SIGNING_KEY are not both set."
     );
-    expect(warnings()[1]).toContain("Requests from EU_CENTRAL_1 will be rejected.");
+    expect(warnings()[1]).toContain("Requests from EU_CENTRAL_1 are rejected.");
   });
 
   test("should reject requests of a region without signing keys if the other has them", async () => {
@@ -443,11 +443,11 @@ describe("with QSTASH_REGION", () => {
     const plain = await getOutcomes({ ...REGION, ...PLAIN, QSTASH_NEXT_SIGNING_KEY: "key" });
     expect(plain.us).toEqual(REJECTED);
     expect(plain.eu).toEqual(REJECTED);
-    // both regions use the same env variables, warned once
+    // both regions use the same env variables, each is warned about
     expect(warnings().at(-1)).toContain(
-      "Requests from US_EAST_1 and EU_CENTRAL_1 will be rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
+      "Requests from EU_CENTRAL_1 are rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
     );
-    expect(warnings().filter((warning) => warning.includes("will be rejected"))).toHaveLength(3);
+    expect(warnings().filter((warning) => warning.includes("are rejected"))).toHaveLength(4);
   });
 
   test("should not verify if no signing key is set", async () => {

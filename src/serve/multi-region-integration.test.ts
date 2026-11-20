@@ -765,7 +765,7 @@ describe("Multi-Region Integration Tests", () => {
 
       expect(status).toBe(500);
       expect(stepRan).toBeFalse();
-      expect(message).toContain("Request from EU_CENTRAL_1 is rejected.");
+      expect(message).toContain("Requests from EU_CENTRAL_1 are rejected.");
     });
 
     test("should return an error for a region without a token", async () => {

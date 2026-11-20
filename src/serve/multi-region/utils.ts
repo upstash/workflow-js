@@ -55,7 +55,6 @@ export const getBundlePrefix = ({ region, usesRegionPrefix }: CredentialBundle) 
 export type RegionalHandler = {
   client: WorkflowClient;
   receiver?: WorkflowReceiver;
-  bundle: CredentialBundle;
   /**
    * Set if the requests of the region can't be handled. Such requests fail with this error.
    */
