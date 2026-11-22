@@ -40,6 +40,16 @@ describe("decodeBase64", () => {
     const decoded = decodeBase64(encoded);
     expect(decoded).toBe("Simple ASCII");
   });
+
+  test("should decode unpadded base64url strings containing - and _", () => {
+    // Bytes [0xfb, 0xff, 0xbf] -> "+/+/" in standard base64, "-_-_" in base64url.
+    // Payload here encodes UTF-8 text whose base64 uses '-', '_', and omits '=' padding.
+    const sample = '{"sub":"user?a>b"}';
+    const bytes = new TextEncoder().encode(sample);
+    const std = btoa(String.fromCharCode(...bytes));
+    const base64url = std.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    expect(decodeBase64(base64url)).toBe(sample);
+  });
 });
 
 describe("getUserIdFromToken", () => {
@@ -84,6 +94,22 @@ describe("getUserIdFromToken", () => {
     const throws = () => getUserIdFromToken(client);
     expect(throws).toThrow(WorkflowError);
     expect(throws).toThrow("Failed to decode QStash token while running create webhook step:");
+  });
+
+  test("should extract userId from base64url token without padding", () => {
+    const userId = "user?token>1";
+    const tokenPayload = JSON.stringify({ UserID: userId });
+    const encodedToken = btoa(tokenPayload)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const client = new Client({
+      baseUrl: MOCK_QSTASH_SERVER_URL,
+      token: encodedToken,
+    });
+
+    expect(getUserIdFromToken(client)).toBe(userId);
   });
 });
 
