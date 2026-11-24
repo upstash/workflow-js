@@ -25,8 +25,6 @@ export const assertNonEmptyId = (id: string, label = "id"): void => {
 
 const DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
 // eslint-disable-next-line no-control-regex
-const WHITESPACE_OR_CONTROL = /[\s\u0000-\u001F\u007F]/g;
-// eslint-disable-next-line no-control-regex
 const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
 
 /**
@@ -42,7 +40,7 @@ export const toPathSegment = (id: string, label = "id"): string => {
   if (typeof id !== "string") {
     throw new QstashError(`${label} must be a string`);
   }
-  if (DOT_SEGMENT.test(id.replaceAll(WHITESPACE_OR_CONTROL, ""))) {
+  if (DOT_SEGMENT.test(id)) {
     throw new QstashError(`${label} cannot be "." or ".."`);
   }
   if (NOT_ALLOWED_IN_SEGMENT.test(id) || id !== id.trim()) {

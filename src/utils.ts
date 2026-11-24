@@ -59,7 +59,7 @@ export function nanoid(length: number = NANOID_LENGTH): string {
  * @param id optional id to use as suffix
  */
 export function getWorkflowRunId(id?: string): string {
-  return `wfr_${id === undefined ? nanoid() : toPathSegment(id, "Workflow run id")}`;
+  return toPathSegment(`wfr_${id ?? nanoid()}`, "Workflow run id");
 }
 
 /**

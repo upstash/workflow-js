@@ -225,7 +225,7 @@ export const validateRequest = (
     return {
       unknownSdk: false,
       isFirstInvocation: true,
-      workflowRunId: toPathSegment(workflowRunId, "Workflow run id"),
+      workflowRunId,
     };
   }
 
@@ -247,7 +247,6 @@ export const validateRequest = (
   if (workflowRunId.length === 0) {
     throw new WorkflowError("Couldn't get workflow id from header");
   }
-  toPathSegment(workflowRunId, "Workflow run id");
 
   return {
     isFirstInvocation,
@@ -418,9 +417,6 @@ export const handleFailure = async <TInitialPayload>({
       sourceMessageId: string;
     };
 
-    if (workflowRunId !== undefined) {
-      toPathSegment(workflowRunId, "Workflow run id");
-    }
     const workflowUrl = url === undefined ? url : toWorkflowUrl(url);
 
     const decodedBody = body ? decodeBase64(body) : "{}";
