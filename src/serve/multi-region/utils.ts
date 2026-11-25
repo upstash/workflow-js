@@ -33,7 +33,8 @@ export type CredentialBundle = {
   };
   /**
    * What to do with the requests of the region:
-   * - "verify": both signing keys are set, requests are verified with them
+   * - "verify": a signing key is set, requests are verified. If only one of
+   *   the two is set, it's used for both.
    * - "reject": signing keys are missing, but a signing key env variable is set
    *   somewhere (with or without region prefix). Requests are never accepted
    *   without verification in that case, so all are rejected.
@@ -131,7 +132,7 @@ export const readBundle = (
       nextSigningKey: QSTASH_NEXT_SIGNING_KEY || undefined,
     },
     verification:
-      QSTASH_CURRENT_SIGNING_KEY && QSTASH_NEXT_SIGNING_KEY
+      QSTASH_CURRENT_SIGNING_KEY || QSTASH_NEXT_SIGNING_KEY
         ? "verify"
         : isAnySigningKeySet(environment)
           ? "reject"

@@ -35,16 +35,21 @@ import { QStashClientExtraConfig, WorkflowClient, WorkflowReceiver } from "../..
 // credential resolution intact, keeping this file a pure unit test.
 const processEnvironment = process.env as Record<string, string | undefined>;
 let previousNodeEnvironment: string | undefined;
+let previousToken: string | undefined;
 let warn: ReturnType<typeof spyOn<Console, "warn">>;
 
 beforeAll(() => {
   previousNodeEnvironment = processEnvironment.NODE_ENV;
   processEnvironment.NODE_ENV = "production";
+  // a client created without a token would use QSTASH_TOKEN of the process
+  previousToken = processEnvironment.QSTASH_TOKEN;
+  delete processEnvironment.QSTASH_TOKEN;
 });
 
 afterAll(() => {
   if (previousNodeEnvironment === undefined) delete processEnvironment.NODE_ENV;
   else processEnvironment.NODE_ENV = previousNodeEnvironment;
+  if (previousToken !== undefined) processEnvironment.QSTASH_TOKEN = previousToken;
 });
 
 beforeEach(() => {
@@ -264,8 +269,9 @@ describe("readBundle", () => {
     expect(readBundle({ ...PLAIN }).verification).toBe("none");
     expect(readBundle({ ...PLAIN_KEYS }).verification).toBe("verify");
 
-    // one signing key isn't enough
-    expect(readBundle({ QSTASH_CURRENT_SIGNING_KEY: "key" }).verification).toBe("reject");
+    // one signing key is enough
+    expect(readBundle({ QSTASH_CURRENT_SIGNING_KEY: "key" }).verification).toBe("verify");
+    expect(readBundle({ QSTASH_NEXT_SIGNING_KEY: "key" }).verification).toBe("verify");
     // rejected if a signing key is set anywhere else
     expect(readBundle({ ...US, ...EU_KEYS }, "US_EAST_1").verification).toBe("reject");
     expect(readBundle({ ...US, ...PLAIN_KEYS }, "US_EAST_1").verification).toBe("reject");
@@ -302,15 +308,14 @@ describe("without QSTASH_REGION", () => {
     expect(warnings()).toHaveLength(0);
   });
 
-  test("should reject requests if only one signing key is set", async () => {
-    const outcome = await getRequestOutcome(
-      { ...PLAIN, QSTASH_NEXT_SIGNING_KEY: "plain-next-key" },
-      null
-    );
-    expect(outcome).toEqual(REJECTED);
-    expect(warnings()).toHaveLength(1);
+  test("should verify with the signing key which is set if only one is set", async () => {
+    for (const variable of ["QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY"]) {
+      const outcome = await getRequestOutcome({ ...PLAIN, [variable]: "plain-current-key" }, null);
+      expect(outcome.verification).toBe("plain-current-key");
+    }
+    expect(warnings()).toHaveLength(2);
     expect(warnings()[0]).toContain(
-      "Requests are rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
+      "Only QSTASH_CURRENT_SIGNING_KEY is set. Requests are verified with it. Set QSTASH_NEXT_SIGNING_KEY too"
     );
   });
 
@@ -401,7 +406,7 @@ describe("with QSTASH_REGION", () => {
 
     expect(warnings()).toHaveLength(2);
     expect(warnings()[0]).toContain(
-      "Requests from US_EAST_1 are rejected. A QStash signing key is set, but US_EAST_1_QSTASH_CURRENT_SIGNING_KEY and US_EAST_1_QSTASH_NEXT_SIGNING_KEY are not both set."
+      "Requests from US_EAST_1 are rejected. A QStash signing key is set, but US_EAST_1_QSTASH_CURRENT_SIGNING_KEY and US_EAST_1_QSTASH_NEXT_SIGNING_KEY are not set."
     );
     expect(warnings()[1]).toContain("Requests from EU_CENTRAL_1 are rejected.");
   });
@@ -430,24 +435,32 @@ describe("with QSTASH_REGION", () => {
     });
   });
 
-  test("should reject requests if only one signing key is set", async () => {
+  test("should verify with the signing key which is set if only one is set", async () => {
     const outcomes = await getOutcomes({
       ...REGION,
       ...US,
       ...EU,
       US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+      EU_CENTRAL_1_QSTASH_NEXT_SIGNING_KEY: "eu-current-key",
     });
-    expect(outcomes.us).toEqual(REJECTED);
-    expect(outcomes.eu).toEqual(REJECTED);
-
-    const plain = await getOutcomes({ ...REGION, ...PLAIN, QSTASH_NEXT_SIGNING_KEY: "key" });
-    expect(plain.us).toEqual(REJECTED);
-    expect(plain.eu).toEqual(REJECTED);
-    // both regions use the same env variables, each is warned about
-    expect(warnings().at(-1)).toContain(
-      "Requests from EU_CENTRAL_1 are rejected. A QStash signing key is set, but QSTASH_CURRENT_SIGNING_KEY and QSTASH_NEXT_SIGNING_KEY are not both set."
+    expect(outcomes.us.verification).toBe("us-current-key");
+    expect(outcomes.eu.verification).toBe("eu-current-key");
+    expect(warnings()).toContain(
+      "[Upstash Workflow] Only EU_CENTRAL_1_QSTASH_NEXT_SIGNING_KEY is set. Requests from EU_CENTRAL_1 are verified with it. Set EU_CENTRAL_1_QSTASH_CURRENT_SIGNING_KEY too, so that requests are verified when the keys are rotated."
     );
-    expect(warnings().filter((warning) => warning.includes("are rejected"))).toHaveLength(4);
+
+    // a region without any signing key is still rejected
+    const onlyUs = await getOutcomes({
+      ...REGION,
+      ...US,
+      ...EU,
+      US_EAST_1_QSTASH_CURRENT_SIGNING_KEY: "us-current-key",
+    });
+    expect(onlyUs.us.verification).toBe("us-current-key");
+    expect(onlyUs.eu).toEqual(REJECTED);
+    expect(warnings().at(-1)).toContain(
+      "Requests from EU_CENTRAL_1 are rejected. A QStash signing key is set, but EU_CENTRAL_1_QSTASH_CURRENT_SIGNING_KEY and EU_CENTRAL_1_QSTASH_NEXT_SIGNING_KEY are not set."
+    );
   });
 
   test("should not verify if no signing key is set", async () => {
@@ -575,7 +588,7 @@ describe("qstashClient option", () => {
     });
   });
 
-  test("should not use regions with a client in options", async () => {
+  test("should use the client in options in all regions", async () => {
     const qstashClient = new Client({
       baseUrl: "https://custom.upstash.io",
       token: "custom-token",
@@ -584,10 +597,16 @@ describe("qstashClient option", () => {
     expect(outcomes.us).toMatchObject({ verification: "plain-current-key", token: "custom-token" });
     expect(outcomes.eu).toMatchObject({ verification: "plain-current-key", token: "custom-token" });
 
-    // signing keys with region prefix aren't used, but still make verification required
+    // signing keys of each region are used, token env variables aren't needed
     const prefixed = await getOutcomes({ ...REGION, ...US_KEYS, ...EU_KEYS }, { qstashClient });
-    expect(prefixed.us).toEqual(REJECTED);
-    expect(prefixed.eu).toEqual(REJECTED);
+    expect(prefixed.us).toMatchObject({ verification: "us-current-key", token: "custom-token" });
+    expect(prefixed.eu).toMatchObject({ verification: "eu-current-key", token: "custom-token" });
+    expect(warnings()).toHaveLength(0);
+
+    // a region without signing keys is rejected if the other has them
+    const onlyUs = await getOutcomes({ ...REGION, ...US_KEYS }, { qstashClient });
+    expect(onlyUs.us).toMatchObject({ verification: "us-current-key", token: "custom-token" });
+    expect(onlyUs.eu).toEqual(REJECTED);
   });
 
   test("should pass client config to the client of each region", () => {

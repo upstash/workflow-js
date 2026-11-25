@@ -231,7 +231,7 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
       expect(result.qstashHandlers.mode).toBe("single-region");
     });
 
-    test("should use single-region mode when client instance is provided", () => {
+    test("should use the client instance in all regions when it is provided", () => {
       const environment = createEnvironment({
         QSTASH_REGION: "US_EAST_1",
         US_EAST_1_QSTASH_URL: "https://us-qstash.upstash.io",
@@ -249,9 +249,10 @@ describe("QStash Handler Options - Multi-Region Mode Detection", () => {
         receiverConfig: "not-set",
       });
 
-      expect(result.qstashHandlers.mode).toBe("single-region");
-      if (result.qstashHandlers.mode === "single-region") {
-        expect(result.qstashHandlers.handlers.client).toBe(client);
+      expect(result.qstashHandlers.mode).toBe("multi-region");
+      if (result.qstashHandlers.mode === "multi-region") {
+        expect(result.qstashHandlers.handlers.US_EAST_1.client).toBe(client);
+        expect(result.qstashHandlers.handlers.EU_CENTRAL_1.client).toBe(client);
       }
     });
   });

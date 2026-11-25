@@ -112,8 +112,10 @@ const getReceiver = (
 
   return bundle.verification === "verify"
     ? new Receiver({
-        currentSigningKey: bundle.credentials.currentSigningKey,
-        nextSigningKey: bundle.credentials.nextSigningKey,
+        // if only one signing key is set, it's used for both
+        currentSigningKey:
+          bundle.credentials.currentSigningKey ?? bundle.credentials.nextSigningKey,
+        nextSigningKey: bundle.credentials.nextSigningKey ?? bundle.credentials.currentSigningKey,
         devMode,
       })
     : undefined;
@@ -128,9 +130,10 @@ const getQStashHandlers = ({
   qstashClientOption?: QStashClientOption;
   receiverConfig: ReceiverConfig;
 }): QStashHandlers => {
+  // a client passed in options is used in all regions. Token and url env
+  // variables aren't needed then, signing keys are still read for each region.
   const hasClientInstance = Boolean(qstashClientOption && "http" in qstashClientOption);
-  // regions aren't used if a client is passed in options
-  const defaultRegion = hasClientInstance ? undefined : getRegionFromEnvironment(environment);
+  const defaultRegion = getRegionFromEnvironment(environment);
   const devMode = isDevMode(environment, qstashClientOption);
 
   const createHandler = (region?: QStashRegion): RegionalHandler => {
@@ -145,7 +148,12 @@ const getQStashHandlers = ({
       return handler;
     }
 
-    if (bundle.usesRegionPrefix && bundle.credentials.token && !bundle.credentials.url) {
+    if (
+      !hasClientInstance &&
+      bundle.usesRegionPrefix &&
+      bundle.credentials.token &&
+      !bundle.credentials.url
+    ) {
       console.warn(
         `[Upstash Workflow] ${prefix}QSTASH_URL is not set. Using ${DEFAULT_QSTASH_URL}.`
       );
@@ -155,15 +163,27 @@ const getQStashHandlers = ({
     // options. Requests are never accepted without verification if a signing
     // key is set somewhere.
     if (receiverConfig === "not-set" && bundle.verification === "reject") {
-      const error = `Requests${region ? ` from ${region}` : ""} are rejected. A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not both set.`;
+      const error = `Requests${region ? ` from ${region}` : ""} are rejected. A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not set.`;
       console.warn(`[Upstash Workflow] ${error}`);
       return { ...handler, error };
+    }
+
+    const { currentSigningKey, nextSigningKey } = bundle.credentials;
+    if (receiverConfig === "not-set" && Boolean(currentSigningKey) !== Boolean(nextSigningKey)) {
+      const [set, missing] = currentSigningKey ? ["CURRENT", "NEXT"] : ["NEXT", "CURRENT"];
+      console.warn(
+        `[Upstash Workflow] Only ${prefix}QSTASH_${set}_SIGNING_KEY is set. Requests${region ? ` from ${region}` : ""} are verified with it. Set ${prefix}QSTASH_${missing}_SIGNING_KEY too, so that requests are verified when the keys are rotated.`
+      );
     }
 
     // The default region can be used without a token if it has no env variable
     // with its prefix, like when QSTASH_REGION is not set. Calls to QStash fail
     // in that case. If it has some, a token without prefix must not be used.
-    if (!bundle.credentials.token && (region !== defaultRegion || bundle.usesRegionPrefix)) {
+    if (
+      !hasClientInstance &&
+      !bundle.credentials.token &&
+      (region !== defaultRegion || bundle.usesRegionPrefix)
+    ) {
       return {
         ...handler,
         error: `Received a request for region ${region}, but ${prefix}QSTASH_TOKEN is not set.`,
