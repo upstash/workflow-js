@@ -18,13 +18,10 @@ const VARIABLES = ["QSTASH_URL", "QSTASH_TOKEN", ...SIGNING_KEY_VARIABLES] as co
  */
 export type CredentialBundle = {
   /**
-   * Region of the bundle. undefined if QSTASH_REGION is not set.
+   * Prefix of the env variables the credentials are read from, like
+   * "US_EAST_1_". Empty if the env variables without region prefix are used.
    */
-  region?: QStashRegion;
-  /**
-   * Whether the credentials are read from the env variables with the region prefix
-   */
-  usesRegionPrefix: boolean;
+  prefix: string;
   credentials: {
     url?: string;
     token?: string;
@@ -42,13 +39,6 @@ export type CredentialBundle = {
    */
   verification: "verify" | "reject" | "none";
 };
-
-/**
- * Prefix of the env variables the bundle is read from, like "US_EAST_1_".
- * Empty if the env variables without region prefix are used.
- */
-export const getBundlePrefix = ({ region, usesRegionPrefix }: CredentialBundle) =>
-  usesRegionPrefix ? `${region}_` : "";
 
 /**
  * Regional handler containing client and optional receiver
@@ -110,29 +100,26 @@ export const readBundle = (
   environment: Record<string, string | undefined>,
   region?: QStashRegion
 ): CredentialBundle => {
-  const usesRegionPrefix = Boolean(
+  const prefix =
     region && VARIABLES.some((variable) => environment[`${region}_${variable}`])
-  );
-  const prefixRegion = usesRegionPrefix ? region : undefined;
+      ? `${region}_`
+      : "";
+  // empty values count as not set
+  const read = (variable: (typeof VARIABLES)[number]) =>
+    environment[prefix + variable] || undefined;
 
-  const { QSTASH_URL, QSTASH_TOKEN } = readClientEnvironmentVariables(environment, prefixRegion);
-  const { QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY } = readReceiverEnvironmentVariables(
-    environment,
-    prefixRegion
-  );
+  const credentials = {
+    url: read("QSTASH_URL"),
+    token: read("QSTASH_TOKEN"),
+    currentSigningKey: read("QSTASH_CURRENT_SIGNING_KEY"),
+    nextSigningKey: read("QSTASH_NEXT_SIGNING_KEY"),
+  };
 
   return {
-    region,
-    usesRegionPrefix,
-    // empty values count as not set
-    credentials: {
-      url: QSTASH_URL || undefined,
-      token: QSTASH_TOKEN || undefined,
-      currentSigningKey: QSTASH_CURRENT_SIGNING_KEY || undefined,
-      nextSigningKey: QSTASH_NEXT_SIGNING_KEY || undefined,
-    },
+    prefix,
+    credentials,
     verification:
-      QSTASH_CURRENT_SIGNING_KEY || QSTASH_NEXT_SIGNING_KEY
+      credentials.currentSigningKey || credentials.nextSigningKey
         ? "verify"
         : isAnySigningKeySet(environment)
           ? "reject"

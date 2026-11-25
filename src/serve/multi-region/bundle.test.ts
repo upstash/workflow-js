@@ -16,7 +16,6 @@ import {
 import { Client, Receiver } from "@upstash/qstash";
 import {
   DEFAULT_QSTASH_URL,
-  getBundlePrefix,
   getRegionFromEnvironment,
   normalizeRegionHeader,
   readBundle,
@@ -212,8 +211,7 @@ describe("getRegionFromEnvironment", () => {
 describe("readBundle", () => {
   test("should read env variables without prefix if there is no region", () => {
     expect(readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS })).toEqual({
-      region: undefined,
-      usesRegionPrefix: false,
+      prefix: "",
       credentials: {
         url: undefined,
         token: "plain-token",
@@ -227,8 +225,7 @@ describe("readBundle", () => {
   test("should read env variables with region prefix if any of them is set", () => {
     const bundle = readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS }, "US_EAST_1");
     expect(bundle).toEqual({
-      region: "US_EAST_1",
-      usesRegionPrefix: true,
+      prefix: "US_EAST_1_",
       credentials: {
         url: "https://us-qstash.upstash.io",
         token: "us-token",
@@ -237,14 +234,13 @@ describe("readBundle", () => {
       },
       verification: "verify",
     });
-    expect(getBundlePrefix(bundle)).toBe("US_EAST_1_");
   });
 
   test("should not mix env variables with and without region prefix", () => {
     // a single env variable with the prefix is enough to ignore the ones without
     for (const variable of Object.keys({ ...US, ...US_KEYS })) {
       const bundle = readBundle({ ...PLAIN, ...PLAIN_KEYS, [variable]: "value" }, "US_EAST_1");
-      expect(bundle.usesRegionPrefix).toBeTrue();
+      expect(bundle.prefix).toBe("US_EAST_1_");
       expect(Object.values(bundle.credentials).filter(Boolean)).toEqual(["value"]);
     }
   });
@@ -252,15 +248,13 @@ describe("readBundle", () => {
   test("should read env variables without prefix if the region has none", () => {
     const bundle = readBundle({ ...PLAIN, ...PLAIN_KEYS, ...US, ...US_KEYS }, "EU_CENTRAL_1");
     expect(bundle).toMatchObject({
-      region: "EU_CENTRAL_1",
-      usesRegionPrefix: false,
+      prefix: "",
       credentials: { token: "plain-token", currentSigningKey: "plain-current-key" },
     });
-    expect(getBundlePrefix(bundle)).toBe("");
 
     // empty values don't count
     const empty = readBundle({ ...PLAIN, EU_CENTRAL_1_QSTASH_TOKEN: "" }, "EU_CENTRAL_1");
-    expect(empty.usesRegionPrefix).toBeFalse();
+    expect(empty.prefix).toBe("");
     expect(empty.credentials.token).toBe("plain-token");
   });
 

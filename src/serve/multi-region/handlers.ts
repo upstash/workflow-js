@@ -2,7 +2,6 @@ import { Client, Receiver } from "@upstash/qstash";
 import {
   CredentialBundle,
   DEFAULT_QSTASH_URL,
-  getBundlePrefix,
   getRegionFromEnvironment,
   normalizeRegionHeader,
   QStashHandlers,
@@ -116,6 +115,7 @@ const getReceiver = (
         currentSigningKey:
           bundle.credentials.currentSigningKey ?? bundle.credentials.nextSigningKey,
         nextSigningKey: bundle.credentials.nextSigningKey ?? bundle.credentials.currentSigningKey,
+        // without this, the receiver reads QSTASH_DEV of the process itself
         devMode,
       })
     : undefined;
@@ -138,7 +138,9 @@ const getQStashHandlers = ({
 
   const createHandler = (region?: QStashRegion): RegionalHandler => {
     const bundle = readBundle(environment, region);
-    const prefix = getBundlePrefix(bundle);
+    const { prefix } = bundle;
+    const { url, token, currentSigningKey, nextSigningKey } = bundle.credentials;
+    const requests = region ? `Requests from ${region}` : "Requests";
     const handler: RegionalHandler = {
       client: getClient(bundle, qstashClientOption, devMode),
       receiver: getReceiver(bundle, receiverConfig, devMode),
@@ -148,12 +150,7 @@ const getQStashHandlers = ({
       return handler;
     }
 
-    if (
-      !hasClientInstance &&
-      bundle.usesRegionPrefix &&
-      bundle.credentials.token &&
-      !bundle.credentials.url
-    ) {
+    if (!hasClientInstance && prefix && token && !url) {
       console.warn(
         `[Upstash Workflow] ${prefix}QSTASH_URL is not set. Using ${DEFAULT_QSTASH_URL}.`
       );
@@ -163,27 +160,23 @@ const getQStashHandlers = ({
     // options. Requests are never accepted without verification if a signing
     // key is set somewhere.
     if (receiverConfig === "not-set" && bundle.verification === "reject") {
-      const error = `Requests${region ? ` from ${region}` : ""} are rejected. A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not set.`;
+      const error = `${requests} are rejected. A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not set.`;
       console.warn(`[Upstash Workflow] ${error}`);
       return { ...handler, error };
     }
 
-    const { currentSigningKey, nextSigningKey } = bundle.credentials;
     if (receiverConfig === "not-set" && Boolean(currentSigningKey) !== Boolean(nextSigningKey)) {
       const [set, missing] = currentSigningKey ? ["CURRENT", "NEXT"] : ["NEXT", "CURRENT"];
       console.warn(
-        `[Upstash Workflow] Only ${prefix}QSTASH_${set}_SIGNING_KEY is set. Requests${region ? ` from ${region}` : ""} are verified with it. Set ${prefix}QSTASH_${missing}_SIGNING_KEY too, so that requests are verified when the keys are rotated.`
+        `[Upstash Workflow] Only ${prefix}QSTASH_${set}_SIGNING_KEY is set. ${requests} are verified with it. Set ${prefix}QSTASH_${missing}_SIGNING_KEY too, so that requests are verified when the keys are rotated.`
       );
     }
 
-    // The default region can be used without a token if it has no env variable
-    // with its prefix, like when QSTASH_REGION is not set. Calls to QStash fail
-    // in that case. If it has some, a token without prefix must not be used.
-    if (
-      !hasClientInstance &&
-      !bundle.credentials.token &&
-      (region !== defaultRegion || bundle.usesRegionPrefix)
-    ) {
+    // The default region can be used without a token if it reads the env
+    // variables without prefix, like when QSTASH_REGION is not set. Calls to
+    // QStash fail in that case.
+    const isTokenRequired = region !== defaultRegion || Boolean(prefix);
+    if (!hasClientInstance && isTokenRequired && !token) {
       return {
         ...handler,
         error: `Received a request for region ${region}, but ${prefix}QSTASH_TOKEN is not set.`,
@@ -193,7 +186,7 @@ const getQStashHandlers = ({
     return handler;
   };
 
-  const qstashHandlers: QStashHandlers = defaultRegion
+  return defaultRegion
     ? {
         mode: "multi-region",
         defaultRegion,
@@ -203,8 +196,6 @@ const getQStashHandlers = ({
         },
       }
     : { mode: "single-region", handlers: createHandler() };
-
-  return qstashHandlers;
 };
 
 export const getQStashHandlerOptions = (
