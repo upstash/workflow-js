@@ -23,8 +23,7 @@ import type {
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
-import { toPathSegment } from "./client/utils";
-import { getSteps } from "./client/utils";
+import { getSteps, toPathSegment } from "./client/utils";
 import { getEffectiveConfig } from "./qstash/step-config";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
