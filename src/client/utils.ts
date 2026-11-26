@@ -3,13 +3,53 @@ import { NotifyResponse, RawStep, Waiter } from "../types";
 import { WorkflowLogger } from "../logger";
 import { isInstanceOf } from "../error";
 
+/**
+ * Guards single-resource endpoints against an empty identifier.
+ *
+ * An empty id would otherwise be joined into the path as a trailing slash
+ * (e.g. `v2/waiters/`), which is a different endpoint.
+ */
+export const assertNonEmptyId = (id: string, label = "id"): void => {
+  if (!id) {
+    throw new QstashError(`${label} cannot be empty`);
+  }
+};
+
+const DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
+// eslint-disable-next-line no-control-regex
+const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
+
+/**
+ * Checks that `id` can be used as a single URL path segment and returns it
+ * unchanged.
+ *
+ * Ids are sent as they are, so an id has to stay in its own segment by
+ * itself: `/`, `\`, `?`, `#`, control characters and surrounding whitespace
+ * are not accepted, and neither are `.` and `..`.
+ */
+export const toPathSegment = (id: string, label = "id"): string => {
+  assertNonEmptyId(id, label);
+  if (typeof id !== "string") {
+    throw new QstashError(`${label} must be a string`);
+  }
+  if (DOT_SEGMENT.test(id)) {
+    throw new QstashError(`${label} cannot be "." or ".."`);
+  }
+  if (NOT_ALLOWED_IN_SEGMENT.test(id) || id !== id.trim()) {
+    throw new QstashError(
+      `${label} cannot contain "/", "\\", "?", "#" or control characters, or start or end with whitespace`
+    );
+  }
+  return id;
+};
+
 export const makeNotifyRequest = async (
   requester: Client["http"],
   eventId: string,
   eventData?: unknown
 ): Promise<NotifyResponse[]> => {
   const result = (await requester.request({
-    path: ["v2", "notify", eventId],
+    path: ["v2", "notify", toPathSegment(eventId, "Event id")],
     method: "POST",
     body: typeof eventData === "string" ? eventData : JSON.stringify(eventData),
   })) as NotifyResponse[];
@@ -22,7 +62,7 @@ export const makeGetWaitersRequest = async (
   eventId: string
 ): Promise<Required<Waiter>[]> => {
   const result = (await requester.request({
-    path: ["v2", "waiters", eventId],
+    path: ["v2", "waiters", toPathSegment(eventId, "Event id")],
     method: "GET",
   })) as Required<Waiter>[];
   return result;
@@ -37,7 +77,8 @@ export const makeGetWaitersRequest = async (
  */
 export const makeCancelRequest = async (requester: Client["http"], workflowRunId: string) => {
   (await requester.request({
-    path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
+    path: ["v2", "workflows", "runs", toPathSegment(workflowRunId, "Workflow run id")],
+    query: { cancel: true },
     method: "DELETE",
     parseResponseAsJson: false,
   })) as undefined;
@@ -64,7 +105,7 @@ export const getSteps = async (
 > => {
   try {
     const steps = (await requester.request({
-      path: ["v2", "workflows", "runs", workflowRunId],
+      path: ["v2", "workflows", "runs", toPathSegment(workflowRunId, "Workflow run id")],
       parseResponseAsJson: true,
     })) as RawStep[];
 

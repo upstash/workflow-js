@@ -1,5 +1,6 @@
 import { WorkflowError } from "./error";
 import { WorkflowClient } from "./types";
+import { toPathSegment } from "./client/utils";
 
 const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 const NANOID_LENGTH = 21;
@@ -15,7 +16,7 @@ export function nanoid(length: number = NANOID_LENGTH): string {
 }
 
 export function getWorkflowRunId(id?: string): string {
-  return `wfr_${id ?? nanoid()}`;
+  return toPathSegment(`wfr_${id ?? nanoid()}`, "Workflow run id");
 }
 
 /**

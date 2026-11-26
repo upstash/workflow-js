@@ -332,7 +332,8 @@ describe("Workflow Requests", () => {
     await triggerWorkflowDelete(context, "hello world");
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenLastCalledWith({
-      path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=false`],
+      path: ["v2", "workflows", "runs", workflowRunId],
+      query: { cancel: false },
       body: '"hello world"',
       method: "DELETE",
       parseResponseAsJson: false,
