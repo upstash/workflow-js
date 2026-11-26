@@ -1,105 +1,124 @@
 import { Client, Receiver } from "@upstash/qstash";
 import {
+  CredentialBundle,
+  DEFAULT_QSTASH_URL,
   getRegionFromEnvironment,
   normalizeRegionHeader,
   QStashHandlers,
   QStashRegion,
-  readClientEnvironmentVariables,
-  readReceiverEnvironmentVariables,
+  readBundle,
   RegionalHandler,
 } from "./utils";
 import { QStashClientExtraConfig, WorkflowClient, WorkflowReceiver } from "../../types";
+import { WorkflowError } from "../../error";
+
+type QStashClientOption = WorkflowClient | QStashClientExtraConfig | undefined;
 
 /**
- * Get the appropriate QStash client and receiver based on the request region header
+ * - "set-to-undefined" if user explicitly set receiver to undefined in options
+ * - "not-set" if user did not pass receiver in options
+ * - WorkflowReceiver if user passed a receiver instance in options
+ */
+type ReceiverConfig = WorkflowReceiver | "set-to-undefined" | "not-set";
+
+/**
+ * Get the handler of the region the request comes from.
  *
- * @param qstashHandlers - The QStash handlers configuration
- * @param regionHeader - The UPSTASH-REGION header from the request
- * @param isFirstInvocation - Whether this is the first invocation
- * @returns Regional handler with client and receiver
+ * If QSTASH_REGION is set, region is read from the UPSTASH-REGION header.
+ * Requests without a valid header use the region in QSTASH_REGION.
+ *
+ * Throws if the requests of the region can't be handled.
  */
 export const getHandlersForRequest = (
   qstashHandlers: QStashHandlers,
-  regionHeader: string | null,
-  isFirstInvocation: boolean
+  regionHeader: string | null
 ): RegionalHandler => {
-  if (qstashHandlers.mode === "single-region") {
-    return qstashHandlers.handlers;
-  }
+  const handler =
+    qstashHandlers.mode === "single-region"
+      ? qstashHandlers.handlers
+      : qstashHandlers.handlers[
+          normalizeRegionHeader(regionHeader ?? undefined) ?? qstashHandlers.defaultRegion
+        ];
 
-  // Multi-region mode
-  let targetRegion: QStashRegion;
-
-  if (isFirstInvocation && !regionHeader) {
-    // Use the default region for first non-qstash invocation
-    targetRegion = qstashHandlers.defaultRegion;
-  } else {
-    // Use the region from the header for subsequent invocations
-    const normalizedRegion = regionHeader ? normalizeRegionHeader(regionHeader) : undefined;
-    targetRegion = normalizedRegion ?? qstashHandlers.defaultRegion;
-  }
-
-  const handler = qstashHandlers.handlers[targetRegion];
-
-  if (!handler) {
-    console.warn(
-      `[Upstash Workflow] No handler found for region "${targetRegion}". Falling back to default region.`
-    );
-    return qstashHandlers.handlers[qstashHandlers.defaultRegion];
+  if (handler.error) {
+    throw new WorkflowError(handler.error);
   }
 
   return handler;
 };
 
 /**
- * Creates a regional handler with client and receiver
+ * Handler of the region in QSTASH_REGION, or the only handler if it's not set
  */
-const createRegionalHandler = (
-  environment: Record<string, string | undefined>,
-  receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set",
-  region?: QStashRegion,
-  clientOptions?: QStashClientExtraConfig
-): RegionalHandler => {
-  const clientEnv = readClientEnvironmentVariables(environment, region);
-
-  const client = new Client({
-    ...clientOptions,
-    baseUrl: clientEnv.QSTASH_URL!,
-    token: clientEnv.QSTASH_TOKEN!,
-    // Mirror the receiver's dev-mode decision so a single QSTASH_DEV=true points
-    // the client at the local dev server too. Without this the QStash Client
-    // re-derives dev mode from its own process.env, which is blind to the
-    // Cloudflare worker `env` binding that actually carries QSTASH_DEV there.
-    // An explicit devMode in the user's client config still wins.
-    devMode: clientOptions?.devMode ?? isQStashDevModeEnabled(environment),
-  });
-  const receiver = getReceiver(environment, receiverConfig, region);
-
-  return { client, receiver };
-};
+const getDefaultHandler = (qstashHandlers: QStashHandlers): RegionalHandler =>
+  qstashHandlers.mode === "single-region"
+    ? qstashHandlers.handlers
+    : qstashHandlers.handlers[qstashHandlers.defaultRegion];
 
 /**
- * Determines if multi-region mode should be enabled
+ * Dev mode is used if it's set in the qstashClient option. Otherwise, if
+ * QSTASH_DEV is set.
+ *
+ * Both the client and the receiver follow this, so a single QSTASH_DEV=true
+ * (which may come from the Cloudflare worker `env` binding rather than
+ * process.env) puts both in dev mode.
  */
-const shouldUseMultiRegionMode = (
+const isDevMode = (
   environment: Record<string, string | undefined>,
-  qstashClientOption?: WorkflowClient | QStashClientExtraConfig
-):
-  | { isMultiRegion: true; defaultRegion: QStashRegion; clientOptions?: QStashClientExtraConfig }
-  | { isMultiRegion: false } => {
-  // Multi-region mode is enabled when:
-  // 1. QSTASH_REGION env variable is set
-  // 2. qstashClient option is not a WorkflowClient instance (either undefined or config object)
-  const hasRegionEnv = Boolean(getRegionFromEnvironment(environment));
-  if (hasRegionEnv && (!qstashClientOption || !("http" in qstashClientOption))) {
-    return {
-      isMultiRegion: true,
-      defaultRegion: getRegionFromEnvironment(environment)!,
-      clientOptions: qstashClientOption,
-    };
-  } else {
-    return { isMultiRegion: false };
+  qstashClientOption: QStashClientOption
+): boolean => {
+  const fromOption =
+    qstashClientOption && !("http" in qstashClientOption) ? qstashClientOption.devMode : undefined;
+  return fromOption ?? (environment.QSTASH_DEV === "true" || environment.QSTASH_DEV === "1");
+};
+
+const getClient = (
+  bundle: CredentialBundle,
+  qstashClientOption: QStashClientOption,
+  devMode: boolean
+): WorkflowClient => {
+  if (qstashClientOption && "http" in qstashClientOption) {
+    return qstashClientOption;
   }
+
+  if (devMode) {
+    return new Client({ ...qstashClientOption, devMode });
+  }
+
+  return new Client({
+    ...qstashClientOption,
+    baseUrl: bundle.credentials.url ?? DEFAULT_QSTASH_URL,
+    token: bundle.credentials.token,
+    devMode,
+  });
+};
+
+const getReceiver = (
+  bundle: CredentialBundle,
+  receiverConfig: ReceiverConfig,
+  devMode: boolean
+): WorkflowReceiver | undefined => {
+  if (receiverConfig === "set-to-undefined") {
+    return undefined;
+  }
+  if (receiverConfig !== "not-set") {
+    return receiverConfig;
+  }
+
+  if (devMode) {
+    return new Receiver({ devMode });
+  }
+
+  return bundle.verification === "verify"
+    ? new Receiver({
+        // if only one signing key is set, it's used for both
+        currentSigningKey:
+          bundle.credentials.currentSigningKey ?? bundle.credentials.nextSigningKey,
+        nextSigningKey: bundle.credentials.nextSigningKey ?? bundle.credentials.currentSigningKey,
+        // without this, the receiver reads QSTASH_DEV of the process itself
+        devMode,
+      })
+    : undefined;
 };
 
 const getQStashHandlers = ({
@@ -108,118 +127,90 @@ const getQStashHandlers = ({
   receiverConfig,
 }: {
   environment: Record<string, string | undefined>;
-  qstashClientOption?: WorkflowClient | QStashClientExtraConfig;
-  /**
-   * - "set-to-undefined" if user explicitly set receiver to undefined in options
-   * - "not-set" if user did not pass receiver in options
-   * - WorkflowReceiver if user passed a receiver instance in options
-   */
-  receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set";
+  qstashClientOption?: QStashClientOption;
+  receiverConfig: ReceiverConfig;
 }): QStashHandlers => {
-  const multiRegion = shouldUseMultiRegionMode(environment, qstashClientOption);
+  // a client passed in options is used in all regions. Token and url env
+  // variables aren't needed then, signing keys are still read for each region.
+  const hasClientInstance = Boolean(qstashClientOption && "http" in qstashClientOption);
+  const defaultRegion = getRegionFromEnvironment(environment);
+  const devMode = isDevMode(environment, qstashClientOption);
 
-  if (multiRegion.isMultiRegion) {
-    // Multi-region mode
+  const createHandler = (region?: QStashRegion): RegionalHandler => {
+    const bundle = readBundle(environment, region);
+    const { prefix } = bundle;
+    const { url, token, currentSigningKey, nextSigningKey } = bundle.credentials;
+    const requests = region ? `Requests from ${region}` : "Requests";
+    const handler: RegionalHandler = {
+      client: getClient(bundle, qstashClientOption, devMode),
+      receiver: getReceiver(bundle, receiverConfig, devMode),
+    };
 
-    const regions: QStashRegion[] = ["US_EAST_1", "EU_CENTRAL_1"];
-    const handlers: Record<QStashRegion, RegionalHandler> = {} as Record<
-      QStashRegion,
-      RegionalHandler
-    >;
+    if (devMode) {
+      return handler;
+    }
 
-    for (const region of regions) {
-      try {
-        handlers[region] = createRegionalHandler(
-          environment,
-          receiverConfig,
-          region,
-          multiRegion.clientOptions
-        );
-      } catch (error) {
-        console.warn(`[Upstash Workflow] Failed to create handler for region ${region}:`, error);
+    if (!hasClientInstance && prefix && token && !url) {
+      console.warn(
+        `[Upstash Workflow] ${prefix}QSTASH_URL is not set. Using ${DEFAULT_QSTASH_URL}.`
+      );
+    }
+
+    // Signing keys are read from env variables if receiver isn't passed in
+    // options. Requests are never accepted without verification if a signing
+    // key is set somewhere.
+    if (receiverConfig === "not-set" && bundle.verification === "reject") {
+      const error = `${requests} are rejected. A QStash signing key is set, but ${prefix}QSTASH_CURRENT_SIGNING_KEY and ${prefix}QSTASH_NEXT_SIGNING_KEY are not set.`;
+      console.warn(`[Upstash Workflow] ${error}`);
+      return { ...handler, error };
+    }
+
+    if (receiverConfig === "not-set" && Boolean(currentSigningKey) !== Boolean(nextSigningKey)) {
+      const [set, missing] = currentSigningKey ? ["CURRENT", "NEXT"] : ["NEXT", "CURRENT"];
+      console.warn(
+        `[Upstash Workflow] Only ${prefix}QSTASH_${set}_SIGNING_KEY is set. ${requests} are verified with it. Set ${prefix}QSTASH_${missing}_SIGNING_KEY too, so that requests are verified when the keys are rotated.`
+      );
+    }
+
+    // The default region can be used without a token if it reads the env
+    // variables without prefix, like when QSTASH_REGION is not set. Calls to
+    // QStash fail in that case.
+    const isTokenRequired = region !== defaultRegion || Boolean(prefix);
+    if (!hasClientInstance && isTokenRequired && !token) {
+      return {
+        ...handler,
+        error: `Received a request for region ${region}, but ${prefix}QSTASH_TOKEN is not set.`,
+      };
+    }
+
+    return handler;
+  };
+
+  return defaultRegion
+    ? {
+        mode: "multi-region",
+        defaultRegion,
+        handlers: {
+          US_EAST_1: createHandler("US_EAST_1"),
+          EU_CENTRAL_1: createHandler("EU_CENTRAL_1"),
+        },
       }
-    }
-
-    return {
-      mode: "multi-region",
-      handlers,
-      defaultRegion: multiRegion.defaultRegion,
-    };
-  } else {
-    // Single-region mode
-    return {
-      mode: "single-region",
-      handlers: {
-        client:
-          qstashClientOption && "http" in qstashClientOption
-            ? qstashClientOption
-            : new Client({
-                ...qstashClientOption,
-                baseUrl: environment.QSTASH_URL!,
-                token: environment.QSTASH_TOKEN!,
-                // Mirror the receiver's dev-mode decision (see createRegionalHandler).
-                devMode: qstashClientOption?.devMode ?? isQStashDevModeEnabled(environment),
-              }),
-        receiver: getReceiver(environment, receiverConfig),
-      },
-    };
-  }
-};
-
-const getReceiver = (
-  environment: Record<string, string | undefined>,
-  receiverConfig: WorkflowReceiver | "set-to-undefined" | "not-set",
-  region?: QStashRegion
-) => {
-  if (typeof receiverConfig === "string") {
-    if (receiverConfig === "set-to-undefined") {
-      return undefined;
-    }
-
-    if (isQStashDevModeEnabled(environment)) {
-      return new Receiver({ devMode: true });
-    }
-
-    const receiverEnv = readReceiverEnvironmentVariables(environment, region);
-    return receiverEnv.QSTASH_CURRENT_SIGNING_KEY && receiverEnv.QSTASH_NEXT_SIGNING_KEY
-      ? new Receiver({
-          currentSigningKey: receiverEnv.QSTASH_CURRENT_SIGNING_KEY,
-          nextSigningKey: receiverEnv.QSTASH_NEXT_SIGNING_KEY,
-        })
-      : undefined;
-  } else {
-    return receiverConfig;
-  }
-};
-
-/**
- * Mirrors qstash-js's `shouldUseDevelopmentMode` for the env-only case so we
- * decide whether to construct a Receiver. The strict parsing (rejecting garbage
- * values, etc.) is left to qstash-js itself when the Receiver/Client run.
- */
-const isQStashDevModeEnabled = (env: Record<string, string | undefined>): boolean => {
-  const value = env.QSTASH_DEV;
-  return value === "true" || value === "1";
+    : { mode: "single-region", handlers: createHandler() };
 };
 
 export const getQStashHandlerOptions = (
   ...params: Parameters<typeof getQStashHandlers>
 ): {
-  qstashHandlers: ReturnType<typeof getQStashHandlers>;
+  qstashHandlers: QStashHandlers;
   defaultReceiver: WorkflowReceiver | undefined;
   defaultClient: WorkflowClient;
 } => {
-  const handlers = getQStashHandlers(...params);
+  const qstashHandlers = getQStashHandlers(...params);
+  const { client, receiver } = getDefaultHandler(qstashHandlers);
 
   return {
-    qstashHandlers: handlers,
-    defaultReceiver:
-      handlers.mode === "single-region"
-        ? handlers.handlers.receiver
-        : handlers.handlers[handlers.defaultRegion].receiver,
-    defaultClient:
-      handlers.mode === "single-region"
-        ? handlers.handlers.client
-        : handlers.handlers[handlers.defaultRegion].client,
+    qstashHandlers,
+    defaultReceiver: receiver,
+    defaultClient: client,
   };
 };
