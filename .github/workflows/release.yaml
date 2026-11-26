@@ -1,9 +1,15 @@
 name: Release
 
+# Releases of the 0.2 line. They are published under the `legacy` and
+# `legacy-canary` npm tags so that `latest` and `canary` stay on the current
+# major version.
+
 on:
-  release:
-    types:
-      - published
+  workflow_call:
+    inputs:
+      prerelease:
+        type: boolean
+        required: true
 
 jobs:
   release:
@@ -11,13 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set env
-        run: echo "VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
+
+      - name: Check version
+        run: |
+          case "${{ env.VERSION }}" in
+            0.2.*) ;;
+            *) echo "This branch only releases 0.2.x versions, got ${{ env.VERSION }}" && exit 1 ;;
+          esac
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@f4d14e03ff726c06358e5557344e1da148b56cf7 # v1.2.2
         with:
           bun-version: latest
 
@@ -30,19 +43,22 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Set NPM_TOKEN
-        run: npm set "//registry.npmjs.org/:_authToken" ${{ secrets.NPM_TOKEN }}
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
 
       - name: Publish
-        if: "!github.event.release.prerelease"
+        if: ${{ !inputs.prerelease }}
         working-directory: ./dist
         run: |
           npm pkg delete scripts.prepare
-          npm publish --access public
+          npm publish --provenance --access public --tag=legacy
 
       - name: Publish release candidate
-        if: "github.event.release.prerelease"
+        if: ${{ inputs.prerelease }}
         working-directory: ./dist
         run: |
           npm pkg delete scripts.prepare
-          npm publish --access public --tag=canary
+          npm publish --provenance --access public --tag=legacy-canary
