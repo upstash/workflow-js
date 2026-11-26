@@ -74,7 +74,13 @@ export function getWorkflowRunId(id?: string): string {
  * @param base64 encoded string
  */
 export function decodeBase64(base64: string) {
-  const binString = atob(base64);
+  const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
+  const remainder = normalized.length % 4;
+  const padded =
+    remainder === 2 || remainder === 3
+      ? normalized.padEnd(normalized.length + (4 - remainder), "=")
+      : normalized;
+  const binString = atob(padded);
   try {
     // @ts-expect-error m will always be defined
     const intArray = Uint8Array.from(binString, (m) => m.codePointAt(0));
