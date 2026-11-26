@@ -55,17 +55,18 @@ describe("ids in request paths", () => {
     }
   });
 
-  test("toPathSegment rejects empty, non-string and dot ids", () => {
+  test("toPathSegment rejects empty and dot ids", () => {
     expect(() => toPathSegment("", "Event id")).toThrow("Event id cannot be empty");
-    expect(() => toPathSegment(["a"] as unknown as string, "Event id")).toThrow(
-      "Event id must be a string"
-    );
     for (const id of [".", "..", "%2e", "%2E%2e", ".%2e"]) {
       expect(() => toPathSegment(id, "Event id")).toThrow('Event id cannot be "." or ".."');
     }
   });
 
-  test("a number, bigint or boolean id is sent in its string form", async () => {
+  test("an id that is not a string is checked and sent in its string form", async () => {
+    expect(toPathSegment({ toString: () => "order:1" } as unknown as string)).toBe("order:1");
+    expect(() =>
+      toPathSegment({ toString: () => "../keys" } as unknown as string, "Event id")
+    ).toThrow("Event id cannot contain");
     expect(toPathSegment(123 as unknown as string)).toBe("123");
     expect(toPathSegment(0 as unknown as string)).toBe("0");
     expect(toPathSegment(BigInt(7) as unknown as string)).toBe("7");

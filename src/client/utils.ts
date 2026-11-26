@@ -15,16 +15,13 @@ const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
  * itself: `/`, `\`, `?`, `#`, control characters and surrounding whitespace
  * are not accepted, and neither are `.` and `..`.
  *
- * A number, bigint or boolean passed from plain JavaScript is sent in its
- * string form, as it was before this check existed.
+ * A value that is not a string, passed from plain JavaScript, is checked and
+ * sent in its string form.
  */
 export const toPathSegment = (id: string, label = "id"): string => {
-  const segment: unknown = ["number", "bigint", "boolean"].includes(typeof id) ? String(id) : id;
-  if (segment === undefined || segment === null || segment === "") {
+  const segment = id === undefined || id === null ? "" : String(id);
+  if (segment === "") {
     throw new QstashError(`${label} cannot be empty`);
-  }
-  if (typeof segment !== "string") {
-    throw new QstashError(`${label} must be a string`);
   }
   if (DOT_SEGMENT.test(segment)) {
     throw new QstashError(`${label} cannot be "." or ".."`);
