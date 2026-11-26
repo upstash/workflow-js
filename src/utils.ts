@@ -1,6 +1,7 @@
 import { WorkflowError, WorkflowNonRetryableError } from "./error";
 import type { FlowControl } from "@upstash/qstash";
 import { WorkflowClient } from "./types";
+import { toPathSegment } from "./client/utils";
 
 const NANOID_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 const NANOID_LENGTH = 21;
@@ -58,7 +59,7 @@ export function nanoid(length: number = NANOID_LENGTH): string {
  * @param id optional id to use as suffix
  */
 export function getWorkflowRunId(id?: string): string {
-  return `wfr_${id ?? nanoid()}`;
+  return toPathSegment(`wfr_${id ?? nanoid()}`, "Workflow run id");
 }
 
 /**

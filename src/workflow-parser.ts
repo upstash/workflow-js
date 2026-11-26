@@ -23,7 +23,7 @@ import type {
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
-import { getSteps } from "./client/utils";
+import { getSteps, toPathSegment } from "./client/utils";
 import { getEffectiveConfig } from "./qstash/step-config";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
@@ -158,6 +158,26 @@ const checkIfLastOneIsDuplicate = async (
 };
 
 /**
+ * Returns the workflow url of a failure callback in its resolved form.
+ *
+ * Raises `WorkflowError` if it isn't an http(s) url.
+ */
+const toWorkflowUrl = (url: string): string => {
+  let parsed: URL | undefined;
+  try {
+    parsed = new URL(url);
+  } catch {
+    parsed = undefined;
+  }
+  if (!parsed || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
+    throw new WorkflowError(
+      `Workflow URL should start with 'http://' or 'https://'. Received '${url}'`
+    );
+  }
+  return parsed.href === `${url}/` ? url : parsed.href;
+};
+
+/**
  * Validates the incoming request checking the workflow protocol
  * version and whether it is the first invocation.
  *
@@ -184,7 +204,7 @@ export const validateRequest = (
     return {
       unknownSdk: true,
       isFirstInvocation: true,
-      workflowRunId,
+      workflowRunId: toPathSegment(workflowRunId, "Workflow run id"),
     };
   }
 
@@ -396,6 +416,8 @@ export const handleFailure = async <TInitialPayload>({
       sourceMessageId: string;
     };
 
+    const workflowUrl = url === undefined ? url : toWorkflowUrl(url);
+
     const decodedBody = body ? decodeBase64(body) : "{}";
     let errorMessage: string = "";
     let failStack: string = "";
@@ -430,7 +452,7 @@ export const handleFailure = async <TInitialPayload>({
         : (undefined as TInitialPayload),
       headers: userHeaders,
       steps: [],
-      url: url,
+      url: workflowUrl,
       env,
       telemetry: undefined, // not going to make requests in authentication check
       label: userHeaders.get(WORKFLOW_LABEL_HEADER) ?? undefined,

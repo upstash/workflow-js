@@ -23,6 +23,34 @@ export const assertNonEmptyId = (id: string, label = "id"): void => {
   }
 };
 
+const DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
+// eslint-disable-next-line no-control-regex
+const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
+
+/**
+ * Checks that `id` can be used as a single URL path segment and returns it
+ * unchanged.
+ *
+ * Ids are sent as they are, so an id has to stay in its own segment by
+ * itself: `/`, `\`, `?`, `#`, control characters and surrounding whitespace
+ * are not accepted, and neither are `.` and `..`.
+ */
+export const toPathSegment = (id: string, label = "id"): string => {
+  assertNonEmptyId(id, label);
+  if (typeof id !== "string") {
+    throw new QstashError(`${label} must be a string`);
+  }
+  if (DOT_SEGMENT.test(id)) {
+    throw new QstashError(`${label} cannot be "." or ".."`);
+  }
+  if (NOT_ALLOWED_IN_SEGMENT.test(id) || id !== id.trim()) {
+    throw new QstashError(
+      `${label} cannot contain "/", "\\", "?", "#" or control characters, or start or end with whitespace`
+    );
+  }
+  return id;
+};
+
 /**
  * Normalizes a single id or array of ids into an array, asserting that every
  * id in it is non-empty.
@@ -52,12 +80,11 @@ export const makeNotifyRequest = async (
   eventData?: unknown,
   workflowRunId?: string
 ): Promise<NotifyResponse[]> => {
-  assertNonEmptyId(eventId, "Event id");
-  if (workflowRunId !== undefined) assertNonEmptyId(workflowRunId, "Workflow run id");
+  const eventSegment = toPathSegment(eventId, "Event id");
   const path =
     workflowRunId === undefined
-      ? ["v2", "notify", eventId]
-      : ["v2", "notify", workflowRunId, eventId];
+      ? ["v2", "notify", eventSegment]
+      : ["v2", "notify", toPathSegment(workflowRunId, "Workflow run id"), eventSegment];
 
   const result = (await requester.request({
     path,
@@ -78,9 +105,8 @@ export const makeGetWaitersRequest = async (
   requester: Client["http"],
   eventId: string
 ): Promise<Required<Waiter>[]> => {
-  assertNonEmptyId(eventId, "Event id");
   const result = (await requester.request({
-    path: ["v2", "waiters", eventId],
+    path: ["v2", "waiters", toPathSegment(eventId, "Event id")],
     method: "GET",
   })) as Required<Waiter>[];
   return result;
@@ -95,7 +121,8 @@ export const makeGetWaitersRequest = async (
  */
 export const makeCancelRequest = async (requester: Client["http"], workflowRunId: string) => {
   (await requester.request({
-    path: ["v2", "workflows", "runs", `${workflowRunId}?cancel=true`],
+    path: ["v2", "workflows", "runs", toPathSegment(workflowRunId, "Workflow run id")],
+    query: { cancel: true },
     method: "DELETE",
     parseResponseAsJson: false,
   })) as undefined;
@@ -122,7 +149,7 @@ export const getSteps = async (
 > => {
   try {
     const steps = (await requester.request({
-      path: ["v2", "workflows", "runs", workflowRunId],
+      path: ["v2", "workflows", "runs", toPathSegment(workflowRunId, "Workflow run id")],
       parseResponseAsJson: true,
     })) as RawStep[];
 
