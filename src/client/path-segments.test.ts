@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { MOCK_QSTASH_SERVER_URL, mockQStashServer } from "../test-utils";
 import { Client } from ".";
-import { toPathSegment } from "./utils";
+import { getSteps, makeCancelRequest, toPathSegment } from "./utils";
 import { getWorkflowRunId } from "../utils";
 import { triggerWorkflowDelete } from "../workflow-requests";
 import { WorkflowContext } from "../context";
@@ -63,6 +63,27 @@ describe("ids in request paths", () => {
     for (const id of [".", "..", "%2e", "%2E%2e", ".%2e"]) {
       expect(() => toPathSegment(id, "Event id")).toThrow('Event id cannot be "." or ".."');
     }
+  });
+
+  test("a number, bigint or boolean id is sent in its string form", async () => {
+    expect(toPathSegment(123 as unknown as string)).toBe("123");
+    expect(toPathSegment(0 as unknown as string)).toBe("0");
+    expect(toPathSegment(BigInt(7) as unknown as string)).toBe("7");
+    expect(toPathSegment(false as unknown as string)).toBe("false");
+    expect(() => toPathSegment(null as unknown as string, "Event id")).toThrow(
+      "Event id cannot be empty"
+    );
+    await mockQStashServer({
+      execute: async () => {
+        await client.getWaiters({ eventId: 123 as unknown as string });
+      },
+      responseFields: { status: 200, body: [] },
+      receivesRequest: {
+        method: "GET",
+        url: `${MOCK_QSTASH_SERVER_URL}/v2/waiters/123`,
+        token,
+      },
+    });
   });
 
   test("an id with other characters is sent as it is", async () => {
@@ -139,8 +160,16 @@ describe("ids in request paths", () => {
   });
 
   test("does not send a request for a run whose id is not a single segment", async () => {
+    const requester = new QStashClient({ baseUrl: MOCK_QSTASH_SERVER_URL, token, retry: false })
+      .http;
     await mockQStashServer({
       execute: async () => {
+        await expect(makeCancelRequest(requester, "../../messages")).rejects.toThrow(
+          "Workflow run id cannot contain"
+        );
+        await expect(getSteps(requester, "../../keys#")).rejects.toThrow(
+          "Workflow run id cannot contain"
+        );
         await expect(
           triggerWorkflowDelete(contextWithRunId("../../messages"), "result")
         ).rejects.toThrow("Workflow run id cannot contain");

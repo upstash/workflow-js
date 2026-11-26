@@ -3,18 +3,6 @@ import { NotifyResponse, RawStep, Waiter } from "../types";
 import { WorkflowLogger } from "../logger";
 import { isInstanceOf } from "../error";
 
-/**
- * Guards single-resource endpoints against an empty identifier.
- *
- * An empty id would otherwise be joined into the path as a trailing slash
- * (e.g. `v2/waiters/`), which is a different endpoint.
- */
-export const assertNonEmptyId = (id: string, label = "id"): void => {
-  if (!id) {
-    throw new QstashError(`${label} cannot be empty`);
-  }
-};
-
 const DOT_SEGMENT = /^(?:\.|%2e){1,2}$/i;
 // eslint-disable-next-line no-control-regex
 const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
@@ -26,21 +14,27 @@ const NOT_ALLOWED_IN_SEGMENT = /[\u0000-\u001F#/?\\\u007F]/;
  * Ids are sent as they are, so an id has to stay in its own segment by
  * itself: `/`, `\`, `?`, `#`, control characters and surrounding whitespace
  * are not accepted, and neither are `.` and `..`.
+ *
+ * A number, bigint or boolean passed from plain JavaScript is sent in its
+ * string form, as it was before this check existed.
  */
 export const toPathSegment = (id: string, label = "id"): string => {
-  assertNonEmptyId(id, label);
-  if (typeof id !== "string") {
+  const segment: unknown = ["number", "bigint", "boolean"].includes(typeof id) ? String(id) : id;
+  if (segment === undefined || segment === null || segment === "") {
+    throw new QstashError(`${label} cannot be empty`);
+  }
+  if (typeof segment !== "string") {
     throw new QstashError(`${label} must be a string`);
   }
-  if (DOT_SEGMENT.test(id)) {
+  if (DOT_SEGMENT.test(segment)) {
     throw new QstashError(`${label} cannot be "." or ".."`);
   }
-  if (NOT_ALLOWED_IN_SEGMENT.test(id) || id !== id.trim()) {
+  if (NOT_ALLOWED_IN_SEGMENT.test(segment) || segment !== segment.trim()) {
     throw new QstashError(
       `${label} cannot contain "/", "\\", "?", "#" or control characters, or start or end with whitespace`
     );
   }
-  return id;
+  return segment;
 };
 
 export const makeNotifyRequest = async (
