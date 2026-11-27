@@ -21,7 +21,7 @@ import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
-import { getSteps } from "./client/utils";
+import { getSteps, toPathSegment } from "./client/utils";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
 
@@ -212,7 +212,7 @@ export const validateRequest = (
 
   return {
     isFirstInvocation,
-    workflowRunId,
+    workflowRunId: toPathSegment(workflowRunId, "Workflow run id"),
   };
 };
 
