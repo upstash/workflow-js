@@ -68,7 +68,7 @@ describe("workflow client", () => {
           method: "DELETE",
           url: `${MOCK_QSTASH_SERVER_URL}/v2/workflows/runs`,
           token,
-          body: { workflowUrl: urlStartingWith },
+          body: { workflowUrl: [urlStartingWith] },
         },
       });
     });

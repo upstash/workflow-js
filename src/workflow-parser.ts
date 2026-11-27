@@ -21,7 +21,7 @@ import type { WorkflowLogger } from "./logger";
 import { WorkflowContext } from "./context";
 import { recreateUserHeaders } from "./workflow-requests";
 import { decodeBase64, getWorkflowRunId } from "./utils";
-import { getSteps } from "./client/utils";
+import { getSteps, toPathSegment } from "./client/utils";
 import { Client } from "@upstash/qstash";
 import { DisabledWorkflowContext } from "./serve/authorization";
 
@@ -154,6 +154,29 @@ const checkIfLastOneIsDuplicate = async (
 };
 
 /**
+ * Returns the workflow url of a failure callback in its resolved form.
+ *
+ * Raises `WorkflowError` if it isn't an http(s) url.
+ */
+const toWorkflowUrl = (url: string): string => {
+  let href: string | undefined;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      href = parsed.href;
+    }
+  } catch {
+    href = undefined;
+  }
+  if (href === undefined) {
+    throw new WorkflowError(
+      `Workflow URL should start with 'http://' or 'https://'. Received '${url}'`
+    );
+  }
+  return href === `${url}/` ? url : href;
+};
+
+/**
  * Validates the incoming request checking the workflow protocol
  * version and whether it is the first invocation.
  *
@@ -189,7 +212,7 @@ export const validateRequest = (
 
   return {
     isFirstInvocation,
-    workflowRunId,
+    workflowRunId: toPathSegment(workflowRunId, "Workflow run id"),
   };
 };
 
@@ -330,6 +353,8 @@ export const handleFailure = async <TInitialPayload>(
       sourceMessageId: string;
     };
 
+    const workflowUrl = url === undefined ? url : toWorkflowUrl(url);
+
     const decodedBody = body ? decodeBase64(body) : "{}";
     let errorMessage: string = "";
     let failStack: string = "";
@@ -360,8 +385,8 @@ export const handleFailure = async <TInitialPayload>(
         : (undefined as TInitialPayload),
       headers: userHeaders,
       steps: [],
-      url: url,
-      failureUrl: url,
+      url: workflowUrl,
+      failureUrl: workflowUrl,
       debug,
       env,
       retries,

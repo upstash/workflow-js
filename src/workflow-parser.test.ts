@@ -95,6 +95,18 @@ describe("Workflow Parser", () => {
       expect(isFirstInvocation).toBeFalse();
       expect(workflowRunId).toBe(requestWorkflowRunId);
     });
+
+    test("should reject a run id that can't be used in a request path", () => {
+      for (const runId of ["..", "../../messages", "wfr_order/123", "wfr_x?a=b", "wfr_x#y"]) {
+        const request = new Request(WORKFLOW_ENDPOINT, {
+          headers: {
+            [WORKFLOW_PROTOCOL_VERSION_HEADER]: WORKFLOW_PROTOCOL_VERSION,
+            [WORKFLOW_ID_HEADER]: runId,
+          },
+        });
+        expect(() => validateRequest(request)).toThrow("Workflow run id cannot");
+      }
+    });
   });
 
   describe("parseRequest", () => {

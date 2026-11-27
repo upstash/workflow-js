@@ -28,7 +28,7 @@ import type {
 import { StepTypes } from "./types";
 import type { WorkflowLogger } from "./logger";
 import { FlowControl, PublishBatchRequest, PublishRequest, QstashError } from "@upstash/qstash";
-import { getSteps } from "./client/utils";
+import { getSteps, toPathSegment } from "./client/utils";
 import { getHeaders } from "./qstash/headers";
 import { PublishToUrlResponse } from "@upstash/qstash";
 
@@ -221,7 +221,13 @@ export const triggerWorkflowDelete = async <TInitialPayload>(
     deletedWorkflowRunId: workflowContext.workflowRunId,
   });
   await workflowContext.qstashClient.http.request({
-    path: ["v2", "workflows", "runs", `${workflowContext.workflowRunId}?cancel=${cancel}`],
+    path: [
+      "v2",
+      "workflows",
+      "runs",
+      toPathSegment(workflowContext.workflowRunId, "Workflow run id"),
+    ],
+    query: { cancel },
     method: "DELETE",
     parseResponseAsJson: false,
     body: JSON.stringify(result),

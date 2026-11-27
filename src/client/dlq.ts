@@ -1,4 +1,5 @@
 import { Client as QStashClient } from "@upstash/qstash";
+import { toPathSegment } from "./utils";
 import { DLQResumeRestartOptions, DLQResumeRestartResponse } from "./types";
 import { prepareFlowControl } from "../qstash/headers";
 
@@ -236,7 +237,7 @@ export class DLQ {
    */
   async retryFailureFunction({ dlqId }: Pick<DLQResumeRestartOptions<string>, "dlqId">) {
     const response = await this.client.http.request<DLQResumeRestartResponse>({
-      path: ["v2", "workflows", "dlq", "callback", dlqId],
+      path: ["v2", "workflows", "dlq", "callback", toPathSegment(dlqId, "DLQ id")],
       method: "POST",
     });
 

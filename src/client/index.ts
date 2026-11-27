@@ -103,7 +103,7 @@ export class Client {
 
       body = JSON.stringify({ workflowRunIds: runIdArray });
     } else if (urlStartingWith) {
-      body = JSON.stringify({ workflowUrl: urlStartingWith });
+      body = JSON.stringify({ workflowUrl: [urlStartingWith] });
     } else if (all) {
       body = "{}";
     } else {
