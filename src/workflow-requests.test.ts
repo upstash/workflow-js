@@ -798,9 +798,11 @@ describe("Workflow Requests", () => {
 
     const workflowClient = new WorkflowClient({ token: process.env.QSTASH_TOKEN! });
 
+    // cancelling by filter waits for the runs to be cancelled, which can take
+    // longer than the default timeout of a hook
     afterAll(async () => {
       await workflowClient.cancel({ filter: { workflowUrl: WORKFLOW_ENDPOINT } });
-    });
+    }, 30_000);
 
     test(
       "should omit the error if the triggerWorkflowDelete fails with workflow run doesn't exist",
